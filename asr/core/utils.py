@@ -361,10 +361,11 @@ def compare_equal(value1: typing.Any, value2: typing.Any) -> bool:
             return (value1 == value2).all()
 
         if isinstance(value1, dict) and isinstance(value2, dict):
+            if set(value1) != set(value2):
+                return False
+
             for key in value1:
-                if key not in value2:
-                    return False
-                elif not compare_equal(value1[key], value2[key]):
+                if not compare_equal(value1[key], value2[key]):
                     return False
         return True
 

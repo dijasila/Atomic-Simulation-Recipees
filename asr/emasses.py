@@ -464,15 +464,15 @@ def make_the_plots(row, *args):
     import matplotlib.pyplot as plt
     import numpy as np
     from asr.database.browser import fig as asrfig
+    from asr.utils.hacks import RowInfo
 
+    rowinfo = RowInfo(row)
     results = row.data.get('results-asr.emasses.json')
-    efermi = row.efermi
     sdir = row.get('spin_axis', 'z')
     cell_cv = row.cell
 
-    reference = row.get('evac', efermi)
+    ref = row.evac_or_efermi()
 
-    label = r'E_\mathrm{vac}' if 'evac' in row else r'E_\mathrm{F}'
     columns = []
     cb_fnames = []
     vb_fnames = []
@@ -546,9 +546,9 @@ def make_the_plots(row, *args):
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            e_km = fit_data['e_km'] - reference
+            e_km = fit_data['e_km'] - ref.value
             sz_km = fit_data['spin_km']
-            emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
+            emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - ref.value
             emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
 
             shape = e_km.shape
@@ -574,7 +574,7 @@ def make_the_plots(row, *args):
                 cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
                 cbar.update_ticks()
             plt.locator_params(axis='x', nbins=3)
-            axes.set_ylabel(r'$E-{}$ [eV]'.format(label))
+            axes.set_ylabel(rowinfo.mpl_plotlabel())
             axes.set_title(f'{bt.upper()}, direction {direction + 1}')
             axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
             plt.tight_layout()
@@ -603,7 +603,7 @@ def make_the_plots(row, *args):
             fit_data = fit_data_list[direction]
             ks = fit_data['kpts_kc']
             bt = fit_data['bt']
-            e_km = fit_data['e_km'] - reference
+            e_km = fit_data['e_km'] - ref.value
             sz_km = fit_data['spin_km']
             xk2, y, y2 = labels_from_kpts(kpts=ks, cell=cell_cv, eps=1)
             xk2 -= xk2[-1] / 2
@@ -611,7 +611,7 @@ def make_the_plots(row, *args):
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
+            emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - ref.value
             emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
 
             shape = e_km.shape
@@ -637,7 +637,7 @@ def make_the_plots(row, *args):
                 cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
                 cbar.update_ticks()
             plt.locator_params(axis='x', nbins=3)
-            axes.set_ylabel(r'$E-{}$ [eV]'.format(label))
+            axes.set_ylabel(rowinfo.mpl_plotlabel())
             axes.set_title(f'{bt.upper()}, direction {direction + 1}')
             axes.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
             plt.tight_layout()

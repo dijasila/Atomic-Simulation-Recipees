@@ -291,7 +291,17 @@ class ASRCommand:
         return run_record
 
     def has(self, *args, **kwargs):
-        parameters = self.prepare_parameters(*args, **kwargs)
+
+        try:
+            parameters = self.prepare_parameters(*args, **kwargs)
+        except FileNotFoundError:
+            # Some recipes have files as input, and they may trigger
+            # errors which definitely indicate a cache miss.
+            #
+            # Maybe this check could be done in a more appropriate way
+            # or place.
+            return False
+
         run_spec = self.make_run_specification(parameters)
         sel = self.make_selector(run_spec)
         return self.cache.has(selector=sel)
