@@ -33,16 +33,18 @@ than the direct band gap.
 )
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
 
     opt = table(
-        row, "Property", ["alphax_lat", "alphay_lat", "alphaz_lat"], key_descriptions
+        result, "Property", ["alphax_lat", "alphay_lat", "alphaz_lat"],
+        context.descriptions,
     )
 
     panel = {
         "title": describe_entry("Infrared polarizability (RPA)",
                                 panel_description),
-        "columns": [[fig("infrax.png"), fig("infraz.png")], [fig("infray.png"), opt]],
+        "columns": [[fig("infrax.png"), fig("infraz.png")],
+                    [fig("infray.png"), opt]],
         "plot_descriptions": [
             {
                 "function": create_plot,
@@ -55,29 +57,27 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
-def create_plot(row, *fnames):
+def create_plot(context, *fnames):
     import matplotlib.pyplot as plt
     from scipy.interpolate import interp1d
 
     # Get electronic polarizability
-    infrareddct = row.data.get("results-asr.infraredpolarizability.json")
+    infrareddct = context.result
     omega_w = infrareddct["omega_w"] * 1e3
     alpha_wvv = infrareddct["alpha_wvv"]
 
-    electrondct = row.data.get("results-asr.polarizability.json")
+    electrondct = context.get_record('asr.polarizability').result
     alphax_w = electrondct["alphax_w"]
     alphay_w = electrondct["alphay_w"]
     alphaz_w = electrondct["alphaz_w"]
     omegatmp_w = electrondct["frequencies"] * 1e3
 
     # Get max phonon freq
-    phonondata = row.data.get("results-asr.phonons.json")
+    phonondata = context.get_record('asr.phonons').result
     maxphononfreq = phonondata.get("omega_kl")[0].max() * 1e3
     maxomega = maxphononfreq * 1.5
 
-    atoms = row.toatoms()
-    pbc_c = atoms.pbc
-    ndim = int(np.sum(pbc_c))
+    ndim = context.ndim
 
     realphax = interp1d(omegatmp_w, alphax_w.real)
     imalphax = interp1d(omegatmp_w, alphax_w.imag)
@@ -198,7 +198,7 @@ class Result(ASRResult):
         "alphaz": "Lattice+electronic polarizability at omega=0 (z-direction).",
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 def prepare_for_resultfile_migration(record):

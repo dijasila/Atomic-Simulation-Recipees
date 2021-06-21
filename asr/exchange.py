@@ -195,16 +195,14 @@ def get_parameters(gs, exchange, txt=False,
     return J, A, B, S, N
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
-    if row.get('magstate', 'NM') == 'NM':
+def webpanel(result, context):
+    from asr.database.browser import table, describe_entry, WebPanel
+
+    if not context.is_magnetic:
         return []
 
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.exchange@main')
+    parameter_description = context.parameter_description('asr.exchange')
+
     explanation_J = ('The nearest neighbor exchange coupling\n\n'
                      + parameter_description)
     explanation_lam = ('The nearest neighbor isotropic exchange coupling\n\n'
@@ -221,12 +219,10 @@ def webpanel(result, row, key_descriptions):
     spin = describe_entry('spin', description=explanation_spin)
     N_nn = describe_entry('N_nn', description=explanation_N)
 
-    heisenberg_table = table(row, 'Heisenberg model',
+    heisenberg_table = table(result, 'Heisenberg model',
                              [J, lam, A, spin, N_nn],
-                             kd=key_descriptions)
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
-    panel = WebPanel(title=f'Basic magnetic properties ({xcname})',
+                             kd=context.descriptions)
+    panel = WebPanel(title=f'Basic magnetic properties ({context.xcname})',
                      columns=[[heisenberg_table], []],
                      sort=11)
     return [panel]
@@ -249,7 +245,7 @@ class Result(ASRResult):
         'N_nn': "Number of nearest neighbors",
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command(

@@ -52,5 +52,6 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
     # We need to call structureinfo in order to make the webpanel.
     # This should be fixed in the future.
     structinfo(atoms=test_material)
+
     html = get_webcontent()
     assert 'hse-bs.png' in html

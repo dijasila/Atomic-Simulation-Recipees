@@ -2,6 +2,7 @@
 import typing
 
 from ase import Atoms
+import numpy as np
 
 import asr
 from asr.core import (
@@ -24,13 +25,11 @@ indicates a dynamical instability.
 )
 
 
-def webpanel(result, row, key_descriptions):
-    import numpy as np
-
-    stiffnessdata = row.data['results-asr.stiffness.json']
+def webpanel(result, context):
+    stiffnessdata = result  # row.data['results-asr.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor']
     eigs = stiffnessdata['eigenvalues']
-    nd = np.sum(row.pbc)
+    nd = context.ndim
 
     if nd == 2:
         c_ij = np.zeros((4, 4))
@@ -75,7 +74,7 @@ def webpanel(result, row, key_descriptions):
         'columns': [[ctable], [eigtable]],
         'sort': 2}
 
-    dynstab = row.dynamic_stability_stiffness
+    dynstab = result['dynamic_stability_stiffness']
     high = 'Minimum stiffness tensor eigenvalue > 0'
     low = 'Minimum stiffness tensor eigenvalue < 0'
 
@@ -194,7 +193,7 @@ class Result(ASRResult):
         "Stiffness dynamic stability (low/high)",
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 def transform_stiffness_resultfile_record(record):
@@ -231,7 +230,6 @@ def main(atoms: Atoms,
     from asr.setup.strains import main as make_strained_atoms
     from asr.setup.strains import get_relevant_strains
     from ase.units import J
-    import numpy as np
 
     ij = get_relevant_strains(atoms.pbc)
 

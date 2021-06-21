@@ -82,12 +82,10 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     return plt.gca()
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.database.browser import fig
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
 
-    panel = (f'Density of states ({xcname})',
+    panel = (f'Density of states ({context.xcname})',
              [[fig('dos.png')], []])
 
     things = [(plot, ['dos.png'])]
