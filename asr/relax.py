@@ -180,7 +180,7 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
 
-    nd = int(np.sum(atoms.get_pbc()))
+    nd = sum(atoms.pbc)
     if smask is None:
         if fixcell:
             smask = [0, 0, 0, 0, 0, 0]
@@ -189,8 +189,7 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 1]
         else:
-            pbc = atoms.get_pbc()
-            assert pbc[2], "1D periodic axis should be the last one."
+            assert atoms.pbc[2], "1D periodic axis should be the last one."
             smask = [0, 0, 1, 0, 0, 0]
 
     from asr.utils.symmetry import atoms2symmetry
@@ -213,12 +212,12 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
     filter = ExpCellFilter(atoms, mask=smask)
-    name = Path(tmp_atoms_file).with_suffix('').name
-    try:
-        trajfile = Trajectory(tmp_atoms_file, 'a', atoms)
-        opt = myBFGS(filter,
-                     logfile=name,
-                     trajectory=trajfile)
+    logfile = Path(tmp_atoms_file).with_suffix('.log').name
+
+    with Trajectory(tmp_atoms_file, 'a', atoms) as trajfile, \
+         myBFGS(filter,
+                logfile=logfile,
+                trajectory=trajfile) as opt:
 
         # fmax=0 here because we have implemented our own convergence criteria
         runner = opt.irun(fmax=0)
@@ -256,10 +255,7 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
                 opt.log()
                 opt.call_observers()
                 break
-    finally:
-        trajfile.close()
-        if opt.logfile is not None:
-            opt.logfile.close()
+
     return atoms
 
 
@@ -386,7 +382,7 @@ def main(atoms: Atoms,
     Calculator = get_calculator_class(calculatorname)
 
     # Some calculator specific parameters
-    nd = int(np.sum(atoms.get_pbc()))
+    nd = sum(atoms.pbc)
     if calculatorname == 'gpaw':
         if 'kpts' in calculator:
             from ase.calculators.calculator import kpts2kpts
@@ -401,10 +397,14 @@ def main(atoms: Atoms,
 
     calc = Calculator(**calculator)
     # Relax the structure
-    atoms = relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
-                  fixcell=fixcell,
-                  allow_symmetry_breaking=allow_symmetry_breaking,
-                  dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+
+    def do_relax():
+        return relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
+                     fixcell=fixcell,
+                     allow_symmetry_breaking=allow_symmetry_breaking,
+                     dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+
+    atoms = do_relax()
 
     # If the maximum magnetic moment on all atoms is big then
     try:
@@ -418,10 +418,7 @@ def main(atoms: Atoms,
         atoms.set_initial_magnetic_moments([0] * len(atoms))
         calc = Calculator(**calculator)
         # Relax the structure
-        atoms = relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
-                      fixcell=fixcell,
-                      allow_symmetry_breaking=allow_symmetry_breaking,
-                      dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+        atoms = do_relax()
         magmoms = np.zeros(len(atoms))
 
     edft = calc.get_potential_energy(atoms)
@@ -431,11 +428,10 @@ def main(atoms: Atoms,
 
     cellpar = atoms.cell.cellpar()
 
-    trajectory = Trajectory(tmp_atoms_file, 'r')
-    images = []
-    for image in trajectory:
-        image.calc = None
-        images.append(image)
+    with Trajectory(tmp_atoms_file, 'r') as trajectory:
+        # (Copy discards the singlepoint calculator)
+        images = [atoms.copy() for atoms in trajectory]
+
     return Result.fromdata(
         atoms=Atoms(atoms.copy()),
         etot=etot,
