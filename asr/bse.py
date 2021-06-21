@@ -1,8 +1,12 @@
 """Bethe Salpeter absorption spectrum."""
+import os
 from click import Choice
 import typing
+from pathlib import Path
 
+import numpy as np
 from ase import Atoms
+from ase.units import alpha, Ha, Bohr
 
 from asr.core import (
     command, option, file_barrier, ASRResult, prepare_result,
@@ -73,13 +77,10 @@ def calculate(
         nc_s: float = 2.3,
 ) -> ASRResult:
     """Calculate BSE polarizability."""
-    import os
     from ase.dft.bandgap import bandgap
     from gpaw.mpi import world
     from gpaw.response.bse import BSE
     from gpaw.occupations import FermiDirac
-    from pathlib import Path
-    import numpy as np
 
     pbc = atoms.pbc.tolist()
     ND = np.sum(pbc)
@@ -185,9 +186,13 @@ def calculate(
                                            write_eig='bse_eigz.dat',
                                            pbc=pbc,
                                            w_w=w_w)
-    if world.rank == 0:
-        os.system('rm gs_bse.gpw')
-        os.system('rm gs_nosym.gpw')
+
+    # XXX below cleanup code fails to check whether removal even succeeded!
+    # Which it won't.  We need proper mechanisms for these things.
+
+    #if world.rank == 0:
+    #    os.system('rm gs_bse.gpw')
+    #    os.system('rm gs_nosym.gpw')
 
     return BSECalculateResult.fromdata(
         bse_polx=ExternalFile.fromstr('bse_polx.csv'),
@@ -199,37 +204,42 @@ def calculate(
     )
 
 
-def absorption(row, filename, direction='x'):
-    import numpy as np
+def absorption(context, filename, direction='x'):
     import matplotlib.pyplot as plt
-    from ase.units import alpha, Ha, Bohr
+    dim = context.ndim
 
-    atoms = row.toatoms()
-    pbc = atoms.pbc.tolist()
-    dim = np.sum(pbc)
+    magstate = context.magstate().result['magstate']
+    gs_result = context.gs_results()
 
-    magstate = row.magstate
+    gap_dir = gs_result['gap_dir']
+    gap_dir_nosoc = gs_result['gap_dir_nosoc']
 
-    gap_dir = row.gap_dir
-    gap_dir_nosoc = row.gap_dir_nosoc
+    # XXX Not sure what's happening here, we can't just mash gaps
+    # into the webpanel and expect the reader to know what we are showing.
+    #
+    # I'll use the gap from GS until this is resolved.
+    #
+    # for method in ['_gw', '_hse', '_gllbsc', '']:
+    #     gapkey = f'gap_dir{method}'
+    #     if gapkey in row:
+    #         gap_dir_x = row.get(gapkey)
+    #         delta_bse = gap_dir_x - gap_dir
+    #         delta_rpa = gap_dir_x - gap_dir_nosoc
+    #         break
 
-    for method in ['_gw', '_hse', '_gllbsc', '']:
-        gapkey = f'gap_dir{method}'
-        if gapkey in row:
-            gap_dir_x = row.get(gapkey)
-            delta_bse = gap_dir_x - gap_dir
-            delta_rpa = gap_dir_x - gap_dir_nosoc
-            break
+    # delta_bse = gap_dir_
+    # qp_gap = gap_dir + delta_bse
 
-    qp_gap = gap_dir + delta_bse
-
-    if magstate != 'NM':
-        qp_gap = gap_dir_nosoc + delta_rpa
-        delta_bse = delta_rpa
+    # if magstate != 'NM':
+    #     qp_gap = gap_dir_nosoc + delta_rpa
+    #     delta_bse = delta_rpa
+    qp_gap = 0.0  # XXX Help
+    delta_bse = 0.0  # XXX Help
 
     ax = plt.figure().add_subplot(111)
 
-    data = np.array(row.data['results-asr.bse.json'][f'bse_alpha{direction}_w'])
+    result = context.get_record('asr.bse').result
+    data = np.array(result[f'bse_alpha{direction}_w'])
     wbse_w = data[:, 0] + delta_bse
     if dim == 2:
         sigma_w = -1j * 4 * np.pi * (data[:, 1] + 1j * data[:, 2])
@@ -241,18 +251,21 @@ def absorption(row, filename, direction='x'):
     xmax = wbse_w[-1]
 
     # TODO: Sometimes RPA pol doesn't exist, what to do?
-    data = row.data.get('results-asr.polarizability.json')
-    if data:
-        wrpa_w = data['frequencies'] + delta_rpa
-        sigma_w = -1j * 4 * np.pi * data[f'alpha{direction}_w']
-        if dim == 2:
-            sigma_w *= wrpa_w * alpha / Ha / Bohr
-        absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
-        ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
-        ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
-                                   absrpa_w[wrpa_w < xmax]])) * 1.05
-    else:
-        ymax = max(absbse_w[wbse_w < xmax]) * 1.05
+    # Answer: Nothing, that's someone else's problem, not asr.bse.
+    #
+    # data = row.data.get('results-asr.polarizability.json')
+    # if data:
+    #     wrpa_w = data['frequencies'] + delta_rpa
+    #     sigma_w = -1j * 4 * np.pi * data[f'alpha{direction}_w']
+    #     if dim == 2:
+    #         sigma_w *= wrpa_w * alpha / Ha / Bohr
+    #     absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+    #     ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
+    #     ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
+    #                                absrpa_w[wrpa_w < xmax]])) * 1.05
+    # else:
+    ymax = max(absbse_w[wbse_w < xmax]) * 1.05
+
     ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
             label='Direct QP gap')
 
@@ -271,17 +284,12 @@ def absorption(row, filename, direction='x'):
     return ax
 
 
-def webpanel(result, row, key_descriptions):
-    import numpy as np
+def webpanel(result, context):
     from functools import partial
 
-    E_B = table(row, 'Property', ['E_B'], key_descriptions)
+    E_B = table(result, 'Property', ['E_B'], context.descriptions)
 
-    atoms = row.toatoms()
-    pbc = atoms.pbc.tolist()
-    dim = np.sum(pbc)
-
-    if dim == 2:
+    if context.ndim == 2:
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
@@ -325,7 +333,7 @@ class Result(ASRResult):
                         'bse_alphay_w': 'BSE polarizability y-direction.',
                         'bse_alphaz_w': 'BSE polarizability z-direction.'}
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command()
@@ -349,8 +357,6 @@ def main(
         nv_s: float = -2.3,
         nc_s: float = 2.3,
 ) -> Result:
-    import numpy as np
-    from pathlib import Path
 
     res = calculate(
         atoms=atoms,
