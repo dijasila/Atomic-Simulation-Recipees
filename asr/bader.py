@@ -46,7 +46,7 @@ class Result(ASRResult):
     key_descriptions = {'bader_charges': 'Array of charges [\\|e\\|].',
                         'sym_a': 'Chemical symbols.'}
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command('asr.bader')
