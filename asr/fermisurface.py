@@ -81,7 +81,6 @@ def webpanel(result, context):
 
 
 def plot_fermi(context, fname, sfs=1, dpi=200):
-    from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     atoms = context.atoms
     lat = atoms.cell.get_bravais_lattice(pbc=atoms.pbc)
