@@ -238,14 +238,14 @@ def absorption(context, filename, direction='x'):
     ax = plt.figure().add_subplot(111)
 
     result = context.get_record('asr.bse').result
-    data = np.array(result[f'bse_alpha{direction}_w'])
-    wbse_w = data[:, 0] + delta_bse
+    bse_data = np.array(result[f'bse_alpha{direction}_w'])
+    wbse_w = bse_data[:, 0] + delta_bse
     if dim == 2:
-        sigma_w = -1j * 4 * np.pi * (data[:, 1] + 1j * data[:, 2])
+        sigma_w = -1j * 4 * np.pi * (bse_data[:, 1] + 1j * bse_data[:, 2])
         sigma_w *= wbse_w * alpha / Ha / Bohr
         absbse_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
     else:
-        absbse_w = 4 * np.pi * data[:, 2]
+        absbse_w = 4 * np.pi * bse_data[:, 2]
     ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
     xmax = wbse_w[-1]
 
@@ -270,7 +270,7 @@ def absorption(context, filename, direction='x'):
 
     ax.set_xlim(0.0, xmax)
     ax.set_ylim(0.0, ymax)
-    ax.set_title(f'{direction}-polarization')
+    ax.set_title(f'Polarization: {direction}')
     ax.set_xlabel('Energy [eV]')
     if dim == 2:
         ax.set_ylabel('Absorbance [%]')
