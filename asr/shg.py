@@ -3,7 +3,7 @@ from ase import Atoms
 import typing
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt)
-from asr.gs import calculate as gscalculate
+from asr.gs import calculate as gscalculate, main as gsmain
 
 import numpy as np
 
@@ -233,6 +233,8 @@ def main(
         if not Path(mml_name).is_file():
             if not Path('es.gpw').is_file():
                 res = gscalculate(atoms=atoms, calculator=calculator)
+                # Since we depend on gap for plotting, we need to run main:
+                gsmain(atoms=atoms, calculator=calculator)
                 calc_old = res.calculation.load()
                 nval = calc_old.wfs.nvalence
 
