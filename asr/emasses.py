@@ -92,6 +92,7 @@ def refine(
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
+    from gpaw import GPAW
     import os.path
     set_default(settings)
     socs = [True]
@@ -142,8 +143,8 @@ def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
 
 
-def preliminary_refine(
-        atoms, calculator, calc, soc=True, bandtype=None, settings=None):
+def preliminary_refine(atoms, calculator, calc, soc=True, bandtype=None,
+                       settings=None):
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
@@ -164,9 +165,8 @@ def preliminary_refine(
     gap, (s1, k1, n1), (s2, k2, n2) = bandgap(eigenvalues=e_skn, efermi=efermi,
                                               output=None)
     # Make a sphere of kpts of high density
-    min_nkpts = settings['nkpts1']
     erange = settings['erange1']
-    nkpts = max(int(e_skn.shape[1]**(1 / ndim)), min_nkpts)
+    nkpts = settings['nkpts1']
     nkpts = nkpts + (1 - (nkpts % 2))
     # Ensure that we include the found VBM/CBM
     assert nkpts % 2 != 0
@@ -401,7 +401,7 @@ def get_emass_dict_from_context(context, has_mae=False):
         for offset_num, (key, band_number) in enumerate(ordered_indices):
             data = results[key]
             direction = 0
-            marekey = name.lower() + '_soc_wideareaMARE'
+            marekey = name.lower() + '_soc_wideareaPARAMARE'
             mares = data[marekey] if has_mae else None
 
             for k in data.keys():
@@ -468,6 +468,13 @@ def make_the_plots(context, *args):
     ref = context.energy_reference()
     sdir = context.spin_axis
     cell_cv = context.atoms.cell
+
+    reference = ref.value
+
+    # Check whether material necessarily has no spin-degeneracy
+    # magstate = context.magstate().result['magstate']
+    spin_degenerate = False  # magstate == 'NM' and row.has_inversion_symmetry
+    # XXX Do we call spglib to decide whether we are spin degenerate?
 
     columns = []
     cb_fnames = []
@@ -544,8 +551,11 @@ def make_the_plots(context, *args):
 
             e_km = fit_data['e_km'] - ref.value
             sz_km = fit_data['spin_km']
-            emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - ref.value
-            emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
+            emodel_k = (xk * Bohr) ** 2 / (2 * mass) * Ha - reference
+            if mass > 0.0:
+                emodel_k += np.min(e_km[:, 0]) - np.min(emodel_k)
+            else:
+                emodel_k += np.max(e_km[:, 0]) - np.max(emodel_k)
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -553,8 +563,14 @@ def make_the_plots(context, *args):
             flat_energies = e_km.ravel()[perm]
             flat_xcoords = repeated_xcoords.ravel()[perm]
             flat_spins = sz_km.ravel()[perm]
-            things = axes.scatter(flat_xcoords, flat_energies,
-                                  c=flat_spins, vmin=-1, vmax=1)
+
+            if spin_degenerate:
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=0, vmin=-1, vmax=1)
+            else:
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=flat_spins, vmin=-1, vmax=1)
+
             axes.plot(xk, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
@@ -607,8 +623,11 @@ def make_the_plots(context, *args):
             kpts_kv = kpoint_convert(cell_cv=cell_cv, skpts_kc=ks)
             kpts_kv *= Bohr
 
-            emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - ref.value
-            emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
+            emodel_k = (xk2 * Bohr) ** 2 / (2 * mass) * Ha - reference
+            if mass > 0.0:
+                emodel_k += np.min(e_km[:, -1]) - np.min(emodel_k)
+            else:
+                emodel_k += np.max(e_km[:, -1]) - np.max(emodel_k)
 
             shape = e_km.shape
             perm = (-sz_km).argsort(axis=None)
@@ -616,8 +635,14 @@ def make_the_plots(context, *args):
             flat_energies = e_km.ravel()[perm]
             flat_xcoords = repeated_xcoords.ravel()[perm]
             flat_spins = sz_km.ravel()[perm]
-            things = axes.scatter(flat_xcoords, flat_energies,
-                                  c=flat_spins, vmin=-1, vmax=1)
+
+            if spin_degenerate:
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=0, vmin=-1, vmax=1)
+            else:
+                things = axes.scatter(flat_xcoords, flat_energies,
+                                      c=flat_spins, vmin=-1, vmax=1)
+
             axes.plot(xk2, emodel_k, c='r', ls='--')
 
             if y1 is None or y2 is None or my_range is None:
@@ -1515,6 +1540,34 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
     return mare
 
 
+def evalparamare(mass, bt, cell, k_kc, e_k):
+    from ase.dft.kpoints import labels_from_kpts
+    from ase.units import Bohr, Ha
+    import numpy as np
+
+    xk, _, _ = labels_from_kpts(kpts=k_kc, cell=cell)
+    xk -= xk[-1] / 2.0
+
+    emodel_k = (xk * Bohr)**2 / (2 * mass) * Ha
+    if bt == "vb":
+        emodel_k += np.max(e_k) - np.max(emodel_k)
+    else:
+        assert bt == "cb"
+        emodel_k += np.min(e_k) - np.min(emodel_k)
+
+    if bt == 'vb':
+        indices = np.where(np.abs(e_k - np.max(e_k)) < 25e-3)[0]
+    else:
+        indices = np.where(np.abs(e_k - np.min(e_k)) < 25e-3)[0]
+
+
+    mean_e = np.mean(e_k[indices] - np.max(e_k[indices]))
+
+    paramare = np.mean(np.abs((emodel_k[indices] - e_k[indices]) / mean_e) * 100)
+
+    return paramare
+
+
 @prepare_result
 class ValidateResult(ASRResult):
 
@@ -1597,7 +1650,9 @@ def validate(
         bt = data['info'].split('_')[0]
         maes = []
         mares = []
-        for cutdata in data['bzcuts']:
+        paramares = []
+
+        for i, cutdata in enumerate(data['bzcuts']):
             k_kc = cutdata['kpts_kc']
             e_k = cutdata['e_k']
             mae = evalmae(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
@@ -1605,9 +1660,14 @@ def validate(
             mare = evalmare(atoms.get_cell(), k_kc, e_k, bt, fitinfo)
             mares.append(mare)
 
+            mass = data[f"effmass_dir{i+1}"]
+            paramare = evalparamare(mass, bt, atoms.get_cell(), k_kc, e_k)
+            paramares.append(paramare)
+
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMARE'] = mares
+        myresults[f'({sindex}, {kindex})'][prefix + 'wideareaPARAMARE'] = paramares
 
         prefix = data['info'] + '_'
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
