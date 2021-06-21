@@ -20,10 +20,10 @@ identification of 2D materials. Nat Commun 11, 3011 (2020).""",
 )
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
 
     # Make a table from the phonon modes
-    data = row.data.get('results-asr.raman.json')
+    data = result
     if data:
         table = []
         freqs_l = data['freqs_l']
@@ -68,7 +68,7 @@ class Result(ASRResult):
         "wavelength_w": "Laser excitation wavelength [nm]",
         "amplitudes_vvwl": "Raman tensor [a.u.]",
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command('asr.raman')
@@ -77,7 +77,7 @@ def main(atoms: Atoms) -> Result:
     raise NotImplementedError
 
 
-def raman(row, filename):
+def raman(context, filename):
     # Import the required modules
     import matplotlib.pyplot as plt
 
@@ -88,11 +88,7 @@ def raman(row, filename):
               'temperature': 300}
 
     # Read the data from the disk
-    data = row.data.get('results-asr.raman.json')
-
-    # If no data, return
-    if data is None:
-        return
+    data = context.result
 
     # Lorentzian function definition
     def lor(w, g):

@@ -13,36 +13,20 @@ from ase import Atoms
 from asr.utils import magnetic_atoms
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
-    from asr.utils.hacks import gs_xcname_from_row
+def webpanel(result, context):
+    from asr.database.browser import fig, describe_entry, WebPanel
 
-    # PDOS figure
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.pdos@calculate')
-    dependencies_parameter_descriptions = ''
-    for dependency, exclude_keys in zip(
-            ['asr.gs@calculate'],
-            [set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                  'idiotproof', 'maxiter', 'hund', 'random',
-                  'experimental', 'basis', 'setups'])]
-    ):
-        epd = entry_parameter_description(
-            row.data,
-            dependency,
-            exclude_keys=exclude_keys)
-        dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected density of states without spin–orbit coupling\n\n'
-                   + parameter_description
-                   + dependencies_parameter_descriptions)
+    desc = '\n'.join([
+        context.parameter_description('asr.pdos:calculate'),
+        context.parameter_description_picky('asr.gs:calculate')
+    ])
 
-    xcname = gs_xcname_from_row(row)
+    explanation = ('Orbital projected density of states without spin–orbit '
+                   'coupling\n\n' + desc)
+
     # Projected band structure and DOS panel
     panel = WebPanel(
-        title=f'Projected band structure and DOS ({xcname})',
+        title=f'Projected band structure and DOS ({context.xcname})',
         columns=[[],
                  [describe_entry(fig(pdos_figfile, link='empty'),
                                  description=explanation)]],
@@ -120,7 +104,7 @@ class Result(ASRResult):
         pdos_nosoc="Projected density of states w/o soc.",
         pdos_soc="Projected density of states"
     )
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
 @command(module='asr.pdos')
@@ -214,7 +198,7 @@ def calculate_pdos(atoms, calculator, dos, calc):
     from ase.utils import DevNull
 
     zs = calc.atoms.get_atomic_numbers()
-    chem_symbols = calc.atoms.get_chemical_symbols()
+    atoms = calc.atoms
     efermi = calc.get_fermi_level()
     l_a = get_l_a(zs)
 
@@ -241,7 +225,7 @@ def calculate_pdos(atoms, calculator, dos, calc):
         pb = ProgressBar(devnull)
 
     for _, (spin, a, l) in pb.enumerate(sal_i):
-        symbol = chem_symbols[a]
+        symbol = atoms.symbols[a]
 
         p = dos.raw_pdos(e_e, a, 'spdfg'.index(l), None, spin, 0.0)
 
@@ -249,7 +233,7 @@ def calculate_pdos(atoms, calculator, dos, calc):
         key = ','.join([str(spin), str(symbol), str(l)])
         pdos_syl[key] += p
 
-    return e_e, pdos_syl, calc.atoms.get_chemical_symbols(), efermi
+    return e_e, pdos_syl, list(atoms.symbols), efermi
 
 
 def get_l_a(zs):
@@ -347,49 +331,44 @@ def get_yl_colors(dct_syl):
     return color_yl
 
 
-def plot_pdos_nosoc(*args, **kwargs):
-    return plot_pdos(*args, soc=False, **kwargs)
+def plot_pdos_nosoc(context, *args, **kwargs):
+    return plot_pdos(context, *args, soc=False, **kwargs)
 
 
-def plot_pdos_soc(*args, **kwargs):
-    return plot_pdos(*args, soc=True, **kwargs)
+def plot_pdos_soc(context, *args, **kwargs):
+    return plot_pdos(context, *args, soc=True, **kwargs)
 
 
-def plot_pdos(row, filename, soc=True,
+def plot_pdos(context, filename, soc=True,
               figsize=(5.5, 5), lw=1):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
 
-    # Check if pdos data is stored in row
-    results = 'results-asr.pdos.json'
-    pdos = 'pdos_soc' if soc else 'pdos_nosoc'
-    if results in row.data and pdos in row.data[results]:
-        data = row.data[results][pdos]
-    else:
-        return
+    pdos_name = 'pdos_soc' if soc else 'pdos_nosoc'
+    result = context.result
+    pdos = result[pdos_name]
 
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
-    from asr.utils.hacks import RowInfo
-    rowinfo = RowInfo(row)
 
-    ref = rowinfo.evac_or_efermi()
+    ref = context.energy_reference()
     eref = ref.value
 
     # Extract raw data
-    symbols = data['symbols']
-    pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
-    e_e = data['energies'] - eref
-    ef = data['efermi']
+    pdos_syl = get_ordered_syl_dict(pdos['pdos_syl'], context.atoms.symbols)
+    e_e = pdos['energies'] - eref
+    ef = pdos['efermi']
+
+    gs_results = context.gs_results()
 
     # Find energy range to plot in
     if soc:
-        emin = row.get('vbm', ef) - 3 - eref
-        emax = row.get('cbm', ef) + 3 - eref
+        emin = gs_results.get('vbm', ef) - 3 - eref
+        emax = gs_results.get('cbm', ef) + 3 - eref
     else:
-        nosoc_data = row.data['results-asr.gs.json']['gaps_nosoc']
+        nosoc_data = gs_results['gaps_nosoc']
         vbmnosoc = nosoc_data.get('vbm', ef)
         cbmnosoc = nosoc_data.get('cbm', ef)
 

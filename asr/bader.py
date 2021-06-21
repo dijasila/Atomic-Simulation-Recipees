@@ -1,19 +1,14 @@
 """Bader charge analysis."""
-import numpy as np
-
 from typing import List
 
+import numpy as np
 from ase import Atoms
 
 from asr.core import (
     command, option, ASRResult, prepare_result, calcopt, atomsopt)
 
 from asr.gs import calculate as gscalculate
-
-from asr.database.browser import (
-    describe_entry,
-    entry_parameter_description,
-    make_panel_description, href)
+from asr.database.browser import describe_entry, make_panel_description, href
 
 panel_description = make_panel_description(
     """The Bader charge analysis ascribes a net charge to an atom
@@ -24,7 +19,7 @@ without lattice bias. J. Phys.: Condens. Matter 21, 084204 (2009).""",
              'https://doi.org/10.1088/0953-8984/21/8/084204')])
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     rows = [[str(a), symbol, f'{charge:.2f}']
             for a, (symbol, charge)
             in enumerate(zip(result.sym_a, result.bader_charges))]
@@ -32,11 +27,8 @@ def webpanel(result, row, key_descriptions):
              'header': ['Atom index', 'Atom type', 'Charge (e)'],
              'rows': rows}
 
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.bader')
-
-    title_description = panel_description + parameter_description
+    title_description = (panel_description
+                         + context.parameter_description('asr.bader'))
 
     panel = {'title': describe_entry('Bader charges',
                                      description=title_description),
@@ -54,7 +46,7 @@ class Result(ASRResult):
     key_descriptions = {'bader_charges': 'Array of charges [\\|e\\|].',
                         'sym_a': 'Chemical symbols.'}
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command('asr.bader')

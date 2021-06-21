@@ -29,8 +29,8 @@ J. Phys. Chem. C 124 11609 (2020)""",
 )
 
 
-def webpanel(result, row, key_descriptions):
-    import numpy as np
+def webpanel(result, context):
+    atoms = context.atoms
 
     def matrixtable(M, digits=2, unit='', skiprow=0, skipcolumn=0):
         table = M.tolist()
@@ -43,12 +43,11 @@ def webpanel(result, row, key_descriptions):
         return table
 
     columns = [[], []]
-    for a, Z_vv in enumerate(
-            row.data['results-asr.borncharges.json']['Z_avv']):
+    for a, Z_vv in enumerate(result['Z_avv']):
         table = np.zeros((4, 4))
         table[1:, 1:] = Z_vv
         rows = matrixtable(table, skiprow=1, skipcolumn=1)
-        sym = row.symbols[a]
+        sym = atoms.symbols[a]
         rows[0] = [f'Z<sup>{sym}</sup><sub>ij</sub>', 'u<sub>x</sub>',
                    'u<sub>y</sub>', 'u<sub>z</sub>']
         rows[1][0] = 'P<sub>x</sub>'
@@ -81,7 +80,7 @@ class Result(ASRResult):
     key_descriptions = {'Z_avv': 'Array of borncharges.',
                         'sym_a': 'Chemical symbols.'}
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command('asr.borncharges')

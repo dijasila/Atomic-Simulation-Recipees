@@ -302,7 +302,7 @@ class HTMLEncoder(ResultEncoder):
 class WebPanelEncoder(ResultEncoder):
     """Encoder for ASE compatible webpanels."""
 
-    def encode(self, result, row, key_descriptions):
+    def encode(self, result, context):
         """Make basic webpanel.
 
         Simply prints all attributes.

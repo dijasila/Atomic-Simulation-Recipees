@@ -1,19 +1,21 @@
-from asr.core import (decode_object, ASRResult, get_recipe_from_name)
+from collections.abc import Mapping
 import sys
 import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any, Optional
 import traceback
 import os
-from .webpanel import WebPanel
 import multiprocessing
 
 import numpy as np
 import matplotlib.pyplot as plt
+from asr.core import (decode_object, ASRResult, get_recipe_from_name)
+from asr.core.cache import Cache, MemoryBackend
+from asr.core.datacontext import DataContext
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
+from .webpanel import WebPanel
 
-from asr.core.cache import Cache, MemoryBackend
 
 assert sys.version_info >= (3, 4)
 
@@ -303,13 +305,17 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
 
     """
     recipe = get_recipe_from_name(name)
-    link_name = get_recipe_href(name)
     if f'results-{name}.json' in data:
         record = data.get_record(f'results-{name}.json')
         params = record.parameters
     else:
         params = recipe.defaults
 
+    return format_parameter_description(name, params, exclude_keys)
+
+
+def format_parameter_description(name, params, exclude_keys):
+    link_name = get_recipe_href(name)
     lst = dict_to_list(params, exclude_keys=exclude_keys)
     string = pre(code('\n'.join(lst)))
     description = (
@@ -479,7 +485,7 @@ class DataFilenameTranslator:
         return self.cache.has(selector=selector)
 
 
-class RowWrapper:
+class RowWrapper(Mapping):
 
     def __init__(self, row):
         from asr.database.fromtree import serializer
@@ -493,31 +499,31 @@ class RowWrapper:
             cache.add(record)
         self._row = row
         self.cache = cache
-        self._data = DataFilenameTranslator(cache, data=row.data)
-
-    @property
-    def data(self):
-        return self._data
+        self.data = DataFilenameTranslator(cache, data=row.data)
 
     def __getattr__(self, key):
         """Wrap attribute lookup of AtomsRow."""
         return getattr(self._row, key)
 
-    def __getstate__(self):
-        """Help pickle overcome the troubles due to __getattr__.
+    def __getitem__(self, key):
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            raise KeyError(key)
 
-        We need to provide getstate/setstate to prevent recursion error
-        when unpickling.
-        """
-        return vars(self)
+    def __iter__(self):
+        return iter(self._row)
 
-    def __setstate__(self, dct):
-        """See __getstate__."""
-        self.__dict__.update(dct)
+    def __len__(self):
+        return len(self._row)
 
-    def __contains__(self, key):
-        """Wrap contains of atomsrow."""
-        return self._row.__contains__(key)
+    @property
+    def ctime(self):
+        return self._row.ctime
+
+    @property
+    def key_value_pairs(self):
+        return self._row.key_value_pairs
 
 
 def parse_row_data(data: dict):
@@ -545,7 +551,7 @@ def runplot_clean(plotfunction, *args):
     return value
 
 
-def generate_plots(row, prefix, plot_descriptions, pool):
+def generate_plots(context, prefix, plot_descriptions, pool):
     missing = set()
     for desc in plot_descriptions:
         function = desc['function']
@@ -555,8 +561,9 @@ def generate_plots(row, prefix, plot_descriptions, pool):
             if not path.is_file():
                 # Create figure(s) only once:
                 strpaths = [str(path) for path in paths]
+                args = [function, context] + strpaths
+
                 try:
-                    args = [function, row] + strpaths
                     if pool is None:
                         runplot_clean(*args)
                     else:
@@ -610,18 +617,23 @@ def _layout(row, key_descriptions, prefix, pool):
     panel_data_sources = {}
     recipes_treated = set()
     # Locate all webpanels
+
     for record in row.records:
+        context = DataContext(row, record)
+
         result = record.result
         if not isinstance(result, ASRResult):
             continue
-        if 'ase_webpanel' not in result.get_formats():
+
+        if 'webpanel2' not in result.formats:
             continue
+
         if record.run_specification.name in recipes_treated:
             continue
 
         recipes_treated.add(record.run_specification.name)
+        panels = result.format_as('webpanel2', context)
 
-        panels = result.format_as('ase_webpanel', row, key_descriptions)
         if not panels:
             continue
 
@@ -637,6 +649,15 @@ def _layout(row, key_descriptions, prefix, pool):
             else:
                 panel_data_sources[paneltitle] = [record]
                 page[paneltitle] = [panel]
+
+        # Get descriptions of figures that are created by all webpanels
+        plot_descriptions = []
+        for panel in panels:
+            plot_descriptions.extend(panel.get('plot_descriptions', []))
+
+        # List of functions and the figures they create:
+        missing_figures = generate_plots(context, prefix, plot_descriptions,
+                                         pool)
 
     for paneltitle, data_sources in panel_data_sources.items():
 
@@ -680,14 +701,6 @@ def _layout(row, key_descriptions, prefix, pool):
     link_panel = {'title': link_title,
                   'columns': link_columns}
     page.append(link_panel)
-
-    # Get descriptions of figures that are created by all webpanels
-    plot_descriptions = []
-    for panel in page:
-        plot_descriptions.extend(panel.get('plot_descriptions', []))
-
-    # List of functions and the figures they create:
-    missing_figures = generate_plots(row, prefix, plot_descriptions, pool)
 
     # We convert the page into ASE format
     asepage = []

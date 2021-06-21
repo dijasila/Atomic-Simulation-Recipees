@@ -8,9 +8,9 @@ from asr.core import (
 )
 import typing
 
-from asr.database.browser import make_panel_description
-from asr.utils.hacks import gs_xcname_from_row, RowInfo
-from asr.bandstructure import calculate as bscalculate
+from asr.database.browser import (make_panel_description,
+                                  fig, describe_entry, WebPanel)
+from asr.bandstructure import calculate as bscalculate, main as bsmain
 
 
 panel_description = make_panel_description(
@@ -26,36 +26,20 @@ plots.""",
 scf_projected_bs_filename = 'scf-projected-bs.png'
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
+def webpanel(result, context):
+    # XXX Why is it named bandstructure:calculate, why not projected?
+    desc1 = context.parameter_description('asr.bandstructure:calculate')
+    desc2 = context.parameter_description_picky('asr.gs')
 
-    xcname = gs_xcname_from_row(row)
+    explanation = ('Orbital projected band structure without '
+                   'spin–orbit coupling\n\n' + desc1 + '\n' + desc2)
 
-    # Projected band structure figure
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.bandstructure@calculate')
-    dependencies_parameter_descriptions = ''
-    for dependency, exclude_keys in zip(
-            ['asr.gs@calculate'],
-            [set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                  'idiotproof', 'maxiter', 'hund', 'random',
-                  'experimental', 'basis', 'setups'])]
-    ):
-        epd = entry_parameter_description(
-            row.data,
-            dependency,
-            exclude_keys=exclude_keys)
-        dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected band structure without spin–orbit coupling\n\n'
-                   + parameter_description
-                   + dependencies_parameter_descriptions)
+    # XXX Actually we use the SOC Fermilevel as reference in 3D systems
+    # don't we?
 
     panel = WebPanel(
         title=describe_entry(
-            f'Projected band structure and DOS ({xcname})',
+            f'Projected band structure and DOS ({context.xcname})',
             panel_description),
         columns=[[describe_entry(fig(scf_projected_bs_filename, link='empty'),
                                  description=explanation)],
@@ -80,7 +64,7 @@ class Result(ASRResult):
         weight_skni="Weight of each projector (indexed by (s, k, n)) on orbitals i.",
     )
 
-    formats = {'ase_webpanel': webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 # ---------- Main functionality ---------- #
@@ -133,13 +117,19 @@ def main(
         npoints: int = bscalculate.defaults.npoints,
 ) -> Result:
     # Get bandstructure calculation
-    res = bscalculate(
+
+    args = dict(
         atoms=atoms,
         calculator=calculator,
         bsrestart=bsrestart,
         kptpath=kptpath,
         npoints=npoints,
     )
+    res = bscalculate(**args)
+
+    # We need to depend on bsmain, otherwise we cannot make the web panels
+    # since we do not have the requisite metadata.
+    bsmain(**args)
 
     calc = res.calculation.load()
     # calc = GPAW('bs.gpw', txt=None)
@@ -150,8 +140,8 @@ def main(
     weight_skni, yl_i = get_orbital_ldos(calc)
     results['weight_skni'] = weight_skni
     results['yl_i'] = yl_i
-    results['symbols'] = calc.atoms.get_chemical_symbols()
-    return results
+    results['symbols'] = list(calc.atoms.symbols)
+    return Result.fromdata(**results)
 
 
 # ---------- Recipe methodology ---------- #
@@ -176,7 +166,7 @@ def get_orbital_ldos(calc):
 
     ns = calc.get_number_of_spins()
     zs = calc.atoms.get_atomic_numbers()
-    chem_symbols = calc.atoms.get_chemical_symbols()
+    atoms = calc.atoms
     l_a = get_l_a(zs)
 
     # We distinguish in (chemical symbol(y), angular momentum (l)),
@@ -189,7 +179,7 @@ def get_orbital_ldos(calc):
     yl_i = []
     i_x = []
     for a, l in zip(a_x, l_x):
-        symbol = chem_symbols[a]
+        symbol = atoms.symbols[a]
         yl = ','.join([str(symbol), str(l)])
         if yl in yl_i:
             i = yl_i.index(yl)
@@ -392,7 +382,7 @@ def get_pie_markers(weight_xi, scale_marker=True, s=36., res=64):
     return pie_xi
 
 
-def projected_bs_scf(row, filename,
+def projected_bs_scf(context, filename,
                      npoints=40, markersize=36., res=64,
                      figsize=(5.5, 5), fontsize=10):
     """Produce the projected band structure.
@@ -412,11 +402,10 @@ def projected_bs_scf(row, filename,
     import matplotlib.pyplot as plt
     import matplotlib.patheffects as path_effects
     from matplotlib.lines import Line2D
-    import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
 
     # Extract projections data
-    data = row.data.get('results-asr.projected_bandstructure.json')
+    data = context.result
     weight_skni = data['weight_skni']
     yl_i = data['yl_i']
 
@@ -424,17 +413,17 @@ def projected_bs_scf(row, filename,
     c_i = get_yl_ordering(yl_i, data['symbols'])
 
     # Extract band structure data
-    d = row.data.get('results-asr.bandstructure.json')
+    d = context.get_record('asr.bandstructure').result
     path = d['bs_nosoc']['path']
     ef = d['bs_nosoc']['efermi']
 
     # If a vacuum energy is available, use it as a reference
-    ref = row.get('evac', d.get('bs_nosoc').get('efermi'))
-    rowinfo = RowInfo(row)
-    eref = rowinfo.evac_or_efermi()  # XXX bs_nosoc versus the other one??
+    eref = context.energy_reference()
+    ref = eref.value
 
     # Determine plotting window based on band gap
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    gs_results = context.gs_results()
+    gaps = gs_results['gaps_nosoc']
     if gaps.get('vbm'):
         emin = gaps.get('vbm') - 3
     else:
@@ -446,7 +435,7 @@ def projected_bs_scf(row, filename,
 
     # Take bands with energies in range
     e_skn = d['bs_nosoc']['energies']
-    inrange_skn = np.logical_and(e_skn > emin, e_skn < emax)
+    inrange_skn = (e_skn > emin) & (e_skn < emax)
     inrange_n = np.any(np.any(inrange_skn, axis=1), axis=0)
     e_skn = e_skn[:, :, inrange_n]
     weight_skni = weight_skni[:, :, inrange_n, :]

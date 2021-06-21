@@ -14,7 +14,6 @@ from asr.gs import main as maings
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
 from asr.database.browser import fig, make_panel_description, describe_entry
-from asr.utils.hacks import gs_xcname_from_row, RowInfo
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
@@ -108,7 +107,7 @@ bs_png = 'bs.png'
 bs_html = 'bs.html'
 
 
-def plot_bs_html(row,
+def plot_bs_html(context,
                  filename=bs_html,
                  figsize=(6.4, 6.4),
                  s=2):
@@ -116,23 +115,19 @@ def plot_bs_html(row,
     import plotly.graph_objs as go
 
     traces = []
-    d = row.data.get('results-asr.bandstructure.json')
-    xcname = gs_xcname_from_row(row)
+    d = context.result
+    xcname = context.xcname
 
     path = d['bs_nosoc']['path']
     kpts = path.kpts
     ef = d['bs_nosoc']['efermi']
 
-    rowinfo = RowInfo(row)
+    ref = context.energy_reference()
+    label = ref.html_plotlabel()
 
-    ref = rowinfo.evac_or_efermi()
+    gsresults = context.gs_results()
+    gaps = gsresults.get('gaps_nosoc')
 
-    if rowinfo.have_evac:
-        label = '<i>E</i> - <i>E</i><sub>vac</sub> [eV]'
-    else:
-        label = '<i>E</i> - <i>E</i><sub>F</sub> [eV]'
-
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
     if gaps.get('vbm'):
         emin = gaps.get('vbm', ef) - 3
     else:
@@ -143,7 +138,8 @@ def plot_bs_html(row,
         emax = ef + 3
     e_skn = d['bs_nosoc']['energies']
     shape = e_skn.shape
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+    cell = context.atoms.cell
+    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, cell)
     xcoords = np.vstack([xcoords] * shape[0] * shape[2])
     # colors_s = plt.get_cmap('viridis')([0, 1])  # color for sz = 0
     e_kn = np.hstack([e_skn[x] for x in range(shape[0])])
@@ -162,7 +158,7 @@ def plot_bs_html(row,
     ef = d['bs_soc']['efermi']
     sz_mk = d['bs_soc']['sz_mk']
 
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, cell)
 
     shape = e_mk.shape
     perm = (-sz_mk).argsort(axis=None)
@@ -172,7 +168,7 @@ def plot_bs_html(row,
     xcoords = xcoords.ravel()[perm].reshape(shape)
 
     # Unicode for <S_z>
-    sdir = row.get('spin_axis', 'z')
+    sdir = context.spin_axis
     cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
     trace = go.Scattergl(
         x=xcoords.ravel(),
@@ -287,16 +283,17 @@ def plot_bs_html(row,
         fd.write(html)
 
 
-def add_bs_ks(row, ax, reference=0, color='C1'):
+def add_bs_ks(context, ax, reference=0, color='C1'):
     """Plot with soc on ax."""
-    d = row.data.get('results-asr.bandstructure.json')
+    bsrecord = context.bandstructure()
+    d = bsrecord.result
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
-    xcname = gs_xcname_from_row(row)
-    xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
+    xcoords, label_xcoords, labels = labels_from_kpts(path.kpts,
+                                                      context.atoms.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
-    ax.lines[-1].set_label(xcname)
+    ax.lines[-1].set_label(context.xcname)
     ef = d['bs_soc']['efermi']
     ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
@@ -360,7 +357,7 @@ def legend_on_top(ax, **kwargs):
               mode='expand', **kwargs)
 
 
-def plot_bs_png(row,
+def plot_bs_png(context,
                 filename=bs_png,
                 figsize=(5.5, 5),
                 s=0.5):
@@ -369,24 +366,33 @@ def plot_bs_png(row,
     from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
-    d = row.data.get('results-asr.bandstructure.json')
 
-    rowinfo = RowInfo(row)
-    eref = rowinfo.evac_or_efermi()
-    xcname = rowinfo.gs_xcname()
+    d = context.result
+    xcname = context.xcname
+    eref = context.energy_reference()
+    gsresults = context.gs_results()
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
     ef_soc = d['bs_soc']['efermi']
-    ref_nosoc = row.get('evac', d.get('bs_nosoc').get('efermi'))
-    ref_soc = row.get('evac', d.get('bs_soc').get('efermi'))
+
+    ref_soc = eref.value
+    if context.ndim != 2:
+        # XXXX this check should be ndim == 3, but we need to update GS
+        # so it sets the vacuum level for ndim != 2.
+        ref_nosoc = d['bs_nosoc']['efermi']
+    else:
+        assert eref.key == 'evac'
+        ref_nosoc = ref_soc
+
     label = eref.mpl_plotlabel()
 
     e_skn = d['bs_nosoc']['energies']
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
 
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    gaps = gsresults['gaps_nosoc']
+
     if gaps.get('vbm'):
         emin = gaps.get('vbm') - 3
     else:
@@ -395,6 +401,7 @@ def plot_bs_png(row,
         emax = gaps.get('cbm') + 3
     else:
         emax = ef_nosoc + 3
+
     bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
     # without soc
     nosoc_style = dict(
@@ -416,9 +423,12 @@ def plot_bs_png(row,
     # with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
-    sdir = row.get('spin_axis', 'z')
-    colorbar = not (row.magstate == 'NM'
-                    and getattr(row, 'has_inversion_symmetry', False))
+
+    # XXX We do not depend on structureinfo so we cannot
+    # use has_inversion_symmetry!
+    colorbar = context.is_magnetic
+    # colorbar = not (row.magstate == 'NM'
+    #                 and getattr(row, 'has_inversion_symmetry', False))
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
@@ -431,7 +441,7 @@ def plot_bs_png(row,
         emax=emax - ref_soc,
         sortcolors=True,
         loc='upper right',
-        clabel=r'$\langle S_{} \rangle $'.format(sdir),
+        clabel=r'$\langle S_{} \rangle $'.format(context.spin_axis),
         s=s)
 
     if cbar:
@@ -457,9 +467,8 @@ def plot_bs_png(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from typing import Tuple, List
-    from asr.utils.hacks import gs_xcname_from_row
 
     def rmxclabel(d: 'Tuple[str, str, str]',
                   xcs: List) -> 'Tuple[str, str, str]':
@@ -470,7 +479,7 @@ def webpanel(result, row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    xcname = gs_xcname_from_row(row)
+    xcname = context.xcname
 
     panel = {'title': describe_entry(f'Electronic band structure ({xcname})',
                                      panel_description),
@@ -502,7 +511,7 @@ class Result(ASRResult):
             'bs_nosoc': 'Bandstructure data without spin–orbit coupling.'
         }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
 def set_bsrestart_from_dependencies(record):
