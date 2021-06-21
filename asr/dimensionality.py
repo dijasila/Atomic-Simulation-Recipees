@@ -14,11 +14,11 @@ def get_dimtypes():
     return ["".join(x for x, y in zip(string, s3) if y) + "D" for s3 in s2]
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.database.browser import table, fig
-    dimtable = table(row, 'Dimensionality scores',
+    dimtable = table(result, 'Dimensionality scores',
                      [f'dim_score_{dimtype}' for dimtype in get_dimtypes()],
-                     key_descriptions, 2)
+                     context.descriptions, 2)
     panel = {'title': 'Dimensionality analysis',
              'columns': [[dimtable], [fig('dimensionality-histogram.png')]]}
     return [panel]
