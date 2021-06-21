@@ -23,7 +23,6 @@ def calculate(
         kptdensity: float = 20,
 ) -> ASRResult:
     """Calculate excited states for polarizability calculation."""
-
     res = gscalculate(atoms=atoms, calculator=calculator)
     # We want the gap for the webpanel, so explicitly call gs main:
     gsmain(atoms=atoms, calculator=calculator)
