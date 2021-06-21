@@ -1,4 +1,5 @@
 """Fermi surfaces."""
+import numpy as np
 from ase import Atoms
 from asr.gs import calculate as gscalculate
 from asr.core import command, ASRResult, prepare_result, atomsopt, calcopt
@@ -16,7 +17,6 @@ magnetic easy axis) indicated by the color code.""",
 
 
 def bz_vertices(cell):
-    import numpy as np
     from scipy.spatial import Voronoi
     icell = np.linalg.inv(cell) * 2 * np.pi
     ind = np.indices((3, 3)).reshape((2, 9)) - 1
@@ -32,7 +32,6 @@ def bz_vertices(cell):
 
 
 def find_contours(eigs_nk, bzk_kv, s_nk=None):
-    import numpy as np
     from scipy.interpolate import griddata
     import matplotlib.pyplot as plt
     minx = np.min(bzk_kv[:, 0:2])
@@ -70,7 +69,7 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
     return contours
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
 
     panel = {'title': describe_entry('Fermi surface', panel_description),
              'columns': [[fig('fermi_surface.png')]],
@@ -81,23 +80,23 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
-def plot_fermi(row, fname, sfs=1, dpi=200):
+def plot_fermi(context, fname, sfs=1, dpi=200):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
-    cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
+    atoms = context.atoms
+    lat = atoms.cell.get_bravais_lattice(pbc=atoms.pbc)
     plt.figure(figsize=(5, 4))
     ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    add_fermi(row, ax=ax, s=sfs)
+    add_fermi(context, ax=ax, s=sfs)
     plt.tight_layout()
     plt.savefig(fname, dpi=dpi)
 
 
-def add_fermi(row, ax, s=0.25):
+def add_fermi(context, ax, s=0.25):
     from matplotlib import pyplot as plt
     import matplotlib.colors as colors
-    import numpy as np
-    verts = row.data['results-asr.fermisurface.json']['contours'].copy()
+    result = context.get_record('asr.fermisurface').result
+    verts = result['contours'].copy()
     normalize = colors.Normalize(vmin=-1, vmax=1)
     verts[:, :2] /= (2 * np.pi)
     im = ax.scatter(verts[:, 0], verts[:, 1], c=verts[:, -1],
@@ -115,7 +114,7 @@ class Result(ASRResult):
     contours: list
     key_descriptions = {'contours': 'List of Fermi surface contours.'}
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command('asr.fermisurface')
@@ -125,7 +124,6 @@ def main(
         atoms: Atoms,
         calculator: dict = gscalculate.defaults.calculator,
 ) -> Result:
-    import numpy as np
     from asr.utils.gpw2eigs import calc2eigs
     from gpaw.kpt_descriptor import to1bz
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
