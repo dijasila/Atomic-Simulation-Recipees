@@ -11,6 +11,7 @@ from pathlib import Path
 from asr.core import get_cache, initialize_root
 from asr.core.specification import construct_run_spec
 from asr.core.record import Record
+from asr.core.dependencies import Dependencies
 
 
 @pytest.fixture()
@@ -51,6 +52,7 @@ VARIOUS_OBJECT_TYPES = [
     set(['a', 1, '2']),
     Path('directory1/directory2/file.txt'),
     datetime.datetime.now(),
+    Dependencies([]),
 ]
 
 

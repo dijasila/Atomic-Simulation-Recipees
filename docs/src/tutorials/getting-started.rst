@@ -81,7 +81,7 @@ The full contents of the record can be shown with
 .. code-block:: console
 
    $ asr cache detail name=asr.tutorial:energy
-   dependencies=[]
+   dependencies=None
    history=None
    metadata=
     created=2021-06-20 11:49:06.411990
