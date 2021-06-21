@@ -501,6 +501,10 @@ class RowWrapper(Mapping):
         self.cache = cache
         self.data = DataFilenameTranslator(cache, data=row.data)
 
+    def __getattr__(self, key):
+        """Wrap attribute lookup of AtomsRow."""
+        return getattr(self._row, key)
+
     def __getitem__(self, key):
         try:
             return getattr(self, key)
