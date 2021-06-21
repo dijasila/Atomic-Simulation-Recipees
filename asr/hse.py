@@ -1,10 +1,8 @@
-"""HSE band structure."""
+"""HSE06 band structure."""
 from ase import Atoms
 from asr.calculators import Calculation
 import asr
-from asr.core import (
-    command, option, ASRResult, prepare_result,
-)
+from asr.core import command, option, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
 from asr.bandstructure import legend_on_top
@@ -68,7 +66,7 @@ def calculate(
         kptdensity: float = 8.0,
         emptybands: int = 20,
 ) -> HSECalculationResult:
-    """Calculate HSE corrections."""
+    """Calculate HSE06 corrections."""
     eigs, calc, hse_nowfs = hse(
         atoms=atoms,
         calculator=calculator,
@@ -306,21 +304,21 @@ class Result(ASRResult):
     bandstructure: BandStructure
 
     key_descriptions = {
-        "vbm_hse_nosoc": "Valence band maximum w/o soc. (HSE) [eV]",
-        "cbm_hse_nosoc": "Conduction band minimum w/o soc. (HSE) [eV]",
-        "gap_dir_hse_nosoc": "Direct gap w/o soc. (HSE) [eV]",
-        "gap_hse_nosoc": "Band gap w/o soc. (HSE) [eV]",
-        "kvbm_nosoc": "k-point of HSE valence band maximum w/o soc",
-        "kcbm_nosoc": "k-point of HSE conduction band minimum w/o soc",
-        "vbm_hse": "KVP: Valence band maximum (HSE) [eV]",
-        "cbm_hse": "KVP: Conduction band minimum (HSE) [eV]",
-        "gap_dir_hse": "KVP: Direct band gap (HSE) [eV]",
-        "gap_hse": "KVP: Band gap (HSE) [eV]",
-        "kvbm": "k-point of HSE valence band maximum",
-        "kcbm": "k-point of HSE conduction band minimum",
-        "efermi_hse_nosoc": "Fermi level w/o soc. (HSE) [eV]",
-        "efermi_hse_soc": "Fermi level (HSE) [eV]",
-        "bandstructure": "HSE bandstructure."
+        "vbm_hse_nosoc": "Valence band maximum w/o soc. (HSE06) [eV]",
+        "cbm_hse_nosoc": "Conduction band minimum w/o soc. (HSE06) [eV]",
+        "gap_dir_hse_nosoc": "Direct gap w/o soc. (HSE06) [eV]",
+        "gap_hse_nosoc": "Band gap w/o soc. (HSE06) [eV]",
+        "kvbm_nosoc": "k-point of HSE06 valence band maximum w/o soc",
+        "kcbm_nosoc": "k-point of HSE06 conduction band minimum w/o soc",
+        "vbm_hse": "KVP: Valence band maximum (HSE06) [eV]",
+        "cbm_hse": "KVP: Conduction band minimum (HSE06) [eV]",
+        "gap_dir_hse": "KVP: Direct band gap (HSE06) [eV]",
+        "gap_hse": "KVP: Band gap (HSE06) [eV]",
+        "kvbm": "k-point of HSE06 valence band maximum",
+        "kcbm": "k-point of HSE06 conduction band minimum",
+        "efermi_hse_nosoc": "Fermi level w/o soc. (HSE06) [eV]",
+        "efermi_hse_soc": "Fermi level (HSE06) [eV]",
+        "bandstructure": "HSE06 bandstructure."
     }
     formats = {"webpanel2": webpanel}
 

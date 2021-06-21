@@ -75,9 +75,9 @@ class Result(ASRResult):
     key_descriptions = {
         "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
         "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
-        "[`eV/Ang^0.5`]",
+        "[`eV/Å^0.5`]",
         "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
-        "[`eV/Ang^0.5`]",
+        "[`eV/Å^0.5`]",
     }
     formats = {'webpanel2': webpanel}
 
