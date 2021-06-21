@@ -1,5 +1,4 @@
 """Bethe Salpeter absorption spectrum."""
-import os
 from click import Choice
 import typing
 from pathlib import Path
@@ -189,8 +188,8 @@ def calculate(
 
     # XXX below cleanup code fails to check whether removal even succeeded!
     # Which it won't.  We need proper mechanisms for these things.
-
-    #if world.rank == 0:
+    #
+    # if world.rank == 0:
     #    os.system('rm gs_bse.gpw')
     #    os.system('rm gs_nosym.gpw')
 
@@ -208,11 +207,11 @@ def absorption(context, filename, direction='x'):
     import matplotlib.pyplot as plt
     dim = context.ndim
 
-    magstate = context.magstate().result['magstate']
-    gs_result = context.gs_results()
+    # magstate = context.magstate().result['magstate']
+    # gs_result = context.gs_results()
 
-    gap_dir = gs_result['gap_dir']
-    gap_dir_nosoc = gs_result['gap_dir_nosoc']
+    # gap_dir = gs_result['gap_dir']
+    # gap_dir_nosoc = gs_result['gap_dir_nosoc']
 
     # XXX Not sure what's happening here, we can't just mash gaps
     # into the webpanel and expect the reader to know what we are showing.
