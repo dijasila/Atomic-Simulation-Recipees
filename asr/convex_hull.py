@@ -54,7 +54,6 @@ phase of the constituent elements at T=0 K.""",
 
 
 def webpanel(result, context):
-    row = context.row
     hulltable1 = table(result,
                        'Stability',
                        ['hform', 'ehull'],

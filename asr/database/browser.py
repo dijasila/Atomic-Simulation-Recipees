@@ -551,9 +551,8 @@ def runplot_clean(plotfunction, *args):
     return value
 
 
-def generate_plots(context, prefix, plot_descriptions, pool, paneltype):
+def generate_plots(context, prefix, plot_descriptions, pool):
     missing = set()
-    row = context.row
     for desc in plot_descriptions:
         function = desc['function']
         filenames = desc['filenames']
@@ -562,13 +561,7 @@ def generate_plots(context, prefix, plot_descriptions, pool, paneltype):
             if not path.is_file():
                 # Create figure(s) only once:
                 strpaths = [str(path) for path in paths]
-                if paneltype == 'ase_webpanel':
-                    obj = row
-                else:
-                    assert paneltype == 'webpanel2'
-                    obj = context
-
-                args = [function, obj] + strpaths
+                args = [function, context] + strpaths
 
                 try:
                     if pool is None:
@@ -608,14 +601,6 @@ def layout(
         return _layout(row, key_descriptions, prefix, pool)
 
 
-def get_paneltype(result):
-    formats = result.get_formats()
-    for paneltype in ['webpanel2', 'ase_webpanel']:
-        if paneltype in formats:
-            return paneltype
-    return None
-
-
 def _layout(row, key_descriptions, prefix, pool):
     page = {}
     exclude = set()
@@ -640,19 +625,14 @@ def _layout(row, key_descriptions, prefix, pool):
         if not isinstance(result, ASRResult):
             continue
 
-        paneltype = get_paneltype(result)
-        if paneltype is None:
+        if 'webpanel2' not in result.formats:
             continue
 
         if record.run_specification.name in recipes_treated:
             continue
 
         recipes_treated.add(record.run_specification.name)
-
-        if paneltype == 'ase_webpanel':
-            panels = result.format_as('ase_webpanel', row, key_descriptions)
-        else:
-            panels = result.format_as('webpanel2', context)
+        panels = result.format_as('webpanel2', context)
 
         if not panels:
             continue
@@ -677,7 +657,7 @@ def _layout(row, key_descriptions, prefix, pool):
 
         # List of functions and the figures they create:
         missing_figures = generate_plots(context, prefix, plot_descriptions,
-                                         pool, paneltype)
+                                         pool)
 
     for paneltitle, data_sources in panel_data_sources.items():
 
