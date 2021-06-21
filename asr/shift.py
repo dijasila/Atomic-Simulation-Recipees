@@ -1,5 +1,8 @@
+import os
 import typing
+from pathlib import Path
 
+import numpy as np
 from ase import Atoms
 
 from asr.core import (
@@ -8,20 +11,18 @@ from asr.core import (
 from asr.shg import CentroSymmetric, get_chi_symmetry, get_kpts
 from asr.gs import calculate as gscalculate
 
-import numpy as np
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig)
+def webpanel(result, context):
+    from asr.database.browser import fig
     from textwrap import wrap
 
-    # Get the data
-    data = row.data.get('results-asr.shift.json')
+    data = result  # row.data.get('results-asr.shift.json')
 
     # Make the table
     sym_chi = data.get('symm')
     table = []
-    for pol in sorted(sym_chi.keys()):
+    for pol in sorted(sym_chi):
         relation = sym_chi[pol]
         if pol == 'zero':
             if relation != '':
@@ -74,7 +75,7 @@ class Result(ASRResult):
         "sigma": "Non-zero shift conductivity tensor elements in SI units",
         "symm": "Symmetry relation of shift conductivity tensor",
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command('asr.shift')
@@ -126,7 +127,6 @@ def main(
         Remove intermediate files that are created.
     """
     from gpaw.mpi import world
-    from pathlib import Path
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.nlopt.shift import get_shift
 
@@ -170,7 +170,7 @@ def main(
 
         # Do the calculation
         sigma_dict = {}
-        for pol in sorted(sym_chi.keys()):
+        for pol in sorted(sym_chi):
             if pol == 'zero':
                 continue
             # Do the shift current calculation
@@ -208,25 +208,29 @@ def main(
     return Result(results)
 
 
-def plot_shift(row, *filename):
+def plot_shift(context, *filename):
     import matplotlib.pyplot as plt
-    import os
-    from pathlib import Path
     from textwrap import wrap
 
     # Read the data from the disk
-    data = row.data.get('results-asr.shift.json')
-    gap = row.get('gap')
-    atoms = row.toatoms()
+    data = context.get_record('asr.shift').result
+    # data = row.data.get('results-asr.shift.json')
+    atoms = context.atoms
+    gs_result = context.gs_results()
+    gap = gs_result['gap']
+    #gap = row.get('gap')
+
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
-    if data is None:
-        return
+    # if data is None:
+    #     return
+    # XXX why are we calling this function with no data in the first place?
 
     # Remove the files if it is already exist
-    for fname in filename:
-        if (Path(fname).is_file()):
-            os.remove(fname)
+    #for fname in filename:
+    #    if Path(fname).is_file():
+    #        os.remove(fname)
+    # XXX probably not web plot function's job to delete files
 
     # Plot the data and add the axis labels
     sym_chi = data['symm']
@@ -240,7 +244,7 @@ def plot_shift(row, *filename):
     fileind = 0
     axes = []
 
-    for pol in sorted(sigma.keys()):
+    for pol in sorted(sigma):
         # Make the axis and add y=0 axis
         shift = sigma[pol]
         ax = plt.figure().add_subplot(111)
@@ -263,7 +267,7 @@ def plot_shift(row, *filename):
         # Set the axis limit
         ax.set_xlim(0, maxw)
         relation = sym_chi.get(pol)
-        if not (relation is None):
+        if relation is not None:
             figtitle = '$' + '$\n$'.join(wrap(relation, 40)) + '$'
             ax.set_title(figtitle)
         ax.set_xlabel(r'Pump photon energy $\hbar\omega$ [eV]')
