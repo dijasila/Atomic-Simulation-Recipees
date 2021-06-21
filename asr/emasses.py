@@ -1518,7 +1518,7 @@ def evalmare(cell_cv, k_kc, e_k, bt, c, erange=25e-3):
 @prepare_result
 class ValidateResult(ASRResult):
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 sel = asr.Selector()
