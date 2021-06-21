@@ -183,16 +183,20 @@ Let's also look at the detailed contents of this record
 .. code-block:: console
 
    $ asr cache detail name=asr.tutorial:main
-   dependencies=[Dependency(uid='9c83a1199be4410a9fcf34f195a0df28', revision=None), Dependency(uid='b6aed36f363c43eebf4d8b2b91dbc4b4', revision=None), Dependency(uid='28d5f6b0b3e447778ab62ce3d354f5af', revision=None), Dependency(uid='2abb02db15574c63b66f0c6469b12150', revision=None)]
+   dependencies=
+    dependency=uid=94b519d505e64488baf8ec3546c10a14 revision=None
+    dependency=uid=6646f5fa967642f09f51ec9af374e28f revision=None
+    dependency=uid=ff4c4daf15494d169180f112d05db06e revision=None
+    dependency=uid=667e040c87f642f09033602b639659a8 revision=None
    history=None
    metadata=
-    created=2021-06-20 19:53:53.266710
+    created=2021-06-21 15:14:02.348238
     directory=.
-    modified=2021-06-20 19:53:53.266710
+    modified=2021-06-21 15:14:02.348238
    resources=
-    execution_duration=0.6085515022277832
-    execution_end=1624211633.266687
-    execution_start=1624211632.6581354
+    execution_duration=0.968153715133667
+    execution_end=1624281242.3481863
+    execution_start=1624281241.3800325
     ncores=1
    result=fcc
    run_specification=
@@ -207,7 +211,7 @@ Let's also look at the detailed contents of this record
       version=0.4.1
     name=asr.tutorial:main
     parameters=element=Ag
-    uid=d852be0ddd844301807d2034ff29149f
+    uid=bb2e07839c864ceda82908d038a2eefb
     version=0
    tags=None
 

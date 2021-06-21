@@ -10,6 +10,7 @@ from .specification import RunSpecification
 from .resources import Resources
 from .metadata import Metadata
 from .history import History
+from .dependencies import Dependencies
 
 # XXX: Make Tags object.
 
@@ -20,7 +21,7 @@ class Record:
     result: typing.Optional[typing.Any] = None
     run_specification: typing.Optional[RunSpecification] = None
     resources: typing.Optional[Resources] = None
-    dependencies: typing.Optional[typing.List[str]] = None
+    dependencies: typing.Optional[Dependencies] = None
     history: typing.Optional[History] = None
     tags: typing.Optional[typing.List[str]] = None
     metadata: typing.Optional[Metadata] = None

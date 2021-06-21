@@ -62,6 +62,9 @@ class Dependencies:
             lines.append(f'dependency={value}')
         return '\n'.join(lines)
 
+    def __bool__(self):
+        return bool(self.deps)
+
     def __repr__(self):
         items = [item for item in self.deps]
         return f'Dependencies({items})'
@@ -190,7 +193,8 @@ class RegisterDependencies:
                 mark_dependencies(run_record.result, dependency)
                 for dependency in dependencies:
                     mark_dependencies(run_record.result, dependency)
-                run_record.dependencies = dependencies
+                if dependencies:
+                    run_record.dependencies = dependencies
                 return run_record
 
             return wrapped
