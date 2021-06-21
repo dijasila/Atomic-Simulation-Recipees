@@ -9,7 +9,7 @@ from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt,
 )
 from asr.shg import CentroSymmetric, get_chi_symmetry, get_kpts
-from asr.gs import calculate as gscalculate
+from asr.gs import main as gsmain, calculate as gscalculate
 
 
 
@@ -147,6 +147,8 @@ def main(
         if not Path(mml_name).is_file():
             if not Path('es.gpw').is_file():
                 res = gscalculate(atoms=atoms, calculator=calculator)
+                # We want the gap for plotting, so do the postprocessing:
+                gsmain(atoms=atoms, calculator=calculator)
                 calc_old = res.calculation.load()
                 nval = calc_old.wfs.nvalence
 
