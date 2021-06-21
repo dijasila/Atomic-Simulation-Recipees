@@ -1,4 +1,3 @@
-import os
 import typing
 from pathlib import Path
 
@@ -10,7 +9,6 @@ from asr.core import (
 )
 from asr.shg import CentroSymmetric, get_chi_symmetry, get_kpts
 from asr.gs import main as gsmain, calculate as gscalculate
-
 
 
 def webpanel(result, context):
@@ -220,7 +218,7 @@ def plot_shift(context, *filename):
     atoms = context.atoms
     gs_result = context.gs_results()
     gap = gs_result['gap']
-    #gap = row.get('gap')
+    # gap = row.get('gap')
 
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
@@ -229,7 +227,7 @@ def plot_shift(context, *filename):
     # XXX why are we calling this function with no data in the first place?
 
     # Remove the files if it is already exist
-    #for fname in filename:
+    # for fname in filename:
     #    if Path(fname).is_file():
     #        os.remove(fname)
     # XXX probably not web plot function's job to delete files
