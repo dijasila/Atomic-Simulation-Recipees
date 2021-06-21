@@ -1,7 +1,6 @@
 """Convex hull stability analysis."""
 from collections import Counter
 from typing import List, Dict, Any, Optional
-import functools
 
 import asr
 from asr.core import (
@@ -66,8 +65,7 @@ def webpanel(result, context):
             'Thermodynamic stability', panel_description),
         'columns': [[fig('convex-hull.png')],
                     [hulltable1] + hulltables],
-        'plot_descriptions': [{'function':
-                               functools.partial(plot, thisrow=row),
+        'plot_descriptions': [{'function': plot,
                                'filenames': ['convex-hull.png']}],
         'sort': 1,
     }
@@ -383,7 +381,7 @@ class ObjectHandler:
         return patch
 
 
-def plot(context, fname, thisrow):
+def plot(context, fname):
     from ase.phasediagram import PhaseDiagram
     import matplotlib.pyplot as plt
 
@@ -396,12 +394,12 @@ def plot(context, fname, thisrow):
 
     references = data['references']
     thisreference = {
-        'hform': thisrow.hform,
-        'formula': thisrow.formula,
-        'uid': thisrow.uid,
-        'natoms': thisrow.natoms,
+        'hform': data['hform'],
+        'formula': str(atoms.symbols),
+        'uid': context.record.uid,
+        'natoms': len(atoms),
         'legend': None,
-        'label': thisrow.formula,
+        'label': str(atoms.symbols),
         'size': 1,
     }
     pdrefs = []
@@ -536,7 +534,7 @@ def plot(context, fname, thisrow):
         )
 
         printed_names = set()
-        thisformula = Formula(thisrow.formula)
+        thisformula = atoms.symbols.formula
         thisname = format(thisformula, 'latex')
         comps = thisformula.count().keys()
         for a, b, name, on_hull, hull_energy in zip(
