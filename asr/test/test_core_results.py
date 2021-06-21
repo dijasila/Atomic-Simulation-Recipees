@@ -37,7 +37,7 @@ class MyResult(ASRResult):
     prev_version = MyResultVer0
     version: int = 1
     key_descriptions: Dict[str, str] = {'a': 'A description of "a".'}
-    formats = {'ase_webpanel': webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command(module='test_core_results')
@@ -54,13 +54,14 @@ def test_results_object(capsys):
     assert results.__doc__ == '\n'.join(['Generic results.'])
 
     formats = results.get_formats()
-    assert formats['ase_webpanel'] == webpanel
-    assert set(formats) == set(['json', 'html', 'dict', 'ase_webpanel', 'str'])
+    assert formats['webpanel2'] == webpanel
+    assert set(formats) == set(['json', 'html', 'dict', 'webpanel2', 'str'])
     print(results)
     captured = capsys.readouterr()
     assert captured.out == 'Result(a=1)\n'
 
-    assert isinstance(results.format_as('ase_webpanel', {}, {}), list)
+    # XXX Need Record to create a DataContext object
+    # assert isinstance(results.format_as('webpanel2', {}, {}), list)
 
     html = results.format_as('html')
     html2 = format(results, 'html')
