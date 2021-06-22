@@ -171,7 +171,7 @@ class Result(ASRResult):
     formula: str
 
     key_descriptions = {
-        "cell_area": "Area of unit-cell [`Ang^2`]",
+        "cell_area": "Area of unit-cell [`Å²`]",
         "has_inversion_symmetry": "Material has inversion symmetry",
         "stoichiometry": "Stoichiometry",
         "spacegroup": "Space group",

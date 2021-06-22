@@ -9,6 +9,7 @@ from ase import Atoms
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt,
     calcopt)
+
 from asr.database.browser import (
     table,
     fig,
@@ -211,17 +212,6 @@ def main(
 def polarizability(context, fx, fy, fz):
     import matplotlib.pyplot as plt
 
-    def xlim():
-        return (0, 10)
-
-    def ylims(ws, data, wstart=0.0):
-        i = abs(ws - wstart).argmin()
-        x = data[i:]
-        x1, x2 = x.real, x.imag
-        y1 = min(x1.min(), x2.min()) * 1.02
-        y2 = max(x1.max(), x2.max()) * 1.02
-        return y1, y2
-
     data = context.result
 
     frequencies = data['frequencies']
@@ -271,14 +261,8 @@ def polarizability(context, fx, fy, fz):
     # ^ This line goes in except, if we reenable
 
     ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
-    ax.set_title('x-polarization')
-    ax.set_xlabel('Energy [eV]')
-    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
-    ax.legend()
-    ax.set_xlim(xlim())
-    plt.tight_layout()
-    plt.savefig(fx)
+
+    plot_polarizability(ax, frequencies, alphax_w, filename=fx, direction='x')
 
     ax = plt.figure().add_subplot(111)
     ax2 = ax
@@ -305,29 +289,35 @@ def polarizability(context, fx, fy, fz):
     # ^ This line goes in except, if we reenable
 
     ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
-    ax.set_title('y-polarization')
-    ax.set_xlabel('Energy [eV]')
-    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alphax_w, wstart=0.5))
-    ax.legend()
-    ax.set_xlim(xlim())
-    plt.tight_layout()
-    plt.savefig(fy)
+    plot_polarizability(ax, frequencies, alphay_w, filename=fy, direction='y')
 
-    ax = plt.figure().add_subplot(111)
-    ax3 = ax
-    ax.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
-    ax.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
-    ax.set_title('z-polarization')
-    ax.set_xlabel('Energy [eV]')
-    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alphaz_w, wstart=0.5))
-    ax.legend()
-    ax.set_xlim(xlim())
-    plt.tight_layout()
-    plt.savefig(fz)
+    ax3 = plt.figure().add_subplot(111)
+    ax3.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
+    ax3.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
+    plot_polarizability(ax3, frequencies, alphaz_w, filename=fz, direction='z')
 
     return ax1, ax2, ax3
+
+
+def ylims(ws, data, wstart=0.0):
+    i = abs(ws - wstart).argmin()
+    x = data[i:]
+    x1, x2 = x.real, x.imag
+    y1 = min(x1.min(), x2.min()) * 1.02
+    y2 = max(x1.max(), x2.max()) * 1.02
+    return y1, y2
+
+
+def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
+    ax.set_title(f'Polarization: {direction}')
+    ax.set_xlabel('Energy [eV]')
+    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
+    ax.set_ylim(ylims(ws=frequencies, data=alpha_w, wstart=0.5))
+    ax.legend()
+    ax.set_xlim((0, 10))
+    fig = ax.get_figure()
+    fig.tight_layout()
+    fig.savefig(filename)
 
 
 if __name__ == '__main__':

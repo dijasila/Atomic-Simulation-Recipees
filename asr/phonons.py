@@ -111,8 +111,8 @@ def webpanel(result, context):
 
     dynstab = result['dynamic_stability_phonons']
 
-    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Ang<sup>2</sup>'
-    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Ang<sup>2</sup>'
+    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Å²'
+    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Å²'
 
     row = [
         describe_entry(
@@ -149,7 +149,7 @@ class Result(ASRResult):
     interp_freqs_kl: typing.List[typing.List[float]]
 
     key_descriptions = {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
         "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
         "q_qc": "List of momenta consistent with supercell.",
         "omega_kl": "Phonon frequencies.",

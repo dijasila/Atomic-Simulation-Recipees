@@ -196,9 +196,9 @@ def webpanel(result, context):
 
     dynstab = result['dynamic_stability_level']
     stabilities = {1: "low", 2: "medium", 3: "high"}
-    high = "Minimum eigenvalue of Hessian > -0.01 meV/Ang^2 AND elastic const. > 0"
-    medium = "Minimum eigenvalue of Hessian > -2 eV/Ang^2 AND elastic const. > 0"
-    low = "Minimum eigenvalue of Hessian < -2 eV/Ang^2 OR elastic const. < 0"
+    high = "Minimum eigenvalue of Hessian > -0.01 meV/Å² AND elastic const. > 0"
+    medium = "Minimum eigenvalue of Hessian > -2 eV/Å² AND elastic const. > 0"
+    low = "Minimum eigenvalue of Hessian < -2 eV/Å² OR elastic const. < 0"
     row = [
         "Phonons",
         '<a href="#" data-toggle="tooltip" data-html="true" '
@@ -236,7 +236,7 @@ class Result(ASRResult):
 
     key_descriptions = {
         "omega_kl": "Phonon frequencies.",
-        "minhessianeig": "Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "minhessianeig": "Minimum eigenvalue of Hessian [`eV/Å²`]",
         "eigs_kl": "Dynamical matrix eigenvalues.",
         "q_qc": "List of momenta consistent with supercell.",
         "phi_anv": "Force constants.",
