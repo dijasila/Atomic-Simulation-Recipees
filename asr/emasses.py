@@ -92,7 +92,6 @@ def refine(
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
     from asr.magnetic_anisotropy import get_spin_axis
-    from gpaw import GPAW
     import os.path
     set_default(settings)
     socs = [True]
@@ -623,7 +622,7 @@ def make_the_plots(context, *args):
                       xk, kpts_kv, e_km, sz_km,
                       cbarlabel=rf'$\langle S_{sdir} \rangle$',
                       xlabel=r'$\Delta k$ [1/$\mathrm{\AA}$]',
-                      ylabel=r'$E-{}$ [eV]'.format(label),
+                      ylabel=ref.mpl_plotlabel(),
                       title=f'CB, direction {direction + 1}',
                       bandtype='cb',
                       adjust_view=True, spin_degenerate=spin_degenerate)
@@ -661,7 +660,7 @@ def make_the_plots(context, *args):
                       xk, kpts_kv, e_km, sz_km,
                       cbarlabel=rf'$\langle S_{sdir} \rangle$',
                       xlabel=r'$\Delta k$ [1/$\mathrm{\AA}$]',
-                      ylabel=r'$E-{}$ [eV]'.format(label),
+                      ylabel=ref.mpl_plotlabel(),
                       title=f'VB, direction {direction + 1}',
                       bandtype='vb',
                       adjust_view=True, spin_degenerate=spin_degenerate)
