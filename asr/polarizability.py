@@ -212,7 +212,6 @@ def main(
 def polarizability(context, fx, fy, fz):
     import matplotlib.pyplot as plt
 
-
     data = context.result
 
     frequencies = data['frequencies']
@@ -310,7 +309,6 @@ def ylims(ws, data, wstart=0.0):
 
 
 def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
-    import matplotlib.pyplot as plt
     ax.set_title(f'Polarization: {direction}')
     ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')

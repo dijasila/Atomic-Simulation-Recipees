@@ -6,6 +6,7 @@ import numpy as np
 from asr.infraredpolarizability import create_plot_simple
 
 
+@pytest.mark.ci
 @pytest.mark.parametrize('ndim', range(0, 4))
 def test_plot(asr_tmpdir, ndim):
     nw = 40
