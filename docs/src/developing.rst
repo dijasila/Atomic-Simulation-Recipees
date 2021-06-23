@@ -17,6 +17,13 @@ Build documentation
 
    $ tox -e docs
 
+To update the shell code output of various .rst files run:
+
+.. code-block::
+
+   $ cd asr/docs
+   $ python3 update_shell_command_outputs.py
+
 Make a new release
 ------------------
 
