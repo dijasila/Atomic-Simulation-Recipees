@@ -5,27 +5,10 @@ import pathlib
 import subprocess
 
 from asr.core import chdir
-
-
-def get_commands_and_outputs(lines):
-    command_lines = []
-    for il, line in enumerate(lines):
-        if line.startswith('   $ '):
-            command_lines.append(il)
-
-    commands_outputs = []
-    for il in command_lines:
-        output = []
-        for io, line in enumerate(lines[il + 1:], start=il + 1):
-            if line.startswith('   ') and not line.startswith('   $ '):
-                output.append(line)
-            else:
-                break
-        command = lines[il][5:]
-        if output:
-            output = textwrap.dedent('\n'.join(output)).split('\n')
-        commands_outputs.append((il, io, command, output))
-    return commands_outputs
+from .utils import (
+    run_shell_command, get_commands_and_outputs,
+    get_asr_home_path, get_asr_library_path
+)
 
 
 @pytest.fixture
@@ -43,32 +26,17 @@ rstfiles = list(directory.rglob('tutorials/getting-started.rst'))
 
 @pytest.mark.parametrize("command_outputs", rstfiles, indirect=True)
 def test_tutorial(command_outputs, tmpdir):
-    import asr
     my_env = os.environ.copy()
-    asrhome = pathlib.Path(asr.__file__).parent.parent
+    asrhome = get_asr_home_path()
     my_env['ASRHOME'] = asrhome
     print('ASRHOME', asrhome)
     with chdir(tmpdir):
-        completed_process = subprocess.run(
-            'python3 -c "import asr; print(asr.__file__)"',
-            capture_output=True, shell=True)
-        asrlib = pathlib.Path(completed_process.stdout.decode()).parent
+        asrlib = get_asr_library_path()
         my_env['ASRLIB'] = asrlib
         print(f'Running in {tmpdir}')
         for _, _, command, output in command_outputs:
             print(command)
-            completed_process = subprocess.run(
-                command, capture_output=True, env=my_env,
-                shell=True)
-            try:
-                actual_output = completed_process.stdout.decode()
-                assert not completed_process.returncode
-            except UnicodeDecodeError:
-                actual_output = completed_process.stderr.decode()
-            actual_output = actual_output.split('\n')
-            if actual_output[-1] == '':
-                actual_output.pop()
-
+            actual_output = run_shell_command(command, env=my_env)
             # Below is a hack for removing printed uids and other stuff
             # that change on every run. A better solution can probably
             # be found.
