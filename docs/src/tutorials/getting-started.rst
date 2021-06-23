@@ -84,13 +84,13 @@ The full contents of the record can be shown with
    dependencies=None
    history=None
    metadata=
-    created=2021-06-20 11:49:06.411990
+    created=2021-06-23 12:13:01.703021
     directory=.
-    modified=2021-06-20 11:49:06.411990
+    modified=2021-06-23 12:13:01.703021
    resources=
-    execution_duration=0.25704407691955566
-    execution_end=1624182546.4119184
-    execution_start=1624182546.1548743
+    execution_duration=0.32183194160461426
+    execution_end=1624443181.702959
+    execution_start=1624443181.381127
     ncores=1
    result=-0.000367
    run_specification=
@@ -105,7 +105,7 @@ The full contents of the record can be shown with
       version=0.4.1
     name=asr.tutorial:energy
     parameters=element=Ag,crystal_structure=fcc
-    uid=b5877d11de7a406b9eed5e0f029ea525
+    uid=d16222c829d4489ababa5a6b8d1ba111
     version=0
    tags=None
 
@@ -133,7 +133,7 @@ result.
 
    $ asr run "asr.tutorial:energy Ag fcc"
    In folder: . (1/1)
-   asr.tutorial:energy: Found cached record.uid=e84186a08eaf4523bb44d804071aed6c
+   asr.tutorial:energy: Found cached record.uid=d16222c829d4489ababa5a6b8d1ba111
 
 This is useful in workflows where it is beneficial to not
 redo expensive calculation steps when it has already been performed
@@ -160,7 +160,7 @@ to state so explicitly when running the main-instruction.
    In folder: . (1/1)
    Running asr.tutorial:main(element='Ag')
    Running asr.tutorial:energy(element='Ag', crystal_structure='sc')
-   asr.tutorial:energy: Found cached record.uid=343d7f48aad3434493b5bc7e6cbdf94c
+   asr.tutorial:energy: Found cached record.uid=d16222c829d4489ababa5a6b8d1ba111
    Running asr.tutorial:energy(element='Ag', crystal_structure='bcc')
    Running asr.tutorial:energy(element='Ag', crystal_structure='diamond')
 
@@ -184,19 +184,19 @@ Let's also look at the detailed contents of this record
 
    $ asr cache detail name=asr.tutorial:main
    dependencies=
-    dependency=uid=94b519d505e64488baf8ec3546c10a14 revision=None
-    dependency=uid=6646f5fa967642f09f51ec9af374e28f revision=None
-    dependency=uid=ff4c4daf15494d169180f112d05db06e revision=None
-    dependency=uid=667e040c87f642f09033602b639659a8 revision=None
+    dependency=uid=266acddf1a684156a2153e339efdee44 revision=None
+    dependency=uid=d16222c829d4489ababa5a6b8d1ba111 revision=None
+    dependency=uid=e76a9d0c290e4dc0a0eb1d809f063640 revision=None
+    dependency=uid=9f979d5697a442a6ae52522466f23bf6 revision=None
    history=None
    metadata=
-    created=2021-06-21 15:14:02.348238
+    created=2021-06-23 12:13:05.658912
     directory=.
-    modified=2021-06-21 15:14:02.348238
+    modified=2021-06-23 12:13:05.658912
    resources=
-    execution_duration=0.968153715133667
-    execution_end=1624281242.3481863
-    execution_start=1624281241.3800325
+    execution_duration=1.2135305404663086
+    execution_end=1624443185.6588616
+    execution_start=1624443184.445331
     ncores=1
    result=fcc
    run_specification=
@@ -211,7 +211,7 @@ Let's also look at the detailed contents of this record
       version=0.4.1
     name=asr.tutorial:main
     parameters=element=Ag
-    uid=bb2e07839c864ceda82908d038a2eefb
+    uid=6e77df7431cd46eda37c8f953965bd63
     version=0
    tags=None
 
@@ -345,75 +345,75 @@ To apply the migrations we do
    $ asr cache migrate --apply
    There are 35 unapplied migrations, 0 erroneous migrations and 0 records are up to date.
    
-   record.uid=3b0d67ba5c054355b8d064bf839e9c3d
+   record.uid=d16222c829d4489ababa5a6b8d1ba111
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=671c1fbaff1a4d598697c66105bf9754
+   record.uid=266acddf1a684156a2153e339efdee44
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=d4f16b0378af43e7853d86df69b3416d
+   record.uid=e76a9d0c290e4dc0a0eb1d809f063640
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=f0698d8879514ed6940e2a6c6c1fa881
+   record.uid=9f979d5697a442a6ae52522466f23bf6
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=35e7aaebc43b4033b60db13aee408da4
+   record.uid=6e77df7431cd46eda37c8f953965bd63
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=949c4a5c984348df88e0e8f33e82f8b1
+   record.uid=d5b7bace79594946bec68b0e14f12e02
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=c48a680aaa694afc9a37caf62bcfeb06
+   record.uid=f4f0d34aada8429fb4eba435718768cf
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=2c85e8243e9f49a28cc1d22a566e8b7f
+   record.uid=0a9e6cd5e8ca474e87d9dca67d372e94
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=db7ed56b532a4291b1060fb46d5c289a
+   record.uid=2c88de4283a34dd6b936d3e4c34182fc
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=573a25d64fc64758ae37b251daf7fdb5
+   record.uid=67cb99228b01427780e985873923ae58
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=9418a28e713a4bfca0c2814908c6ca0b
+   record.uid=3baeef6c0bf14225be887bba3988ea93
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=d6247127069f4656beec0342c62360ae
+   record.uid=e5b93aef45514a4580c3475e3cea3dc3
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=9573dc6793794cc48f0a7019ebc750b0
+   record.uid=9830e18d6cab4e598eb460bacade26fe
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=0f0937c6d5984bbf8d34cb8d080d77e7
+   record.uid=5502be76918e40b8bfe6f1892c941129
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=9766172df9734d27b4cab16723125efb
+   record.uid=0f702ca4850d497d9bd42bf8f79a9a68
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=ae579266475741aaaf8427c6abe43e86
+   record.uid=1fcf1f3aa801414cacbe242791f919ae
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=ea70e777ef0a4f26beb0b422ba28190e
+   record.uid=91bc236c859d413c9ae40e12313b7715
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=c18e2aaf08894c0a82762785291d9984
+   record.uid=d55daa8aca2b4c148d087f15fcf045e4
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=ba56801d4d4c44408de193fd2a26ef55
+   record.uid=a44235ade2fb4fd7ad1d9081b912e32c
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=b3a3b948b36c41bcb0229c5e9efc47ac
+   record.uid=c98b028150724591a9dd6b3f16c7fc8c
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=16fe7608a15f410e8daad1b7700425bc
+   record.uid=66894b00e64a4261ae596a5ec562e4c5
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=a28af577beea40cd896a9b73fb945476
+   record.uid=707f39c9d4704d489a7ff76ae9dc19c2
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=133d144d0d5c47e98c03d887e18a394e
+   record.uid=deb875583bd048518c781c4b065d187c
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=c7f362e4877d4b9396b3a05fc7e68a42
+   record.uid=30574476b6554549a07aff540bb85e53
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=b4c81fa4af684f31896091c6977aee09
+   record.uid=79e9721a7d084c28a11544adcef49b10
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=97859da642d940aebe72308ab70faa99
+   record.uid=ad55e71ef7aa4e83ad0b40ae1eff2bb6
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=bd9510157c314d7f9a36e577ea32bcf6
+   record.uid=abdb6321d4714cd4be374db62fb74ea2
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=404a012bdfe746c891276799fb7a48e9
+   record.uid=ae79577f3d504fb6b66ffa0987868dd1
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=5e3094cc679848bfadbb4dae7249f12a
+   record.uid=aabd8e0cd57c4df9b6a4aa290e5ccf8d
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=15b7b216045145f59c7b94419e06fb0a
+   record.uid=206e9dae7b634e1783384c39ca00c338
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=0bb767138f564125a96b6b1beecd04af
+   record.uid=652cbb82405e4a4fa341cb4121483f8c
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=d60cbaa29a324c89a3e595a5dd8eb96e
+   record.uid=5a6e68e4376f456da3898c28f23e79a8
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=909e738761ea47ec91ab45a981ed202e
+   record.uid=9fab0bddf4ca411abfd472f99a0af80d
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=a81807077bd8403cb43b895ab4168039
+   record.uid=8806bbcb96fa4f98804b4175666c5d2a
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
-   record.uid=8392bc08787142849c53af49b9722f25
+   record.uid=8017e43bc37d4301a04d4ad0c61e17a3
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
 
 The output informs us of the changes made to the existing records. We
