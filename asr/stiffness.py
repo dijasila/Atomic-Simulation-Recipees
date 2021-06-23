@@ -77,8 +77,6 @@ def webpanel(result, context):
         'sort': 2}
 
     dynstab = result['dynamic_stability_stiffness']
-    high = 'Minimum stiffness tensor eigenvalue > 0'
-    low = 'Minimum stiffness tensor eigenvalue < 0'
 
     row = [
         describe_entry(
@@ -87,8 +85,8 @@ def webpanel(result, context):
             'based on the minimum eigenvalue of the stiffness tensor.'
             + dl(
                 [
-                    ["LOW", low],
-                    ["HIGH", high],
+                    ["LOW", dynstab_text_low],
+                    ["HIGH", dynstab_text_high],
                 ]
             )
         ),
@@ -267,7 +265,7 @@ def main(atoms: Atoms,
 
     # Now do some post processing
     data = {}
-    nd = np.sum(atoms.pbc)
+    nd = sum(atoms.pbc)
     speed_of_sound_x = None
     speed_of_sound_y = None
     if nd == 2:
@@ -309,9 +307,21 @@ def main(atoms: Atoms,
     else:
         eigs = np.linalg.eigvals(stiffness)
     data['eigenvalues'] = eigs
-    dynamic_stability_stiffness = ['low', 'high'][int(eigs.min() > 0)]
-    data['dynamic_stability_stiffness'] = dynamic_stability_stiffness
+
+    data['dynamic_stability_stiffness'] = dynamic_stability_stiffness(
+        eigs.min())
     return Result(data=data)
+
+
+dynstab_text_high = 'Minimum stiffness tensor eigenvalue > 0'
+dynstab_text_low = 'Minimum stiffness tensor eigenvalue ≤ 0'
+
+
+def dynamic_stability_stiffness(mineig):
+    if mineig > 0:
+        return 'high'
+    else:
+        return 'low'
 
 
 if __name__ == '__main__':
