@@ -164,6 +164,7 @@ def calculate(
 
     w_w = np.linspace(-2.0, 8.0, 10001)
 
+    pbc = atoms.pbc
     w_w, alphax_w = bse.get_polarizability(eta=eta,
                                            filename='bse_polx.csv',
                                            direction=0,
