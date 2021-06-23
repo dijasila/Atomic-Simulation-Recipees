@@ -9,8 +9,7 @@ class RootPath:
     """Pathlike object that measure paths relative to ASR root."""
 
     def __init__(self, path: typing.Union[str, Path]):
-        if isinstance(path, str):
-            path = Path(path)
+        path = Path(path)
         assert not path.is_absolute()
         self.path = path
 
@@ -74,28 +73,22 @@ class ExternalFile:
     def __init__(
             self,
             path: PathLike,
-            name: str,
     ):
-        self.path = path
-        self.name = name
+        self.path = Path(path).absolute()
         self.hashes = {'sha256': sha256sum(path)}
+
+    @property
+    def name(self):
+        return self.path.name
 
     @classmethod
     def fromstr(cls, string):
         path = Path(string).absolute()
-        return cls(path, path.name)
+        return cls(path)
 
     @property
     def sha256(self):
         return self.hashes['sha256']
-
-    @property
-    def path(self):
-        return self._path
-
-    @path.setter
-    def path(self, value):
-        self._path = value
 
     def __repr__(self):
         return f'ExternalFile(path={self.path}, sha256={self.sha256[:10]}...)'
@@ -105,7 +98,7 @@ class ExternalFile:
 
     def restore(self):
         path = self.path
-        tofile = Path(self.name)
+        tofile = Path(path.name)
         assert not tofile.is_file()
         only_master(link_file)(path, tofile)
 
