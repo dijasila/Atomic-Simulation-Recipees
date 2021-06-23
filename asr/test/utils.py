@@ -1,5 +1,4 @@
 import pathlib
-import textwrap
 import os
 import subprocess
 
@@ -49,8 +48,9 @@ def get_command_and_output_ranges(lines):
             if line.startswith('   ') and not line.startswith('   $ '):
                 output.append(line)
             else:
+                rng = (il, io)
                 break
-        ranges.append((il, io))
+        ranges.append(rng)
     return ranges
 
 
@@ -65,5 +65,5 @@ def get_commands_and_outputs(lines):
     for ic, io in ranges:
         command = lines[ic][5:]
         output = [line[3:] for line in lines[ic + 1:io]]
-        commands_outputs.append((ic, io, command, output))    
+        commands_outputs.append((ic, io, command, output))
     return commands_outputs

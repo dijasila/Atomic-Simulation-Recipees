@@ -1,8 +1,6 @@
-import textwrap
 import os
 import pytest
 import pathlib
-import subprocess
 
 from asr.core import chdir
 from .utils import (
