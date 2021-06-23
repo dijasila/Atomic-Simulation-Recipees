@@ -41,7 +41,7 @@ def calc2eigs(calc, soc=True,
             else:
                 # For 2D we try to find materials where
                 # spins are restricted to inplane spins
-                if np.sum(calc.atoms.pbc).astype(int) == 2:
+                if sum(calc.atoms.pbc) == 2:
                     bzk_kc = calc.get_bz_k_points()
                     for k, kpt in enumerate(bzk_kc):
                         s_vm = restrict_spin_projection_2d(kpt,

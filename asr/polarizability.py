@@ -121,8 +121,6 @@ def main(
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
 
-    pbc = atoms.pbc.tolist()
-
     dfkwargs = {
         'eta': 0.05,
         'domega0': 0.005,
@@ -131,7 +129,7 @@ def main(
         'intraband': False
     }
 
-    ND = np.sum(pbc)
+    ND = sum(atoms.pbc)
     if ND == 3 or ND == 1:
         kpts = {'density': kptdensity, 'gamma': False, 'even': True}
     elif ND == 2:
@@ -143,7 +141,7 @@ def main(
             nblocks = world.size // 2
         dfkwargs.update({
             'nblocks': nblocks,
-            'pbc': pbc,
+            'pbc': atoms.pbc,
             'integrationmode': 'tetrahedron integration',
             'truncation': '2D'
         })

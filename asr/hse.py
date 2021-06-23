@@ -89,9 +89,8 @@ def hse(atoms, calculator, kptdensity, emptybands):
     convbands = int(emptybands / 2)
     gsresult = calculategs(atoms=atoms, calculator=calculator)
     calc = gsresult.calculation.load(parallel={'band': 1, 'kpt': 1})
-    atoms = calc.get_atoms()
-    pbc = atoms.pbc.tolist()
-    ND = np.sum(pbc)
+
+    ND = sum(atoms.pbc)
     if ND == 3 or ND == 1:
         kpts = {'density': kptdensity, 'gamma': True, 'even': False}
     elif ND == 2:

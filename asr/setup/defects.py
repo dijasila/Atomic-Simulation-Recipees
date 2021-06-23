@@ -514,7 +514,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
             sub_dict = structure_dict[element]
             j = 0
             for sub_element in sub_dict:
-                defect_name = [key for key in sub_dict.keys()]
+                defect_name = list(sub_dict)
                 defect_folder_name = defect_name[j]
                 j = j + 1
                 try:
