@@ -1,3 +1,4 @@
+import sys
 import pathlib
 import os
 import subprocess
@@ -5,16 +6,16 @@ import subprocess
 
 def get_asr_library_path():
     completed_process = subprocess.run(
-        'python3 -c "import asr; print(asr.__file__)"',
+        f'{sys.executable} -c "import asr; print(asr.__file__)"',
         capture_output=True, shell=True)
     asrlib = pathlib.Path(completed_process.stdout.decode()).parent
-    return asrlib
+    return asrlib.absolute()
 
 
 def get_asr_home_path():
     import asr
     asrhome = pathlib.Path(asr.__file__).parent.parent
-    return asrhome
+    return asrhome.absolute()
 
 
 def run_shell_command(command, env=None):
