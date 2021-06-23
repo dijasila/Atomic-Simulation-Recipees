@@ -48,12 +48,9 @@ class RunSpecification:  # noqa
         if fmt == '':
             return str(self)
 
-    def __str__(self):  # noqa
+    def __repr__(self):  # noqa
         return (f'RunSpec(name={self.name}, params={self.parameters}, '
                 f'version={self.version}, codes={self.codes}, uid={self.uid})')
-
-    def __repr__(self):  # noqa
-        return self.__str__()
 
 
 def construct_run_spec(

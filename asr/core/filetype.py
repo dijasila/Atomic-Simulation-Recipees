@@ -29,7 +29,7 @@ class RootPath:
         """Is file."""
         return pathlib.Path(self).is_file()
 
-    def __str__(self):
+    def __repr__(self):
         return self.__fspath__()
 
     def __eq__(self, other):
@@ -58,9 +58,6 @@ class RootPath:
             return NotImplemented
 
         return self.__truediv__(other)
-
-    def __repr__(self):
-        return str(self)
 
 
 class ASRPath(RootPath):
@@ -100,11 +97,8 @@ class ExternalFile:
     def path(self, value):
         self._path = value
 
-    def __str__(self):
-        return f'ExternalFile(path={self.path}, sha256={self.sha256[:10]}...)'
-
     def __repr__(self):
-        return str(self)
+        return f'ExternalFile(path={self.path}, sha256={self.sha256[:10]}...)'
 
     def __fspath__(self):
         return str(self.path)
@@ -139,11 +133,8 @@ class File:
     def sha256(self):
         return self.hashes['sha256']
 
-    def __str__(self):
-        return f'File(path={self.path}, sha256={self.sha256[:10]}...)'
-
     def __repr__(self):
-        return str(self)
+        return f'File(path={self.path}, sha256={self.sha256[:10]}...)'
 
     def __fspath__(self):
         return str(self.path)

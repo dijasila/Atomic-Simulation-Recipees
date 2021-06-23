@@ -58,7 +58,7 @@ class Record:
         data = copy.deepcopy(self.__dict__)
         return Record(**data)
 
-    def __str__(self):
+    def __repr__(self):
         strings = []
         for name, value in self.__dict__.items():
             if name == 'result':
@@ -69,9 +69,6 @@ class Record:
             if value is not None:
                 strings.append('='.join([str(name), str(value)]))
         return 'Record(' + ', '.join(strings) + ')'
-
-    def __repr__(self):
-        return self.__str__()
 
     def __eq__(self, other):
         if not isinstance(other, Record):
