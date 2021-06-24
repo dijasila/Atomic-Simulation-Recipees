@@ -333,6 +333,7 @@ def get_emass_dict_from_row(row, has_mae=False):
         # E.g. key: VB -2 direction 2
         # value: <number> m_e
         # E.g. value: 0.41 m_e
+        nonlocal has_mae
         my_dict = {}
         for offset_num, (key, band_number) in enumerate(ordered_indices):
             data = results[key]
