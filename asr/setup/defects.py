@@ -89,7 +89,6 @@ def main(
       'params.json' file which contains specific parameters as well as the charge states
       of the different defect structures.
     """
-
     # only run SJ setup if halfinteger is True
     if halfinteger:
         setup_halfinteger()
@@ -193,7 +192,6 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
     :return supercell_final: supercell structure with suitable vacuum size
                              applied
     """
-
     if is_2D:
         cell = structure_sc.get_cell()
         oldvac = cell[2][2]

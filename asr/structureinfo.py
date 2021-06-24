@@ -151,7 +151,6 @@ def main(atoms: Atoms) -> Result:
     state properties that requires only an atomic structure. This recipes read
     the atomic structure in `structure.json`.
     """
-
     info = {}
 
     formula = atoms.symbols.formula.convert('metal')
