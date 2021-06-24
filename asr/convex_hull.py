@@ -145,7 +145,6 @@ def convert_database_parameter_to_file(record):
 @command('asr.convex_hull',
          argument_hooks=[set_calculator_hook,
                          convert_database_strings_to_files],
-         migrations=[convert_database_parameter_to_file],
          )
 @atomsopt
 @calcopt

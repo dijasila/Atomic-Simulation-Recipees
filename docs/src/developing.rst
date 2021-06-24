@@ -13,9 +13,17 @@ Run tests
 Build documentation
 -------------------
 
+Build documentation:
+
 .. code-block::
 
    $ tox -e docs
+
+Update the shell code output of various .rst files:
+
+.. code-block::
+
+   $ tox -e updatedocs
 
 Make a new release
 ------------------

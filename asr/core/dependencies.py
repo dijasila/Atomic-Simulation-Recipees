@@ -1,4 +1,5 @@
 """Module for registering dependencies between recipes."""
+import textwrap
 import typing
 from .parameters import Parameters
 import dataclasses
@@ -39,13 +40,58 @@ class Dependency:
     uid: UID
     revision: UID
 
+    def __str__(self):
+        return f'uid={self.uid} revision={self.revision}'
+
+
+# XXX: We cannot simply subclass list since this breaks serialization.
+# I don't have time to fix this atm.
+
+
+@dataclasses.dataclass
+class Dependencies:
+
+    deps: typing.List[Dependency] = dataclasses.field(default_factory=list)
+
+    def __str__(self):
+        lines = []
+        for dependency in self:
+            value = str(dependency)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
+            lines.append(f'dependency={value}')
+        return '\n'.join(lines)
+
+    def __bool__(self):
+        return bool(self.deps)
+
+    def __repr__(self):
+        items = [item for item in self.deps]
+        return f'Dependencies({items})'
+
+    def extend(self, value: 'Dependencies'):
+        self.deps.extend(value.deps)
+
+    def append(self, value: Dependency):
+        self.deps.append(value)
+
+    def __getitem__(self, item):
+        return self.deps[item]
+
+    def __iter__(self):
+        for value in self.deps:
+            yield value
+
+    def __contains__(self, value):
+        return value in self.deps
+
 
 def construct_dependency(record):
     return Dependency(record.uid, record.revision)
 
 
 def find_dependencies(obj):
-    dependencies = []
+    dependencies = Dependencies()
     dependencies.extend(get_dependencies(obj))
 
     values = get_values_of_object(obj)
@@ -64,7 +110,8 @@ def get_values_of_object(obj):
             values.append(value)
     elif hasattr(obj, '__dict__'):
         for key, value in obj.__dict__.items():
-            values.append(value)
+            if not key == '__deps__':
+                values.append(value)
     elif hasattr(obj, '__slots__'):
         for key in obj.__slots__:
             value = getattr(obj, key)
@@ -82,7 +129,7 @@ def mark_dependencies(obj: typing.Any, dependency: Dependency):  # noqa
 
 def mark_dependency(obj, dependency: Dependency):
     """Mark that obj is dependent on 'dependency'."""
-    deps = getattr(obj, DEPATTR, [])
+    deps = get_dependencies(obj)
     if dependency not in deps:
         deps.append(dependency)
         try:
@@ -99,11 +146,8 @@ def has_dependency(obj):
 
 
 def get_dependencies(obj):
-    """Get data dependencies.
-
-    Return [] if no deps.
-    """
-    return getattr(obj, DEPATTR, [])
+    """Get data dependencies."""
+    return getattr(obj, DEPATTR, Dependencies())
 
 
 dependency_stack = []
@@ -117,7 +161,7 @@ class RegisterDependencies:
 
     def __enter__(self):
         """Add frame to dependency stack."""
-        dependencies = []
+        dependencies = Dependencies()
         self.dependency_stack.append(dependencies)
         return dependencies
 
@@ -149,7 +193,8 @@ class RegisterDependencies:
                 mark_dependencies(run_record.result, dependency)
                 for dependency in dependencies:
                     mark_dependencies(run_record.result, dependency)
-                run_record.dependencies = dependencies
+                if dependencies:
+                    run_record.dependencies = dependencies
                 return run_record
 
             return wrapped

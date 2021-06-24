@@ -54,7 +54,6 @@ def remove_copy_params_parameter(record):
 
 @command(
     'asr.setup.displacements',
-    migrations=[remove_copy_params_parameter],
 )
 @atomsopt
 @option('--displacement', help='How much to displace atoms.', type=float)

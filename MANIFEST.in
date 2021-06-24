@@ -6,6 +6,7 @@ include README.rst
 
 include asr/setup/testsystems.json
 include asr/setup/substitution.dat
+include asr/core/old_resultfile_defaults.json
 
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]

@@ -12,6 +12,7 @@ from .types import (  # noqa
 from .results import (ASRResult, prepare_result, WebPanelEncoder, dct_to_result,  # noqa
                       UnknownDataFormat, obj_to_id, decode_object,  # noqa
                       encode_object, decode_result)  # noqa
+from .record import Record  # noqa
 from .command import (get_recipes, ASRCommand,  # noqa
                       get_recipes)  # noqa
 from .decorators import instruction, command, option, argument  # noqa 

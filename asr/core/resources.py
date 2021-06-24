@@ -1,38 +1,23 @@
 from .specification import RunSpecification
-from .utils import make_property
 import typing
 import time
 import contextlib
+from dataclasses import dataclass
 
 
+@dataclass
 class Resources:  # noqa
 
-    def __init__(  # noqa
-            self,
-            execution_start: typing.Optional[float] = None,
-            execution_end: typing.Optional[float] = None,
-            execution_duration: typing.Optional[float] = None,
-            ncores: typing.Optional[int] = None
-    ):
-        self.data = dict(
-            execution_start=execution_start,
-            execution_end=execution_end,
-            execution_duration=execution_duration,
-            ncores=ncores)
-
-    execution_start = make_property('execution_start')
-    execution_end = make_property('execution_end')
-    execution_duration = make_property('execution_duration')
-    ncores = make_property('ncores')
+    execution_start: typing.Optional[float] = None
+    execution_end: typing.Optional[float] = None
+    execution_duration: typing.Optional[float] = None
+    ncores: typing.Optional[int] = None
 
     def __str__(self):
-
-        if self.execution_duration:
-            text = f'time={self.execution_duration:.1f}s'
-        else:
-            text = f'time={self.execution_duration}'
-        return (f'Resources({text}, '
-                f'ncores={self.ncores})')
+        lines = []
+        for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
+            lines.append(f'{key}={value}')
+        return '\n'.join(lines)
 
 
 @contextlib.contextmanager

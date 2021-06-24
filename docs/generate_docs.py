@@ -278,6 +278,10 @@ def empty_generated_files():
         directory.mkdir()
 
 
+def update_tutorial_outputs():
+    ...
+
+
 def generate_docs():
     """Generate documentation."""
     print('Generating ASR documentation.')
@@ -285,6 +289,7 @@ def generate_docs():
     # generate_api_summary()
     generate_recipe_summary()
     generate_stub_pages()
+    update_tutorial_outputs()
 
 
 if __name__ == '__main__':
