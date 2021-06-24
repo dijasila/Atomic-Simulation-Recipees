@@ -1,5 +1,6 @@
 """Fitted elemental reference energies."""
 from asr.core import command, option, ASRResult
+from ase.formula import Formula
 
 
 class MaterialNotFoundError(Exception):
@@ -134,8 +135,6 @@ def load_data(reactionsstr, refsstr):
 
 
 def elements_from_refs(refs):
-    from ase.formula import Formula
-
     els = []
     for ref in refs:
         el = only(lambda t: True, Formula(ref).count().keys())
@@ -144,8 +143,6 @@ def elements_from_refs(refs):
 
 
 def multiply_formula(prod, j):
-    from ase.formula import Formula
-
     form = Formula(prod)
     return Formula.from_dict({k: v * j for k, v in form.count().items()})
 
@@ -172,8 +169,6 @@ def safe_get(db, prod, query=''):
 
 
 def get_hof(db, formula, query='', row=None):
-    from ase.formula import Formula
-
     elements = list(formula.count().keys())
     row = row or safe_get(db, str(formula), query=query)
     dbformula = Formula(str(row.formula))
@@ -190,7 +185,6 @@ def get_hof(db, formula, query='', row=None):
 
 
 def get_dE_alpha(db, reactions, refs):
-    from ase.formula import Formula
     from scipy import sparse
 
     alpha = sparse.lil_matrix((len(reactions), len(refs)))
@@ -230,18 +224,13 @@ def minimize_error(dE, alpha):
 
 def formulas_eq(form1, form2):
     if type(form1) == str:
-        from ase.formula import Formula
-
         form1 = Formula(form1)
     if type(form2) == str:
-        from ase.formula import Formula
-
         form2 = Formula(form2)
     return form1.stoichiometry()[:-1] == form2.stoichiometry()[:-1]
 
 
 def create_corrected_db(newname, db, reactions, els_dMu):
-    from ase.formula import Formula
     from ase.db import connect
 
     newdb = connect(newname)

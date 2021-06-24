@@ -20,7 +20,6 @@ def todict(atoms):
 def get_hash_of_atoms(atoms):
     from hashlib import md5
     import json
-    from collections import OrderedDict
 
     dct = todict(atoms)
 
@@ -29,14 +28,8 @@ def get_hash_of_atoms(atoms):
             value = value.tolist()
         dct[key] = value
 
-    # Make sure that that keys appear in order
-    orddct = OrderedDict()
-    keys = list(dct.keys())
-    keys.sort()
-    for key in keys:
-        orddct[key] = dct[key]
-
-    hash = md5(json.dumps(orddct).encode()).hexdigest()
+    # hash is only reproducible if we sort the keys:
+    hash = md5(json.dumps(dct, sort_keys=True).encode()).hexdigest()
     return hash
 
 
