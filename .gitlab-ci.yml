@@ -25,17 +25,17 @@ build:
 
 # -------------- Style tests --------------
 flake8:
-  image: python:3.7
+  image: python:3.9
   stage: style
   script: tox -e flake8
 
 readme:
-  image: python:3.7
+  image: python:3.9
   stage: style
   script: tox -e readme
 
 docs:
-  image: python:3.7
+  image: python:3.9
   stage: style
   script: tox -e docs
 
