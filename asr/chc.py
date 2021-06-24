@@ -582,7 +582,6 @@ def main(dbs: List[str],
     results = {}
     formula = str(atoms.symbols)
     elements = list(Formula(formula).count().keys())
-    # formula, elements = read_structure("structure.json")
 
     if reactant in elements:
         raise CHCError('Reactant is in elements')
@@ -611,16 +610,6 @@ def main(dbs: List[str],
     results['_refs'] = [(ref.formula, ref.hform) for ref in references]
 
     return results
-
-
-def read_structure(fname):
-    from ase.io import read
-    from ase.formula import Formula
-    atoms = read(fname)
-    formula = str(atoms.symbols)
-    elements = list(Formula(formula).count().keys())
-
-    return formula, elements
 
 
 def results2ref(formula):
