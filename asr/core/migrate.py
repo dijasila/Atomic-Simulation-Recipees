@@ -1,4 +1,5 @@
 """Implements record migration functionality."""
+import textwrap
 import abc
 import copy
 import typing
@@ -288,7 +289,13 @@ class Revision:
         return record
 
     def __str__(self):
-        return f'{self.description} ({self.modification})'
+        lines = []
+        for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
+            value = str(value)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
+            lines.append(f'{key}={value}')
+        return '\n'.join(lines)
 
 
 @dataclass
@@ -307,6 +314,15 @@ class RevisionHistory(History):
             return None
         latest_revision = self.history[-1]
         return latest_revision
+
+    def __str__(self):
+        lines = [f'latest_revision={self.latest_revision.uid}']
+        for revision in self.history:
+            value = str(revision)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
+            lines.append(f'revision={value}')
+        return '\n'.join(lines)
 
 
 @dataclass

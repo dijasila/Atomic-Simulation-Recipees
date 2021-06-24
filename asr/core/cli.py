@@ -515,6 +515,7 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
     if apply:
         for record_migration in record_migrations:
             print(record_migration)
+            print()
             record_migration.apply(cache)
 
 
