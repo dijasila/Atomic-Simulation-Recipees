@@ -83,7 +83,6 @@ def calculate(
 
 
 def hse(atoms, calculator, kptdensity, emptybands):
-    import numpy as np
     from gpaw.hybrids.eigenvalues import non_self_consistent_eigenvalues
 
     convbands = int(emptybands / 2)

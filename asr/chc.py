@@ -259,7 +259,6 @@ class Intermediate:
         return strs
 
     def _get_hform_data(self):
-        import numpy as np
         # Transform each reference into a vector
         # where entry i is count of element i
         # that is present in reference
@@ -388,7 +387,6 @@ class Reference:
             raise ValueError("Dont compare Reference to non-Reference")
             return False
         else:
-            import numpy as np
             from asr.fere import formulas_eq
             feq = formulas_eq(self.formula, other.formula)
             heq = np.allclose(self.hform, other.hform)
@@ -723,7 +721,6 @@ def get_coords(ref, elements):
 
 
 def calculate_intermediates(mat_ref, reactant_ref, refs):
-    import numpy as np
     # Take out refs that consists of a single element and have
     # positive heat of formation. They will never be on the hull
     # but may destabilize hull algorithm.
@@ -759,7 +756,6 @@ def calculate_intermediates(mat_ref, reactant_ref, refs):
 
 
 def convex_hull_planes(chrefs, mat_formula, react_formula):
-    import numpy as np
     from scipy.spatial import ConvexHull
     if chrefs[0].formula != mat_formula:
         msg = f'Material must be first in convex hull refs:'

@@ -296,6 +296,7 @@ def main(
         path=path,
     )
 
+
 dynstab_limit = -0.01
 dynstab_text_low = f'Minimum eigenvalue of Hessian ≤ {dynstab_limit} meV/Å²'
 dynstab_text_high = f'Minimum eigenvalue of Hessian > {dynstab_limit} meV/Å²'

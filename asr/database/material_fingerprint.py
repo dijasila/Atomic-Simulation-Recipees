@@ -1,10 +1,10 @@
 """Unique hash of atomic structure."""
+import numpy as np
 from asr.core import command, ASRResult, atomsopt
 from ase import Atoms
 
 
 def todict(atoms):
-    import numpy as np
     d = dict(atoms.arrays)
     d['cell'] = np.asarray(atoms.cell)
     d['pbc'] = atoms.pbc
@@ -18,7 +18,6 @@ def todict(atoms):
 
 
 def get_hash_of_atoms(atoms):
-    import numpy as np
     from hashlib import md5
     import json
     from collections import OrderedDict

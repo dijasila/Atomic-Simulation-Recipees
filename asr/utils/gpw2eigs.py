@@ -7,7 +7,6 @@ def calc2eigs(calc, soc=True,
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
     from ase.parallel import broadcast
-    import numpy as np
     from .symmetry import restrict_spin_projection_2d
     from .calculator_utils import get_eigenvalues
     from .symmetry import _atoms2symmetry_gpaw
