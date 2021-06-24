@@ -13,16 +13,17 @@ Run tests
 Build documentation
 -------------------
 
+Build documentation:
+
 .. code-block::
 
    $ tox -e docs
 
-To update the shell code output of various .rst files run:
+Update the shell code output of various .rst files:
 
 .. code-block::
 
-   $ cd asr/docs
-   $ python3 update_shell_command_outputs.py
+   $ tox -e updatedocs
 
 Make a new release
 ------------------
