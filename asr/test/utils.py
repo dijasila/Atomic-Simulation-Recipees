@@ -14,7 +14,10 @@ def get_asr_library_path():
 
 def get_asr_home_path():
     import asr
-    asrhome = pathlib.Path(asr.__file__).parent.parent
+    path = pathlib.Path(asr.__file__).absolute()
+    parts = path.parts
+    index = parts.index('asr')
+    asrhome = pathlib.Path(*parts[:index + 1])
     return asrhome.absolute()
 
 
