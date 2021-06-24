@@ -41,17 +41,18 @@ To see how this works in practice let's look at an example:
 
 .. literalinclude:: getting-started.py
    :pyobject: energy
+   :caption: asr/tutorial.py
 
-In this example we have made an instruction for calculating the total
-energy of a bulk metal in a given crystal structure using the
-effective medium theory (EMT) calculator. The :func:`asr.argument`
-helps ASR to construct a command-line interface to the
-instruction. Here we have used it to tell ASR that the two arguments
-of our instruction is to be interpreted as arguments on the command
-line (:func:`asr.option` serves the sames purpose but for command line
-options in stead).
+In this example, we have created a file `tutorial.py` in the `asr/`
+package-folder containing an instruction for calculating the total energy of a
+bulk metal in a given crystal structure using the effective medium theory (EMT)
+calculator. The :func:`asr.argument` helps ASR to construct a command-line
+interface to the instruction. Here we have used it to tell ASR that the two
+arguments of our instruction is to be interpreted as arguments on the command
+line (:func:`asr.option` serves the sames purpose but for command-line options
+in stead).
 
-The instruction is then easily run through the command-line interface
+The instruction can be run through the `asr run` command-line interface
 
 .. code-block:: console
 
@@ -59,11 +60,16 @@ The instruction is then easily run through the command-line interface
    In folder: . (1/1)
    Running asr.tutorial:energy(element='Ag', crystal_structure='fcc')
 
+As shown in this example, the instruction is assigned a name which is
+constructed from filename of the containing file, the python package containing
+that file and the function name, in this case amounting to
+"asr.tutorial:energy". The arguments for the instruction is given along with
+the instruction name enclosed in quotes.
 
 The cache
 =========
 
-Whenever an instruction has been run ASR generates a
+Whenever an instruction has been run ASR generates an
 :py:class:`asr.Record` containing contextual information about the
 run, such as the name of the instruction, the parameters and the
 result. The Record is stored in the "Cache" which is a kind of
@@ -118,11 +124,11 @@ couple of these:
    uniquely select records.  The Record provides a shortcut to the UID
    through :attr:`asr.Record.uid`.
  - The `run_specification.name` property stores the name of the instruction.
-   The Record provides a shortcut to the name through `Record.name`.
+   The Record provides a shortcut to the name through :attr:`Record.name`.
  - The `run_specification.parameters` stores the parameters of the
    given run. The Record object provides a shortcut the parameters
-   through `Record.parameters`.
- - The `result` property stores the result of the instruction.
+   through :attr:`Record.parameters`.
+ - The :attr:`result` property stores the result of the instruction.
 
 An important feature of ASR is that of "caching". If we run
 the instruction again with the same input parameters ASR will skip the
@@ -146,12 +152,12 @@ structures and finds the most stable one
 
 .. literalinclude:: getting-started.py
    :pyobject: main
+   :caption: asr/tutorial.py
 
-
-We say that the python modules which contains our two
+We say that the python module which contains our two
 instructions is a "recipe", ie. a collection of collection of
 instructions that achieve our goal. The "main"-instruction is the
-primary user interface to our recipe and as such it is not necesarry
+primary user interface to our recipe and as such it is not necessary
 to state so explicitly when running the main-instruction.
 
 .. code-block:: console
@@ -215,11 +221,12 @@ Let's also look at the detailed contents of this record
     version=0
    tags=None
 
-Here we want to highlight `asr.Record.dependencies` which stores any
-dependencies of the selected record on any other records, ie., whether
-data from any other records has been used in the construction of the
-selected record. A dependency stores the UID and something called the
-`revision` which can be used to locate the dependencies.
+Here we want to highlight :attr:`asr.Record.dependencies` which stores any
+dependencies of the selected record on any other records, ie., whether data
+from any other records has been used in the construction of the selected
+record. A dependency stores the UID and something called the `revision` (we
+will get back to this concept later) which can be used to locate the
+dependencies.
 
 Let's continue and calculate the most stable crystal structures for
 various other metals
@@ -285,7 +292,7 @@ We can now take a look at the results with
 
 From which we can see that the EMT calculator predicts the FCC crystal
 structure to be the most stable crystal structure for all tested
-metals which is true in reality as well.
+metals which is also true in reality.
 
 =====================================
 Getting started - part 2 - migrations
@@ -296,15 +303,16 @@ Getting started - part 2 - migrations
 
 It often happens that you want/have to make changes to an existing instruction.
 For example, you want to add an additional argument, change the return type of
-the result, change the implementation which requires thinking about what should
-happen to existing Records in the cache. This is what "migrations" are for.
+the result or change the implementation which requires thinking about what
+should happen to existing Records in the cache. This is what "migrations" are
+for.
 
 ASR implements a revisioning system for Records for handling this
 problem which revolves around defining functions for updating existing
 records to be compatible with the newest implementation of the
 instructions.
 
-In the following we will continue with the example of calculating the
+In the following, we will continue with the example of calculating the
 most stable crystal structure. It would be interesting to compare some
 of ASE's other calculators. However, at the moment, the `energy`
 instruction is hardcoded to use the EMT calculator and we will have to
@@ -312,6 +320,7 @@ update the instruction to supply the calculator as an input argument
 
 .. literalinclude:: getting-started-ver2.py
    :pyobject: energy
+   :caption: asr/tutorial.py
 
 To update the existing records to be consistent with the new
 implementation we make a migration that adds the `calculator`
@@ -319,13 +328,14 @@ parameter to the existing records and sets it to `emt`
 
 .. literalinclude:: getting-started-ver2.py
    :pyobject: add_missing_calculator_parameter
+   :caption: asr/tutorial.py
 
 As is appararent, a migration is nothing more than a regular python
 function decorated with the :py:func:`asr.migration` decorator. The
 decorator takes a `selector` argument which is used to select records
 to be migrated. The selector will be applied to all existing records
 and should return a boolean. The function will then be applied for all
-record that fulfill the selector criterion.
+records that fulfill the selector criterion.
 
 The migrations can be applied through the CLI
 
@@ -340,7 +350,7 @@ The migrations can be applied through the CLI
 
 To apply the migrations we do
 
-..  code-block:: console
+.. code-block:: console
 
    $ asr cache migrate --apply
    There are 35 unapplied migrations, 0 erroneous migrations and 0 records are up to date.
@@ -416,8 +426,24 @@ To apply the migrations we do
    record.uid=8017e43bc37d4301a04d4ad0c61e17a3
    Revision #0 Fix old records that are missing calculator='emt'. (New attribute=.run_specification.parameters.calculator value=emt)
 
-The output informs us of the changes made to the existing records. We
-can now run our updated instructions employing other calculators.
+The output informs us of the changes made to the existing records, in
+particular that the parameters have been updated with a new calculator
+attribute named EMT. ASR does this by comparing the input and output record of
+the migration and translates this into to a list of actual changes. This makes
+it possible to revert these changes in case of errors. Let's look at the
+details of one of the updated records
+
+.. code-block:: console
+
+   $ asr cache detail name=asr.tutorial:energy element=Ag
+
+
+
+We can now
+run our updated instructions employing other calculators. Here we will
+investigate the results when using the Lennard-Jones calculator identified as
+"lj" according to ASE.
+
 
 .. code-block:: console
 
