@@ -11,6 +11,7 @@ from asr.core import (  # noqa
     atomsopt,
     calcopt,
     instruction,
+    Record,
 )
 
 matchers = comparators

@@ -514,7 +514,8 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
 
     if apply:
         for record_migration in record_migrations:
-            print(f'Apply migration: {record_migration}')
+            print(record_migration)
+            print()
             record_migration.apply(cache)
 
 
@@ -595,11 +596,9 @@ def ls(selection, formatting, sort, width, include_migrated):
 
 @cache.command()
 @click.argument('selection', required=False, nargs=-1)
-@click.option('-i', '--include-migrated', is_flag=True,
-              help='Also include migrated records.')
 @click.option('-z', '--dry-run', is_flag=True,
               help='Print what will happen without doing anything.')
-def rm(selection, include_migrated, dry_run):
+def rm(selection, dry_run):
     """Remove records from cache."""
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
@@ -616,6 +615,18 @@ def rm(selection, include_migrated, dry_run):
         print(f'Would delete {len(records)} record(s).')
     else:
         print(f'Deleted {len(records)} record(s).')
+
+
+@cache.command()
+@click.argument('selection', required=False, nargs=-1)
+def detail(selection):
+    """Detail records."""
+    cache = get_cache()
+    selector = make_selector_from_selection(cache, selection)
+
+    records = cache.select(selector=selector)
+    for record in records:
+        print(str(record))
 
 
 def draw_plotly_graph(G):

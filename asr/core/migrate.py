@@ -1,4 +1,5 @@
 """Implements record migration functionality."""
+import textwrap
 import abc
 import copy
 import typing
@@ -288,7 +289,13 @@ class Revision:
         return record
 
     def __str__(self):
-        return f'"{self.description}"\n{self.modification}'
+        lines = []
+        for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
+            value = str(value)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
+            lines.append(f'{key}={value}')
+        return '\n'.join(lines)
 
 
 @dataclass
@@ -307,6 +314,15 @@ class RevisionHistory(History):
             return None
         latest_revision = self.history[-1]
         return latest_revision
+
+    def __str__(self):
+        lines = [f'latest_revision={self.latest_revision.uid}']
+        for revision in self.history:
+            value = str(revision)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
+            lines.append(f'revision={value}')
+        return '\n'.join(lines)
 
 
 @dataclass
@@ -366,6 +382,9 @@ class SelectorMigrationGenerator(MakeMigrations):
         else:
             return []
 
+    def __hash__(self):
+        return hash(id(self))
+
 
 @dataclass
 class GeneralMigrationGenerator(MakeMigrations):
@@ -386,7 +405,10 @@ class CollectionMigrationGenerator(MakeMigrations):
     migration_generators: typing.List[MakeMigrations]
 
     def extend(self, migration_generators: typing.List[MakeMigrations]):
-        self.migration_generators = self.migration_generators + migration_generators
+        self.migration_generators = (
+            self.migration_generators
+            + list(migration_generators)
+        )
 
     def make_migrations(self, record: Record) -> typing.List[Migration]:
         migrations = [
@@ -425,13 +447,10 @@ class RecordMigration:
     def __str__(self):
         nrev = len(self.revisions)
         nerr = len(self.errors)
-        items = [
-            f'UID=#{self.initial_record.uid} '
-            f'name={self.initial_record.name}',
-            f'Number of revisions={nrev}. ',
-            f'Number of erroneous migrations={nerr}.',
-        ]
 
+        items = [
+            f'record.uid={self.initial_record.uid}',
+        ]
         if nrev:
             revisions_string = '\n'.join([
                 f'Revision #{i} {revision}'
@@ -487,12 +506,10 @@ def migrate_record(
 
 def get_instruction_migration_generator() -> CollectionMigrationGenerator:
     """Collect record migrations from all recipes."""
-    recipes = get_recipes()
+    # Import all recipes to make sure that migrations are registered
+    get_recipes()
     migrations = CollectionMigrationGenerator(migration_generators=[])
-    for recipe in recipes:
-        if recipe.migrations:
-            migrations.extend(recipe.migrations)
-
+    migrations.extend(get_migrations())
     return migrations
 
 
@@ -569,8 +586,23 @@ def migration(
             description=desc,
             eagerness=eagerness,
         )
-        return SelectorMigrationGenerator(migration=migration, selector=selector)
+        mig = SelectorMigrationGenerator(migration=migration, selector=selector)
+        register_migration(mig)
+        return mig
 
     if function is not None:
-        return wrap(function)
-    return wrap
+        migration = wrap(function)
+    else:
+        migration = wrap
+    return migration
+
+
+MIGRATIONS = set()
+
+
+def register_migration(migration) -> None:
+    MIGRATIONS.add(migration)
+
+
+def get_migrations() -> set:
+    return MIGRATIONS

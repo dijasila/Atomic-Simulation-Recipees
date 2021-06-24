@@ -2,6 +2,7 @@
 from __future__ import annotations
 import numpy as np
 
+import textwrap
 import typing
 import copy
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from .specification import RunSpecification
 from .resources import Resources
 from .metadata import Metadata
 from .history import History
+from .dependencies import Dependencies
 
 # XXX: Make Tags object.
 
@@ -19,7 +21,7 @@ class Record:
     result: typing.Optional[typing.Any] = None
     run_specification: typing.Optional[RunSpecification] = None
     resources: typing.Optional[Resources] = None
-    dependencies: typing.Optional[typing.List[str]] = None
+    dependencies: typing.Optional[Dependencies] = None
     history: typing.Optional[History] = None
     tags: typing.Optional[typing.List[str]] = None
     metadata: typing.Optional[Metadata] = None
@@ -59,6 +61,15 @@ class Record:
         return Record(**data)
 
     def __str__(self):
+        lines = []
+        for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
+            value = str(value)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
+            lines.append(f'{key}={value}')
+        return '\n'.join(lines)
+
+    def __repr__(self):
         strings = []
         for name, value in self.__dict__.items():
             if name == 'result':
@@ -69,9 +80,6 @@ class Record:
             if value is not None:
                 strings.append('='.join([str(name), str(value)]))
         return 'Record(' + ', '.join(strings) + ')'
-
-    def __repr__(self):
-        return self.__str__()
 
     def __eq__(self, other):
         if not isinstance(other, Record):
