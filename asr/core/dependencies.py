@@ -51,7 +51,7 @@ class Dependency:
 @dataclasses.dataclass
 class Dependencies:
 
-    deps: list[Dependency] = dataclasses.field(default_factory=list)
+    deps: typing.List[Dependency] = dataclasses.field(default_factory=list)
 
     def __str__(self):
         lines = []
