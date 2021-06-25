@@ -941,31 +941,30 @@ def totree(
 
     For all these examples, suppose you have a database named "database.db".
 
-    Unpack database using default parameters:
+    Unpack database using default parameters::
 
       $ asr database totree database.db --run"
 
-    Don't actually unpack the database but do a dry-run:
+    Don't actually unpack the database but do a dry-run::
 
       $ asr database main database.totree database.db"
 
-    Only select a part of the database to unpack:
+    Only select a part of the database to unpack::
 
       $ asr database totree database.db --selection "natoms<3" --run
 
-    Set custom folder tree-structure:
+    Set custom folder tree-structure::
 
       $ asr database totree database.db \
 --tree-structure "tree/{stoi}/{spg}/{formula:metal}" --run
 
     Divide the tree into 2 chunks (in case the study of the materials
     is divided between 2 people). Also sort after number of atoms,
-    so computationally expensive materials are divided evenly:
+    so computationally expensive materials are divided evenly::
 
       $ asr database totree database.db --sort natoms --chunks 2 --run
 
     """
-
     from asr.database.totree import main as totree
 
     totree(
