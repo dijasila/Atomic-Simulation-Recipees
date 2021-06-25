@@ -51,5 +51,6 @@ def prepare_output_for_comparison(output):
         line, *_ = line.split('created')
         line, *_ = line.split('modified')
         line, *_ = line.split('latest_revision')
+        line, *_ = line.split('version=')
         new_output.append(line)
     return new_output
