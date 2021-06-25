@@ -997,6 +997,7 @@ def totree(
         update_tree=update_tree,
     )
 
+
 @database.command()
 @click.argument("databases", nargs=-1, type=str)
 @click.option("--host", help="Host address.", type=str, default='0.0.0.0')
