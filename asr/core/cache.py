@@ -133,6 +133,26 @@ class FileCacheBackend():
                 return True
         return False
 
+    def _immediate_dependencies(self, record):
+        # XXX We should probably get a O(1) __contains__ method
+        # XXX record == record2 seems to fail with an error
+        assert record.uid == self.get_record_from_uid(record.uid).uid
+        for dep in record.dependencies:
+            yield self.get_record_from_uid(dep.uid)
+
+    def _all_dependencies_with_duplicates(self, record):
+        for dep_record in self._immediate_dependencies(record):
+            yield dep_record
+            yield from self._all_dependencies_with_duplicates(dep_record)
+
+    def recurse_dependencies(self, record):
+        found = {record.uid}
+        for dep_record in self._all_dependencies_with_duplicates(record):
+            uid = dep_record.uid
+            if uid not in found:
+                found.add(uid)
+                yield dep_record
+
     def get_record_from_uid(self, run_uid):
         path = self.uid_table[run_uid]
         serialized_object = self._read_file(path)

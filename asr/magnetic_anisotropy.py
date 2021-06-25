@@ -1,4 +1,5 @@
 """Magnetic anisotropy."""
+import numpy as np
 from ase import Atoms
 import asr
 from asr.core import (command, ASRResult, prepare_result,
@@ -8,11 +9,38 @@ from asr.database.browser import (
     table, make_panel_description, describe_entry, href)
 from math import pi
 
+
+# We don't have mathjax I think, so we should probably use either html
+# or unicode.  But z does not exist as unicode superscript, so we mostly
+# use html for sub/superscripts.
+def equation():
+    i = '<sub>i</sub>'
+    j = '<sub>j</sub>'
+    z = '<sup>z</sup>'
+    return (f'E{i} = '
+            f'−1/2 J ∑{j} S{i} S{j} '
+            f'− 1/2 B ∑{j} S{i}{z} S{j}{z} '
+            f'− A S{i}{z} S{i}{z}')
+
+
+# This panel description actually assumes that we also have results for the
+# exchange recipe.
+
 panel_description = make_panel_description(
     """
-Electronic properties derived from a ground state density functional theory
-calculation.
-""",
+Heisenberg parameters, magnetic anisotropy and local magnetic
+moments. The Heisenberg parameters were calculated assuming that the
+magnetic energy of atom i can be represented as
+
+  {equation},
+
+where J is the exchange coupling, B is anisotropic exchange, A is
+single-ion anisotropy and the sums run over nearest neighbours. The
+magnetic anisotropy was obtained from non-selfconsistent spin-orbit
+calculations where the exchange-correlation magnetic field from a
+scalar calculation was aligned with the x, y and z directions.
+
+""".format(equation=equation()),
     articles=[
         'C2DB',
         href("""D. Torelli et al. High throughput computational screening for 2D
@@ -41,7 +69,6 @@ def get_spin_index(atoms, calculator):
 
 
 def spin_axis(theta, phi):
-    import numpy as np
     if theta == 0:
         return 'z'
     elif np.allclose(phi, 90):
@@ -50,27 +77,22 @@ def spin_axis(theta, phi):
         return 'x'
 
 
-def webpanel(result, row, key_descriptions):
-    if row.get('magstate', 'NM') == 'NM':
+def webpanel(result, context):
+    magstate = context.magstate().result
+    if magstate['magstate'] == 'NM':
         return []
 
-    magtable = table(row, 'Property',
+    magtable = table(result, 'Property',
                      ['magstate', 'magmom',
-                      'dE_zx', 'dE_zy'], kd=key_descriptions)
-
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
+                      'dE_zx', 'dE_zy'], kd=context.descriptions)
 
     panel = {'title':
              describe_entry(
-                 f'Basic magnetic properties ({xcname})',
+                 f'Basic magnetic properties ({context.xcname})',
                  panel_description),
              'columns': [[magtable], []],
              'sort': 11}
     return [panel]
-
-
-params = '''asr.gs@calculate:calculator +{'mode':'lcao','kpts':(2,2,2)}'''
 
 
 @prepare_result
@@ -98,7 +120,7 @@ class Result(ASRResult):
         "Magnetic anisotropy energy between y and z axis [meV/unit cell]"
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
 @command('asr.magnetic_anisotropy')

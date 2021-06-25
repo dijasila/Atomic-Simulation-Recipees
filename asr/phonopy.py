@@ -179,10 +179,11 @@ def requires():
     return ["results-asr.phonopy@calculate.json"]
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.database.browser import table, fig
 
-    phonontable = table(row, "Property", ["minhessianeig"], key_descriptions)
+    phonontable = table(result, "Property", ["minhessianeig"],
+                        context.descriptions)
 
     panel = {
         "title": "Phonon bandstructure",
@@ -193,11 +194,11 @@ def webpanel(result, row, key_descriptions):
         "sort": 3,
     }
 
-    dynstab = row.get("dynamic_stability_level")
+    dynstab = result['dynamic_stability_level']
     stabilities = {1: "low", 2: "medium", 3: "high"}
-    high = "Minimum eigenvalue of Hessian > -0.01 meV/Ang^2 AND elastic const. > 0"
-    medium = "Minimum eigenvalue of Hessian > -2 eV/Ang^2 AND elastic const. > 0"
-    low = "Minimum eigenvalue of Hessian < -2 eV/Ang^2 OR elastic const. < 0"
+    high = "Minimum eigenvalue of Hessian > -0.01 meV/Å² AND elastic const. > 0"
+    medium = "Minimum eigenvalue of Hessian > -2 eV/Å² AND elastic const. > 0"
+    low = "Minimum eigenvalue of Hessian < -2 eV/Å² OR elastic const. < 0"
     row = [
         "Phonons",
         '<a href="#" data-toggle="tooltip" data-html="true" '
@@ -235,7 +236,7 @@ class Result(ASRResult):
 
     key_descriptions = {
         "omega_kl": "Phonon frequencies.",
-        "minhessianeig": "Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "minhessianeig": "Minimum eigenvalue of Hessian [`eV/Å²`]",
         "eigs_kl": "Dynamical matrix eigenvalues.",
         "q_qc": "List of momenta consistent with supercell.",
         "phi_anv": "Force constants.",
@@ -245,7 +246,7 @@ class Result(ASRResult):
         "dynamic_stability_level": "Phonon dynamic stability (1,2,3)",
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command(
@@ -407,13 +408,10 @@ def main(
     return Result(results)
 
 
-def plot_phonons(row, fname):
+def plot_phonons(context, fname):
     import matplotlib.pyplot as plt
 
-    data = row.data.get("results-asr.phonopy.json")
-    if data is None:
-        return
-
+    data = context.get_record('asr.phonopy').result
     omega_kl = data["omega_kl"]
     gamma = omega_kl[0]
     fig = plt.figure(figsize=(6.4, 3.9))
@@ -437,11 +435,11 @@ def plot_phonons(row, fname):
     plt.close()
 
 
-def plot_bandstructure(row, fname):
+def plot_bandstructure(context, fname):
     from matplotlib import pyplot as plt
     from ase.spectrum.band_structure import BandStructure
 
-    data = row.data.get("results-asr.phonopy.json")
+    data = context.get_record('asr.phonopy').result
     path = data["path"]
     energies = data["omega_kl"]
     bs = BandStructure(path=path, energies=energies[None, :, :], reference=0)

@@ -67,7 +67,6 @@ def remove_initial_and_final_parameters(record):
 
 @command(
     'asr.setup.reduce',
-    migrations=[remove_initial_and_final_parameters],
 )
 @atomsopt(default='start.json')
 def main(atoms: Atoms) -> Atoms:

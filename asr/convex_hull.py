@@ -1,7 +1,6 @@
 """Convex hull stability analysis."""
 from collections import Counter
 from typing import List, Dict, Any, Optional
-import functools
 
 import asr
 from asr.core import (
@@ -54,24 +53,23 @@ phase of the constituent elements at T=0 K.""",
 )
 
 
-def webpanel(result, row, key_descriptions):
-    hulltable1 = table(row,
+def webpanel(result, context):
+    hulltable1 = table(result,
                        'Stability',
                        ['hform', 'ehull'],
-                       key_descriptions)
-    hulltables = convex_hull_tables(row)
+                       context.descriptions)
+    hulltables = convex_hull_tables(context.record)
     panel = {
         'title': describe_entry(
             'Thermodynamic stability', panel_description),
         'columns': [[fig('convex-hull.png')],
                     [hulltable1] + hulltables],
-        'plot_descriptions': [{'function':
-                               functools.partial(plot, thisrow=row),
+        'plot_descriptions': [{'function': plot,
                                'filenames': ['convex-hull.png']}],
         'sort': 1,
     }
 
-    thermostab = row.get('thermodynamic_stability_level')
+    thermostab = result['thermodynamic_stability_level']
 
     stability_texts = [
         [stability_names[stab], stability_descriptions[stab]]
@@ -114,7 +112,7 @@ class Result(ASRResult):
         "coefs": "Fraction of decomposing references (see indices doc).",
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 def convert_database_strings_to_files(parameters):
@@ -147,7 +145,6 @@ def convert_database_parameter_to_file(record):
 @command('asr.convex_hull',
          argument_hooks=[set_calculator_hook,
                          convert_database_strings_to_files],
-         migrations=[convert_database_parameter_to_file],
          )
 @atomsopt
 @calcopt
@@ -303,10 +300,9 @@ MEDIUM = 2
 HIGH = 3
 stability_names = {LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH'}
 stability_descriptions = {
-    LOW: 'Heat of formation < convex hull + 0.2 eV/atom',
+    LOW: 'Heat of formation > 0.2 eV/atom',
     MEDIUM: 'convex hull + 0.2 eV/atom < Heat of formation < 0.2 eV/atom',
-    HIGH: 'Heat of formation > 0.2 eV/atom',
-}
+    HIGH: 'Heat of formation < convex hull + 0.2 eV/atom'}
 
 
 def stability_rating(hform, ehull):
@@ -382,24 +378,25 @@ class ObjectHandler:
         return patch
 
 
-def plot(row, fname, thisrow):
+def plot(context, fname):
     from ase.phasediagram import PhaseDiagram
     import matplotlib.pyplot as plt
 
-    data = row.data['results-asr.convex_hull.json']
+    data = context.result
+    atoms = context.atoms
 
-    count = row.count_atoms()
-    if not (2 <= len(count) <= 3):
+    nspecies = len(atoms.symbols.species())
+    if not (2 <= nspecies <= 3):
         return
 
     references = data['references']
     thisreference = {
-        'hform': thisrow.hform,
-        'formula': thisrow.formula,
-        'uid': thisrow.uid,
-        'natoms': thisrow.natoms,
+        'hform': data['hform'],
+        'formula': str(atoms.symbols),
+        'uid': context.record.uid,
+        'natoms': len(atoms),
         'legend': None,
-        'label': thisrow.formula,
+        'label': str(atoms.symbols),
         'size': 1,
     }
     pdrefs = []
@@ -444,7 +441,7 @@ def plot(row, fname, thisrow):
 
     hull_energies = get_hull_energies(pd)
 
-    if len(count) == 2:
+    if nspecies == 2:
         x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
         hull = np.array(hull_energies) < 0.05
         edgecolors = np.array(['C2' if hull_energy < 0.05 else 'C3'
@@ -453,7 +450,7 @@ def plot(row, fname, thisrow):
             ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
         s = np.array(sizes)
-        if row.hform < 0:
+        if data['hform'] < 0:
             mask = e < 0.05
             e = e[mask]
             x = x[mask]
@@ -534,7 +531,7 @@ def plot(row, fname, thisrow):
         )
 
         printed_names = set()
-        thisformula = Formula(thisrow.formula)
+        thisformula = atoms.symbols.formula
         thisname = format(thisformula, 'latex')
         comps = thisformula.count().keys()
         for a, b, name, on_hull, hull_energy in zip(
@@ -560,10 +557,11 @@ def plot(row, fname, thisrow):
     plt.close()
 
 
-def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
-    data = row.data['results-asr.convex_hull.json']
+def convex_hull_tables(record) -> List[Dict[str, Any]]:
+    data = record.result
 
-    references = data.get('references', [])
+    # XXX What about these references?
+    references = data['references']
     tables = {}
     for reference in references:
         tables[reference['title']] = []
@@ -572,7 +570,7 @@ def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
                             key=lambda x: x['hform']):
         name = reference['name']
         matlink = reference['link']
-        if reference['uid'] != row.uid:
+        if reference['uid'] != record.uid:
             name = f'<a href="{matlink}">{name}</a>'
         e = reference['hform']
         tables[reference['title']].append([name, '{:.2f} eV/atom'.format(e)])

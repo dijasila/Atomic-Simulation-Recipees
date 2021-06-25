@@ -60,14 +60,16 @@ def get_voigt_labels(pbc: typing.List[bool]):
     return list(itertools.compress(all_voigt_labels, mask))
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
 
-    piezodata = row.data['results-asr.piezoelectrictensor.json']
+    piezodata = result  # row.data['results-asr.piezoelectrictensor.json']
     e_vvv = piezodata['eps_vvv']
     e0_vvv = piezodata['eps_clamped_vvv']
 
-    voigt_indices = get_voigt_indices(row.pbc)
-    voigt_labels = get_voigt_labels(row.pbc)
+    pbc = context.atoms.pbc
+
+    voigt_indices = get_voigt_indices(pbc)
+    voigt_labels = get_voigt_labels(pbc)
 
     e_ij = e_vvv[:,
                  voigt_indices[0],
@@ -104,7 +106,7 @@ class Result(ASRResult):
 
     key_descriptions = {'eps_vvv': 'Piezoelectric tensor.',
                         'eps_clamped_vvv': 'Piezoelectric tensor.'}
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 def convert_density_to_size(parameters):
@@ -148,7 +150,6 @@ def add_relaxcalculator_parameter(record):
 @command(
     module="asr.piezoelectrictensor",
     argument_hooks=[convert_density_to_size],
-    migrations=[add_relaxcalculator_parameter],
 )
 @atomsopt
 @option('--strain-percent', help='Strain fraction.', type=float)

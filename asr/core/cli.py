@@ -11,7 +11,7 @@ import traceback
 from typing import Union, Dict, Any, List, Tuple
 import asr
 from asr.core import (
-    chdir, ASRCommand, DictStr, set_defaults, get_cache, CommaStr,
+    chdir, ASRCommand, ASRResult, DictStr, set_defaults, get_cache, CommaStr,
     get_recipes,
 )
 import click
@@ -514,7 +514,8 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
 
     if apply:
         for record_migration in record_migrations:
-            print(f'Apply migration: {record_migration}')
+            print(record_migration)
+            print()
             record_migration.apply(cache)
 
 
@@ -595,11 +596,9 @@ def ls(selection, formatting, sort, width, include_migrated):
 
 @cache.command()
 @click.argument('selection', required=False, nargs=-1)
-@click.option('-i', '--include-migrated', is_flag=True,
-              help='Also include migrated records.')
 @click.option('-z', '--dry-run', is_flag=True,
               help='Print what will happen without doing anything.')
-def rm(selection, include_migrated, dry_run):
+def rm(selection, dry_run):
     """Remove records from cache."""
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
@@ -616,6 +615,18 @@ def rm(selection, include_migrated, dry_run):
         print(f'Would delete {len(records)} record(s).')
     else:
         print(f'Deleted {len(records)} record(s).')
+
+
+@cache.command()
+@click.argument('selection', required=False, nargs=-1)
+def detail(selection):
+    """Detail records."""
+    cache = get_cache()
+    selector = make_selector_from_selection(cache, selection)
+
+    records = cache.select(selector=selector)
+    for record in records:
+        print(str(record))
 
 
 def draw_plotly_graph(G):
@@ -772,6 +783,34 @@ def graph(draw=False, labels=False, saveto=None):
             print(node, '<-', graph[node])
 
 
+def make_panels(record):
+    from asr.core.material import (get_row_from_folder,
+                                   new_make_panel_figures,
+                                   make_panel_figures)
+    from asr.core.datacontext import DataContext
+    result = record.result
+    formats = result.get_formats()
+
+    if 'webpanel2' in formats:
+        row = get_row_from_folder('.')  # XXX remove
+        context = DataContext(row, record)
+        panels = result.format_as('webpanel2', context)
+        new_make_panel_figures(context, panels, uid=record.uid[:10])
+    elif 'ase_webpanel' in formats:
+        row = get_row_from_folder('.')
+        panels = result.format_as('ase_webpanel', row,
+                                  DataContext.descriptions)
+        make_panel_figures(row, panels, uid=record.uid[:10])
+    else:
+        panels = []
+
+    return panels
+
+
+class BadResults(Exception):
+    pass
+
+
 @cli.command()
 @click.argument('selection', required=False, nargs=-1)
 @click.option('--show/--dont-show', default=True, is_flag=True,
@@ -784,27 +823,26 @@ def results(selection, show):
 
     """
     from matplotlib import pyplot as plt
-    from asr.core.material import (get_row_from_folder,
-                                   make_panel_figures)
+
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
     records = cache.select(selector=selector)
 
     assert records, 'No matching records!'
 
-    from asr.database.app import create_key_descriptions
-    kd = create_key_descriptions()
-
     for record in records:
-        result = record.result
-        if 'ase_webpanel' not in result.get_formats():
-            print(f'{result} does not have any results to present!')
+        if not isinstance(record.result, ASRResult):
             continue
-        row = get_row_from_folder('.')
-        panels = result.format_as('ase_webpanel', row, kd)
-        make_panel_figures(row, panels, uid=record.uid[:10])
 
-        print('panels', panels)
+        try:
+            panels = make_panels(record)
+        except Exception as ex:
+            raise BadResults(record) from ex
+
+        if not panels:
+            print(f'{record.result} does not have any results to present!')
+        else:
+            print('panels', panels)
 
     if show:
         plt.show()

@@ -4,7 +4,6 @@ Deprecated: Please use the more efficient and optimized asr.phonopy
 recipe for calculating phonon properties instead.
 
 """
-from pathlib import Path
 import typing
 
 import numpy as np
@@ -17,13 +16,13 @@ from ase import Atoms
 import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, AtomsFile,
-    make_migration_generator, Selector,
+    Selector,
 )
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
 
 from asr.magstate import main as magstate
-from asr.core import ExternalFile
+
 
 panel_description = make_panel_description(
     """
@@ -40,10 +39,9 @@ indicates a dynamical instability.
 
 @prepare_result
 class CalculateResult(ASRResult):
+    forces: typing.Dict
 
-    forcefiles: typing.List[ExternalFile]
-
-    key_descriptions = {'forcefiles': 'Pickle files containing forces.'}
+    key_descriptions = {'forces': 'Forces.'}
 
 
 @command(
@@ -72,12 +70,7 @@ def calculate(
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import construct_calculator
-    # Remove empty files:
-    if world.rank == 0:
-        for f in Path().glob('phonon.*.pckl'):
-            if f.stat().st_size == 0:
-                f.unlink()
-    world.barrier()
+    # XXX Here we should purge the cache
 
     # Set initial magnetic moments
     magstateres = magstate(atoms=atoms, calculator=calculator)
@@ -99,16 +92,16 @@ def calculate(
     elif nd == 1:
         supercell = (n, 1, 1)
 
-    p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
-    p.run()
+    phonons = Phonons(atoms=atoms, calc=calc, supercell=supercell)
+    phonons.run()
 
-    forcefiles = [ExternalFile.fromstr(str(filename))
-                  for filename in Path().glob('phonon.*.pckl')]
-    return CalculateResult.fromdata(forcefiles=forcefiles)
+    forces = dict(phonons.cache)
+    return CalculateResult.fromdata(forces=forces)
 
 
-def webpanel(result, row, key_descriptions):
-    phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
+def webpanel(result, context):
+    phonontable = table(result, 'Property', ['minhessianeig'],
+                        context.descriptions)
 
     panel = {'title': describe_entry('Phonons', panel_description),
              'columns': [[fig('phonon_bs.png')], [phonontable]],
@@ -116,10 +109,10 @@ def webpanel(result, row, key_descriptions):
                                     'filenames': ['phonon_bs.png']}],
              'sort': 3}
 
-    dynstab = row.get('dynamic_stability_phonons')
+    dynstab = result['dynamic_stability_phonons']
 
-    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Ang<sup>2</sup>'
-    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Ang<sup>2</sup>'
+    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Å²'
+    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Å²'
 
     row = [
         describe_entry(
@@ -156,7 +149,7 @@ class Result(ASRResult):
     interp_freqs_kl: typing.List[typing.List[float]]
 
     key_descriptions = {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
         "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
         "q_qc": "List of momenta consistent with supercell.",
         "omega_kl": "Phonon frequencies.",
@@ -164,11 +157,17 @@ class Result(ASRResult):
         "interp_freqs_kl": "Interpolated phonon frequencies.",
         "path": "Interpolated phonon bandstructure path.",
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
+sel = Selector()
+sel.name = sel.OR(sel.EQ('asr.phonons:main'), sel.EQ('asr.phonons:calculate'))
+sel.version = sel.EQ(-1)
+
+
+@asr.migration(selector=sel)
 def construct_calculator_from_old_parameters(record):
-
+    """Construct calculator from old parameters."""
     params = record.parameters
     if 'calculator' in params:
         return record
@@ -206,21 +205,8 @@ def construct_calculator_from_old_parameters(record):
     return record
 
 
-sel = Selector()
-sel.name = sel.OR(sel.EQ('asr.phonons:main'), sel.EQ('asr.phonons:calculate'))
-sel.version = sel.EQ(-1)
-
-make_migrations = make_migration_generator(
-    selector=sel,
-    function=construct_calculator_from_old_parameters,
-    description='Construct calculator from old parameters.',
-    uid='1dd9655e96114de4abd81d223575080d',
-)
-
-
 @command(
     'asr.phonons',
-    migrations=[make_migrations],
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
@@ -247,8 +233,6 @@ def main(
         mingo: bool = True,
 ) -> Result:
     calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
-    for extfile in calculateresult.forcefiles:
-        extfile.restore()
     nd = sum(atoms.get_pbc())
     if nd == 3:
         supercell = (n, n, n)
@@ -256,14 +240,17 @@ def main(
         supercell = (n, n, 1)
     elif nd == 1:
         supercell = (n, 1, 1)
-    p = Phonons(atoms=atoms, supercell=supercell)
-    p.read(symmetrize=0)
+    phonons = Phonons(atoms=atoms, supercell=supercell)
+    if world.rank == 0:
+        phonons.cache.update(calculateresult.forces)
+    world.barrier()
+    phonons.read(symmetrize=0)
 
     if mingo:
         # We correct the force constant matrix and
         # dynamical matrix
-        C_N = mingocorrection(p.C_N, atoms, supercell)
-        p.C_N = C_N
+        C_N = mingocorrection(phonons.C_N, atoms, supercell)
+        phonons.C_N = C_N
 
         # Calculate dynamical matrix
         D_N = C_N.copy()
@@ -272,18 +259,19 @@ def main(
         M_inv = np.outer(m_inv_x, m_inv_x)
         for D in D_N:
             D *= M_inv
-            p.D_N = D_N
+            phonons.D_N = D_N
 
     # First calculate the exactly known q-points
-    q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
-    out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
+    N_c = phonons.supercell
+    q_qc = np.indices(N_c).reshape(3, -1).T / N_c
+    out = phonons.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
 
-    R_cN = p.lattice_vectors()
+    R_cN = phonons.compute_lattice_vectors()
     eigs = []
     for q_c in q_qc:
         phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
-        C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * p.C_N, axis=0)
+        C_q = np.sum(phase_N[:, np.newaxis, np.newaxis] * phonons.C_N, axis=0)
         eigs.append(np.linalg.eigvalsh(C_q))
 
     eigs = np.array(eigs)
@@ -296,8 +284,8 @@ def main(
 
     # Next calculate an approximate phonon band structure
     path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)
-    freqs_kl = p.band_structure(path.kpts, modes=False, born=False,
-                                verbose=False)
+    freqs_kl = phonons.band_structure(path.kpts, modes=False, born=False,
+                                      verbose=False)
 
     return Result.fromdata(
         omega_kl=omega_kl,
@@ -337,10 +325,11 @@ def plot_phonons(row, fname):
     plt.close()
 
 
-def plot_bandstructure(row, fname):
+def plot_bandstructure(context, fname):
     from matplotlib import pyplot as plt
     from ase.spectrum.band_structure import BandStructure
-    data = row.data.get('results-asr.phonons.json')
+    data = context.result
+
     path = data['path']
     energies = data['interp_freqs_kl'] * 1e3
     exact_indices = []

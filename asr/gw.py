@@ -50,14 +50,14 @@ arXiv:2009.00314""",
     summary_sort = 12
 
     @staticmethod
-    def plot_bs(row, filename):
+    def plot_bs(context, filename):
         from asr.hse import plot_bs
-        data = row.data['results-asr.gw.json']
-        return plot_bs(row, filename=filename, bs_label='G₀W₀',
-                       data=data,
-                       efermi=data['efermi_gw_soc'],
-                       cbm=row.get('cbm_gw'),
-                       vbm=row.get('vbm_gw'))
+        result = context.result
+        return plot_bs(context, filename=filename, bs_label='G₀W₀',
+                       data=result,
+                       efermi=result['efermi_gw_soc'],
+                       cbm=result['cbm_gw'],
+                       vbm=result['vbm_gw'])
 
 
 @command()
@@ -256,9 +256,9 @@ def empirical_mean_z(
     return results
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.utils.gw_hse import gw_hse_webpanel
-    return gw_hse_webpanel(result, row, key_descriptions, GWInfo(row),
+    return gw_hse_webpanel(result, context, GWInfo(result),
                            sort=16)
 
 
@@ -297,7 +297,7 @@ class Result(ASRResult):
         "efermi_gw_soc": "Fermi level (G₀W₀) [eV]",
         "bandstructure": "GW bandstructure."
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 sel = asr.Selector()
@@ -328,9 +328,7 @@ def migrate_1(record):
     return record
 
 
-@command(
-    migrations=[migrate_1]
-)
+@command()
 @atomsopt
 @calcopt
 @asr.calcopt(

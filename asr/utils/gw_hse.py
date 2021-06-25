@@ -1,12 +1,11 @@
 from asr.database.browser import fig, table, describe_entry
-from asr.utils.hacks import gs_xcname_from_row
 
 
 class GWHSEInfo:
     bz_gaps_filename = 'bz-with-gaps.png'
 
-    def __init__(self, row):
-        self.row = row
+    def __init__(self, result):
+        self.result = result
 
         def _key(key):
             return f'{key}_{self.name}'
@@ -15,11 +14,11 @@ class GWHSEInfo:
 
     def get(self, name, default=None):
         key = f'{name}_{self.name}'
-        return self.row.get(key, default)
+        return self.result.get(key, default)
 
     @property
     def gap(self):
-        return self.row.get(self.gap_key)
+        return self.result.get(self.gap_key)
 
     @property
     def vbm(self):
@@ -30,34 +29,31 @@ class GWHSEInfo:
         return self.get('cbm')
 
 
-def gw_hse_webpanel(result, row, key_descriptions, info, sort):
-    if row.get('evac'):
-        ref_name = 'vacuum level'
-        ref_value = row.evac
-    else:
-        ref_name = 'Fermi level'
-        ref_value = row.efermi
+def gw_hse_webpanel(result, context, info, sort):
+    key_descriptions = context.descriptions
+
+    ref = context.energy_reference()
 
     if info.get('gap', 0) > 0.0:
-        vbm = info.vbm - ref_value
-        cbm = info.cbm - ref_value
+        vbm = info.vbm - ref.value
+        cbm = info.cbm - ref.value
 
-        tab = table(row, 'Property',
+        tab = table(result, 'Property',
                     [info.gap_key, info.gap_dir_key],
                     kd=key_descriptions)
         tab['rows'].extend([
-            [f'Valence band maximum wrt. {ref_name} ({info.method_name})',
+            [f'Valence band maximum wrt. {ref.prose_name} ({info.method_name})',
              f'{vbm:.2f} eV'],
-            [f'Conduction band minimum wrt. {ref_name} ({info.method_name})',
+            [f'Conduction band minimum wrt. {ref.prose_name} ({info.method_name})',
              f'{cbm:.2f} eV']
         ])
 
     else:
-        tab = table(row, 'Property',
+        tab = table(result, 'Property',
                     [],
                     kd=key_descriptions)
 
-    xcname = gs_xcname_from_row(row)
+    xcname = context.xcname
 
     title = f'Electronic band structure ({info.method_name}@{xcname})'
     panel = {'title': describe_entry(title, info.panel_description),

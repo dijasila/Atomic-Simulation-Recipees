@@ -2,11 +2,12 @@
 import typing
 
 from ase import Atoms
+import numpy as np
 
 import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, AtomsFile,
-    make_migration_generator)
+)
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
 from asr.relax import main as relax
@@ -24,13 +25,11 @@ indicates a dynamical instability.
 )
 
 
-def webpanel(result, row, key_descriptions):
-    import numpy as np
-
-    stiffnessdata = row.data['results-asr.stiffness.json']
-    c_ij = stiffnessdata['stiffness_tensor']
-    eigs = stiffnessdata['eigenvalues']
-    nd = np.sum(row.pbc)
+def webpanel(result, context):
+    stiffnessdata = result  # row.data['results-asr.stiffness.json']
+    c_ij = stiffnessdata['stiffness_tensor'].copy()
+    eigs = stiffnessdata['eigenvalues'].copy()
+    nd = context.ndim
 
     if nd == 2:
         c_ij = np.zeros((4, 4))
@@ -46,23 +45,25 @@ def webpanel(result, row, key_descriptions):
                       for ie, eig in enumerate(sorted(eigs,
                                                       key=lambda x: x.real))])
     elif nd == 3:
+        eigs *= 1e-9
+        c_ij *= 1e-9
         ctable = matrixtable(
-            stiffnessdata['stiffness_tensor'],
-            title='C<sub>ij</sub> (10^9 N/m^2)',
+            c_ij,
+            title='C<sub>ij</sub> (10⁹ N/m²)',
             columnlabels=['xx', 'yy', 'zz', 'yz', 'xz', 'xy'],
             rowlabels=['xx', 'yy', 'zz', 'yz', 'xz', 'xy'])
 
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue {ie}', f'{eig.real:.2f} * 10^9 N/m^2']
-                      for ie, eig in enumerate(sorted(eigs,
-                                                      key=lambda x: x.real))])
+                   + [[f'Eigenvalue {ie}', f'{eig.real:.2f} · 10⁹ N/m²']
+                      for ie, eig
+                      in enumerate(sorted(eigs, key=lambda x: x.real))])
     else:
         ctable = dict(
             type='table',
             rows=[])
         eig = complex(eigs[0])
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [['Eigenvalue', f'{eig.real:.2f} * 10^(-10) N']])
+                   + [[f'Eigenvalue', f'{eig.real:.2f} * 10⁻¹⁰ N']])
 
     eigtable = dict(
         type='table',
@@ -75,7 +76,7 @@ def webpanel(result, row, key_descriptions):
         'columns': [[ctable], [eigtable]],
         'sort': 2}
 
-    dynstab = row.dynamic_stability_stiffness
+    dynstab = result['dynamic_stability_stiffness']
     high = 'Minimum stiffness tensor eigenvalue > 0'
     low = 'Minimum stiffness tensor eigenvalue < 0'
 
@@ -194,10 +195,16 @@ class Result(ASRResult):
         "Stiffness dynamic stability (low/high)",
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+
+
+@asr.migration(selector=sel)
 def transform_stiffness_resultfile_record(record):
+    """Remove fixcell and allow_symmetry_breaking from dependency_parameters."""
     dep_params = record.parameters['dependency_parameters']
     relax_dep_params = dep_params['asr.relax:main']
     delparams = {'fixcell', 'allow_symmetry_breaking'}
@@ -206,17 +213,8 @@ def transform_stiffness_resultfile_record(record):
     return record
 
 
-make_migrations = make_migration_generator(
-    selector=dict(version=-1, name='asr.stiffness:main'),
-    function=transform_stiffness_resultfile_record,
-    uid='e6d207028b3843faa533955477e3392a',
-    description='Remove fixcell and allow_symmetry_breaking from dependency_parameters',
-)
-
-
 @command(
     module='asr.stiffness',
-    migrations=[make_migrations],
 )
 @option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
         default='structure.json')
@@ -231,7 +229,6 @@ def main(atoms: Atoms,
     from asr.setup.strains import main as make_strained_atoms
     from asr.setup.strains import get_relevant_strains
     from ase.units import J
-    import numpy as np
 
     ij = get_relevant_strains(atoms.pbc)
 

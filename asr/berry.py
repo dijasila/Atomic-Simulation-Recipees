@@ -3,10 +3,29 @@ import numpy as np
 
 from ase import Atoms
 
-from asr.gs import calculate as gscalculate
-
 from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+    command, option, ASRResult, prepare_result, atomsopt, calcopt)
+from asr.gs import calculate as gscalculate
+from asr.database.browser import (fig, describe_entry, WebPanel,
+                                  make_panel_description, href)
+
+
+olsen_title = ('T. Olsen et al. Discovering two-dimensional topological '
+               'insulators from high-throughput computations. '
+               'Phys. Rev. Mater. 3 024005.')
+olsen_doi = 'https://doi.org/10.1103/PhysRevMaterials.3.024005'
+
+panel_description = make_panel_description(
+    """\
+The spectrum was calculated by diagonalizing the Berry phase matrix
+obtained by parallel transporting the occupied Bloch states along the
+k₀-direction for each value of k₁. The eigenvalues can be interpreted
+as the charge centers of hybrid Wannier functions localised in the
+0-direction and the colours show the expectation values of spin for
+the corresponding Wannier functions. A gapless spectrum is a minimal
+requirement for non-trivial topological invariants.
+""",
+    articles=[href(olsen_title, olsen_doi)],
 )
 
 
@@ -59,8 +78,7 @@ def calculate(
     from gpaw.mpi import world
     from asr.magnetic_anisotropy import get_spin_axis
 
-    pbc = atoms.pbc.tolist()
-    nd = np.sum(pbc)
+    nd = sum(atoms.pbc)
 
     """Find the easy axis of magnetic materials"""
     theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
@@ -157,10 +175,11 @@ def calculate(
     return CalculateResult(data=results)
 
 
-def plot_phases(row, f0, f1, f2, fpi):
+def plot_phases(context, f0, f1, f2, fpi):
     import pylab as plt
 
-    results = row.data['results-asr.berry@calculate.json']
+    results = context.get_record('asr.berry:calculate').result
+
     for f, label in [(f0, 0), (f1, 1), (f2, 2), (fpi, '0_pi')]:
         phit_km = results.get(f'phi{label}_km')
         if phit_km is None:
@@ -198,11 +217,7 @@ def plot_phases(row, f0, f1, f2, fpi):
                     s=5,
                     marker='o')
 
-        if 'results-asr.magnetic_anisotropy.json' in row.data:
-            anis = row.data['results-asr.magnetic_anisotropy.json']
-            dir = anis['spin_axis']
-        else:
-            dir = 'z'
+        dir = context.spin_axis
 
         cbar = plt.colorbar()
         cbar.set_label(rf'$\langle S_{dir}\rangle/\hbar$', size=16)
@@ -231,17 +246,12 @@ def plot_phases(row, f0, f1, f2, fpi):
         plt.savefig(f)
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
-    from asr.utils.hacks import gs_xcname_from_row
+def webpanel(result, context):
+    xcname = context.xcname
+    parameter_description = context.parameter_description('asr.gs:calculate')
 
-    xcname = gs_xcname_from_row(row)
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.gs@calculate')
-    description = ('Topological invariant characterizing the occupied bands \n\n'
+    description = ('Topological invariant characterizing the '
+                   'occupied bands\n\n'
                    + parameter_description)
     datarow = [describe_entry('Band topology', description), result.Topology]
 
@@ -256,16 +266,17 @@ def webpanel(result, row, key_descriptions):
                                     'rows': [datarow]}]],
                          sort=15)
 
-    berry_phases = WebPanel(title='Berry phase',
-                            columns=[[fig('berry-phases0.png'),
-                                      fig('berry-phases0_pi.png')],
-                                     [fig('berry-phases1.png'),
-                                      fig('berry-phases2.png')]],
-                            plot_descriptions=[{'function': plot_phases,
-                                                'filenames': ['berry-phases0.png',
-                                                              'berry-phases1.png',
-                                                              'berry-phases2.png',
-                                                              'berry-phases0_pi.png']}])
+    berry_phases = WebPanel(
+        title=describe_entry('Berry phase', panel_description),
+        columns=[[fig('berry-phases0.png'),
+                  fig('berry-phases0_pi.png')],
+                 [fig('berry-phases1.png'),
+                  fig('berry-phases2.png')]],
+        plot_descriptions=[{'function': plot_phases,
+                            'filenames': ['berry-phases0.png',
+                                          'berry-phases1.png',
+                                          'berry-phases2.png',
+                                          'berry-phases0_pi.png']}])
 
     return [summary, basicelec, berry_phases]
 
@@ -276,7 +287,7 @@ class Result(ASRResult):
     Topology: str
 
     key_descriptions = {'Topology': 'Band topology.'}
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command(module='asr.berry')

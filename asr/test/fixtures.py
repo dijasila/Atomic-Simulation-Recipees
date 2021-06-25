@@ -11,6 +11,7 @@ from pathlib import Path
 from asr.core import get_cache, initialize_root
 from asr.core.specification import construct_run_spec
 from asr.core.record import Record
+from asr.core.dependencies import Dependencies
 
 
 @pytest.fixture()
@@ -51,6 +52,7 @@ VARIOUS_OBJECT_TYPES = [
     set(['a', 1, '2']),
     Path('directory1/directory2/file.txt'),
     datetime.datetime.now(),
+    Dependencies([]),
 ]
 
 
@@ -98,7 +100,7 @@ def _get_webcontent(name='database.db'):
     fromtree(recursive=True)
     content = ""
     from asr.database import app as appmodule
-    from pathlib import Path
+
     if world.rank == 0:
         from asr.database.app import app, initialize_project, projects
 
@@ -199,7 +201,6 @@ def asr_tmpdir_w_params(asr_tmpdir):
 @pytest.fixture(params=std_test_materials)
 def duplicates_test_db(request, asr_tmpdir):
     """Set up a database containing only duplicates of a material."""
-    import numpy as np
     import ase.db
 
     db = ase.db.connect("duplicates.db")
@@ -258,7 +259,6 @@ def fscache(asr_tmpdir):
 @pytest.fixture()
 def crosslinks_test_dbs(asr_tmpdir):
     """Set up database for testing the crosslinks recipe."""
-    from pathlib import Path
     from ase.io import write, read
     from ase.db import connect
     from asr.core import chdir

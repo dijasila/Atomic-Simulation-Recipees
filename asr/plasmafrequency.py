@@ -1,10 +1,16 @@
 """Plasma frequency."""
+from pathlib import Path
+
+import numpy as np
 from ase import Atoms
+from ase.parallel import world
+from ase.units import Hartree, Bohr
+
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt)
 import typing
 from asr.utils.kpts import get_kpts_size
-from asr.gs import calculate as gscalculate
+from asr.gs import calculate as gscalculate, main as gsmain
 
 
 # XXX The plasmafrequency recipe should not be two steps. We don't
@@ -17,10 +23,9 @@ def calculate(
         kptdensity: float = 20,
 ) -> ASRResult:
     """Calculate excited states for polarizability calculation."""
-    from ase.parallel import world
-    from pathlib import Path
-
     res = gscalculate(atoms=atoms, calculator=calculator)
+    # We want the gap for the webpanel, so explicitly call gs main:
+    gsmain(atoms=atoms, calculator=calculator)
     calc_old = res.calculation.load()
     kpts = get_kpts_size(atoms=calc_old.atoms, kptdensity=kptdensity)
     nval = calc_old.wfs.nvalence
@@ -44,14 +49,16 @@ def calculate(
     return filename
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.database.browser import table
 
-    if row.get('gap', 1) > 0.01:
+    gsresults = context.gs_results()
+    if gsresults['gap'] > 0.01:
         return []
 
-    plasmatable = table(row, 'Property', [
-        'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
+    assert 'plasmafrequency_x1' in result
+    plasmatable = table(result, 'Property', [
+        'plasmafrequency_x', 'plasmafrequency_y'], context.descriptions)
 
     panel = {'title': 'Optical polarizability (RPA)',
              'columns': [[], [plasmatable]]}
@@ -68,11 +75,11 @@ class Result(ASRResult):
     key_descriptions = {
         "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
         "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
-        "[`eV/Ang^0.5`]",
+        "[`eV/Å^0.5`]",
         "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
-        "[`eV/Ang^0.5`]",
+        "[`eV/Å^0.5`]",
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command('asr.plasmafrequency')
@@ -89,10 +96,6 @@ def main(
 ) -> Result:
     """Calculate polarizability."""
     from gpaw.response.df import DielectricFunction
-    import numpy as np
-    from ase.units import Hartree, Bohr
-    from pathlib import Path
-    from ase.parallel import world
 
     gpwfile = calculate(
         atoms=atoms,

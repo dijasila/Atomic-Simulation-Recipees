@@ -1,10 +1,8 @@
-"""HSE band structure."""
+"""HSE06 band structure."""
 from ase import Atoms
 from asr.calculators import Calculation
 import asr
-from asr.core import (
-    command, option, ASRResult, prepare_result,
-)
+from asr.core import command, option, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
 from asr.bandstructure import legend_on_top
@@ -34,13 +32,13 @@ in post-process.""",
     summary_sort = 11
 
     @staticmethod
-    def plot_bs(row, filename):
-        data = row.data['results-asr.hse.json']
-        return plot_bs(row, filename=filename, bs_label='HSE06',
-                       data=data,
-                       efermi=data['efermi_hse_soc'],
-                       vbm=row.get('vbm_hse'),
-                       cbm=row.get('cbm_hse'))
+    def plot_bs(context, filename):
+        results = context.result
+        return plot_bs(context, filename=filename, bs_label='HSE06',
+                       data=results,
+                       efermi=results['efermi_hse_soc'],
+                       vbm=results['vbm_hse'],
+                       cbm=results['cbm_hse'])
 
 
 @prepare_result
@@ -68,7 +66,7 @@ def calculate(
         kptdensity: float = 8.0,
         emptybands: int = 20,
 ) -> HSECalculationResult:
-    """Calculate HSE corrections."""
+    """Calculate HSE06 corrections."""
     eigs, calc, hse_nowfs = hse(
         atoms=atoms,
         calculator=calculator,
@@ -107,7 +105,8 @@ def hse(atoms, calculator, kptdensity, emptybands):
     calc.get_potential_energy()
     hse_nowfs = calc.save(id='hse_nowfs')
     nb = calc.get_number_of_bands()
-    result = non_self_consistent_eigenvalues(calc,
+    # XXX gpaw does not like the GPAWLikeAdaptor which we have.
+    result = non_self_consistent_eigenvalues(calc.calculator,
                                              'HSE06',
                                              n1=0,
                                              n2=nb - convbands,
@@ -208,7 +207,7 @@ def MP_interpolate(
     return results
 
 
-def plot_bs(row,
+def plot_bs(context,
             filename,
             *,
             bs_label,
@@ -224,12 +223,8 @@ def plot_bs(row,
 
     path = data['bandstructure']['path']
 
-    reference = row.get('evac')
-    if reference is None:
-        reference = efermi
-        label = r'$E - E_\mathrm{F}$ [eV]'
-    else:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
+    eref = context.energy_reference()
+    reference = eref.value
 
     emin_offset = efermi if vbm is None else vbm
     emax_offset = efermi if cbm is None else cbm
@@ -250,7 +245,7 @@ def plot_bs(row,
         ax.plot(x, e_m, **style)
     ax.set_ylim([emin, emax])
     ax.set_xlim([x[0], x[-1]])
-    ax.set_ylabel(label)
+    ax.set_ylabel(eref.mpl_plotlabel())
     ax.set_xticks(X)
     ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
 
@@ -269,10 +264,13 @@ def plot_bs(row,
     ])
 
     # add KS band structure with soc
-    from asr.bandstructure import add_bs_ks
-    if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_ks(row, ax, reference=row.get('evac', row.get('efermi')),
-                       color=[0.8, 0.8, 0.8])
+    # XXXXX HSE does not depend on bandstruture, so combining those
+    # in the same plot is not the problem of the HSE recipe!
+    #
+    # from asr.bandstructure import add_bs_ks
+    # if 'results-asr.bandstructure.json' in row.data:
+    #     ax = add_bs_ks(context, ax, reference=eref.value,
+    #                    color=[0.8, 0.8, 0.8])
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
@@ -282,10 +280,9 @@ def plot_bs(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.utils.gw_hse import gw_hse_webpanel
-    return gw_hse_webpanel(result, row, key_descriptions, HSEInfo(row),
-                           sort=15)
+    return gw_hse_webpanel(result, context, HSEInfo(result), sort=15)
 
 
 @prepare_result
@@ -307,23 +304,23 @@ class Result(ASRResult):
     bandstructure: BandStructure
 
     key_descriptions = {
-        "vbm_hse_nosoc": "Valence band maximum w/o soc. (HSE) [eV]",
-        "cbm_hse_nosoc": "Conduction band minimum w/o soc. (HSE) [eV]",
-        "gap_dir_hse_nosoc": "Direct gap w/o soc. (HSE) [eV]",
-        "gap_hse_nosoc": "Band gap w/o soc. (HSE) [eV]",
-        "kvbm_nosoc": "k-point of HSE valence band maximum w/o soc",
-        "kcbm_nosoc": "k-point of HSE conduction band minimum w/o soc",
-        "vbm_hse": "KVP: Valence band maximum (HSE) [eV]",
-        "cbm_hse": "KVP: Conduction band minimum (HSE) [eV]",
-        "gap_dir_hse": "KVP: Direct band gap (HSE) [eV]",
-        "gap_hse": "KVP: Band gap (HSE) [eV]",
-        "kvbm": "k-point of HSE valence band maximum",
-        "kcbm": "k-point of HSE conduction band minimum",
-        "efermi_hse_nosoc": "Fermi level w/o soc. (HSE) [eV]",
-        "efermi_hse_soc": "Fermi level (HSE) [eV]",
-        "bandstructure": "HSE bandstructure."
+        "vbm_hse_nosoc": "Valence band maximum w/o soc. (HSE06) [eV]",
+        "cbm_hse_nosoc": "Conduction band minimum w/o soc. (HSE06) [eV]",
+        "gap_dir_hse_nosoc": "Direct gap w/o soc. (HSE06) [eV]",
+        "gap_hse_nosoc": "Band gap w/o soc. (HSE06) [eV]",
+        "kvbm_nosoc": "k-point of HSE06 valence band maximum w/o soc",
+        "kcbm_nosoc": "k-point of HSE06 conduction band minimum w/o soc",
+        "vbm_hse": "KVP: Valence band maximum (HSE06) [eV]",
+        "cbm_hse": "KVP: Conduction band minimum (HSE06) [eV]",
+        "gap_dir_hse": "KVP: Direct band gap (HSE06) [eV]",
+        "gap_hse": "KVP: Band gap (HSE06) [eV]",
+        "kvbm": "k-point of HSE06 valence band maximum",
+        "kcbm": "k-point of HSE06 conduction band minimum",
+        "efermi_hse_nosoc": "Fermi level w/o soc. (HSE06) [eV]",
+        "efermi_hse_soc": "Fermi level (HSE06) [eV]",
+        "bandstructure": "HSE06 bandstructure."
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
 @command(module='asr.hse')

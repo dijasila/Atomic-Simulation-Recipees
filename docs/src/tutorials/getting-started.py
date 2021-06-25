@@ -18,7 +18,7 @@ def energy(element: str, crystal_structure: str) -> float:
     opt.run(fmax=0.001)
     energy = atoms.get_potential_energy()
     natoms = len(atoms)
-    return round(energy / natoms, 4)
+    return round(energy / natoms, 6)
 
 
 @asr.instruction('asr.tutorial')

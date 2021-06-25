@@ -13,17 +13,16 @@ from asr.setup.strains import get_relevant_strains
 from asr.gs import main as groundstate
 
 
-def webpanel(result, row, key_descriptions):
-    data = row.data.get('results-asr.deformationpotentials.json')
+def webpanel(result, context):
+    data = context.result
 
     defpot = data['deformation_potentials']
     vbmdef = (defpot[0, 0] + defpot[1, 0]) / 2
     cbmdef = (defpot[0, 1] + defpot[1, 1]) / 2
     rows = [['Uniaxial deformation potential at VBM', f'{cbmdef:0.2f} eV'],
             ['Uniaxial deformation potential at CBM', f'{vbmdef:0.2f} eV']]
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
-    panel = {'title': f'Basic electronic properties ({xcname})',
+
+    panel = {'title': f'Basic electronic properties ({context.xcname})',
              'columns': [[{'type': 'table',
                            'header': ['Property', ''],
                            'rows': rows}]],
@@ -33,8 +32,7 @@ def webpanel(result, row, key_descriptions):
 
 @prepare_result
 class Result(ASRResult):
-
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 @command('asr.deformationpotentials')
