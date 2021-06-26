@@ -4,6 +4,7 @@ import typing
 import uuid
 import inspect
 import importlib
+from dataclasses import dataclass
 from .parameters import Parameters
 from .codes import Codes, Code
 from .utils import only_master
@@ -14,21 +15,45 @@ def get_new_uuid():
     return uuid.uuid4().hex
 
 
-class RunSpecification:  # noqa
+@dataclass
+class RunSpecification:
+    """Class that represents a run specification.
 
-    def __init__(  # noqa
-            self,
-            name: str,
-            parameters: Parameters,
-            version: int,
-            codes: Codes,
-            uid: str,
-    ):
-        self.name = name
-        self.parameters = parameters
-        self.codes = codes
-        self.version = version
-        self.uid = uid
+    A run specification is constructed when an instruction is run and represents
+    all information available prior to the instruction has been executed.
+
+    Attributes
+    ----------
+    name
+        Name of the instruction.
+    parameters: asr.Parameters
+        Parameters passed to the instruction during execution.
+    codes: asr.Codes
+        Code versions.
+    version: int
+        Instruction version.
+    uid
+        Record UID.
+    """
+
+    name: str
+    parameters: Parameters
+    version: int
+    codes: Codes
+    uid: str
+    # def __init__(  # noqa
+    #         self,
+    #         name: str,
+    #         parameters: Parameters,
+    #         version: int,
+    #         codes: Codes,
+    #         uid: str,
+    # ):
+    #     self.name = name
+    #     self.parameters = parameters
+    #     self.codes = codes
+    #     self.version = version
+    #     self.uid = uid
 
     def __call__(  # noqa
             self,

@@ -123,9 +123,9 @@ couple of these:
    unique identifier given to all records. This can be used to
    uniquely select records.  The Record provides a shortcut to the UID
    through :attr:`asr.Record.uid`.
- - The `run_specification.name` property stores the name of the instruction.
+ - The :attr:`run_specification.name` property stores the name of the instruction.
    The Record provides a shortcut to the name through :attr:`Record.name`.
- - The `run_specification.parameters` stores the parameters of the
+ - The :attr:`run_specification.parameters` stores the parameters of the
    given run. The Record object provides a shortcut the parameters
    through :attr:`Record.parameters`.
  - The :attr:`result` property stores the result of the instruction.

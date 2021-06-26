@@ -300,11 +300,20 @@ class Revision:
 
 @dataclass
 class RevisionHistory(History):
-    """A class the represents the revision history."""
+    """A class that represents the revision history.
+
+    Attributes
+    ----------
+    history
+        A chronological list of the revisions that led to the latest
+        (current) revision. The latest revision is the last element of this
+        list.
+    """
 
     history: typing.List[Revision] = field(default_factory=list)
 
     def add(self, revision: Revision):
+        """Add revision to history."""
         self.history.append(revision)
 
     @property
@@ -570,7 +579,23 @@ def migration(
     eagerness=0,
     description=None,
 ):
-    """Make migration decorator."""
+    """Migration decorator.
+
+    Parameters
+    ----------
+    selector
+        Callable that returns a boolean used to select records to be migrated.
+        Will be applied to all records in the cache.
+    uid
+        (optional) :func:`uuid.uuid4` uid which can be used to identify migration.
+    eagerness
+        Integer representing how eager the migration is to be applied. Migrations
+        with higher eagerness will take priority over other migrations with lower
+        values. Default is 0.
+    description
+        (optional) Description of the migration. Default is to use the
+        docstring of the decorated function.
+    """
     if selector is None:
         selector = Selector()
 
