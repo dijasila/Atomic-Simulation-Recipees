@@ -883,20 +883,88 @@ def fromtree(
          njobs=njobs)
 
 
+totree_help = """Unpack an ASE database to a tree of folders.
+
+This command unpacks an ASE database to into folders
+that have a tree-like structure where directory names can be
+given by the material parameters such stoichiometry or spacegroup
+number.  For example: stoichiometry/spacegroup/formula.
+
+The specific tree structure is given by the --tree-structure
+option which can be customized according to the following table
+
+* {stoi}: Material stoichiometry
+* {spg}: Material spacegroup number
+* {formula}: Chemical formula. A possible variant is {formula:metal}
+  in which case the formula will be sorted by metal atoms
+* {reduced_formula}: Reduced chemical formula. Like {formula}
+  except the formula has been reduced, i.e., Mo2S4 -> MoS2.
+* {wyck}: Unique Wyckoff positions. The unique alphabetically
+  sorted Wyckoff positions.
+
+Examples:
+
+For all these examples, suppose you have a database named "database.db".
+
+Unpack database using default parameters:
+
+  $ asr database totree database.db --run
+
+Don't actually unpack the database but do a dry-run:
+
+  $ asr database main database.totree database.db
+
+Only select a part of the database to unpack:
+
+  $ asr database totree database.db --selection "natoms<3" --run
+
+Set custom folder tree-structure:
+
+  $ asr database totree database.db \
+--tree-structure "tree/{stoi}/{spg}/{formula:metal}" --run
+
+Divide the tree into 2 chunks (in case the study of the materials
+is divided between 2 people). Also sort after number of atoms,
+so computationally expensive materials are divided evenly::
+
+  $ asr database totree database.db --sort natoms --chunks 2 --run
+
+"""
+
+
+def with_docstring(doc):
+    """Equip function with docstring, as a decorator.
+
+    The web page wants all docstrings to be rst.  But click wants
+    docstrings to be help text.  It can't be both.
+
+    To pacify the tests, this decorator dynamically sets the help text
+    on a command so the linter will not complain.
+    """
+    def set_doc(func):
+        func.__doc__ = doc
+        return func
+    return set_doc
+
+
 @database.command()
 @click.argument('database', nargs=1, type=str)
-@click.option('--run/--dry-run', is_flag=True)
+@click.option('--run/--dry-run', is_flag=True,
+              help='use --run to actually unpack the database.  Default is '
+              '--dry-run which only simulates what would happen with --run.')
 @click.option('-s', '--selection', help='ASE-DB selection', type=str,
               default='')
-@click.option('-t', '--tree-structure', type=str,
-              default='tree/{stoi}/{reduced_formula:abc}/{row.uid}')
+@click.option('-t', '--tree-structure', type=str, metavar='TREE',
+              help='Specify folder tree structure (see description).',
+              default='tree/{stoi}/{reduced_formula:abc}')
 @click.option('--sort', help='Sort the generated materials '
               '(only useful when dividing chunking tree)', type=str)
 @click.option(
     '--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
 @click.option('--atomsfile',
-              help="Filename to unpack atomic structure to. "
-              "By default, don't write atoms file.",
+              metavar='FILE',
+              help='Filename to unpack atomic structure to. '
+              'By default, do not write atoms file.',
               type=str)
 @click.option(
     '-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
@@ -908,17 +976,17 @@ def fromtree(
     default='*')
 @click.option('--update-tree', is_flag=True,
               help='Update results files in existing folder tree.')
-def main(database: str, run: bool, selection: str,
-         tree_structure: str,
-         sort: str,
-         atomsfile: str,
-         chunks: int,
-         copy: bool,
-         patterns: str,
-         update_tree: bool):
-    """Unpack database into directory tree."""
+@with_docstring(totree_help)
+def totree(
+        database: str, run: bool, selection: str,
+        tree_structure: str,
+        sort: str,
+        atomsfile: str,
+        chunks: int,
+        copy: bool,
+        patterns: str,
+        update_tree: bool):
     from asr.database.totree import main as totree
-
     totree(
         database=database,
         run=run,
