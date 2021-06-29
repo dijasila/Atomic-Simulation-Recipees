@@ -10,7 +10,8 @@ from asr.core import (
 
 from asr.setup.strains import main as make_strained_atoms
 from asr.setup.strains import get_relevant_strains
-from asr.gs import main as groundstate
+from asr.gs import main as groundstate, calculate as gscalculate
+from asr.relax import main as relax
 
 
 def webpanel(result, context):
@@ -35,23 +36,39 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
+def get_nosoc_edges(calc, kd0, sKn1, sKn2):
+    kd = calc.wfs.kd
+    assert (kd.N_c == kd0.N_c).all()
+    assert np.allclose(kd.offset_c, kd0.offset_c)
+    s1, K1, n1 = sKn1
+    s2, K2, n2 = sKn2
+    k1 = kd.bz2ibz_k[K1]
+    k2 = kd.bz2ibz_k[K2]
+    if kd.nspins == 1:
+        s1 = 0
+        s2 = 0
+    e1 = calc.get_eigenvalues(spin=s1, kpt=k1)[n1]
+    e2 = calc.get_eigenvalues(spin=s2, kpt=k2)[n2]
+    return e1, e2
+
+
 @command('asr.deformationpotentials')
 @atomsopt
 @calcopt
-@option('--strains', help='Strain percentages', type=float)
+# @option('--strains', help='Strain percentages', type=float)
 @option('--ktol',
         help='Distance in k-space that extremum is allowed to move.',
         type=float)
 def main(
         atoms: Atoms,
-        calculator: dict = groundstate.defaults.calculator,
-        strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1) -> Result:
+        calculator: dict = groundstate.defaults.calculator) -> Result:
     """Calculate deformation potentials.
 
     Calculate the deformation potential both with and without spin orbit
     coupling, for both the conduction band and the valence band, and return as
     a dictionary.
     """
+    strains = [-1.0, 0.0, 1.0]
     strains = sorted(strains)
     ij = get_relevant_strains(atoms.pbc)
 
@@ -67,11 +84,20 @@ def main(
 
     gsresults = groundstate(
         atoms=atoms,
-        calculator=calculator,
-    )
+        calculator=calculator)
 
-    k0_vbm_c = gsresults['k_vbm_c']
-    k0_cbm_c = gsresults['k_cbm_c']
+    gscalc = gscalculate(
+        atoms=atoms,
+        calculator=calculator)
+
+    calc = gscalc.calculation.load()
+    kd0 = calc.wfs.kd
+
+    s1, k1, n1 = gsresults['gaps_nosoc']['skn1']
+    s2, k2, n2 = gsresults['gaps_nosoc']['skn2']
+    # Convert from IBZ to full BZ index:
+    K1 = kd0.ibz2bz_k[k1]
+    K2 = kd0.ibz2bz_k[k2]
 
     for i, j in ij:
         for ip, strain in enumerate(strains):
@@ -80,31 +106,23 @@ def main(
                 strain_percent=strain,
                 i=i, j=j)
 
-            gsresults = groundstate(
+            relaxresults = relax(
                 atoms=strained_atoms,
                 calculator=calculator,
-            )
-            k_vbm_c = gsresults['k_vbm_c']
-            k_cbm_c = gsresults['k_cbm_c']
-            difference = k_vbm_c - k0_vbm_c
-            difference -= np.round(difference)
-            assert (np.abs(difference) < ktol).all(), \
-                (f'i={i} j={j} strain={strain}: VBM has '
-                 f'changed location in reciprocal space upon straining. '
-                 f'{k0_vbm_c} -> {k_vbm_c} (Delta_c={difference})')
-            difference = k_cbm_c - k0_cbm_c
-            difference -= np.round(difference)
-            assert (np.abs(difference) < ktol).all(), \
-                (f'i={i} j={j} strain={strain}: CBM has '
-                 f'changed location in reciprocal space upon straining. '
-                 f'{k0_cbm_c} -> {k_cbm_c} (Delta_c={difference})')
+                fixcell=True)
+            gsresults = groundstate(
+                atoms=relaxresults.atoms,
+                calculator=calculator)
+            gscalc = gscalculate(
+                atoms=relaxresults.atoms,
+                calculator=calculator)
+            e1, e2 = get_nosoc_edges(gscalc.calculation.load(), kd0,
+                                     (s1, K1, n1), (s2, K2, n2))
             evac = gsresults['evac']
             edges_pin[ip, ij_to_voigt[i][j], 0] = gsresults['vbm'] - evac
-            edges_nosoc_pin[ip, ij_to_voigt[i][j], 0] = \
-                gsresults['gaps_nosoc']['vbm'] - evac
+            edges_nosoc_pin[ip, ij_to_voigt[i][j], 0] = e1 - evac
             edges_pin[ip, ij_to_voigt[i][j], 1] = gsresults['cbm'] - evac
-            edges_nosoc_pin[ip, ij_to_voigt[i][j], 1] = \
-                gsresults['gaps_nosoc']['cbm'] - evac
+            edges_nosoc_pin[ip, ij_to_voigt[i][j], 1] = e2 - evac
 
     results = {'edges': edges_pin,
                'edges_nosoc': edges_nosoc_pin}
