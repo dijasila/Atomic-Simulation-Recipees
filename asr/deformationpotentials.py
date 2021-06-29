@@ -55,10 +55,6 @@ def get_nosoc_edges(calc, kd0, sKn1, sKn2):
 @command('asr.deformationpotentials')
 @atomsopt
 @calcopt
-# @option('--strains', help='Strain percentages', type=float)
-@option('--ktol',
-        help='Distance in k-space that extremum is allowed to move.',
-        type=float)
 def main(
         atoms: Atoms,
         calculator: dict = groundstate.defaults.calculator) -> Result:
