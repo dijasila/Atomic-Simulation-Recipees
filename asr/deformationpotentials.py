@@ -1,17 +1,15 @@
 """Deformation potentials."""
-from typing import List
-import numpy as np
+from typing import Tuple
 
+import numpy as np
 from ase import Atoms
 
-from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, calcopt
-)
-
-from asr.setup.strains import main as make_strained_atoms
-from asr.setup.strains import get_relevant_strains
-from asr.gs import main as groundstate, calculate as gscalculate
+from asr.core import ASRResult, atomsopt, calcopt, command, prepare_result
+from asr.gs import calculate as gscalculate
+from asr.gs import main as groundstate
 from asr.relax import main as relax
+from asr.setup.strains import get_relevant_strains
+from asr.setup.strains import main as make_strained_atoms
 
 
 def webpanel(result, context):
@@ -36,7 +34,10 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-def get_nosoc_edges(calc, kd0, sKn1, sKn2):
+def get_nosoc_edges(calc,
+                    kd0,
+                    sKn1: Tuple[int, int, int],
+                    sKn2: Tuple[int, int, int]) -> Tuple[float, float]:
     kd = calc.wfs.kd
     assert (kd.N_c == kd0.N_c).all()
     assert np.allclose(kd.offset_c, kd0.offset_c)
