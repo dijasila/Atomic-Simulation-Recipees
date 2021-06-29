@@ -22,8 +22,9 @@ tutorials = []
 rstfiles = list(directory.rglob('tutorials/*.rst'))
 
 
-@pytest.mark.parametrize("command_outputs", rstfiles, indirect=True)
-def test_tutorial(command_outputs, tmpdir):
+@pytest.mark.parametrize("command_outputs", rstfiles,
+                         ids=lambda x: str(x), indirect=True)
+def test_rst_file(command_outputs, tmpdir):
     my_env = os.environ.copy()
     asrhome = get_asr_home_path()
     my_env['ASRHOME'] = asrhome
