@@ -19,7 +19,7 @@ def command_outputs(request):
 
 directory = pathlib.Path('docs/src')
 tutorials = []
-rstfiles = list(directory.rglob('tutorials/getting-started.rst'))
+rstfiles = list(directory.rglob('tutorials/*.rst'))
 
 
 @pytest.mark.parametrize("command_outputs", rstfiles, indirect=True)

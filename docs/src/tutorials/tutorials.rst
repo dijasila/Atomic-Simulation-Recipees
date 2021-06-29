@@ -7,7 +7,6 @@ Tutorials
    :maxdepth: 1
 
    getting-started
-   intro-to-testing
-   asr-run-command
    setup-params
    result-objects-and-web-panels
+   developer/intro-to-testing
