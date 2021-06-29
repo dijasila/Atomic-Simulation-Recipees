@@ -37,11 +37,10 @@ class MyResult(ASRResult):
     prev_version = MyResultVer0
     version: int = 1
     key_descriptions: Dict[str, str] = {'a': 'A description of "a".'}
-    formats = {'ase_webpanel': webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command('test_core_results',
-         returns=MyResult)
+@command(module='test_core_results')
 def recipe() -> MyResult:
     return MyResult.fromdata(a=2)
 
@@ -55,13 +54,14 @@ def test_results_object(capsys):
     assert results.__doc__ == '\n'.join(['Generic results.'])
 
     formats = results.get_formats()
-    assert formats['ase_webpanel'] == webpanel
-    assert set(formats) == set(['json', 'html', 'dict', 'ase_webpanel', 'str'])
+    assert formats['webpanel2'] == webpanel
+    assert set(formats) == set(['json', 'html', 'dict', 'webpanel2', 'str'])
     print(results)
     captured = capsys.readouterr()
-    assert captured.out == 'a=1\n'
+    assert captured.out == 'Result(a=1)\n'
 
-    assert isinstance(results.format_as('ase_webpanel', {}, {}), list)
+    # XXX Need Record to create a DataContext object
+    # assert isinstance(results.format_as('webpanel2', {}, {}), list)
 
     html = results.format_as('html')
     html2 = format(results, 'html')
@@ -77,7 +77,7 @@ def test_results_object(capsys):
 
 
 @pytest.mark.ci
-def test_reading_result():
+def test_reading_result(asr_tmpdir):
     result = recipe()
     jsonresult = result.format_as('json')
     new_result = recipe.returns.from_format(jsonresult, format='json')
@@ -817,7 +817,7 @@ def test_read_old_format():
     }
 
     result = decode_object(dct)
-    assert result.formats['ase_webpanel'] == webpanel
+    assert result.formats['webpanel2'] == webpanel
     assert isinstance(result, Result)
     assert result.etot == dct['etot']
     assert result.metadata.asr_name == 'asr.gs'
@@ -825,7 +825,7 @@ def test_read_old_format():
 
 @pytest.mark.ci
 @pytest.mark.parametrize('cls,result',
-                         [(MyResult, 'asr.test.test_core_results::MyResult')])
+                         [(MyResult, 'asr.test.test_core_results:MyResult')])
 def test_object_to_id(cls, result):
     assert obj_to_id(cls) == result
 
@@ -852,8 +852,8 @@ def test_bad_object_ids(filename, dct, result_object_id):
 @pytest.mark.parametrize(
     'obj,result',
     [
-        (GSResult, 'asr.gs::Result'),
-        (MyResult, 'asr.test.test_core_results::MyResult')
+        (GSResult, 'asr.gs:Result'),
+        (MyResult, 'asr.test.test_core_results:MyResult')
     ]
 )
 def test_obj_to_id(obj, result):
@@ -875,8 +875,8 @@ def test_fix_folders_corrupt_object_id(asr_tmpdir):
     _fix_folders(folders)
     text = read_file('results-asr.gs@calculate.json')
     dct = decode_json(text)
-    assert (dct['object_id'] == 'asr.gs::Result'
-            and dct['constructor'] == 'asr.gs::Result')
+    assert (dct['object_id'] == 'asr.gs:Result'
+            and dct['constructor'] == 'asr.gs:Result')
 
     assert (dct['kwargs']['data']['gaps_nosoc']['object_id'] == 'asr.gs::GapsResult'
             and dct['kwargs']['data']['gaps_nosoc']['constructor']

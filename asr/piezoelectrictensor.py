@@ -8,7 +8,19 @@ tensor. The central recipe of this module is
 
 import itertools
 import typing
-from asr.core import command, option, DictStr, ASRResult, prepare_result
+
+from ase import Atoms
+from ase.calculators.calculator import kptdensity2monkhorstpack
+
+from asr.formalpolarization import main as formalpolarization
+from asr.relax import main as relax
+
+import asr
+
+from asr.core import (
+    command, option, ASRResult, prepare_result,
+    calcopt, atomsopt
+)
 from asr.database.browser import matrixtable, make_panel_description, describe_entry
 
 
@@ -48,14 +60,16 @@ def get_voigt_labels(pbc: typing.List[bool]):
     return list(itertools.compress(all_voigt_labels, mask))
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
 
-    piezodata = row.data['results-asr.piezoelectrictensor.json']
+    piezodata = result  # row.data['results-asr.piezoelectrictensor.json']
     e_vvv = piezodata['eps_vvv']
     e0_vvv = piezodata['eps_clamped_vvv']
 
-    voigt_indices = get_voigt_indices(row.pbc)
-    voigt_labels = get_voigt_labels(row.pbc)
+    pbc = context.atoms.pbc
+
+    voigt_indices = get_voigt_indices(pbc)
+    voigt_labels = get_voigt_labels(pbc)
 
     e_ij = e_vvv[:,
                  voigt_indices[0],
@@ -92,28 +106,61 @@ class Result(ASRResult):
 
     key_descriptions = {'eps_vvv': 'Piezoelectric tensor.',
                         'eps_clamped_vvv': 'Piezoelectric tensor.'}
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command(module="asr.piezoelectrictensor",
-         returns=Result)
+def convert_density_to_size(parameters):
+    atoms = parameters.atoms
+    calculator = parameters.calculator
+    # From experience it is important to use
+    # non-gamma centered grid when using symmetries.
+    # Might have something to do with degeneracies, not sure.
+    if 'density' in calculator['kpts']:
+        kpts = calculator['kpts']
+        density = kpts.pop('density')
+        kpts['size'] = kptdensity2monkhorstpack(atoms, density, True)
+    return parameters
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ('asr.piezoelectrictensor:main')
+sel.parameters = sel.NOT(sel.CONTAINS('relaxcalculator'))
+
+
+@asr.migration(selector=sel)
+def add_relaxcalculator_parameter(record):
+    """Add relaxcalculator parameter and delete unused dependency parameters."""
+    dep_params = record.parameters.dependency_parameters
+    record.parameters.relaxcalculator = dep_params['asr.relax:main']['calculator']
+    del_par = {'calculator', 'd3',
+               'allow_symmetry_breaking', 'fixcell'}
+    for par in del_par:
+        del dep_params['asr.relax:main'][par]
+
+    del_par = {'gpwname'}
+    for par in del_par:
+        del dep_params['asr.formalpolarization:main'][par]
+
+    if 'calculator' in record.parameters:
+        del dep_params['asr.formalpolarization:main']['calculator']
+    return record
+
+
+@command(
+    module="asr.piezoelectrictensor",
+    argument_hooks=[convert_density_to_size],
+)
+@atomsopt
 @option('--strain-percent', help='Strain fraction.', type=float)
-@option('--calculator', help='Calculator parameters.', type=DictStr())
-def main(strain_percent: float = 1,
-         calculator: dict = {
-             'name': 'gpaw',
-             'mode': {'name': 'pw', 'ecut': 800},
-             'xc': 'PBE',
-             'basis': 'dzp',
-             'kpts': {'density': 12.0},
-             'occupations': {'name': 'fermi-dirac',
-                             'width': 0.05},
-             'convergence': {'eigenstates': 1e-11,
-                             'density': 1e-7},
-             'symmetry': 'off',
-             'txt': 'formalpol.txt',
-             'charge': 0
-         }) -> Result:
+@calcopt
+@asr.calcopt(aliases=['--relaxcalculator'], help='Calculator parameters.')
+def main(
+        atoms: Atoms,
+        strain_percent: float = 1,
+        calculator: dict = formalpolarization.defaults.calculator,
+        relaxcalculator: dict = relax.defaults.calculator,
+) -> Result:
     """Calculate piezoelectric tensor.
 
     This recipe calculates the clamped and full piezoelectric
@@ -132,32 +179,9 @@ def main(strain_percent: float = 1,
 
     """
     import numpy as np
-    from ase.calculators.calculator import kptdensity2monkhorstpack
-    from ase.io import read
     from ase.units import Bohr
-    from asr.core import read_json, chdir
-    from asr.formalpolarization import main as formalpolarization
-    from asr.relax import main as relax
-    from asr.setup.strains import main as setupstrains
-    from asr.setup.strains import clamped as setupclampedstrains
-    from asr.setup.strains import get_relevant_strains, get_strained_folder_name
-
-    if not setupstrains.done:
-        setupstrains(strain_percent=strain_percent)
-
-    if not setupclampedstrains.done:
-        setupclampedstrains(strain_percent=strain_percent)
-
-    atoms = read("structure.json")
-
-    # From experience it is important to use
-    # non-gamma centered grid when using symmetries.
-    # Might have something to do with degeneracies, not sure.
-    if 'density' in calculator['kpts']:
-        kpts = calculator['kpts']
-        density = kpts.pop('density')
-        kpts['size'] = kptdensity2monkhorstpack(atoms, density, True)
-
+    from asr.setup.strains import main as make_strained_atoms
+    from asr.setup.strains import get_relevant_strains
     cell_cv = atoms.get_cell() / Bohr
     vol = abs(np.linalg.det(cell_cv))
     pbc_c = atoms.get_pbc()
@@ -173,15 +197,28 @@ def main(strain_percent: float = 1,
         for i, j in ij:
             phase_sc = np.zeros((2, 3), float)
             for s, sign in enumerate([-1, 1]):
-                folder = get_strained_folder_name(sign * strain_percent, i, j,
-                                                  clamped=clamped)
-                with chdir(folder):
-                    if not clamped and not relax.done:
-                        relax.cli([])
-                    if not formalpolarization.done:
-                        formalpolarization(calculator=calculator)
+                strained_atoms = make_strained_atoms(
+                    atoms,
+                    strain_percent=sign * strain_percent,
+                    i=i, j=j)
 
-                polresults = read_json(folder / 'results-asr.formalpolarization.json')
+                if clamped:
+                    atoms_for_pol = strained_atoms
+                else:
+                    relaxres = relax(
+                        atoms=strained_atoms,
+                        calculator=relaxcalculator,
+                        fixcell=True,
+                        d3=False,
+                        allow_symmetry_breaking=True,
+                    )
+                    atoms_for_pol = relaxres.atoms
+
+                polresults = formalpolarization(
+                    atoms=atoms_for_pol,
+                    calculator=calculator,
+                )
+
                 phase_sc[s] = polresults['phase_c']
 
             dphase_c = phase_sc[1] - phase_sc[0]
@@ -202,7 +239,7 @@ def main(strain_percent: float = 1,
     data = {'eps_vvv': eps_vvv,
             'eps_clamped_vvv': eps_clamped_vvv}
 
-    return data
+    return Result(data=data)
 
 
 if __name__ == '__main__':

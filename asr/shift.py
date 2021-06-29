@@ -1,21 +1,26 @@
 import typing
+from pathlib import Path
 
-from asr.core import command, option, ASRResult, prepare_result
-from asr.shg import CentroSymmetric, get_chi_symmetry, get_kpts
 import numpy as np
+from ase import Atoms
+
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+)
+from asr.shg import CentroSymmetric, get_chi_symmetry, get_kpts
+from asr.gs import main as gsmain, calculate as gscalculate
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig)
+def webpanel(result, context):
+    from asr.database.browser import fig
     from textwrap import wrap
 
-    # Get the data
-    data = row.data.get('results-asr.shift.json')
+    data = result  # row.data.get('results-asr.shift.json')
 
     # Make the table
     sym_chi = data.get('symm')
     table = []
-    for pol in sorted(sym_chi.keys()):
+    for pol in sorted(sym_chi):
         relation = sym_chi[pol]
         if pol == 'zero':
             if relation != '':
@@ -68,15 +73,12 @@ class Result(ASRResult):
         "sigma": "Non-zero shift conductivity tensor elements in SI units",
         "symm": "Symmetry relation of shift conductivity tensor",
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command('asr.shift',
-         dependencies=['asr.gs@calculate'],
-         requires=['structure.json', 'gs.gpw'],
-         returns=Result)
-@option('--gs', help='Ground state on which response is based',
-        type=str)
+@command('asr.shift')
+@atomsopt
+@calcopt
 @option('--kptdensity', help='K-point density', type=float)
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
@@ -85,10 +87,17 @@ class Result(ASRResult):
 @option('--nromega', help='Number of pump frequencies', type=int)
 @option('--energytol', help='Energy tolernce [eV]', type=float)
 @option('--removefiles', help='Remove created files', type=bool)
-def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
-         bandfactor: int = 4, eta: float = 0.05, energytol: float = 1e-6,
-         maxomega: float = 10.0, nromega: int = 1000,
-         removefiles: bool = False) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 25.0,
+        bandfactor: int = 4,
+        eta: float = 0.05,
+        energytol: float = 1e-6,
+        maxomega: float = 10.0,
+        nromega: int = 1000,
+        removefiles: bool = False,
+) -> Result:
     """Calculate the shift current spectrum, only independent tensor elements.
 
     The recipe computes the shift current. The tensor in general have 18 independent
@@ -115,14 +124,10 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
     removefiles : bool
         Remove intermediate files that are created.
     """
-    from ase.io import read
-    from gpaw import GPAW
     from gpaw.mpi import world
-    from pathlib import Path
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.nlopt.shift import get_shift
 
-    atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
     kpts = get_kpts(kptdensity, nd, atoms.cell)
@@ -139,18 +144,22 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
             if not Path('es.gpw').is_file():
-                calc_old = GPAW(gs, txt=None)
+                res = gscalculate(atoms=atoms, calculator=calculator)
+                # We want the gap for plotting, so do the postprocessing:
+                gsmain(atoms=atoms, calculator=calculator)
+                calc_old = res.calculation.load()
                 nval = calc_old.wfs.nvalence
 
-                calc = GPAW(
-                    gs,
+                calc = res.calculation.load(
                     txt='es.txt',
                     symmetry={'point_group': False, 'time_reversal': True},
                     fixdensity=True,
                     nbands=(bandfactor + 1) * nval,
                     convergence={'bands': bandfactor * nval},
                     occupations={'name': 'fermi-dirac', 'width': 1e-4},
-                    kpts=kpts)
+                    kpts=kpts,
+                )
+
                 calc.get_potential_energy()
                 calc.write('es.gpw', mode='all')
                 fnames.append('es.gpw')
@@ -161,7 +170,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
 
         # Do the calculation
         sigma_dict = {}
-        for pol in sorted(sym_chi.keys()):
+        for pol in sorted(sym_chi):
             if pol == 'zero':
                 continue
             # Do the shift current calculation
@@ -196,28 +205,32 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
                 if es_file.is_file():
                     es_file.unlink()
 
-    return results
+    return Result(results)
 
 
-def plot_shift(row, *filename):
+def plot_shift(context, *filename):
     import matplotlib.pyplot as plt
-    import os
-    from pathlib import Path
     from textwrap import wrap
 
     # Read the data from the disk
-    data = row.data.get('results-asr.shift.json')
-    gap = row.get('gap')
-    atoms = row.toatoms()
+    data = context.get_record('asr.shift').result
+    # data = row.data.get('results-asr.shift.json')
+    atoms = context.atoms
+    gs_result = context.gs_results()
+    gap = gs_result['gap']
+    # gap = row.get('gap')
+
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
-    if data is None:
-        return
+    # if data is None:
+    #     return
+    # XXX why are we calling this function with no data in the first place?
 
     # Remove the files if it is already exist
-    for fname in filename:
-        if (Path(fname).is_file()):
-            os.remove(fname)
+    # for fname in filename:
+    #    if Path(fname).is_file():
+    #        os.remove(fname)
+    # XXX probably not web plot function's job to delete files
 
     # Plot the data and add the axis labels
     sym_chi = data['symm']
@@ -231,7 +244,7 @@ def plot_shift(row, *filename):
     fileind = 0
     axes = []
 
-    for pol in sorted(sigma.keys()):
+    for pol in sorted(sigma):
         # Make the axis and add y=0 axis
         shift = sigma[pol]
         ax = plt.figure().add_subplot(111)
@@ -254,7 +267,7 @@ def plot_shift(row, *filename):
         # Set the axis limit
         ax.set_xlim(0, maxw)
         relation = sym_chi.get(pol)
-        if not (relation is None):
+        if relation is not None:
             figtitle = '$' + '$\n$'.join(wrap(relation, 40)) + '$'
             ax.set_title(figtitle)
         ax.set_xlabel(r'Pump photon energy $\hbar\omega$ [eV]')

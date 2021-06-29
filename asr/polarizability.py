@@ -4,9 +4,12 @@ from pathlib import Path
 
 from click import Choice
 import numpy as np
-from ase.io import read
+from ase import Atoms
 
-from asr.core import command, option, ASRResult, prepare_result
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt,
+    calcopt)
+
 from asr.database.browser import (
     table,
     fig,
@@ -14,6 +17,8 @@ from asr.database.browser import (
     make_panel_description)
 from asr.utils.kpts import get_kpts_size
 
+
+from asr.gs import calculate as gscalculate
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the long wave length limit (q=0)
@@ -25,7 +30,7 @@ polarisability) and may be visible at low frequencies.""",
 )
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     explanation = 'Static interband polarizability along the'
     alphax_el = describe_entry('alphax_el', description=explanation + " x-direction")
     alphay_el = describe_entry('alphay_el', description=explanation + " y-direction")
@@ -41,11 +46,11 @@ def webpanel(result, row, key_descriptions):
     alphay = describe_entry('alphay', description=explanation + " y-direction")
     alphaz = describe_entry('alphaz', description=explanation + " z-direction")
 
-    opt = table(row, 'Property', [
+    opt = table(result, 'Property', [
         alphax_el, alphay_el, alphaz_el,
         alphax_lat, alphay_lat, alphaz_lat,
         alphax, alphay, alphaz,
-    ], key_descriptions)
+    ], context.descriptions)
 
     panel = {'title': describe_entry('Optical polarizability (RPA)',
                                      panel_description),
@@ -89,16 +94,14 @@ class Result(ASRResult):
         "frequencies": "Frequency grid [eV]."
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command('asr.polarizability',
-         dependencies=['asr.structureinfo', 'asr.gs@calculate'],
-         requires=['gs.gpw'],
-         returns=Result)
-@option(
-    '--gs', help='Ground state on which response is based',
-    type=str)
+@command(
+    'asr.polarizability',
+)
+@atomsopt
+@calcopt
 @option('--kptdensity', help='K-point density',
         type=float)
 @option('--ecut', help='Plane wave cutoff',
@@ -106,14 +109,18 @@ class Result(ASRResult):
 @option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
-         xc: str = 'RPA', bandfactor: int = 5) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 20.0,
+        ecut: float = 50.0,
+        xc: str = 'RPA',
+        bandfactor: int = 5,
+) -> Result:
     """Calculate linear response polarizability or dielectricfunction (only in 3D)."""
-    from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.df import DielectricFunction
 
-    atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
 
     dfkwargs = {
@@ -146,21 +153,21 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             'Polarizability not implemented for 1D and 2D structures')
 
     try:
-        if not Path('es.gpw').is_file():
-            calc_old = GPAW(gs, txt=None)
-            nval = calc_old.wfs.nvalence
+        res = gscalculate(atoms=atoms, calculator=calculator)
+        calc_old = res.calculation.load()
+        nval = calc_old.wfs.nvalence
 
-            calc = GPAW(
-                gs,
-                txt='es.txt',
-                fixdensity=True,
-                nbands=(bandfactor + 1) * nval,
-                convergence={'bands': bandfactor * nval},
-                occupations={'name': 'fermi-dirac',
-                             'width': 1e-4},
-                kpts=kpts)
-            calc.get_potential_energy()
-            calc.write('es.gpw', mode='all')
+        calc = res.calculation.load(
+            txt='es.txt',
+            fixdensity=True,
+            nbands=(bandfactor + 1) * nval,
+            convergence={'bands': bandfactor * nval},
+            occupations={'name': 'fermi-dirac',
+                         'width': 1e-4},
+            kpts=kpts,
+        )
+        calc.get_potential_energy()
+        calc.write('es.gpw', mode='all')
 
         df = DielectricFunction('es.gpw', **dfkwargs)
         alpha0x, alphax = df.get_polarizability(
@@ -199,16 +206,14 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
                 if es_file.is_file():
                     es_file.unlink()
 
-    return data
+    return Result(data)
 
 
-def polarizability(row, fx, fy, fz):
+def polarizability(context, fx, fy, fz):
     import matplotlib.pyplot as plt
 
-    data = row.data.get('results-asr.polarizability.json')
+    data = context.result
 
-    if data is None:
-        return
     frequencies = data['frequencies']
     i2 = abs(frequencies - 50.0).argmin()
     frequencies = frequencies[:i2]
@@ -216,69 +221,72 @@ def polarizability(row, fx, fy, fz):
     alphay_w = data['alphay_w'][:i2]
     alphaz_w = data['alphaz_w'][:i2]
 
-    infrared = row.data.get('results-asr.infraredpolarizability.json')
-    if infrared:
-        from scipy.interpolate import interp1d
-        omegatmp_w = infrared['omega_w']
-        alpha_wvv = infrared['alpha_wvv']
-        alphax = interp1d(omegatmp_w, alpha_wvv[:, 0, 0], fill_value=0,
-                          bounds_error=False)
-        alphax_w = (alphax_w + alphax(frequencies))
-        alphay = interp1d(omegatmp_w, alpha_wvv[:, 1, 1], fill_value=0,
-                          bounds_error=False)
-        alphay_w = (alphay_w + alphay(frequencies))
-        alphaz = interp1d(omegatmp_w, alpha_wvv[:, 2, 2], fill_value=0,
-                          bounds_error=False)
-        alphaz_w = (alphaz_w + alphaz(frequencies))
+    # infrared = row.data.get('results-asr.infraredpolarizability.json')
+    # if infrared:
+    #     from scipy.interpolate import interp1d
+    #     omegatmp_w = infrared['omega_w']
+    #     alpha_wvv = infrared['alpha_wvv']
+    #     alphax = interp1d(omegatmp_w, alpha_wvv[:, 0, 0], fill_value=0,
+    #                       bounds_error=False)
+    #     alphax_w = (alphax_w + alphax(frequencies))
+    #     alphay = interp1d(omegatmp_w, alpha_wvv[:, 1, 1], fill_value=0,
+    #                       bounds_error=False)
+    #     alphay_w = (alphay_w + alphay(frequencies))
+    #     alphaz = interp1d(omegatmp_w, alpha_wvv[:, 2, 2], fill_value=0,
+    #                       bounds_error=False)
+    #     alphaz_w = (alphaz_w + alphaz(frequencies))
 
     ax = plt.figure().add_subplot(111)
     ax1 = ax
-    try:
-        wpx = row.plasmafrequency_x
-        if wpx > 0.01:
-            alphaxfull_w = alphax_w - wpx**2 / (2 * np.pi * (frequencies + 1e-9)**2)
-            ax.plot(
-                frequencies,
-                np.real(alphaxfull_w),
-                '-',
-                c='C1',
-                label='real')
-            ax.plot(
-                frequencies,
-                np.real(alphax_w),
-                '--',
-                c='C1',
-                label='real (interband)')
-        else:
-            ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
-    except AttributeError:
-        ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
+    # try:
+    #     wpx = data['plasmafrequency_x']
+    #     if wpx > 0.01:
+    #         alphaxfull_w = alphax_w - wpx**2 / (2 * np.pi * (frequencies + 1e-9)**2)
+    #         ax.plot(
+    #             frequencies,
+    #             np.real(alphaxfull_w),
+    #             '-',
+    #             c='C1',
+    #             label='real')
+    #         ax.plot(
+    #             frequencies,
+    #             np.real(alphax_w),
+    #             '--',
+    #             c='C1',
+    #             label='real (interband)')
+    #     else:
+    #         ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
+    # except AttributeError:
+    ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
+    # ^ This line goes in except, if we reenable
+
     ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
 
     plot_polarizability(ax, frequencies, alphax_w, filename=fx, direction='x')
 
     ax = plt.figure().add_subplot(111)
     ax2 = ax
-    try:
-        wpy = row.plasmafrequency_y
-        if wpy > 0.01:
-            alphayfull_w = alphay_w - wpy**2 / (2 * np.pi * (frequencies + 1e-9)**2)
-            ax.plot(
-                frequencies,
-                np.real(alphayfull_w),
-                '-',
-                c='C1',
-                label='real')
-            ax.plot(
-                frequencies,
-                np.real(alphay_w),
-                '--',
-                c='C1',
-                label='real (interband)')
-        else:
-            ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
-    except AttributeError:
-        ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
+    # try:
+    #     wpy = data['plasmafrequency_y']
+    #     if wpy > 0.01:
+    #         alphayfull_w = alphay_w - wpy**2 / (2 * np.pi * (frequencies + 1e-9)**2)
+    #         ax.plot(
+    #             frequencies,
+    #             np.real(alphayfull_w),
+    #             '-',
+    #             c='C1',
+    #             label='real')
+    #         ax.plot(
+    #             frequencies,
+    #             np.real(alphay_w),
+    #             '--',
+    #             c='C1',
+    #             label='real (interband)')
+    #     else:
+    #         ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
+    # except AttributeError:
+    ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
+    # ^ This line goes in except, if we reenable
 
     ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
     plot_polarizability(ax, frequencies, alphay_w, filename=fy, direction='y')

@@ -1,15 +1,23 @@
 """Bethe Salpeter absorption spectrum."""
 from click import Choice
 import typing
+from pathlib import Path
 
 import numpy as np
+from ase import Atoms
 from ase.units import alpha, Ha, Bohr
 
-from asr.core import command, option, file_barrier, ASRResult, prepare_result
+from asr.core import (
+    command, option, file_barrier, ASRResult, prepare_result,
+    atomsopt, calcopt, ExternalFile,
+)
 from asr.database.browser import (
     fig, table, make_panel_description, describe_entry)
 from asr.utils.kpts import get_kpts_size
 
+from asr.gs import calculate as gscalculate
+from asr.gs import main as gsmain
+from asr.magstate import main as calcmagstate
 
 panel_description = make_panel_description(
     """The optical absorption calculated from the Bethe–Salpeter Equation
@@ -23,13 +31,32 @@ adjustment as used for BSE but without spin–orbit interactions, is also shown.
 )
 
 
-@command(creates=['bse_polx.csv', 'bse_eigx.dat',
-                  'bse_poly.csv', 'bse_eigy.dat',
-                  'bse_polz.csv', 'bse_eigz.dat'],
-         requires=['gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         resources='480:20h')
-@option('--gs', help='Ground state on which BSE is based', type=str)
+@prepare_result
+class BSECalculateResult(ASRResult):
+
+    bse_polx: ExternalFile
+    bse_poly: ExternalFile
+    bse_polz: ExternalFile
+    bse_eigx: ExternalFile
+    bse_eigy: ExternalFile
+    bse_eigz: ExternalFile
+
+    key_descriptions: dict = {}
+
+    for direction in ['x', 'y', 'z']:
+        key_descriptions[f'bse_pol{direction}'] = (
+            'External file handle for bse polarizability '
+            f'for {direction} polarized fields.'
+        )
+        key_descriptions[f'bse_eig{direction}'] = (
+            'External file handle for bse eigenvalues '
+            f'for {direction} polarized fields.'
+        )
+
+
+@command()
+@atomsopt
+@calcopt
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
 @option('--nv_s', help='Valence bands included', type=float)
@@ -38,21 +65,22 @@ adjustment as used for BSE but without spin–orbit interactions, is also shown.
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
-              mode: str = 'BSE', bandfactor: int = 6,
-              nv_s: float = -2.3, nc_s: float = 2.3) -> ASRResult:
+def calculate(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 20.0,
+        ecut: float = 50.0,
+        mode: str = 'BSE',
+        bandfactor: int = 6,
+        nv_s: float = -2.3,
+        nc_s: float = 2.3,
+) -> ASRResult:
     """Calculate BSE polarizability."""
-    import os
-    from ase.io import read
     from ase.dft.bandgap import bandgap
-    from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.response.bse import BSE
     from gpaw.occupations import FermiDirac
-    from pathlib import Path
-    import numpy as np
 
-    atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
     ND = np.sum(pbc)
     if ND == 3:
@@ -68,7 +96,8 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
         raise NotImplementedError(
             'asr for BSE not implemented for 0D and 1D structures')
 
-    calc_gs = GPAW(gs, txt=None)
+    gsres = gscalculate(atoms=atoms, calculator=calculator)
+    calc_gs = gsres.calculation.load()
     spin = calc_gs.get_spin_polarized()
     nval = calc_gs.wfs.nvalence
     nocc = int(nval / 2)
@@ -110,28 +139,17 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
 
     if not Path('gs_bse.gpw').is_file():
-        calc = GPAW(
-            gs,
+        calc = gsres.calculation.load(
             txt='gs_bse.txt',
             fixdensity=True,
             nbands=int(nbands * 1.5),
             convergence={'bands': nbands},
             occupations=FermiDirac(width=1e-4),
-            kpts=kpts)
+            kpts=kpts
+        )
         calc.get_potential_energy()
         with file_barrier(['gs_bse.gpw']):
             calc.write('gs_bse.gpw', mode='all')
-
-    # if spin:
-    #     f0 = calc.get_occupation_numbers(spin=0)
-    #     f1 = calc.get_occupation_numbers(spin=1)
-    #     n0 = np.where(f0 < 1.0e-6)[0][0]
-    #     n1 = np.where(f1 < 1.0e-6)[0][0]
-    #     valence_bands = [range(n0 - nv, n0), range(n1 - nv, n1)]
-    #     conduction_bands = [range(n0, n0 + nc), range(n1, n1 + nc)]
-    # else:
-    #     valence_bands = range(nocc - nv, nocc)
-    #     conduction_bands = range(nocc, nocc + nc)
 
     world.barrier()
 
@@ -167,50 +185,60 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
                                            write_eig='bse_eigz.dat',
                                            pbc=pbc,
                                            w_w=w_w)
-    if world.rank == 0:
-        os.system('rm gs_bse.gpw')
-        os.system('rm gs_nosym.gpw')
+
+    # XXX below cleanup code fails to check whether removal even succeeded!
+    # Which it won't.  We need proper mechanisms for these things.
+    #
+    # if world.rank == 0:
+    #    os.system('rm gs_bse.gpw')
+    #    os.system('rm gs_nosym.gpw')
+
+    return BSECalculateResult.fromdata(
+        bse_polx=ExternalFile.fromstr('bse_polx.csv'),
+        bse_poly=ExternalFile.fromstr('bse_poly.csv'),
+        bse_polz=ExternalFile.fromstr('bse_polz.csv'),
+        bse_eigx=ExternalFile.fromstr('bse_eigx.dat'),
+        bse_eigy=ExternalFile.fromstr('bse_eigy.dat'),
+        bse_eigz=ExternalFile.fromstr('bse_eigz.dat'),
+    )
 
 
-def absorption(row, filename, direction='x'):
-    delta_bse, delta_rpa = gaps_from_row(row)
-    return _absorption(
-        dim=sum(row.toatoms().pbc),
-        magstate=row.magstate,
-        gap_dir=row.gap_dir,
-        gap_dir_nosoc=row.gap_dir_nosoc,
-        bse_data=np.array(
-            row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']),
-        pol_data=row.data.get('results-asr.polarizability.json'),
-        delta_bse=delta_bse,
-        delta_rpa=delta_rpa,
-        direction=direction,
-        filename=filename)
-
-
-def gaps_from_row(row):
-    for method in ['_gw', '_hse', '_gllbsc', '']:
-        gapkey = f'gap_dir{method}'
-        if gapkey in row:
-            gap_dir_x = row[gapkey]
-            delta_bse = gap_dir_x - row.gap_dir
-            delta_rpa = gap_dir_x - row.gap_dir_nosoc
-            return delta_bse, delta_rpa
-
-
-def _absorption(*, dim, magstate, gap_dir, gap_dir_nosoc,
-                bse_data, pol_data,
-                delta_bse, delta_rpa, filename, direction):
+def absorption(context, filename, direction='x'):
     import matplotlib.pyplot as plt
+    dim = context.ndim
 
-    qp_gap = gap_dir + delta_bse
+    # magstate = context.magstate().result['magstate']
+    # gs_result = context.gs_results()
 
-    if magstate != 'NM':
-        qp_gap = gap_dir_nosoc + delta_rpa
-        delta_bse = delta_rpa
+    # gap_dir = gs_result['gap_dir']
+    # gap_dir_nosoc = gs_result['gap_dir_nosoc']
+
+    # XXX Not sure what's happening here, we can't just mash gaps
+    # into the webpanel and expect the reader to know what we are showing.
+    #
+    # I'll use the gap from GS until this is resolved.
+    #
+    # for method in ['_gw', '_hse', '_gllbsc', '']:
+    #     gapkey = f'gap_dir{method}'
+    #     if gapkey in row:
+    #         gap_dir_x = row.get(gapkey)
+    #         delta_bse = gap_dir_x - gap_dir
+    #         delta_rpa = gap_dir_x - gap_dir_nosoc
+    #         break
+
+    # delta_bse = gap_dir_
+    # qp_gap = gap_dir + delta_bse
+
+    # if magstate != 'NM':
+    #     qp_gap = gap_dir_nosoc + delta_rpa
+    #     delta_bse = delta_rpa
+    qp_gap = 0.0  # XXX Help
+    delta_bse = 0.0  # XXX Help
 
     ax = plt.figure().add_subplot(111)
 
+    result = context.get_record('asr.bse').result
+    bse_data = np.array(result[f'bse_alpha{direction}_w'])
     wbse_w = bse_data[:, 0] + delta_bse
     if dim == 2:
         sigma_w = -1j * 4 * np.pi * (bse_data[:, 1] + 1j * bse_data[:, 2])
@@ -222,17 +250,20 @@ def _absorption(*, dim, magstate, gap_dir, gap_dir_nosoc,
     xmax = wbse_w[-1]
 
     # TODO: Sometimes RPA pol doesn't exist, what to do?
-    if pol_data:
-        wrpa_w = pol_data['frequencies'] + delta_rpa
-        sigma_w = -1j * 4 * np.pi * pol_data[f'alpha{direction}_w']
-        if dim == 2:
-            sigma_w *= wrpa_w * alpha / Ha / Bohr
-        absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
-        ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
-        ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
-                                   absrpa_w[wrpa_w < xmax]])) * 1.05
-    else:
-        ymax = max(absbse_w[wbse_w < xmax]) * 1.05
+    # Answer: Nothing, that's someone else's problem, not asr.bse.
+    #
+    # data = row.data.get('results-asr.polarizability.json')
+    # if data:
+    #     wrpa_w = data['frequencies'] + delta_rpa
+    #     sigma_w = -1j * 4 * np.pi * data[f'alpha{direction}_w']
+    #     if dim == 2:
+    #         sigma_w *= wrpa_w * alpha / Ha / Bohr
+    #     absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+    #     ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
+    #     ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
+    #                                absrpa_w[wrpa_w < xmax]])) * 1.05
+    # else:
+    ymax = max(absbse_w[wbse_w < xmax]) * 1.05
 
     ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
             label='Direct QP gap')
@@ -252,17 +283,12 @@ def _absorption(*, dim, magstate, gap_dir, gap_dir_nosoc,
     return ax
 
 
-def webpanel(result, row, key_descriptions):
-    import numpy as np
+def webpanel(result, context):
     from functools import partial
 
-    E_B = table(row, 'Property', ['E_B'], key_descriptions)
+    E_B = table(result, 'Property', ['E_B'], context.descriptions)
 
-    atoms = row.toatoms()
-    pbc = atoms.pbc.tolist()
-    dim = np.sum(pbc)
-
-    if dim == 2:
+    if context.ndim == 2:
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
@@ -306,43 +332,77 @@ class Result(ASRResult):
                         'bse_alphay_w': 'BSE polarizability y-direction.',
                         'bse_alphaz_w': 'BSE polarizability z-direction.'}
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command(module='asr.bse',
-         requires=['bse_polx.csv', 'results-asr.gs.json'],
-         dependencies=['asr.bse@calculate', 'asr.gs'],
-         returns=Result)
-def main() -> Result:
-    import numpy as np
-    from pathlib import Path
-    from asr.core import read_json
+@command()
+@atomsopt
+@calcopt
+@option('--kptdensity', help='K-point density', type=float)
+@option('--ecut', help='Plane wave cutoff', type=float)
+@option('--nv_s', help='Valence bands included', type=float)
+@option('--nc_s', help='Conduction bands included', type=float)
+@option('--mode', help='Irreducible response',
+        type=Choice(['RPA', 'BSE', 'TDHF']))
+@option('--bandfactor', type=int,
+        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 6.0,
+        ecut: float = 50.0,
+        mode: str = 'BSE',
+        bandfactor: int = 6,
+        nv_s: float = -2.3,
+        nc_s: float = 2.3,
+) -> Result:
 
-    alphax_w = np.loadtxt('bse_polx.csv', delimiter=',')
+    res = calculate(
+        atoms=atoms,
+        calculator=calculator,
+        kptdensity=kptdensity,
+        ecut=ecut,
+        mode=mode,
+        bandfactor=bandfactor,
+        nv_s=nv_s,
+        nc_s=nc_s,
+    )
+
+    alphax_w = np.loadtxt(res.bse_polx, delimiter=',')
     data = {'bse_alphax_w': alphax_w.astype(np.float32)}
 
-    if Path('bse_poly.csv').is_file():
-        alphay_w = np.loadtxt('bse_poly.csv', delimiter=',')
+    if Path(res.bse_poly).is_file():
+        alphay_w = np.loadtxt(res.bse_poly, delimiter=',')
         data['bse_alphay_w'] = alphay_w.astype(np.float32)
-    if Path('bse_polz.csv').is_file():
-        alphaz_w = np.loadtxt('bse_polz.csv', delimiter=',')
+    else:
+        data['bse_alphay_w'] = None
+
+    if Path(res.bse_polz).is_file():
+        alphaz_w = np.loadtxt(res.bse_polz, delimiter=',')
         data['bse_alphaz_w'] = alphaz_w.astype(np.float32)
+    else:
+        data['bse_alphaz_w'] = None
 
-    if Path('bse_eigx.dat').is_file():
-        E = np.loadtxt('bse_eigx.dat')[0, 1]
+    if Path(res.bse_eigx).is_file():
+        E = np.loadtxt(res.bse_eigx)[0, 1]
 
-        magstateresults = read_json('results-asr.magstate.json')
+        magstateresults = calcmagstate(
+            atoms=atoms, calculator=calculator)
         magstate = magstateresults['magstate']
 
-        gsresults = read_json('results-asr.gs.json')
+        gsresults = gsmain(
+            atoms=atoms, calculator=calculator)
+
         if magstate == 'NM':
             E_B = gsresults['gap_dir'] - E
         else:
             E_B = gsresults['gap_dir_nosoc'] - E
 
         data['E_B'] = E_B
+    else:
+        data['E_B'] = None
 
-    return data
+    return Result(data=data)
 
 
 if __name__ == '__main__':

@@ -4,11 +4,13 @@ import pytest
 @pytest.mark.ci
 @pytest.mark.parametrize("bandgap", [0, 1])
 def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
-             get_webcontent, bandgap):
+             get_webcontent, fast_calc, bandgap):
     import gpaw
     from pathlib import Path
     import numpy as np
     from asr.hse import main
+    from asr.structureinfo import main as structinfo
+
     test_material.write('structure.json')
 
     def non_self_consistent_eigenvalues(calc,
@@ -38,8 +40,18 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         return calc.eigenvalues[np.newaxis]
 
     mocker.patch('gpaw.xc.tools.vxc', create=True, new=vxc)
-    results = main()
+    results = main(
+        atoms=test_material,
+        calculator=fast_calc,
+        npoints=10,
+        kptdensity=2,
+    )
     assert results['gap_hse_nosoc'] == pytest.approx(2 * bandgap)
     assert results['gap_dir_hse_nosoc'] == pytest.approx(2 * bandgap)
+
+    # We need to call structureinfo in order to make the webpanel.
+    # This should be fixed in the future.
+    structinfo(atoms=test_material)
+
     html = get_webcontent()
     assert 'hse-bs.png' in html

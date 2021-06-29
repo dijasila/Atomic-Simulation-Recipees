@@ -15,8 +15,7 @@ from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
 
 import asr
-from asr.core import (command, option, argument, ASRResult,
-                      decode_object, UnknownDataFormat)
+from asr.core import ASRResult, decode_object, UnknownDataFormat
 
 
 def import_dbapp_from_ase():
@@ -134,7 +133,7 @@ def setup_app():
     @app.route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
         assert project in projects
-        path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
+        path = tmpdir / f"{project}/{uid}-{name}"
         return send_file(str(path))
 
     setup_data_endpoints()
@@ -252,7 +251,7 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
         "default_columns": metadata.get("default_columns", ["formula", "uid"]),
         "table_template": str(
             metadata.get(
-                "table_template", f"asr/database/templates/table.html",
+                "table_template", "asr/database/templates/table.html",
             )
         ),
         "search_template": str(
@@ -266,12 +265,6 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
     }
 
 
-@command()
-@argument("databases", nargs=-1, type=str)
-@option("--host", help="Host address.", type=str)
-@option("--test", is_flag=True, help="Test the app.")
-@option("--extra_kvp_descriptions", type=str,
-        help='File containing extra kvp descriptions for info.json')
 def main(databases: List[str], host: str = "0.0.0.0",
          test: bool = False,
          extra_kvp_descriptions: str = 'key_descriptions.json') -> ASRResult:

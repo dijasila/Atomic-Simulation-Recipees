@@ -36,7 +36,8 @@ def test_setup_displacements_get_all_displacements(test_material):
 def test_setup_displacements(asr_tmpdir_w_params, test_material):
     from asr.setup.displacements import main as displacements
 
-    test_material.write('structure.json')
-    results = displacements()
-    generated_folders = results['folders']
-    assert 'displacements/0.01-0-+x' in generated_folders
+    results = displacements(
+        atoms=test_material,
+        displacement=0.01,
+    )
+    assert len(results) == len(test_material) * 3 * 2

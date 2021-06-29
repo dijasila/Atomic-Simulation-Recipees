@@ -255,7 +255,7 @@ def create_corrected_db(newname, db, reactions, els_dMu):
         newdb.write(row)
 
 
-@command("asr.fere", resources="1:1h")
+@command("asr.fere")
 @option("--newdbname", help="Name of the new db file", type=str)
 @option("--dbname", help="Name of the base db file", type=str)
 @option(

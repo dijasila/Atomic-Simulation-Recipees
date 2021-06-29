@@ -2,7 +2,9 @@ import pytest
 
 
 @pytest.mark.ci
-def test_bse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webcontent):
+def test_bse(
+        asr_tmpdir_w_params, test_material, fast_calc,
+        mockgpaw, mocker, get_webcontent):
     import gpaw
     import gpaw.occupations
     from gpaw.response.bse import BSE
@@ -14,7 +16,6 @@ def test_bse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webconten
     gpaw.occupations.FermiDirac.return_value = None
 
     from asr.bse import main
-    test_material.write("structure.json")
     ndim = sum(test_material.pbc)
 
     def calculate(self):
@@ -29,8 +30,19 @@ def test_bse(asr_tmpdir_w_params, test_material, mockgpaw, mocker, get_webconten
 
     mocker.patch.object(BSE, "calculate", calculate)
     if ndim > 1:
-        main()
+        main(
+            atoms=test_material,
+            calculator=fast_calc,
+            kptdensity=2,
+        )
+
+        test_material.write("structure.json")
         get_webcontent()
     else:
         with pytest.raises(NotImplementedError):
-            main()
+            main(
+                atoms=test_material,
+                calculator=fast_calc,
+                kptdensity=2,
+
+            )

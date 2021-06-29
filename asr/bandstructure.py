@@ -1,10 +1,19 @@
 """Electronic band structures."""
+import pathlib
 from typing import Union
+from ase import Atoms
+import asr
+from asr.calculators import Calculation
+from asr.core import (
+    command, option, ASRResult, singleprec_dict, prepare_result,
+    AtomsFile, Selector,
+)
+from asr.gs import calculate as calculategs
+from asr.gs import main as maings
+
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
-from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
 from asr.database.browser import fig, make_panel_description, describe_entry
-from asr.utils.hacks import gs_xcname_from_row
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
@@ -14,42 +23,85 @@ the magnetic easy axis) indicated by the color code.""",
 )
 
 
-@command('asr.bandstructure',
-         requires=['gs.gpw'],
-         creates=['bs.gpw'],
-         dependencies=['asr.gs@calculate'])
+@prepare_result
+class BandstructureCalculationResult(ASRResult):
+
+    calculation: Calculation
+
+    key_descriptions = dict(calculation='Calculation object')
+
+
+sel = Selector()
+sel.name = sel.EQ('asr.bandstructure:calculate')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.AND(
+    sel.CONTAINS('emptybands'),
+    sel.NOT(sel.CONTAINS('bsrestart')),
+)
+
+
+@asr.migration(selector=sel)
+def remove_emptybands_and_make_bsrestart(record):
+    """Remove param="emptybands" and make param='bsrestart'."""
+    record.parameters.bsrestart = {
+        'nbands': -record.parameters.emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -record.parameters.emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.emptybands
+    return record
+
+
+@command(
+    'asr.bandstructure',
+)
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@asr.calcopt
+@asr.calcopt(
+    aliases=['-b', '--bsrestart'],
+    help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
+)
 @option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints', type=int)
-@option('--emptybands', type=int)
-def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
-              emptybands: int = 20) -> ASRResult:
+@option('--npoints',
+        type=int,
+        help='Number of points along k-point path.')
+def calculate(
+        atoms: Atoms,
+        calculator: dict = calculategs.defaults.calculator,
+        bsrestart: dict = {
+            'nbands': -20,
+            'txt': 'bs.txt',
+            'fixdensity': True,
+            'convergence': {
+                'bands': -10},
+            'symmetry': 'off'
+        },
+        kptpath: Union[str, None] = None,
+        npoints: int = 400,
+) -> BandstructureCalculationResult:
     """Calculate electronic band structure."""
-    from gpaw import GPAW
-    from ase.io import read
-    atoms = read('structure.json')
     path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
                                pbc=atoms.pbc)
 
-    convbands = emptybands // 2
-    parms = {
-        'basis': 'dzp',
-        'nbands': -emptybands,
-        'txt': 'bs.txt',
-        'fixdensity': True,
-        'kpts': path,
-        'convergence': {
-            'bands': -convbands},
-        'symmetry': 'off'}
-    calc = GPAW('gs.gpw', **parms)
+    result = calculategs(atoms=atoms, calculator=calculator)
+    calculation = result.calculation
+    bsrestart['kpts'] = path
+    calc = calculation.load(**bsrestart)
     calc.get_potential_energy()
-    calc.write('bs.gpw')
+    calculation = calc.save(id='bs')
+    return BandstructureCalculationResult.fromdata(calculation=calculation)
 
 
 bs_png = 'bs.png'
 bs_html = 'bs.html'
 
 
-def plot_bs_html(row,
+def plot_bs_html(context,
                  filename=bs_html,
                  figsize=(6.4, 6.4),
                  s=2):
@@ -57,21 +109,19 @@ def plot_bs_html(row,
     import plotly.graph_objs as go
 
     traces = []
-    d = row.data.get('results-asr.bandstructure.json')
-    xcname = gs_xcname_from_row(row)
+    d = context.result
+    xcname = context.xcname
 
     path = d['bs_nosoc']['path']
     kpts = path.kpts
     ef = d['bs_nosoc']['efermi']
 
-    if row.get('evac') is not None:
-        label = '<i>E</i> - <i>E</i><sub>vac</sub> [eV]'
-        reference = row.get('evac')
-    else:
-        label = '<i>E</i> - <i>E</i><sub>F</sub> [eV]'
-        reference = ef
+    ref = context.energy_reference()
+    label = ref.html_plotlabel()
 
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    gsresults = context.gs_results()
+    gaps = gsresults.get('gaps_nosoc')
+
     if gaps.get('vbm'):
         emin = gaps.get('vbm', ef) - 3
     else:
@@ -82,13 +132,14 @@ def plot_bs_html(row,
         emax = ef + 3
     e_skn = d['bs_nosoc']['energies']
     shape = e_skn.shape
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+    cell = context.atoms.cell
+    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, cell)
     xcoords = np.vstack([xcoords] * shape[0] * shape[2])
     # colors_s = plt.get_cmap('viridis')([0, 1])  # color for sz = 0
     e_kn = np.hstack([e_skn[x] for x in range(shape[0])])
     trace = go.Scattergl(
         x=xcoords.ravel(),
-        y=e_kn.T.ravel() - reference,
+        y=e_kn.T.ravel() - ref.value,
         mode='markers',
         name=f'{xcname} no SOC',
         showlegend=True,
@@ -101,7 +152,7 @@ def plot_bs_html(row,
     ef = d['bs_soc']['efermi']
     sz_mk = d['bs_soc']['sz_mk']
 
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, cell)
 
     shape = e_mk.shape
     perm = (-sz_mk).argsort(axis=None)
@@ -111,11 +162,11 @@ def plot_bs_html(row,
     xcoords = xcoords.ravel()[perm].reshape(shape)
 
     # Unicode for <S_z>
-    sdir = row.get('spin_axis', 'z')
+    sdir = context.spin_axis
     cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
     trace = go.Scattergl(
         x=xcoords.ravel(),
-        y=e_mk.ravel() - reference,
+        y=e_mk.ravel() - ref.value,
         mode='markers',
         name=xcname,
         showlegend=True,
@@ -134,7 +185,7 @@ def plot_bs_html(row,
 
     linetrace = go.Scatter(
         x=[np.min(xcoords), np.max(xcoords)],
-        y=[ef - reference, ef - reference],
+        y=[ef - ref.value, ef - ref.value],
         mode='lines',
         line=dict(color=('rgb(0, 0, 0)'), width=2, dash='dash'),
         name='Fermi level')
@@ -170,7 +221,7 @@ def plot_bs_html(row,
 
     bandyaxis = go.layout.YAxis(
         title=label,
-        range=[emin - reference, emax - reference],
+        range=[emin - ref.value, emax - ref.value],
         showgrid=True,
         showline=True,
         zeroline=False,
@@ -226,16 +277,17 @@ def plot_bs_html(row,
         fd.write(html)
 
 
-def add_bs_ks(row, ax, reference=0, color='C1'):
+def add_bs_ks(context, ax, reference=0, color='C1'):
     """Plot with soc on ax."""
-    d = row.data.get('results-asr.bandstructure.json')
+    bsrecord = context.bandstructure()
+    d = bsrecord.result
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
-    xcname = gs_xcname_from_row(row)
-    xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
+    xcoords, label_xcoords, labels = labels_from_kpts(path.kpts,
+                                                      context.atoms.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
-    ax.lines[-1].set_label(xcname)
+    ax.lines[-1].set_label(context.xcname)
     ef = d['bs_soc']['efermi']
     ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
@@ -299,7 +351,7 @@ def legend_on_top(ax, **kwargs):
               mode='expand', **kwargs)
 
 
-def plot_bs_png(row,
+def plot_bs_png(context,
                 filename=bs_png,
                 figsize=(5.5, 5),
                 s=0.5):
@@ -308,24 +360,33 @@ def plot_bs_png(row,
     from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
-    d = row.data.get('results-asr.bandstructure.json')
-    xcname = gs_xcname_from_row(row)
+
+    d = context.result
+    xcname = context.xcname
+    eref = context.energy_reference()
+    gsresults = context.gs_results()
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
     ef_soc = d['bs_soc']['efermi']
-    ref_nosoc = row.get('evac', d.get('bs_nosoc').get('efermi'))
-    ref_soc = row.get('evac', d.get('bs_soc').get('efermi'))
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
+
+    ref_soc = eref.value
+    if context.ndim != 2:
+        # XXXX this check should be ndim == 3, but we need to update GS
+        # so it sets the vacuum level for ndim != 2.
+        ref_nosoc = d['bs_nosoc']['efermi']
     else:
-        label = r'$E - E_\mathrm{F}$ [eV]'
+        assert eref.key == 'evac'
+        ref_nosoc = ref_soc
+
+    label = eref.mpl_plotlabel()
 
     e_skn = d['bs_nosoc']['energies']
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
 
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    gaps = gsresults['gaps_nosoc']
+
     if gaps.get('vbm'):
         emin = gaps.get('vbm') - 3
     else:
@@ -334,6 +395,7 @@ def plot_bs_png(row,
         emax = gaps.get('cbm') + 3
     else:
         emax = ef_nosoc + 3
+
     bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
     # without soc
     nosoc_style = dict(
@@ -355,8 +417,12 @@ def plot_bs_png(row,
     # with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
-    sdir = row.get('spin_axis', 'z')
-    colorbar = not (row.magstate == 'NM' and row.has_inversion_symmetry)
+
+    # XXX We do not depend on structureinfo so we cannot
+    # use has_inversion_symmetry!
+    colorbar = context.is_magnetic
+    # colorbar = not (row.magstate == 'NM'
+    #                 and getattr(row, 'has_inversion_symmetry', False))
     ax, cbar = plot_with_colors(
         bsp,
         ax=ax,
@@ -369,7 +435,7 @@ def plot_bs_png(row,
         emax=emax - ref_soc,
         sortcolors=True,
         loc='upper right',
-        clabel=r'$\langle S_{} \rangle $'.format(sdir),
+        clabel=r'$\langle S_{} \rangle $'.format(context.spin_axis),
         s=s)
 
     if cbar:
@@ -395,9 +461,8 @@ def plot_bs_png(row,
     plt.savefig(filename, bbox_inches='tight')
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from typing import Tuple, List
-    from asr.utils.hacks import gs_xcname_from_row
 
     def rmxclabel(d: 'Tuple[str, str, str]',
                   xcs: List) -> 'Tuple[str, str, str]':
@@ -408,7 +473,7 @@ def webpanel(result, row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    xcname = gs_xcname_from_row(row)
+    xcname = context.xcname
 
     panel = {'title': describe_entry(f'Electronic band structure ({xcname})',
                                      panel_description),
@@ -440,27 +505,72 @@ class Result(ASRResult):
             'bs_nosoc': 'Bandstructure data without spin–orbit coupling.'
         }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
-@command('asr.bandstructure',
-         requires=['gs.gpw', 'bs.gpw', 'results-asr.gs.json',
-                   'results-asr.structureinfo.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.bandstructure@calculate', 'asr.gs',
-                       'asr.structureinfo', 'asr.magnetic_anisotropy'],
-         returns=Result)
-def main() -> Result:
-    from gpaw import GPAW
+sel = Selector()
+sel.name = sel.EQ('asr.bandstructure:main')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.NOT(sel.CONTAINS('bsrestart'))
+
+
+@asr.migration(selector=sel)
+def set_bsrestart_from_dependencies(record):
+    """Construct "bsrestart" parameters from "emptybands" parameter."""
+    emptybands = (
+        record.parameters.dependency_parameters[
+            'asr.bandstructure:calculate']['emptybands']
+    )
+    record.parameters.bsrestart = {
+        'nbands': -emptybands,
+        'txt': 'bs.txt',
+        'fixdensity': True,
+        'convergence': {
+            'bands': -emptybands // 2},
+        'symmetry': 'off'
+    }
+    del record.parameters.dependency_parameters[
+        'asr.bandstructure:calculate']['emptybands']
+    return record
+
+
+@command(
+    'asr.bandstructure',
+)
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@asr.calcopt
+@asr.calcopt(
+    aliases=['-b', '--bsrestart'],
+    help='Bandstructure Calculator params.',
+    matcher=asr.matchers.EQUAL,
+)
+@option('--kptpath', type=str, help='Custom kpoint path.')
+@option('--npoints',
+        type=int,
+        help='Number of points along k-point path.')
+def main(
+        atoms: Atoms,
+        calculator: dict = calculate.defaults.calculator,
+        bsrestart: dict = calculate.defaults.bsrestart,
+        kptpath: Union[str, None] = None,
+        npoints: int = 400) -> Result:
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
-    from asr.core import read_json
     import copy
     from asr.utils.gpw2eigs import gpw2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
-    ref = GPAW('gs.gpw', txt=None).get_fermi_level()
-    calc = GPAW('bs.gpw', txt=None)
+    bsresult = calculate(
+        atoms=atoms,
+        calculator=calculator,
+        bsrestart=bsrestart,
+        npoints=npoints,
+        kptpath=kptpath,
+    )
+    gsresult = calculategs(atoms=atoms, calculator=calculator)
+    ref = gsresult.calculation.load().get_fermi_level()
+    calc = bsresult.calculation.load()
     atoms = calc.atoms
     path = calc.parameters.kpts
     if not isinstance(path, BandPath):
@@ -479,7 +589,7 @@ def main() -> Result:
     bsresults = bs.todict()
 
     # Save Fermi levels
-    gsresults = read_json('results-asr.gs.json')
+    gsresults = maings(atoms=atoms, calculator=calculator)
     efermi_nosoc = gsresults['gaps_nosoc']['efermi']
     bsresults['efermi'] = efermi_nosoc
 
@@ -489,13 +599,15 @@ def main() -> Result:
     # Add spin orbit correction
     bsresults = bs.todict()
 
-    theta, phi = get_spin_axis()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
 
     # We use a larger symmetry tolerance because we want to correctly
     # color spins which doesn't always happen due to slightly broken
     # symmetries, hence tolerance=1e-2.
+    # XXX This is only compatible with GPAW
+    bsfile = bsresult.calculation.paths[0]
     e_km, _, s_kvm = gpw2eigs(
-        'bs.gpw', soc=True, return_spin=True, theta=theta, phi=phi,
+        pathlib.Path(bsfile), soc=True, return_spin=True, theta=theta, phi=phi,
         symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
     efermi = gsresults['efermi']
@@ -507,7 +619,11 @@ def main() -> Result:
     s_mvk = np.array(s_kvm.transpose(2, 1, 0))
 
     if s_mvk.ndim == 3:
-        sz_mk = s_mvk[:, get_spin_index(), :]  # take x, y or z component
+        sz_mk = s_mvk[
+            :,
+            get_spin_index(atoms=atoms,
+                           calculator=calculator),
+            :]  # take x, y or z component
     else:
         sz_mk = s_mvk
 

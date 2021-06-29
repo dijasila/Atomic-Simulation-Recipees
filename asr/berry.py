@@ -1,8 +1,12 @@
 """Topological analysis of electronic structure."""
 import numpy as np
-from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (fig, entry_parameter_description,
-                                  describe_entry, WebPanel,
+
+from ase import Atoms
+
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt)
+from asr.gs import calculate as gscalculate
+from asr.database.browser import (fig, describe_entry, WebPanel,
                                   make_panel_description, href)
 
 
@@ -57,30 +61,27 @@ class CalculateResult(ASRResult):
     }
 
 
-@command(module='asr.berry',
-         requires=['gs.gpw'],
-         dependencies=['asr.gs'],
-         resources='120:10h',
-         returns=CalculateResult)
-@option('--gs', help='Ground state', type=str)
+@command(module='asr.berry')
+@atomsopt
+@calcopt
 @option('--kpar', help='K-points along path', type=int)
 @option('--kperp', help='K-points orthogonal to path', type=int)
-def calculate(gs: str = 'gs.gpw', kpar: int = 120,
-              kperp: int = 7) -> CalculateResult:
+def calculate(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kpar: int = 120,
+        kperp: int = 7
+) -> CalculateResult:
     """Calculate ground state on specified k-point grid."""
     import os
-    from ase.io import read
-    from gpaw import GPAW
     from gpaw.berryphase import parallel_transport
     from gpaw.mpi import world
     from asr.magnetic_anisotropy import get_spin_axis
 
-    atoms = read('structure.json')
-    pbc = atoms.pbc.tolist()
-    nd = np.sum(pbc)
+    nd = sum(atoms.pbc)
 
     """Find the easy axis of magnetic materials"""
-    theta, phi = get_spin_axis()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
 
     results = {}
     results['phi0_km'] = None
@@ -92,12 +93,15 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
     results['phi0_pi_km'] = None
     results['s0_pi_km'] = None
 
+    gsres = gscalculate(atoms=atoms, calculator=calculator)
+
     if nd == 2:
-        calc = GPAW(gs,
-                    kpts=(kperp, kpar, 1),
-                    fixdensity=True,
-                    symmetry='off',
-                    txt='gs_berry.txt')
+        calc = gsres.calculation.load(
+            kpts=(kperp, kpar, 1),
+            fixdensity=True,
+            symmetry='off',
+            txt='gs_berry.txt',
+        )
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
         phi_km, s_km = parallel_transport('gs_berry.gpw',
@@ -112,11 +116,12 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
 
     elif nd == 3:
         """kx = 0"""
-        calc = GPAW(gs,
-                    kpts=(1, kperp, kpar),
-                    fixdensity=True,
-                    symmetry='off',
-                    txt='gs_berry.txt')
+        calc = gsres.calculation.load(
+            kpts=(1, kperp, kpar),
+            fixdensity=True,
+            symmetry='off',
+            txt='gs_berry.txt'
+        )
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
         phi_km, s_km = parallel_transport('gs_berry.gpw',
@@ -170,10 +175,11 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
     return CalculateResult(data=results)
 
 
-def plot_phases(row, f0, f1, f2, fpi):
+def plot_phases(context, f0, f1, f2, fpi):
     import pylab as plt
 
-    results = row.data['results-asr.berry@calculate.json']
+    results = context.get_record('asr.berry:calculate').result
+
     for f, label in [(f0, 0), (f1, 1), (f2, 2), (fpi, '0_pi')]:
         phit_km = results.get(f'phi{label}_km')
         if phit_km is None:
@@ -211,11 +217,7 @@ def plot_phases(row, f0, f1, f2, fpi):
                     s=5,
                     marker='o')
 
-        if 'results-asr.magnetic_anisotropy.json' in row.data:
-            anis = row.data['results-asr.magnetic_anisotropy.json']
-            dir = anis['spin_axis']
-        else:
-            dir = 'z'
+        dir = context.spin_axis
 
         cbar = plt.colorbar()
         cbar.set_label(rf'$\langle S_{dir}\rangle/\hbar$', size=16)
@@ -244,14 +246,12 @@ def plot_phases(row, f0, f1, f2, fpi):
         plt.savefig(f)
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.utils.hacks import gs_xcname_from_row
+def webpanel(result, context):
+    xcname = context.xcname
+    parameter_description = context.parameter_description('asr.gs:calculate')
 
-    xcname = gs_xcname_from_row(row)
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.gs@calculate')
-    description = ('Topological invariant characterizing the occupied bands \n\n'
+    description = ('Topological invariant characterizing the '
+                   'occupied bands\n\n'
                    + parameter_description)
     datarow = [describe_entry('Band topology', description), result.Topology]
 
@@ -287,30 +287,32 @@ class Result(ASRResult):
     Topology: str
 
     key_descriptions = {'Topology': 'Band topology.'}
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command(module='asr.berry',
-         requires=['results-asr.berry@calculate.json'],
-         dependencies=['asr.berry@calculate'],
-         returns=Result)
-def main() -> Result:
-    from pathlib import Path
-    from ase.parallel import paropen
+@command(module='asr.berry')
+@atomsopt
+@calcopt
+@option('--kpar', help='K-points along path', type=int)
+@option('--kperp', help='K-points orthogonal to path', type=int)
+@option('--topology', help='Specify topology', type=str)
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kpar: int = 120,
+        kperp: int = 7,
+        topology: str = 'Not checked!',
+) -> Result:
+    calculate(
+        atoms=atoms,
+        calculator=calculator,
+        kpar=kpar,
+        kperp=kperp,
+    )
 
-    data = {}
-    if Path('topology.dat').is_file():
-        f = paropen('topology.dat', 'r')
-        top = f.readline()
-        f.close()
-        data['Topology'] = top
-    else:
-        f = paropen('topology.dat', 'w')
-        print('Not checked!', file=f)
-        f.close()
-        data['Topology'] = 'Not checked'
-
-    return data
+    # XXX Note I changed this behaviour Thomas. We need to talk.
+    data = {'Topology': topology}
+    return Result(data=data)
 
 
 if __name__ == '__main__':

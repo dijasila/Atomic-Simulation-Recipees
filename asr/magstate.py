@@ -1,5 +1,8 @@
 """Module for determining magnetic state."""
-from asr.core import command, ASRResult, prepare_result
+import asr
+from asr.core import (command, ASRResult, prepare_result, option,
+                      AtomsFile)
+from ase import Atoms
 import typing
 
 atomic_mom_threshold = 0.1
@@ -25,7 +28,7 @@ def get_magstate(calc):
     return 'fm'
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     """Webpanel for magnetic state."""
     from asr.database.browser import describe_entry, dl, code, WebPanel
 
@@ -47,26 +50,28 @@ def webpanel(result, row, key_descriptions):
         )
     )
 
-    rows = [[is_magnetic, row.is_magnetic]]
+    rows = [[is_magnetic, context.is_magnetic]]
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
                              'header': ['Electronic properties', ''],
                              'rows': rows}]],
                'sort': 0}
 
+    atoms = context.atoms
+
     if result.magstate == 'NM':
         return [summary]
     else:
+        assert len(atoms) == len(result.magmoms)
         magmoms_rows = [[str(a), symbol, f'{magmom:.2f}']
                         for a, (symbol, magmom)
-                        in enumerate(zip(row.get('symbols'), result.magmoms))]
+                        in enumerate(zip(atoms.symbols, result.magmoms))]
         magmoms_table = {'type': 'table',
                          'header': ['Atom index', 'Atom type',
                                     'Local magnetic moment (au)'],
                          'rows': magmoms_rows}
 
-        from asr.utils.hacks import gs_xcname_from_row
-        xcname = gs_xcname_from_row(row)
+        xcname = context.xcname
         panel = WebPanel(title=f'Basic magnetic properties ({xcname})',
                          columns=[[], [magmoms_table]],
                          sort=11)
@@ -88,17 +93,31 @@ class Result(ASRResult):
                         'magmoms': 'Atomic magnetic moments.',
                         'magmom': 'Total magnetic moment.',
                         'nspins': 'Number of spins in system.'}
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
-@command('asr.magstate',
-         requires=['gs.gpw'],
-         returns=Result,
-         dependencies=['asr.gs@calculate'])
-def main() -> Result:
+@command('asr.magstate')
+@option('-a', '--atoms', help='Atomic structure.',
+        type=AtomsFile(), default='structure.json')
+@asr.calcopt
+def main(atoms: Atoms,
+         calculator: dict = {
+             'name': 'gpaw',
+             'mode': {'name': 'pw', 'ecut': 800},
+             'xc': 'PBE',
+             'kpts': {'density': 12.0, 'gamma': True},
+             'occupations': {'name': 'fermi-dirac',
+                             'width': 0.05},
+             'convergence': {'bands': 'CBM+3.0'},
+             'nbands': '200%',
+             'txt': 'gs.txt',
+             'charge': 0
+         }) -> Result:
     """Determine magnetic state."""
-    from gpaw import GPAW
-    calc = GPAW('gs.gpw', txt=None)
+    from asr.gs import calculate as calculategs
+
+    calculateresult = calculategs(atoms=atoms, calculator=calculator)
+    calc = calculateresult.calculation.load()
     magstate = get_magstate(calc)
     magmoms = calc.get_property('magmoms', allow_calculation=False)
     magmom = calc.get_property('magmom', allow_calculation=False)

@@ -1,12 +1,17 @@
 """Electronic ground state properties."""
-from asr.core import command, option, DictStr, ASRResult, prepare_result
+from ase import Atoms
+import asr
+from asr.core import (
+    ASRResult, prepare_result,
+)
+from asr.calculators import (
+    set_calculator_hook, Calculation, get_calculator_class)
+
 from asr.database.browser import (
     table, fig,
-    entry_parameter_description,
     describe_entry, WebPanel,
-    make_panel_description
+    make_panel_description,
 )
-
 
 import numpy as np
 import typing
@@ -20,23 +25,33 @@ calculation.
 )
 
 
-@command(module='asr.gs',
-         creates=['gs.gpw'],
-         requires=['structure.json'],
-         resources='8:10h')
-@option('-c', '--calculator', help='Calculator params.', type=DictStr())
-def calculate(calculator: dict = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
-        'xc': 'PBE',
-        'basis': 'dzp',
-        'kpts': {'density': 12.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'bands': 'CBM+3.0'},
-        'nbands': '200%',
-        'txt': 'gs.txt',
-        'charge': 0}) -> ASRResult:
+@prepare_result
+class GroundStateCalculationResult(ASRResult):
+
+    calculation: Calculation
+
+    key_descriptions = dict(calculation='Calculation object')
+
+
+@asr.instruction(
+    module='asr.gs',
+)
+@asr.atomsopt
+@asr.calcopt
+def calculate(
+        atoms: Atoms,
+        calculator: dict = {
+            'name': 'gpaw',
+            'mode': {'name': 'pw', 'ecut': 800},
+            'xc': 'PBE',
+            'kpts': {'density': 12.0, 'gamma': True},
+            'occupations': {'name': 'fermi-dirac',
+                            'width': 0.05},
+            'convergence': {'bands': 'CBM+3.0'},
+            'nbands': '200%',
+            'txt': 'gs.txt',
+            'charge': 0
+        }) -> GroundStateCalculationResult:
     """Calculate ground state file.
 
     This recipe saves the ground state to a file gs.gpw based on the structure
@@ -44,21 +59,18 @@ def calculate(calculator: dict = {
     for storing any derived quantities. See asr.gs@postprocessing for more
     information.
     """
-    from ase.io import read
     from ase.calculators.calculator import PropertyNotImplementedError
     from asr.relax import set_initial_magnetic_moments
-    atoms = read('structure.json')
 
     if not atoms.has('initial_magmoms'):
         set_initial_magnetic_moments(atoms)
 
-    nd = np.sum(atoms.pbc)
+    nd = sum(atoms.pbc)
     if nd == 2:
         assert not atoms.pbc[2], \
             'The third unit cell axis should be aperiodic for a 2D material!'
         calculator['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
 
@@ -69,24 +81,11 @@ def calculate(calculator: dict = {
     except PropertyNotImplementedError:
         pass
     atoms.get_potential_energy()
-    atoms.calc.write('gs.gpw')
-
-    return ASRResult()
-
-
-def _get_parameter_description(row):
-    desc = entry_parameter_description(
-        row.data,
-        'asr.gs@calculate',
-        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                          'idiotproof', 'maxiter', 'hund', 'random',
-                          'experimental', 'basis', 'setups']))
-    return desc
+    calculation = calc.save(id='gs')
+    return GroundStateCalculationResult.fromdata(calculation=calculation)
 
 
-def _explain_bandgap(row, gap_name):
-    parameter_description = _get_parameter_description(row)
-
+def _explain_bandgap(gap_name, parameter_description):
     if gap_name == 'gap':
         name = 'Band gap'
         adjective = ''
@@ -103,14 +102,20 @@ def _explain_bandgap(row, gap_name):
     return describe_entry(name, description=description)
 
 
-def webpanel(result, row, key_descriptions):
-    parameter_description = _get_parameter_description(row)
+# @cache_webpanel(
+#     'asr.gs:main',
+#     '+,calculator.mode.ecut',
+#     '+,calculator.kpts.density',
+# )
+def webpanel(result, context):
+    key_descriptions = context.descriptions
+    parameter_description = context.parameter_description_picky('asr.gs')
 
     explained_keys = []
 
     explained_keys += [
-        _explain_bandgap(row, 'gap'),
-        _explain_bandgap(row, 'gap_dir'),
+        _explain_bandgap('gap', parameter_description),
+        _explain_bandgap('gap_dir', parameter_description),
     ]
 
     for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
@@ -124,38 +129,31 @@ def webpanel(result, row, key_descriptions):
             explained_key = key
         explained_keys.append(explained_key)
 
-    t = table(result, 'Property',
-              explained_keys,
-              key_descriptions)
+    tab = table(result, 'Property',
+                explained_keys,
+                key_descriptions)
 
     gap = result.gap
 
     if gap > 0:
-        if result.get('evac'):
-            eref = result.evac
-            vbm_title = 'Valence band maximum wrt. vacuum level'
-            cbm_title = 'Conduction band minimum wrt. vacuum level'
-        else:
-            eref = result.efermi
-            vbm_title = 'Valence band maximum wrt. Fermi level'
-            cbm_title = 'Conduction band minimum wrt. Fermi level'
-
-        vbm_displayvalue = result.vbm - eref
-        cbm_displayvalue = result.cbm - eref
+        ref = context.energy_reference()
+        vbm_title = f'Valence band maximum wrt. {ref.prose_name}'
+        cbm_title = f'Conduction band minimum wrt. {ref.prose_name}'
+        vbm_displayvalue = result.vbm - ref.value
+        cbm_displayvalue = result.cbm - ref.value
         info = [[vbm_title, f'{vbm_displayvalue:.3f} eV'],
                 [cbm_title, f'{cbm_displayvalue:.3f} eV']]
-        t['rows'].extend(info)
+        tab['rows'].extend(info)
 
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
+    xcname = context.xcname
     title = f'Basic electronic properties ({xcname})'
 
     panel = WebPanel(
         title=describe_entry(title, panel_description),
-        columns=[[t], [fig('bz-with-gaps.png')]],
+        columns=[[tab], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    description = _explain_bandgap(row, 'gap')
+    description = _explain_bandgap('gap', parameter_description)
     datarow = [description, f'{result.gap:0.2f} eV']
 
     summary = WebPanel(
@@ -169,33 +167,42 @@ def webpanel(result, row, key_descriptions):
             'rows': [datarow],
             'columnwidth': 3,
         }]],
-        plot_descriptions=[{'function': bz_with_band_extremums,
+        plot_descriptions=[{'function': bz_with_band_extrema,
                             'filenames': ['bz-with-gaps.png']}],
         sort=10)
 
     return [panel, summary]
 
 
-def bz_with_band_extremums(row, fname):
-    from ase.geometry.cell import Cell
+def bz_with_band_extrema(context, fname):
     from matplotlib import pyplot as plt
-    import numpy as np
-    ndim = sum(row.pbc)
+
+    assert context.name == 'asr.gs:main', context.name
+    gsresults = context.result
+
+    atoms = context.atoms
 
     # Standardize the cell rotation via Bravais lattice roundtrip:
-    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc)
+    lat = atoms.cell.get_bravais_lattice(pbc=atoms.pbc)
     cell = lat.tocell()
 
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
 
-    gsresults = row.data.get('results-asr.gs.json')
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
-    op_scc = row.data[
-        'results-asr.structureinfo.json']['spglib_dataset']['rotations']
+
+    # Maybe web panels should not be calling spglib.
+    # But structureinfo is not a dependency of GS so we don't have access
+    # to its results.
+    from asr.utils.symmetry import atoms2symmetry
+    symmetry = atoms2symmetry(atoms,
+                              tolerance=1e-3,
+                              angle_tolerance=0.1)
+    op_scc = symmetry.dataset['rotations']
+
     if cbm_c is not None:
-        if not row.is_magnetic:
+        if not context.is_magnetic:
             op_scc = np.concatenate([op_scc, -op_scc])
         ax = plt.gca()
         icell_cv = cell.reciprocal()
@@ -208,7 +215,7 @@ def bz_with_band_extremums(row, fname):
         cbm_sv = np.dot(cbm_sc, icell_cv)
         vbm_sv = np.dot(vbm_sc, icell_cv)
 
-        if ndim < 3:
+        if context.ndim < 3:
             ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
             ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
 
@@ -268,7 +275,7 @@ class GapsResult(ASRResult):
     )
 
 
-def gaps(calc, soc=True) -> GapsResult:
+def gaps(atoms, calc, calculator, soc=True) -> GapsResult:
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
@@ -281,11 +288,15 @@ def gaps(calc, soc=True) -> GapsResult:
         ibzkpts = calc.get_ibz_k_points()
 
     (evbm_ecbm_gap,
-     skn_vbm, skn_cbm) = get_gap_info(soc=soc, direct=False,
-                                      calc=calc)
+     skn_vbm, skn_cbm) = get_gap_info(atoms,
+                                      soc=soc, direct=False,
+                                      calc=calc, calculator=calculator)
     (evbm_ecbm_direct_gap,
-     direct_skn_vbm, direct_skn_cbm) = get_gap_info(soc=soc, direct=True,
-                                                    calc=calc)
+     direct_skn_vbm, direct_skn_cbm) = get_gap_info(atoms,
+                                                    soc=soc,
+                                                    direct=True,
+                                                    calc=calc,
+                                                    calculator=calculator)
 
     k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
     direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
@@ -298,7 +309,7 @@ def gaps(calc, soc=True) -> GapsResult:
     direct_k_cbm_c = get_kc(direct_k_cbm)
 
     if soc:
-        theta, phi = get_spin_axis()
+        theta, phi = get_spin_axis(atoms, calculator=calculator)
         _, efermi = calc2eigs(calc, soc=True,
                               theta=theta, phi=phi)
     else:
@@ -331,13 +342,13 @@ def get_1bz_k(ibzkpts, calc, k_index):
     return k_c
 
 
-def get_gap_info(soc, direct, calc):
+def get_gap_info(atoms, soc, direct, calc, calculator):
     from ase.dft.bandgap import bandgap
     from asr.utils.gpw2eigs import calc2eigs
     from asr.magnetic_anisotropy import get_spin_axis
     # e1 is VBM, e2 is CBM
     if soc:
-        theta, phi = get_spin_axis()
+        theta, phi = get_spin_axis(atoms, calculator=calculator)
         e_km, efermi = calc2eigs(calc,
                                  soc=True, theta=theta, phi=phi)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
@@ -404,9 +415,10 @@ def vacuumlevels(atoms, calc, n=8):
     n: int
         number of gridpoints away from the edge to evaluate the vac levels
     """
-    import numpy as np
+    # XXX Actually we have a vacuum level also in 1D or 0D systems.
+    # Only for 3D systems can we have trouble.
 
-    if not np.sum(atoms.get_pbc()) == 2:
+    if sum(atoms.pbc) != 2:
         return VacuumLevelResults.fromdata(
             z_z=None,
             v_z=None,
@@ -425,8 +437,8 @@ def vacuumlevels(atoms, calc, n=8):
     return VacuumLevelResults.fromdata(
         z_z=z_z,
         v_z=v_z,
-        dipz=atoms.get_dipole_moment()[2],
-        evacdiff=evacdiff(atoms),
+        dipz=calc.atoms.get_dipole_moment()[2],
+        evacdiff=evacdiff(calc.atoms),
         evac1=v_z[n],
         evac2=v_z[-n],
         evacmean=(v_z[n] + v_z[-n]) / 2,
@@ -444,7 +456,6 @@ def evacdiff(atoms):
     out: float
         vacuum level difference in eV
     """
-    import numpy as np
     from ase.units import Bohr, Hartree
 
     A = np.linalg.det(atoms.cell[:2, :2] / Bohr)
@@ -521,49 +532,41 @@ class Result(ASRResult):
         skn2_dir="(spin,k-index,band-index)-tuple for direct conduction band minimum.",
     )
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
-@command(module='asr.gs',
-         requires=['gs.gpw', 'structure.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
-                       'asr.structureinfo'],
-         returns=Result)
-def main() -> Result:
+@asr.instruction(
+    module='asr.gs',
+    argument_hooks=[set_calculator_hook],
+    version=0,
+)
+@asr.atomsopt
+@asr.calcopt
+def main(atoms: Atoms,
+         calculator: dict = {
+             'name': 'gpaw',
+             'mode': {'name': 'pw', 'ecut': 800},
+             'xc': 'PBE',
+             'kpts': {'density': 12.0, 'gamma': True},
+             'occupations': {'name': 'fermi-dirac',
+                             'width': 0.05},
+             'convergence': {'bands': 'CBM+3.0'},
+             'nbands': '200%',
+             'txt': 'gs.txt',
+             'charge': 0
+         }) -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
-    from ase.io import read
-    from asr.calculators import get_calculator
-
-    # Just some quality control before we start
-    atoms = read('structure.json')
-    calc = get_calculator()('gs.gpw')
-    pbc = atoms.pbc
-    ndim = np.sum(pbc)
-
-    if ndim == 2:
-        assert not pbc[2], \
-            'The third unit cell axis should be aperiodic for a 2D material!'
-        # For 2D materials we check that the calculater used a dipole
-        # correction if the material has an out-of-plane dipole
-
-        # Small hack
-        atoms = calc.atoms
-        atoms.calc = calc
-        evacdiffmin = 10e-3
-        if evacdiff(calc.atoms) > evacdiffmin:
-            assert calc.todict().get('poissonsolver', {}) == \
-                {'dipolelayer': 'xy'}, \
-                ('The ground state has a finite dipole moment along aperiodic '
-                 'axis but calculation was without dipole correction.')
+    calculateresult = calculate(atoms=atoms, calculator=calculator)
+    calc = calculateresult.calculation.load(parallel=False)
+    calc.atoms.calc = calc
 
     # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)
     stresses = calc.get_property('stress', allow_calculation=False)
     etot = calc.get_potential_energy()
 
-    gaps_nosoc = gaps(calc, soc=False)
-    gaps_soc = gaps(calc, soc=True)
+    gaps_nosoc = gaps(atoms, calc, soc=False, calculator=calculator)
+    gaps_soc = gaps(atoms, calc, soc=True, calculator=calculator)
     vac = vacuumlevels(atoms, calc)
     workfunction = vac.evacmean - gaps_soc.efermi if vac.evacmean else None
     return Result.fromdata(

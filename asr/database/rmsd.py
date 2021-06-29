@@ -74,8 +74,7 @@ def update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd):
         rmsd_by_id[rowid][otherrowid] = rmsd
 
 
-@command(module='asr.database.rmsd',
-         resources='1:20m')
+@command(module='asr.database.rmsd')
 @argument('databaseout', required=False, type=str)
 @argument('database', type=str)
 @option('-c', '--comparison-keys',
@@ -140,8 +139,8 @@ def main(database: str, databaseout: Union[str, None] = None,
     from pymatgen.analysis.structure_matcher import StructureMatcher
     from pymatgen.io.ase import AseAtomsAdaptor
     from ase.formula import Formula
-    from ase.db import connect
-    db = connect(database)
+    # from ase.db import connect
+    # db = connect(database)
     adaptor = AseAtomsAdaptor()
     matcher = StructureMatcher(primitive_cell=False,
                                attempt_supercell=True,
@@ -150,11 +149,11 @@ def main(database: str, databaseout: Union[str, None] = None,
     comparison_keys = comparison_keys.split(',')
 
     # Try to figure out what the UID key should be
-    row = db.get(id=1)
+    row = database.get(id=1)
     uid_key = 'uid' if 'uid' in row else 'id'
 
     rows = {}
-    for row in db.select(include_data=False):
+    for row in database.select(include_data=False):
         rows[row.get(uid_key)] = (row.toatoms(),
                                   row,
                                   Formula(row.formula).reduce()[0])
@@ -191,29 +190,30 @@ def main(database: str, databaseout: Union[str, None] = None,
             update_rmsd(rmsd_by_id, rowid, otherrowid, rmsd)
             update_rmsd(rmsd_by_id, otherrowid, rowid, rmsd)
 
-    if databaseout is not None:
-        print('Writing to new database...')
-        with connect(databaseout) as dbwithrmsd:
-            for row in db.select():
-                now = datetime.now()
-                timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
-                data = row.data
-                key_value_pairs = row.key_value_pairs
-                uid = row.get(uid_key)
-                if uid in rmsd_by_id:
-                    rmsd_dict = rmsd_by_id[uid]
-                    data['results-asr.database.rmsd.json'] = rmsd_dict
-                    values = [(val, uid) for uid, val in rmsd_dict.items()
-                              if val is not None]
-                    if not values:
-                        continue
-                    min_rmsd, min_rmsd_uid = min(values)
-                    key_value_pairs['min_rmsd'] = min_rmsd
-                    key_value_pairs['min_rmsd_uid'] = min_rmsd_uid
-                dbwithrmsd.write(row.toatoms(),
-                                 **key_value_pairs, data=row.data)
+    # XXX Fix writing of database with RMSD values
+    # if databaseout is not None:
+    #     print('Writing to new database...')
+    #     with connect(databaseout) as dbwithrmsd:
+    #         for row in database.select():
+    #             now = datetime.now()
+    #             timed_print(f'{now:%H:%M:%S} {row.id}/{nmat}', wait=30)
+    #             data = row.data
+    #             key_value_pairs = row.key_value_pairs
+    #             uid = row.get(uid_key)
+    #             if uid in rmsd_by_id:
+    #                 rmsd_dict = rmsd_by_id[uid]
+    #                 data['results-asr.database.rmsd.json'] = rmsd_dict
+    #                 values = [(val, uid) for uid, val in rmsd_dict.items()
+    #                           if val is not None]
+    #                 if not values:
+    #                     continue
+    #                 min_rmsd, min_rmsd_uid = min(values)
+    #                 key_value_pairs['min_rmsd'] = min_rmsd
+    #                 key_value_pairs['min_rmsd_uid'] = min_rmsd_uid
+    #             dbwithrmsd.write(row.toatoms(),
+    #                              **key_value_pairs, data=row.data)
 
-        dbwithrmsd.metadata = db.metadata
+    #     dbwithrmsd.metadata = database.metadata
     results = {'rmsd_by_id': rmsd_by_id,
                'uid_key': uid_key}
     return results

@@ -1,4 +1,6 @@
-from asr.core import command, option, argument, AtomsFile, ASRResult, prepare_result
+from asr.core import (
+    command, option, argument, ASRResult, prepare_result, atomsopt
+)
 from ase.formula import Formula
 import numpy as np
 from typing import List, Tuple
@@ -451,7 +453,7 @@ class ConvexHullReference(Reference):
         return msg
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.database.browser import fig as asrfig
 
     fname = 'convexhullcut.png'
@@ -489,11 +491,11 @@ def filrefs(refs):
     return nrefs
 
 
-def chcut_plot(row, fname):
+def chcut_plot(context, fname):
     import matplotlib.pyplot as plt
     from ase import Atoms
 
-    data = row.data.get('results-asr.chc.json')
+    data = context.find_record('asr.chc').result
     mat_ref = Reference.from_dict(data['_matref'])
 
     if len(mat_ref.symbols) <= 2:
@@ -559,16 +561,12 @@ class Result(ASRResult):
         _refs='(formula, hform) list of relevant references.',
     )
 
-    formats = {'ase_webpanel': webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command('asr.chc',
-         requires=['structure.json',
-                   'results-asr.convex_hull.json'],
-         returns=Result)
+@command('asr.chc')
 @argument('dbs', nargs=-1, type=str)
-@option('-a', '--atoms', help='Atoms to be relaxed.',
-        type=AtomsFile(), default='structure.json')
+@atomsopt
 @option('-r', '--reactant', type=str,
         help='Reactant to add to convex hull')
 def main(dbs: List[str],

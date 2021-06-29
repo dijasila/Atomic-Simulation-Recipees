@@ -8,11 +8,19 @@ tests.
 from ase.parallel import world
 from ase.utils import devnull
 import pytest
-from .fixtures import (mockgpaw, test_material, asr_tmpdir,  # noqa
-                       asr_tmpdir_w_params, get_webcontent,  # noqa
-                       set_asr_test_environ_variable,  # noqa
-                       crosslinks_test_dbs,  # noqa
-                       duplicates_test_db)  # noqa
+from .fixtures import (  # noqa
+    mockgpaw, test_material, asr_tmpdir,
+    asr_tmpdir_w_params, get_webcontent,
+    set_asr_test_environ_variable,
+    fast_calc,
+    duplicates_test_db,
+    external_file,
+    various_object_types,
+    record,
+    fscache,
+    crosslinks_test_dbs,
+    duplicates_test_db,
+)
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)

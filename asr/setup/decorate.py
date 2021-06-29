@@ -1,5 +1,6 @@
 """Generate chemically similar atomic structures."""
-from asr.core import command, argument, option, ASRResult
+import typing
+from asr.core import command, option, atomsopt
 import numpy as np
 from pathlib import Path
 
@@ -76,13 +77,14 @@ def get_p_ab():
 
 
 @command('asr.setup.decorate')
-@argument('atoms', type=str)
+@atomsopt
 @option('--threshold',
         help='Threshold of likelyhood of two atomic species to subsititute',
         type=float)
-@option('--database', type=str)
-def main(atoms: str, threshold: float = 0.08,
-         database: str = 'decorated.db') -> ASRResult:
+def main(
+        atoms: str,
+        threshold: float = 0.08,
+) -> typing.List:
     """Create similar atomic structures.
 
     This recipe can substitute atoms in an atomic structure with other similar
@@ -96,33 +98,27 @@ def main(atoms: str, threshold: float = 0.08,
     The threshold option limits the number of performed atomic substitions to
     the ones that have a probability larger than the threshold.
 
-    By default the decorated atomic structures will be packed into an ASE
-    database which can be unpacked into a folder structure using the
-    "setup.unpackdatabase" recipe.
-
-    Examples
-    --------
-    Perform likely substitions of atomic structure in structure.json
-        asr run "setup.decorate structure.json"
     """
-    from ase.db import connect
-    from ase.io import read
     from ase.data import chemical_symbols
     p_ab = get_p_ab()
-    db = connect(database)
-    atoms = read(atoms)
+
+    decorated = []
     for structure, subs in generate_structures(atoms, p_ab,
                                                threshold=threshold):
         structure = apply_substitution(structure, subs)
         formula = structure.symbols.formula
         explanation = ''
+        substitutions = []
         for i, j in subs.items():
             a = chemical_symbols[i]
             b = chemical_symbols[j]
             prob = p_ab[i, j]
             explanation += f'{a}->{b} (P={prob:.3f})'
+            substitutions.append((a, b, prob))
         print(f'Created {formula:metal}: {explanation}')
-        db.write(structure)
+        decoration = dict(atoms=structure, substitutions=substitutions)
+        decorated.append(decoration)
+    return decorated
 
 
 if __name__ == "__main__":

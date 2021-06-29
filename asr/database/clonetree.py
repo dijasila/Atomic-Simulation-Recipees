@@ -1,22 +1,21 @@
 """Clone folder tree."""
-from asr.core import command, option, argument, ASRResult
 
 
-@command('asr.database.clonetree')
-@argument('patterns', nargs=-1, required=False, metavar='PATTERN',
-          type=str)
-@argument('destination', metavar='DESTDIR', type=str)
-@argument('source', metavar='SRCDIR', type=str)
-@option('--copy/--symlink', is_flag=True)
-@option('--map-files', type=str)
-@option('--dont-contain', type=str)
-@option('--must-contain', type=str)
-@option('--dry-run', type=bool)
-@option('--glob-pattern', type=str)
+# @command('asr.database.clonetree')
+# @argument('patterns', nargs=-1, required=False, metavar='PATTERN',
+#           type=str)
+# @argument('destination', metavar='DESTDIR', type=str)
+# @argument('source', metavar='SRCDIR', type=str)
+# @option('--copy/--symlink', is_flag=True)
+# @option('--map-files', type=str)
+# @option('--dont-contain', type=str)
+# @option('--must-contain', type=str)
+# @option('--dry-run', type=bool)
+# @option('--glob-pattern', type=str)
 def main(source: str, destination: str, patterns: str,
          copy: bool = False, map_files: str = None, dont_contain: str = None,
          must_contain: str = None, dry_run: bool = False,
-         glob_pattern: str = '**/') -> ASRResult:
+         glob_pattern: str = '**/'):
     """Tool for copying or symlinking a tree of files."""
     import fnmatch
     from pathlib import Path
@@ -122,8 +121,7 @@ def main(source: str, destination: str, patterns: str,
     if map_files:
         mapping = [tmp.split('->') for tmp in map_files.split(',')]
 
-        with progressbar(mkdir,
-                         label=f'Remapping files') as bar:
+        with progressbar(mkdir, label='Remapping files') as bar:
             for destdir in bar:
                 with chdir(destdir):
                     for orig, replace in mapping:

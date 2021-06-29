@@ -1,5 +1,9 @@
 """Projected density of states."""
-from asr.core import command, option, read_json, ASRResult, prepare_result
+from asr.core import (
+    command, option, ASRResult,
+    prepare_result, ExternalFile, atomsopt, calcopt)
+from asr.gs import calculate as gscalculate
+from asr.gs import main as gsmain
 from collections import defaultdict
 import typing
 
@@ -9,84 +13,20 @@ from ase import Atoms
 from asr.utils import magnetic_atoms
 
 
-# Recipe tests:
+def webpanel(result, context):
+    from asr.database.browser import fig, describe_entry, WebPanel
 
-params = "{'mode':{'ecut':200,...},'kpts':{'density':2.0},...}"
-ctests = []
-ctests.append({'description': 'Test the refined ground state of Si',
-               'name': 'test_asr.pdos_Si_gpw',
-               'tags': ['gitlab-ci'],
-               'cli': ['asr run "setup.materials -s Si2"',
-                       'ase convert materials.json structure.json',
-                       'asr run "setup.params '
-                       f'asr.gs@calculate:calculator {params} '
-                       'asr.pdos@calculate:kptdensity 3.0 '
-                       'asr.pdos@calculate:emptybands 5"',
-                       'asr run gs',
-                       'asr run pdos@calculate',
-                       'asr run database.fromtree',
-                       'asr run "database.browser --only-figures"']})
+    desc = '\n'.join([
+        context.parameter_description('asr.pdos:calculate'),
+        context.parameter_description_picky('asr.gs:calculate')
+    ])
 
-tests = []
-tests.append({'description': 'Test the pdos of Si (cores=1)',
-              'name': 'test_asr.pdos_Si_serial',
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params} '
-                      'asr.pdos@calculate:kptdensity 3.0 '
-                      'asr.pdos@calculate:emptybands 5"',
-                      'asr run gs',
-                      'asr run pdos',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
-tests.append({'description': 'Test the pdos of Si (cores=2)',
-              'name': 'test_asr.pdos_Si_parallel',
-              'cli': ['asr run "setup.materials -s Si2"',
-                      'ase convert materials.json structure.json',
-                      'asr run "setup.params '
-                      f'asr.gs@calculate:calculator {params} '
-                      'asr.pdos@calculate:kptdensity 3.0 '
-                      'asr.pdos@calculate:emptybands 5"',
-                      'asr run gs',
-                      'asr run -p 2 pdos',
-                      'asr run database.fromtree',
-                      'asr run "database.browser --only-figures"']})
+    explanation = ('Orbital projected density of states without spin–orbit '
+                   'coupling\n\n' + desc)
 
-
-# ---------- Webpanel ---------- #
-
-
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
-    from asr.utils.hacks import gs_xcname_from_row
-
-    # PDOS figure
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.pdos@calculate')
-    dependencies_parameter_descriptions = ''
-    for dependency, exclude_keys in zip(
-            ['asr.gs@calculate'],
-            [set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                  'idiotproof', 'maxiter', 'hund', 'random',
-                  'experimental', 'basis', 'setups'])]
-    ):
-        epd = entry_parameter_description(
-            row.data,
-            dependency,
-            exclude_keys=exclude_keys)
-        dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected density of states without spin–orbit coupling\n\n'
-                   + parameter_description
-                   + dependencies_parameter_descriptions)
-
-    xcname = gs_xcname_from_row(row)
     # Projected band structure and DOS panel
     panel = WebPanel(
-        title=f'Projected band structure and DOS ({xcname})',
+        title=f'Projected band structure and DOS ({context.xcname})',
         columns=[[],
                  [describe_entry(fig(pdos_figfile, link='empty'),
                                  description=explanation)]],
@@ -105,19 +45,28 @@ pdos_figfile = 'scf-pdos_nosoc.png'
 # ----- Slow steps ----- #
 
 
-@command(module='asr.pdos',
-         creates=['pdos.gpw'],
-         tests=ctests,
-         requires=['gs.gpw'],
-         dependencies=['asr.gs'])
+@command(module='asr.pdos')
+@atomsopt
+@calcopt
 @option('-k', '--kptdensity', type=float, help='K-point density')
 @option('--emptybands', type=int, help='number of empty bands to include')
-def calculate(kptdensity: float = 20.0, emptybands: int = 20) -> ASRResult:
+def calculate(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 20.0,
+        emptybands: int = 20,
+) -> ASRResult:
     from asr.utils.refinegs import refinegs
-    refinegs(selfc=False,
-             kptdensity=kptdensity, emptybands=emptybands,
-             gpw='pdos.gpw', txt='pdos.txt')
+    calc, gpw = refinegs(
+        atoms=atoms,
+        calculator=calculator,
+        selfc=False,
+        kptdensity=kptdensity, emptybands=emptybands,
+        gpw='pdos.gpw',
+        txt='pdos.txt',
+    )
 
+    return ExternalFile.fromstr('pdos.gpw')
 
 # ----- Fast steps ----- #
 
@@ -155,24 +104,36 @@ class Result(ASRResult):
         pdos_nosoc="Projected density of states w/o soc.",
         pdos_soc="Projected density of states"
     )
-    formats = {"ase_webpanel": webpanel}
+    formats = {"webpanel2": webpanel}
 
 
-@command(module='asr.pdos',
-         requires=['results-asr.gs.json', 'pdos.gpw'],
-         tests=tests,
-         dependencies=['asr.gs', 'asr.pdos@calculate'],
-         returns=Result)
-def main() -> Result:
+@command(module='asr.pdos')
+@atomsopt
+@calcopt
+@option('-k', '--kptdensity', type=float, help='K-point density')
+@option('--emptybands', type=int, help='number of empty bands to include')
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 20.0,
+        emptybands: int = 20,
+) -> Result:
     from gpaw import GPAW
     from ase.parallel import parprint
     from asr.magnetic_anisotropy import get_spin_axis
 
     # Get refined ground state with more k-points
-    calc = GPAW('pdos.gpw')
+    res = calculate(
+        atoms=atoms,
+        calculator=calculator,
+        kptdensity=kptdensity,
+        emptybands=emptybands,
+    )
+
+    calc = GPAW(res)
 
     dos1 = calc.dos(shift_fermi_level=False)
-    theta, phi = get_spin_axis()
+    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
     dos2 = calc.dos(soc=True, theta=theta, phi=phi, shift_fermi_level=False)
 
     results = {}
@@ -187,11 +148,11 @@ def main() -> Result:
 
     # Calculate pdos
     parprint('\nComputing pdos', flush=True)
-    results['pdos_nosoc'] = pdos(dos1, calc)
+    results['pdos_nosoc'] = pdos(atoms, calculator, dos1, calc)
     parprint('\nComputing pdos with spin-orbit coupling', flush=True)
-    results['pdos_soc'] = pdos(dos2, calc)
+    results['pdos_soc'] = pdos(atoms, calculator, dos2, calc)
 
-    return results
+    return Result(results)
 
 
 # ---------- Recipe methodology ---------- #
@@ -200,7 +161,7 @@ def main() -> Result:
 # ----- PDOS ----- #
 
 
-def pdos(dos, calc):
+def pdos(atoms, calculator, dos, calc):
     """Do a single pdos calculation.
 
     Main functionality to do a single pdos calculation.
@@ -208,7 +169,7 @@ def pdos(dos, calc):
     from asr.core import singleprec_dict
 
     # Do calculation
-    e_e, pdos_syl, symbols, ef = calculate_pdos(dos, calc)
+    e_e, pdos_syl, symbols, ef = calculate_pdos(atoms, calculator, dos, calc)
 
     return PdosResult.fromdata(
         efermi=ef,
@@ -217,7 +178,7 @@ def pdos(dos, calc):
         pdos_syl=singleprec_dict(pdos_syl))
 
 
-def calculate_pdos(dos, calc):
+def calculate_pdos(atoms, calculator, dos, calc):
     """Calculate the projected density of states.
 
     Returns
@@ -237,12 +198,12 @@ def calculate_pdos(dos, calc):
     from ase.utils import DevNull
 
     zs = calc.atoms.get_atomic_numbers()
-    chem_symbols = calc.atoms.get_chemical_symbols()
+    atoms = calc.atoms
     efermi = calc.get_fermi_level()
     l_a = get_l_a(zs)
 
     ns = calc.get_number_of_spins()
-    gaps = read_json('results-asr.gs.json').get('gaps_nosoc')
+    gaps = gsmain(atoms=atoms, calculator=calculator).gaps_nosoc
     e1 = gaps.get('vbm') or gaps.get('efermi')
     e2 = gaps.get('cbm') or gaps.get('efermi')
     e_e = np.linspace(e1 - 3, e2 + 3, 500)
@@ -264,7 +225,7 @@ def calculate_pdos(dos, calc):
         pb = ProgressBar(devnull)
 
     for _, (spin, a, l) in pb.enumerate(sal_i):
-        symbol = chem_symbols[a]
+        symbol = atoms.symbols[a]
 
         p = dos.raw_pdos(e_e, a, 'spdfg'.index(l), None, spin, 0.0)
 
@@ -272,7 +233,7 @@ def calculate_pdos(dos, calc):
         key = ','.join([str(spin), str(symbol), str(l)])
         pdos_syl[key] += p
 
-    return e_e, pdos_syl, calc.atoms.get_chemical_symbols(), efermi
+    return e_e, pdos_syl, list(atoms.symbols), efermi
 
 
 def get_l_a(zs):
@@ -370,44 +331,44 @@ def get_yl_colors(dct_syl):
     return color_yl
 
 
-def plot_pdos_nosoc(*args, **kwargs):
-    return plot_pdos(*args, soc=False, **kwargs)
+def plot_pdos_nosoc(context, *args, **kwargs):
+    return plot_pdos(context, *args, soc=False, **kwargs)
 
 
-def plot_pdos_soc(*args, **kwargs):
-    return plot_pdos(*args, soc=True, **kwargs)
+def plot_pdos_soc(context, *args, **kwargs):
+    return plot_pdos(context, *args, soc=True, **kwargs)
 
 
-def plot_pdos(row, filename, soc=True,
+def plot_pdos(context, filename, soc=True,
               figsize=(5.5, 5), lw=1):
 
     def smooth(y, npts=3):
         return np.convolve(y, np.ones(npts) / npts, mode='same')
 
-    # Check if pdos data is stored in row
-    results = 'results-asr.pdos.json'
-    pdos = 'pdos_soc' if soc else 'pdos_nosoc'
-    if results in row.data and pdos in row.data[results]:
-        data = row.data[results][pdos]
-    else:
-        return
+    pdos_name = 'pdos_soc' if soc else 'pdos_nosoc'
+    result = context.result
+    pdos = result[pdos_name]
 
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
 
+    ref = context.energy_reference()
+    eref = ref.value
+
     # Extract raw data
-    symbols = data['symbols']
-    pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
-    e_e = data['energies'].copy() - row.get('evac', 0)
-    ef = data['efermi']
+    pdos_syl = get_ordered_syl_dict(pdos['pdos_syl'], context.atoms.symbols)
+    e_e = pdos['energies'] - eref
+    ef = pdos['efermi']
+
+    gs_results = context.gs_results()
 
     # Find energy range to plot in
     if soc:
-        emin = row.get('vbm', ef) - 3 - row.get('evac', 0)
-        emax = row.get('cbm', ef) + 3 - row.get('evac', 0)
+        emin = gs_results.get('vbm', ef) - 3 - eref
+        emax = gs_results.get('cbm', ef) + 3 - eref
     else:
-        nosoc_data = row.data['results-asr.gs.json']['gaps_nosoc']
+        nosoc_data = gs_results['gaps_nosoc']
         vbmnosoc = nosoc_data.get('vbm', ef)
         cbmnosoc = nosoc_data.get('cbm', ef)
 
@@ -417,8 +378,8 @@ def plot_pdos(row, filename, soc=True,
         if cbmnosoc is None:
             cbmnosoc = ef
 
-        emin = vbmnosoc - 3 - row.get('evac', 0)
-        emax = cbmnosoc + 3 - row.get('evac', 0)
+        emin = vbmnosoc - 3 - eref
+        emax = cbmnosoc + 3 - eref
 
     # Set up energy range to plot in
     i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
@@ -428,7 +389,7 @@ def plot_pdos(row, filename, soc=True,
 
     # Figure out if pdos has been calculated for more than one spin channel
     spinpol = False
-    for k in pdos_syl.keys():
+    for k in pdos_syl:
         if int(k[0]) == 1:
             spinpol = True
             break
@@ -457,7 +418,7 @@ def plot_pdos(row, filename, soc=True,
         ax.plot(smooth(pdos) * sign, e_e,
                 label=label, color=color_yl[key[2:]])
 
-    ax.axhline(ef - row.get('evac', 0), color='k', ls=':')
+    ax.axhline(ef - eref, color='k', ls=':')
 
     # Set up axis limits
     ax.set_ylim(emin, emax)
@@ -470,7 +431,7 @@ def plot_pdos(row, filename, soc=True,
     # Annotate E_F
     xlim = ax.get_xlim()
     x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.99
-    text = plt.text(x0, ef - row.get('evac', 0),
+    text = plt.text(x0, ef - eref,
                     r'$E_\mathrm{F}$',
                     fontsize=rcParams['font.size'] * 1.25,
                     ha='right',
@@ -482,10 +443,7 @@ def plot_pdos(row, filename, soc=True,
     ])
 
     ax.set_xlabel('Projected DOS [states / eV]')
-    if row.get('evac') is not None:
-        ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
-    else:
-        ax.set_ylabel(r'$E$ [eV]')
+    ax.set_ylabel(ref.mpl_plotlabel())
 
     # Set up legend
     plt.legend(bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',

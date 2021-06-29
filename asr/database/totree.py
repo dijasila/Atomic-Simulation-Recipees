@@ -1,5 +1,5 @@
 """Convert database to folder tree."""
-from asr.core import command, argument, option, ASRResult
+from asr.core import ASRResult
 from asr.utils import timed_print
 from pathlib import Path
 from datetime import datetime
@@ -11,11 +11,10 @@ def make_folder_tree(*, folders, chunks,
                      atomsfile,
                      update_tree):
     """Write folder tree to disk."""
-    from os import makedirs, link
+    from os import makedirs  # , link
     from ase.io import write
-    from asr.core import write_json
-    import importlib
-    from fnmatch import fnmatch
+    # import importlib
+    # from fnmatch import fnmatch
 
     nfolders = len(folders)
     for i, (rowid, (folder, row)) in enumerate(folders.items()):
@@ -36,55 +35,80 @@ def make_folder_tree(*, folders, chunks,
                 makedirs(folder)
             write(folder / atomsfile, row.toatoms())
 
-        for filename, results in row.data.items():
-            for pattern in patterns:
-                if fnmatch(filename, pattern):
-                    break
+        from asr.database.fromtree import serializer
+        records = row.data.get('records')
+
+        if records is not None:
+            records = serializer.deserialize(records)
+        else:
+            records = []
+
+        from asr.core import get_cache, chdir
+
+        if not records:
+            continue
+
+        if not folder.is_dir():
+            if not update_tree:
+                makedirs(folder)
             else:
                 continue
 
-            if not folder.is_dir():
-                if not update_tree:
-                    makedirs(folder)
-                else:
-                    continue
+        with chdir(folder):
+            cache = get_cache()
+            for record in records:
+                cache.add(record)
 
-            if (folder / filename).is_file() and not update_tree:
-                continue
+        # XXX Maybe this should be deleted.
+        # for filename, results in row.data.items():
+        #     for pattern in patterns:
+        #         if fnmatch(filename, pattern):
+        #             break
+        #     else:
+        #         continue
 
-            # We treat json differently
-            if filename.endswith('.json'):
-                write_json(folder / filename, results)
+        #     if not folder.is_dir():
+        #         if not update_tree:
+        #             makedirs(folder)
+        #         else:
+        #             continue
 
-                # Unpack any extra files
-                files = results.get('__files__', {})
-                for extrafile, content in files.items():
+        #     if (folder / filename).is_file() and not update_tree:
+        #         continue
 
-                    if '__tofile__' in content:
-                        # TODO: This should _really_ be handled differently.
-                        tofile = content.pop('__tofile__')
-                        mod, func = tofile.split('@')
-                        write_func = getattr(importlib.import_module(mod),
-                                             func)
-                        write_func(folder / extrafile, content)
-            elif filename in {'__links__', '__children__'}:
-                pass
-            else:
-                path = results.get('pointer')
-                srcfile = Path(path).resolve()
-                if not srcfile.is_file():
-                    print(f'Cannot locate source file: {path}')
-                    continue
-                destfile = folder / Path(filename)
-                if destfile.is_file():
-                    continue
-                if copy:
-                    try:
-                        link(str(srcfile), str(destfile))
-                    except OSError:
-                        destfile.write_bytes(srcfile.read_bytes())
-                else:
-                    destfile.symlink_to(srcfile)
+        #     # We treat json differently
+        #     if filename.endswith('.json'):
+        #         write_json(folder / filename, results)
+
+        #         # Unpack any extra files
+        #         files = results.get('__files__', {})
+        #         for extrafile, content in files.items():
+
+        #             if '__tofile__' in content:
+        #                 # TODO: This should _really_ be handled differently.
+        #                 tofile = content.pop('__tofile__')
+        #                 mod, func = tofile.split('@')
+        #                 write_func = getattr(importlib.import_module(mod),
+        #                                      func)
+        #                 write_func(folder / extrafile, content)
+        #     elif filename in {'__links__', '__children__'}:
+        #         pass
+        #     else:
+        #         path = results.get('pointer')
+        #         srcfile = Path(path).resolve()
+        #         if not srcfile.is_file():
+        #             print(f'Cannot locate source file: {path}')
+        #             continue
+        #         destfile = folder / Path(filename)
+        #         if destfile.is_file():
+        #             continue
+        #         if copy:
+        #             try:
+        #                 link(str(srcfile), str(destfile))
+        #             except OSError:
+        #                 destfile.write_bytes(srcfile.read_bytes())
+        #         else:
+        #             destfile.symlink_to(srcfile)
 
 
 def make_folder_dict(rows, tree_structure):
@@ -157,72 +181,14 @@ def make_folder_dict(rows, tree_structure):
     return folders
 
 
-@command('asr.database.totree',
-         save_results_file=False)
-@argument('database', nargs=1, type=str)
-@option('--run/--dry-run', is_flag=True)
-@option('-s', '--selection', help='ASE-DB selection', type=str)
-@option('-t', '--tree-structure', type=str)
-@option('--sort', help='Sort the generated materials '
-        '(only useful when dividing chunking tree)', type=str)
-@option('--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
-@option('--atomsfile',
-        help="Filename to unpack atomic structure to. "
-        "By default, don't write atoms file.",
-        type=str)
-@option('-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
-        type=int)
-@option('--patterns',
-        help="Comma separated patterns. Only unpack files matching patterns",
-        type=str)
-@option('--update-tree', is_flag=True,
-        help='Update results files in existing folder tree.')
-def main(database: str, run: bool = False, selection: str = '',
-         tree_structure: str = (
-             'tree/{stoi}/{reduced_formula:abc}/{row.uid}'
-         ),
-         sort: str = None, atomsfile: str = None,
-         chunks: int = 1, copy: bool = False,
-         patterns: str = '*', update_tree: bool = False) -> ASRResult:
-    """Unpack an ASE database to a tree of folders.
-
-    This setup recipe can unpack an ASE database to into folders
-    that have a tree like structure where directory names can be
-    given by the material parameters such stoichiometry, spacegroup
-    number for example: stoichiometry/spacegroup/formula.
-
-    The specific tree structure is given by the --tree-structure
-    option which can be customized according to the following table
-
-    * {stoi}: Material stoichiometry
-    * {spg}: Material spacegroup number
-    * {formula}: Chemical formula. A possible variant is {formula:metal}
-      in which case the formula will be sorted by metal atoms
-    * {reduced_formula}: Reduced chemical formula. Like {formula}
-      except the formula has been reduced, i.e., Mo2S4 -> MoS2.
-    * {wyck}: Unique wyckoff positions. The unique alphabetically
-      sorted Wyckoff positions.
-
-    Examples
-    --------
-    For all these examples, suppose you have a database named "database.db".
-
-    Unpack database using default parameters:
-    $ asr run "database.totree database.db --run"
-    Don't actually unpack the database but do a dry-run:
-    $ asr run "database.totree database.db"
-    Only select a part of the database to unpack:
-    $ asr run "database.totree database.db --selection natoms<3 --run"
-    Set custom folder tree-structure:
-    $ asr run "database.totree database.db
-    ... --tree-structure tree/{stoi}/{spg}/{formula:metal} --run"
-
-    Divide the tree into 2 chunks (in case the study of the materials)
-    is divided between 2 people). Also sort after number of atoms,
-    so computationally expensive materials are divided evenly:
-    $ asr run "database.totree database.db --sort natoms --chunks 2 --run"
-
-    """
+def main(
+        database: str, run: bool = False, selection: str = '',
+        tree_structure: str = (
+            'tree/{stoi}/{reduced_formula:abc}'
+        ),
+        sort: str = None, atomsfile: str = 'structure.json',
+        chunks: int = 1, copy: bool = False,
+        patterns: str = '*', update_tree: bool = False) -> ASRResult:
     from pathlib import Path
     from ase.db import connect
 
@@ -232,7 +198,7 @@ def main(database: str, run: bool = False, selection: str = '',
     if sort:
         print(f'Sorting after {sort}')
 
-    assert Path(database).exists(), f'file: {database} doesn\'t exist'
+    assert Path(database).exists(), f'file: {database} does not exist'
 
     db = connect(database)
     rows = list(db.select(selection, sort=sort))

@@ -1,14 +1,14 @@
 """Bader charge analysis."""
-import numpy as np
-
 from typing import List
 
-from asr.core import command, option, ASRResult, prepare_result
+import numpy as np
+from ase import Atoms
 
-from asr.database.browser import (
-    describe_entry,
-    entry_parameter_description,
-    make_panel_description, href)
+from asr.core import (
+    command, option, ASRResult, prepare_result, calcopt, atomsopt)
+
+from asr.gs import calculate as gscalculate
+from asr.database.browser import describe_entry, make_panel_description, href
 
 panel_description = make_panel_description(
     """The Bader charge analysis ascribes a net charge to an atom
@@ -19,7 +19,7 @@ without lattice bias. J. Phys.: Condens. Matter 21, 084204 (2009).""",
              'https://doi.org/10.1088/0953-8984/21/8/084204')])
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     rows = [[str(a), symbol, f'{charge:.2f}']
             for a, (symbol, charge)
             in enumerate(zip(result.sym_a, result.bader_charges))]
@@ -27,11 +27,8 @@ def webpanel(result, row, key_descriptions):
              'header': ['Atom index', 'Atom type', 'Charge (e)'],
              'rows': rows}
 
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.bader')
-
-    title_description = panel_description + parameter_description
+    title_description = (panel_description
+                         + context.parameter_description('asr.bader'))
 
     panel = {'title': describe_entry('Bader charges',
                                      description=title_description),
@@ -49,14 +46,17 @@ class Result(ASRResult):
     key_descriptions = {'bader_charges': 'Array of charges [\\|e\\|].',
                         'sym_a': 'Chemical symbols.'}
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command('asr.bader',
-         dependencies=['asr.gs'],
-         returns=Result)
+@command('asr.bader')
+@atomsopt
+@calcopt
 @option('--grid-spacing', help='Grid spacing (Å)', type=float)
-def main(grid_spacing: float = 0.05) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        grid_spacing: float = 0.05) -> Result:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable
@@ -73,14 +73,14 @@ def main(grid_spacing: float = 0.05) -> Result:
     import subprocess
     from ase.io import write
     from ase.units import Bohr
-    from gpaw import GPAW
     from gpaw.mpi import world
     from gpaw.utilities.ps2ae import PS2AE
     from gpaw.utilities.bader import read_bader_charges
 
     assert world.size == 1, 'Do not run in parallel!'
 
-    gs = GPAW('gs.gpw')
+    result = gscalculate(atoms=atoms, calculator=calculator)
+    gs = result.calculation.load()
     converter = PS2AE(gs, grid_spacing=grid_spacing)  # grid-spacing in Å
     density = converter.get_pseudo_density()
     write('density.cube', gs.atoms, data=density * Bohr**3)

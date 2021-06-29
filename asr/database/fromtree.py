@@ -1,12 +1,13 @@
 """Convert a folder tree to an ASE database."""
 
 from typing import Union, List
+import numbers
+import numpy as np
 from ase import Atoms
 from ase.io import read
 from ase.db import connect
-from asr.core import command, option, argument, chdir, read_json, ASRResult
+from asr.core import chdir, read_json, ASRResult
 from asr.database.key_descriptions import key_descriptions as asr_kd
-from asr.database.material_fingerprint import main as mf
 from asr.database.material_fingerprint import get_uid_of_atoms, \
     get_hash_of_atoms
 from asr.database.check import main as check_database
@@ -16,6 +17,10 @@ import os
 import glob
 import sys
 import traceback
+from asr.core.serialize import JSONSerializer
+from ase.db.core import reserved_keys
+
+serializer = JSONSerializer()
 
 
 class MissingUIDS(Exception):
@@ -94,6 +99,20 @@ tmpkd = parse_key_descriptions(
      for key, value in dct.items()})
 
 
+def remove_bad_keys(kvp):
+    delete = []
+    for key, value in kvp.items():
+        if key in reserved_keys:
+            delete.append(key)
+        elif not isinstance(value, (numbers.Real, str, np.bool_)):
+            delete.append(key)
+
+    for key in delete:
+        del kvp[key]
+
+    return kvp
+
+
 def get_key_value_pairs(resultsdct: dict):
     """Extract key-value-pairs from results dictionary.
 
@@ -112,10 +131,17 @@ def get_key_value_pairs(resultsdct: dict):
     """
     kvp = {}
     for key, desc in tmpkd.items():
-        if (key in resultsdct and desc['iskvp']
-           and resultsdct[key] is not None):
-            kvp[key] = resultsdct[key]
+        try:
+            if (
+                    key in resultsdct and desc['iskvp']
+                    and resultsdct[key] is not None
+            ):
+                kvp[key] = resultsdct[key]
+        except TypeError:
+            # Not iterable
+            pass
 
+    kvp = remove_bad_keys(kvp)
     return kvp
 
 
@@ -183,6 +209,7 @@ def collect_info(filename: Path):
     """Collect info.json."""
     from asr.core import read_json
     kvp = read_json(filename)
+    kvp = remove_bad_keys(kvp)
     data = {str(filename): kvp}
 
     return kvp, data
@@ -221,15 +248,15 @@ def collect_links_to_child_folders(folder: Path, atomsname):
 
 def get_material_uid(atoms: Atoms):
     """Get UID of atoms."""
-    if mf.done:
-        return read_json(
-            'results-asr.database.material_fingerprint.json')['uid']
+    # if mf.done:
+    #     return read_json(
+    #         'results-asr.database.material_fingerprint.json')['uid']
 
     hash = get_hash_of_atoms(atoms)
     return get_uid_of_atoms(atoms, hash)
 
 
-def collect_folder(folder: Path, atomsname: str, patterns: List[str],
+def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
                    children_patterns=[]):
     """Collect data from a material folder.
 
@@ -265,6 +292,17 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                'uid': uid}
         data = {'__children__': {}}
         data[atomsname] = read_json(atomsname)
+        from asr.core.cache import get_cache
+        cache = get_cache()
+        if cache:
+            sel = cache.make_selector()
+            sel.parameters.atoms = sel.EQ(atoms)
+            records = cache.select(selector=sel)
+            for record in records:
+                kvp.update(get_key_value_pairs(record.result))
+            if records:
+                data['records'] = serializer.serialize(records)
+
         for name in Path().glob('*'):
             if name.is_dir() and any(fnmatch(name, pattern)
                                      for pattern in children_patterns):
@@ -449,22 +487,12 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
         name.unlink()
 
 
-@command('asr.database.fromtree', save_results_file=False)
-@argument('folders', nargs=-1, type=str)
-@option('-r', '--recursive', is_flag=True,
-        help='Recurse and collect subdirectories.')
-@option('--children-patterns', type=str)
-@option('--patterns', help='Only select files matching pattern.', type=str)
-@option('--dbname', help='Database name.', type=str)
-@option('--njobs', type=int,
-        help='Delegate collection of database to NJOBS subprocesses. '
-        'Can significantly speed up database collection.')
 def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
-         patterns: str = 'info.json,links.json,params.json,results-asr.*.json',
+         patterns: str = 'info.json,links.json,params.json',
          dbname: str = 'database.db',
-         njobs: int = 1) -> ASRResult:
+         njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""
     from asr.database.key_descriptions import main as set_key_descriptions
 
@@ -521,7 +549,3 @@ def main(folders: Union[str, None] = None,
     if duplicate_uids:
         raise MissingUIDS(
             'Duplicate uids in database.')
-
-
-if __name__ == '__main__':
-    main.cli()

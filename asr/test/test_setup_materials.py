@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.ci
-def test_setup_magnetize(asr_tmpdir_w_params):
+def test_setup_materials(asr_tmpdir_w_params):
     from asr.setup.materials import main
     from pathlib import Path
     main()

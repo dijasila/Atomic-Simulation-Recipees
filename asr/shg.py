@@ -1,5 +1,10 @@
+from ase import Atoms
+
 import typing
-from asr.core import command, option, ASRResult, prepare_result
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt)
+from asr.gs import calculate as gscalculate, main as gsmain
+
 import numpy as np
 
 
@@ -75,19 +80,16 @@ def get_chi_symmetry(atoms, sym_th=1e-3):
     return sym_chi
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig)
+def webpanel(result, context):
+    from asr.database.browser import fig
     from textwrap import wrap
 
-    # Get the data
-    data = row.data.get('results-asr.shg.json')
-    if data is None:
-        return
+    data = result
 
     # Make the table
     sym_chi = data.get('symm')
     table = []
-    for pol in sorted(sym_chi.keys()):
+    for pol in sorted(sym_chi):
         relation = sym_chi[pol]
         if pol == 'zero':
             if relation != '':
@@ -96,7 +98,7 @@ def webpanel(result, row, key_descriptions):
             else:
                 continue
 
-        if (len(relation) == 3):
+        if len(relation) == 3:
             relation_new = ''
         else:
             # relation_new = '$'+'$\n$'.join(wrap(relation, 40))+'$'
@@ -156,15 +158,12 @@ class Result(ASRResult):
         "chi": "Non-zero SHG tensor elements in SI units",
         "symm": "Symmetry relation of SHG tensor",
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command('asr.shg',
-         dependencies=['asr.gs@calculate'],
-         requires=['structure.json', 'gs.gpw'],
-         returns=Result)
-@option('--gs', help='Ground state on which response is based',
-        type=str)
+@command('asr.shg')
+@atomsopt
+@calcopt
 @option('--kptdensity', help='K-point density [1/Ang]', type=float)
 @option('--gauge', help='Selected gauge (length "lg" or velocity "vg")',
         type=str)
@@ -174,10 +173,17 @@ class Result(ASRResult):
 @option('--maxomega', help='Max pump frequency [eV]', type=float)
 @option('--nromega', help='Number of pump frequencies', type=int)
 @option('--removefiles', help='Remove created files', type=bool)
-def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
-         bandfactor: int = 4, eta: float = 0.05,
-         maxomega: float = 10.0, nromega: int = 1000,
-         removefiles: bool = False) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 25.0,
+        gauge: str = 'lg',
+        bandfactor: int = 4,
+        eta: float = 0.05,
+        maxomega: float = 10.0,
+        nromega: int = 1000,
+        removefiles: bool = False,
+) -> Result:
     """Calculate the SHG spectrum, only independent tensor elements.
 
     The recipe computes the SHG spectrum. The tensor in general have 18 independent
@@ -205,14 +211,11 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
     removefiles : bool
         Remove intermediate files that are created.
     """
-    from ase.io import read
-    from gpaw import GPAW
     from gpaw.mpi import world
     from pathlib import Path
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.nlopt.shg import get_shg
 
-    atoms = read('structure.json')
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
     kpts = get_kpts(kptdensity, nd, atoms.cell)
@@ -229,18 +232,21 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
             if not Path('es.gpw').is_file():
-                calc_old = GPAW(gs, txt=None)
+                res = gscalculate(atoms=atoms, calculator=calculator)
+                # Since we depend on gap for plotting, we need to run main:
+                gsmain(atoms=atoms, calculator=calculator)
+                calc_old = res.calculation.load()
                 nval = calc_old.wfs.nvalence
 
-                calc = GPAW(
-                    gs,
+                calc = res.calculation.load(
                     txt='es.txt',
                     symmetry={'point_group': False, 'time_reversal': True},
                     fixdensity=True,
                     nbands=(bandfactor + 1) * nval,
                     convergence={'bands': bandfactor * nval},
                     occupations={'name': 'fermi-dirac', 'width': 1e-4},
-                    kpts=kpts)
+                    kpts=kpts,
+                )
                 calc.get_potential_energy()
                 calc.write('es.gpw', mode='all')
                 fnames.append('es.gpw')
@@ -286,26 +292,20 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0, gauge: str = 'lg',
                 if es_file.is_file():
                     es_file.unlink()
 
-    return results
+    return Result(results)
 
 
-def plot_shg(row, *filename):
+def plot_shg(context, *filename):
     import matplotlib.pyplot as plt
     import os
     from pathlib import Path
     from textwrap import wrap
 
     # Read the data from the disk
-    data = row.data.get('results-asr.shg.json')
-    gap = row.get('gap')
-    atoms = row.toatoms()
-    pbc = atoms.pbc.tolist()
-    nd = np.sum(pbc)
-
-    # Remove the files if it is already exist
-    for fname in filename:
-        if (Path(fname).is_file()):
-            os.remove(fname)
+    data = context.get_record('asr.shg').result
+    gsresult = context.gs_results()
+    gap = gsresult['gap']
+    nd = context.ndim
 
     # Plot the data and add the axis labels
     sym_chi = data['symm']
@@ -315,11 +315,12 @@ def plot_shg(row, *filename):
 
     if not chi:
         return
+
     w_l = data['freqs']
     fileind = 0
     axes = []
 
-    for pol in sorted(chi.keys()):
+    for pol in sorted(chi):
         # Make the axis and add y=0 axis
         shg = chi[pol]
         ax = plt.figure().add_subplot(111)
@@ -414,7 +415,7 @@ def make_full_chi(sym_chi, chi_dict):
             chidata = chi_dict[pol]
             nw = len(chidata)
     chi_vvvl = np.zeros((3, 3, 3, nw), complex)
-    for pol in sorted(sym_chi.keys()):
+    for pol in sorted(sym_chi):
         relation = sym_chi.get(pol)
         if pol == 'zero':
             if relation != '':

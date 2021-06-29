@@ -1,8 +1,16 @@
 """Stiffness tensor."""
 import typing
-from asr.core import command, option, ASRResult, prepare_result
+
+from ase import Atoms
+import numpy as np
+
+import asr
+from asr.core import (
+    command, option, ASRResult, prepare_result, AtomsFile,
+)
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
+from asr.relax import main as relax
 
 panel_description = make_panel_description(
     """
@@ -17,13 +25,11 @@ indicates a dynamical instability.
 )
 
 
-def webpanel(result, row, key_descriptions):
-    import numpy as np
-
-    stiffnessdata = row.data['results-asr.stiffness.json']
+def webpanel(result, context):
+    stiffnessdata = result  # row.data['results-asr.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor'].copy()
     eigs = stiffnessdata['eigenvalues'].copy()
-    nd = np.sum(row.pbc)
+    nd = context.ndim
 
     if nd == 2:
         c_ij = np.zeros((4, 4))
@@ -63,11 +69,14 @@ def webpanel(result, row, key_descriptions):
         type='table',
         rows=eigrows)
 
-    panel = {'title': describe_entry('Stiffness tensor', description=panel_description),
-             'columns': [[ctable], [eigtable]],
-             'sort': 2}
+    panel = {
+        'title': describe_entry(
+            'Stiffness tensor', description=panel_description
+        ),
+        'columns': [[ctable], [eigtable]],
+        'sort': 2}
 
-    dynstab = row.dynamic_stability_stiffness
+    dynstab = result['dynamic_stability_stiffness']
     high = 'Minimum stiffness tensor eigenvalue > 0'
     low = 'Minimum stiffness tensor eigenvalue < 0'
 
@@ -135,8 +144,6 @@ class Result(ASRResult):
     c_65: float
     c_66: float
 
-    __links__: typing.List[str]
-
     stiffness_tensor: typing.List[typing.List[float]]
     eigenvalues: typing.List[complex]
     dynamic_stability_stiffness: str
@@ -184,58 +191,66 @@ class Result(ASRResult):
         "speed_of_sound_x": "Speed of sound (x) [m/s]",
         "speed_of_sound_y": "Speed of sound (y) [m/s]",
         "stiffness_tensor": "Stiffness tensor [`N/m^{dim-1}`]",
-        "dynamic_stability_stiffness": "Stiffness dynamic stability (low/high)",
-        "__links__": "UIDs to strained folders."
+        "dynamic_stability_stiffness":
+        "Stiffness dynamic stability (low/high)",
     }
 
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command(module='asr.stiffness',
-         returns=Result)
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+
+
+@asr.migration(selector=sel)
+def transform_stiffness_resultfile_record(record):
+    """Remove fixcell and allow_symmetry_breaking from dependency_parameters."""
+    dep_params = record.parameters['dependency_parameters']
+    relax_dep_params = dep_params['asr.relax:main']
+    delparams = {'fixcell', 'allow_symmetry_breaking'}
+    for param in delparams:
+        del relax_dep_params[param]
+    return record
+
+
+@command(
+    module='asr.stiffness',
+)
+@option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
+        default='structure.json')
+@asr.calcopt
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
-def main(strain_percent: float = 1.0) -> Result:
+@option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
+def main(atoms: Atoms,
+         calculator: dict = relax.defaults.calculator,
+         strain_percent: float = 1.0,
+         d3: bool = False) -> Result:
     """Calculate stiffness tensor."""
-    from asr.setup.strains import main as setupstrains
-    from asr.setup.strains import get_relevant_strains, get_strained_folder_name
-    from asr.relax import main as relax
-    from ase.io import read
+    from asr.setup.strains import main as make_strained_atoms
+    from asr.setup.strains import get_relevant_strains
     from ase.units import J
-    from asr.core import read_json, chdir
-    from asr.database.material_fingerprint import main as computemf
-    import numpy as np
 
-    if not setupstrains.done:
-        setupstrains(strain_percent=strain_percent)
-
-    atoms = read('structure.json')
     ij = get_relevant_strains(atoms.pbc)
 
     ij_to_voigt = [[0, 5, 4],
                    [5, 1, 3],
                    [4, 3, 2]]
 
-    links = {}
     stiffness = np.zeros((6, 6), float)
     for i, j in ij:
         dstress = np.zeros((6,), float)
         for sign in [-1, 1]:
-            folder = get_strained_folder_name(sign * strain_percent, i, j)
-            with chdir(folder):
-                if not relax.done:
-                    unrelaxed = read('unrelaxed.json')
-                    relax(atoms=unrelaxed)
-
-                if not computemf.done:
-                    computemf()
-            mf = read_json(folder / ('results-asr.database.'
-                                     'material_fingerprint.json'))
-            links[str(folder)] = mf['uid']
-            structurefile = folder / 'structure.json'
-            structure = read(str(structurefile))
-            # The structure already has the stress if it was
-            # calculated
-            stress = structure.get_stress(voigt=True)
+            strained_atoms = make_strained_atoms(
+                atoms,
+                strain_percent=sign * strain_percent,
+                i=i, j=j)
+            relaxresult = relax(
+                strained_atoms,
+                calculator=calculator,
+                fixcell=True,
+                allow_symmetry_breaking=True,
+            )
+            stress = relaxresult.stress
             dstress += stress * sign
         stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)
 
@@ -284,7 +299,6 @@ def main(strain_percent: float = 1.0) -> Result:
         for j in range(stiffness_shape[1]):
             data[f'c_{i + 1}{j + 1}'] = stiffness[i, j]
 
-    data['__links__'] = links
     data['stiffness_tensor'] = stiffness
 
     if nd == 1:
@@ -294,7 +308,7 @@ def main(strain_percent: float = 1.0) -> Result:
     data['eigenvalues'] = eigs
     dynamic_stability_stiffness = ['low', 'high'][int(eigs.min() > 0)]
     data['dynamic_stability_stiffness'] = dynamic_stability_stiffness
-    return data
+    return Result(data=data)
 
 
 if __name__ == '__main__':

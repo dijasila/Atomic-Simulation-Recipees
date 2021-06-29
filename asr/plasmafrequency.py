@@ -1,44 +1,64 @@
 """Plasma frequency."""
-from asr.core import command, option, ASRResult, prepare_result
+from pathlib import Path
+
+import numpy as np
+from ase import Atoms
+from ase.parallel import world
+from ase.units import Hartree, Bohr
+
+from asr.core import (
+    command, option, ASRResult, prepare_result, atomsopt, calcopt)
 import typing
 from asr.utils.kpts import get_kpts_size
+from asr.gs import calculate as gscalculate, main as gsmain
 
 
-@command('asr.plasmafrequency',
-         creates=['es_plasma.gpw'],
-         dependencies=['asr.gs@calculate'],
-         requires=['gs.gpw'])
-@option('--kptdensity', help='k-point density', type=float)
-def calculate(kptdensity: float = 20) -> ASRResult:
+# XXX The plasmafrequency recipe should not be two steps. We don't
+# want to keep the large gpw since it can potentially be really large.
+# Therefore I have degraded the calculate step to a simple function.
+
+def calculate(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 20,
+) -> ASRResult:
     """Calculate excited states for polarizability calculation."""
-    from gpaw import GPAW
-    from ase.parallel import world
-    from pathlib import Path
-
-    calc_old = GPAW('gs.gpw', txt=None)
+    res = gscalculate(atoms=atoms, calculator=calculator)
+    # We want the gap for the webpanel, so explicitly call gs main:
+    gsmain(atoms=atoms, calculator=calculator)
+    calc_old = res.calculation.load()
     kpts = get_kpts_size(atoms=calc_old.atoms, kptdensity=kptdensity)
     nval = calc_old.wfs.nvalence
+    filename = "es_plasma.gpw"
     try:
-        calc = GPAW('gs.gpw', fixdensity=True, kpts=kpts,
-                    nbands=2 * nval, txt='gsplasma.txt')
+        calc = res.calculation.load(
+            fixdensity=True,
+            kpts=kpts,
+            nbands=2 * nval,
+            txt='gsplasma.txt',
+        )
         calc.get_potential_energy()
-        calc.write('es_plasma.gpw', 'all')
+        calc.write(filename, 'all')
     except Exception:
         if world.rank == 0:
-            es_file = Path("es_plasma.gpw")
+            es_file = Path(filename)
             if es_file.is_file():
                 es_file.unlink()
         world.barrier()
 
+    return filename
 
-def webpanel(result, row, key_descriptions):
+
+def webpanel(result, context):
     from asr.database.browser import table
 
-    if row.get('gap', 1) > 0.01:
+    gsresults = context.gs_results()
+    if gsresults['gap'] > 0.01:
         return []
 
-    plasmatable = table(row, 'Property', [
-        'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
+    assert 'plasmafrequency_x1' in result
+    plasmatable = table(result, 'Property', [
+        'plasmafrequency_x', 'plasmafrequency_y'], context.descriptions)
 
     panel = {'title': 'Optical polarizability (RPA)',
              'columns': [[], [plasmatable]]}
@@ -59,24 +79,29 @@ class Result(ASRResult):
         "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
         "[`eV/Å^0.5`]",
     }
-    formats = {"ase_webpanel": webpanel}
+    formats = {'webpanel2': webpanel}
 
 
-@command('asr.plasmafrequency',
-         returns=Result,
-         dependencies=['asr.plasmafrequency@calculate'])
+@command('asr.plasmafrequency')
+@atomsopt
+@calcopt
+@option('--kptdensity', help='k-point density', type=float)
 @option('--tetra', is_flag=True,
         help='Use tetrahedron integration')
-def main(tetra: bool = True) -> Result:
+def main(
+        atoms: Atoms,
+        calculator: dict = gscalculate.defaults.calculator,
+        kptdensity: float = 20,
+        tetra: bool = True,
+) -> Result:
     """Calculate polarizability."""
     from gpaw.response.df import DielectricFunction
-    from ase.io import read
-    import numpy as np
-    from ase.units import Hartree, Bohr
-    from pathlib import Path
-    from ase.parallel import world
 
-    atoms = read('structure.json')
+    gpwfile = calculate(
+        atoms=atoms,
+        calculator=calculator,
+        kptdensity=kptdensity,
+    )
     nd = sum(atoms.pbc)
     if not nd == 2:
         raise AssertionError('Plasmafrequency recipe only implemented for 2D')
@@ -95,14 +120,14 @@ def main(tetra: bool = True) -> Result:
                   'ecut': 1}
 
     try:
-        df = DielectricFunction('es_plasma.gpw', **kwargs)
+        df = DielectricFunction(gpwfile, **kwargs)
         df.get_polarizability(q_c=[0, 0, 0], direction='x',
                               pbc=[True, True, False],
                               filename=None)
     finally:
         world.barrier()
         if world.rank == 0:
-            es_file = Path("es_plasma.gpw")
+            es_file = Path(gpwfile)
             es_file.unlink()
     plasmafreq_vv = df.chi0.plasmafreq_vv.real
     data = {'plasmafreq_vv': plasmafreq_vv}

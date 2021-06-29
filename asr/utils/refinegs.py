@@ -3,10 +3,11 @@ from pathlib import Path
 from asr.utils.kpts import get_kpts_size
 
 
-def nonselfc(txt=None, kptdensity=20.0, emptybands=20):
+def nonselfc(atoms, calculator, txt=None, kptdensity=20.0, emptybands=20):
     """Non self-consistent calculation based on the density in gs.gpw."""
-    from gpaw import GPAW
-    calc = GPAW('gs.gpw', txt=None)
+    from asr.gs import calculate
+    res = calculate(atoms=atoms, calculator=calculator)
+    calc = res.calculation.load()
 
     kpts = get_kpts_size(atoms=calc.atoms, kptdensity=kptdensity)
     convbands = int(emptybands / 2)
@@ -48,7 +49,7 @@ def get_parstr(selfc=False, **kwargs):
     return parstr
 
 
-def refinegs(selfc=False, gpw=None, txt=None, **kwargs):
+def refinegs(atoms, calculator, selfc=False, gpw=None, txt=None, **kwargs):
     """Refine the ground state calculation.
 
     Parameters
@@ -80,7 +81,7 @@ def refinegs(selfc=False, gpw=None, txt=None, **kwargs):
             raise NotImplementedError('Someone should implement refinement '
                                       + 'with self-consistency')
         else:
-            calc = nonselfc(txt=txt, **kwargs)
+            calc = nonselfc(atoms, calculator, txt=txt, **kwargs)
 
         if gpw:
             calc.write(gpw)

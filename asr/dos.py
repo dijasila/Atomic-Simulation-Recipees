@@ -1,26 +1,36 @@
 """Density of states."""
-from asr.core import command, option, ASRResult
+from asr.core import command, option, atomsopt, calcopt
+from asr.gs import calculate as gscalculate
+from ase import Atoms
 
 
 @command('asr.dos')
-@option('--name', type=str)
-@option('--filename', type=str)
+@atomsopt
+@calcopt
 @option('--kptdensity', help='K point kptdensity', type=float)
-def main(name: str = 'dos.gpw', filename: str = 'dos.json',
-         kptdensity: float = 12.0) -> ASRResult:
+def main(
+        atoms: Atoms,
+        calculator: gscalculate.defaults.calculator,
+        kptdensity: float = 12.0,
+) -> dict:
     """Calculate DOS."""
     from pathlib import Path
     from gpaw import GPAW
+
+    result = gscalculate(atoms=atoms, calculator=calculator)
+    name = 'dos.gpw'
     if not Path(name).is_file():
-        calc = GPAW('gs.gpw', txt='dos.txt',
-                    kpts={'density': kptdensity},
-                    nbands='300%',
-                    convergence={'bands': -10})
+        calc = result.calculation.load(
+            kpts=dict(density=kptdensity),
+            nbands='300%',
+            convergence={'bands': -10},
+        )
         calc.get_potential_energy()
         calc.write(name)
         del calc
 
     calc = GPAW(name, txt=None)
+
     from ase.dft.dos import DOS
     dos = DOS(calc, width=0.0, window=(-5, 5), npts=1000)
     nspins = calc.get_number_of_spins()
@@ -36,24 +46,7 @@ def main(name: str = 'dos.gpw', filename: str = 'dos.json',
         dosspin1_e = dos.get_dos(spin=1)
         data['dosspin1_e'] = dosspin1_e.tolist()
 
-    import json
-
-    from ase.parallel import paropen
-    with paropen(filename, 'w') as fd:
-        json.dump(data, fd)
-
-
-def collect_data(atoms):
-    """Band structure SCF and GW +- SOC."""
-    from ase.io.jsonio import read_json
-    from pathlib import Path
-
-    if not Path('dos.json').is_file():
-        return {}, {}, {}
-
-    dos = read_json('dos.json')
-
-    return {}, {}, {'dos': dos}
+    return data
 
 
 def plot(row=None, filename='dos.png', file=None, show=False):
@@ -89,12 +82,10 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     return plt.gca()
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result, context):
     from asr.database.browser import fig
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
 
-    panel = (f'Density of states ({xcname})',
+    panel = (f'Density of states ({context.xcname})',
              [[fig('dos.png')], []])
 
     things = [(plot, ['dos.png'])]
