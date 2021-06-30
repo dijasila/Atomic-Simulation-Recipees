@@ -21,11 +21,8 @@ class Repository:
         if not cache_dir.is_dir():
             raise ASRRootNotFound(f'Root not initialized in {self.root}')
 
+        self.root = root
         self.cache = Cache(backend=FileCacheBackend(cache_dir))
-
-    @property
-    def root(self):
-        return self.cache.path.parent
 
     @classmethod
     def find_root(cls, path='.'):
@@ -42,19 +39,16 @@ class Repository:
 
     @classmethod
     def initialize(cls, root: Path):
-        initialize_root(root)
+        asr_dir = root / ASR_DIR
+
+        if asr_dir.exists():
+            raise FileExistsError(f'Repository already initialized at {root}')
+
+        asr_dir.mkdir()
         return cls(root)
 
     def __repr__(self):
         return f'{type(self).__name__}(root={self.root})'
-
-
-
-
-def initialize_root(directory: Path = Path('.')):
-    asr_dir = directory / ASR_DIR
-    assert not asr_dir.exists()
-    asr_dir.mkdir()
 
 
 def find_root(path: str = '.'):

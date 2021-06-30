@@ -24,7 +24,6 @@ from .migrate import (  # noqa
     migration, Migration, SelectorMigrationGenerator, make_migration_generator,  # noqa
 )  # noqa
 from .comparators import comparators  # noqa
-from .root import find_root, initialize_root  # noqa
 
 
 __all__ = [

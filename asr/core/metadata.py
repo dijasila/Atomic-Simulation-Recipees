@@ -3,7 +3,7 @@ import typing
 import dataclasses
 import pathlib
 
-from .config import find_root
+from asr.core.root import Repository
 
 
 def construct_metadata(
@@ -19,7 +19,8 @@ def construct_metadata(
         modified = created
 
     if directory is None:
-        directory = str(pathlib.Path('.').absolute().relative_to(find_root()))
+        root = Repository.find_root().root
+        directory = str(pathlib.Path('.').absolute().relative_to(root))
 
     return Metadata(
         created=created,

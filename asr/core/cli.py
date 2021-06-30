@@ -99,11 +99,11 @@ def init(directories):
     directory is supplied.
 
     """
-    from .root import initialize_root
+    from .root import Repository
     if not directories:
         directories = [Path('.')]
     for directory in directories:
-        initialize_root(directory)
+        Repository.initialize(directory)
 
 
 @cli.command()

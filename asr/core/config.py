@@ -1,8 +1,5 @@
 import pathlib
 from asr.core import read_json
-from .root import (  # noqa
-    initialize_root, find_root
-)
 
 
 backends = {'memory', 'filesystem'}
