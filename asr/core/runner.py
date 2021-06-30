@@ -6,7 +6,7 @@ from .serialize import JSONSerializer
 from .specification import RunSpecification
 from .utils import chdir, write_file, read_file
 from .root import Repository
-from .lock import lock, Lock
+from .lock import lock as lock_deco, Lock
 
 
 serializer = JSONSerializer()
@@ -47,11 +47,12 @@ def get_workdir_name(
 
 class Runner:
 
-    def __init__(self):
+    @property
+    def lock(self):
         repo = Repository.find_root()
-        self.lock = Lock(repo.asr_path('runner.lock'), timeout=10)
+        return Lock(repo.asr_path('runner.lock'), timeout=10)
 
-    @lock
+    @lock_deco
     def get_workdir_name(self, run_specification):
         return get_workdir_name(run_specification)
 
