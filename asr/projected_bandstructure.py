@@ -28,11 +28,10 @@ scf_projected_bs_filename = 'scf-projected-bs.png'
 
 def webpanel(result, context):
     # XXX Why is it named bandstructure:calculate, why not projected?
-    desc1 = context.parameter_description('asr.bandstructure:calculate')
-    desc2 = context.parameter_description_picky('asr.gs')
+    desc = context.parameter_description('asr.projected_bandstructure')
 
     explanation = ('Orbital projected band structure without '
-                   'spin–orbit coupling\n\n' + desc1 + '\n' + desc2)
+                   'spin–orbit coupling\n\n' + desc)
 
     # XXX Actually we use the SOC Fermilevel as reference in 3D systems
     # don't we?
