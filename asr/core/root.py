@@ -24,6 +24,9 @@ class Repository:
         self.root = root
         self.cache = Cache(backend=FileCacheBackend(cache_dir))
 
+    def asr_path(self, path):
+        return self.cache.backend.asr_path(path)
+
     @classmethod
     def find_root(cls, path=Path()) -> 'Repository':
         path = Path(path).absolute()

@@ -6,7 +6,6 @@ from .serialize import JSONSerializer
 from .specification import RunSpecification
 from .utils import chdir, write_file, read_file
 from .root import Repository
-from .filetype import ASRPath
 from .lock import lock, Lock
 
 
@@ -20,9 +19,10 @@ def get_workdir_name(
         run_specification: RunSpecification) -> Path:
     name = run_specification.name
     uid = run_specification.uid
-    assert Repository.root_is_initialized()
 
-    data_file = ASRPath('work_dirs.json')
+    repo = Repository.find_root()
+    data_file = repo.asr_path('work_dirs.json')
+
     if not data_file.is_file():
         work_dirs = {}
         write_file(data_file, serializer.serialize(work_dirs))
@@ -41,14 +41,15 @@ def get_workdir_name(
         work_dirs[foldername] = run_specification
         write_file(data_file, serializer.serialize(work_dirs))
 
-    workdir = ASRPath(foldername)
+    workdir = repo.asr_path(foldername)
     return workdir
 
 
-class Runner():
+class Runner:
 
     def __init__(self):
-        self.lock = Lock(ASRPath('runner.lock'), timeout=10)
+        repo = Repository.find_root()
+        self.lock = Lock(repo.asr_path('runner.lock'), timeout=10)
 
     @lock
     def get_workdir_name(self, run_specification):
