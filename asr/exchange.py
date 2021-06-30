@@ -220,7 +220,9 @@ def webpanel(result, row, key_descriptions):
     heisenberg_table = table(row, 'Heisenberg model',
                              [J, lam, A, spin, N_nn],
                              kd=key_descriptions)
-    panel = WebPanel(title='Basic magnetic properties (PBE)',
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+    panel = WebPanel(title=f'Basic magnetic properties ({xcname})',
                      columns=[[heisenberg_table], []],
                      sort=11)
     return [panel]

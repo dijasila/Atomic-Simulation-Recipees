@@ -362,7 +362,7 @@ def get_git_rev_list(hashes, home=None):
     """Get Git rev list from HASH1 to HASH2."""
     cfgdir = get_config_dir(home=home)
 
-    git_repo = 'https://gitlab.com/mortengjerding/asr.git'
+    git_repo = 'https://gitlab.com/asr-dev/asr.git'
     if not (cfgdir / 'asr').is_dir():
         subprocess.check_output(['git', 'clone', git_repo],
                                 cwd=cfgdir)

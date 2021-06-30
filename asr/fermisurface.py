@@ -4,7 +4,7 @@ from asr.database.browser import fig, make_panel_description, describe_entry
 
 
 panel_description = make_panel_description(
-    """The Fermi surface calculated with spin-orbit interactions. The expectation
+    """The Fermi surface calculated with spin–orbit interactions. The expectation
 value of S_i (where i=z for non-magnetic materials and otherwise is the
 magnetic easy axis) indicated by the color code.""",
     articles=[

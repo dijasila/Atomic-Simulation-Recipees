@@ -3,122 +3,53 @@ from asr.core import command, option, read_json, ASRResult, prepare_result
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
 import typing
-from asr.database.browser import (
-    href, fig, table, describe_entry, make_panel_description)
+from asr.database.browser import href, make_panel_description
+from asr.utils.gw_hse import GWHSEInfo
+from asr.utils.kpts import get_kpts_size
 
 
-panel_description = make_panel_description(
-    """The quasiparticle (QP) band structure calculated within the G0W0
-approximation from a GGA starting point. Spin-orbit interactions are included
-in postprocess. The frequency dependence is treated numerically exact. For
+class GWInfo(GWHSEInfo):
+    method_name = 'G₀W₀'
+    name = 'gw'
+    bs_filename = 'gw-bs.png'
+
+    panel_description = make_panel_description(
+        """The quasiparticle (QP) band structure calculated within the G₀W₀
+approximation from a GGA starting point.
+The treatment of frequency dependence is numerically exact. For
 low-dimensional materials, a truncated Coulomb interaction is used to decouple
 periodic images. The QP energies are extrapolated as 1/N to the infinite plane
-wave basis set limit. Spin-orbit interactions are included
-non-self-consistently.""",
-    articles=[
-        'C2DB',
-        href(
-            """F. Rasmussen et al. Efficient many-body calculations for two-dimensional
-            materials using exact limits for the screened potential: Band gaps
-            of MoS2, h-BN, and phosphorene, Phys. Rev. B 94, 155406 (2016)""",
-            'https://doi.org/10.1103/PhysRevB.94.155406',
-        ),
-        href(
-            """A. Rasmussen et al. Towards fully automatized GW band structure
+wave basis set limit. Spin–orbit interactions are included
+in post-process.""",
+        articles=[
+            'C2DB',
+            href(
+                """F. Rasmussen et al. Efficient many-body calculations for
+two-dimensional materials using exact limits for the screened potential: Band gaps
+of MoS2, h-BN, and phosphorene, Phys. Rev. B 94, 155406 (2016)""",
+                'https://doi.org/10.1103/PhysRevB.94.155406',
+            ),
+            href(
+                """A. Rasmussen et al. Towards fully automatized GW band structure
 calculations: What we can learn from 60.000 self-energy evaluations,
 arXiv:2009.00314""",
-            'https://arxiv.org/abs/2009.00314v1'
-        ),
-    ]
-)
+                'https://arxiv.org/abs/2009.00314v1'
+            ),
+        ]
+    )
 
+    band_gap_adjectives = 'quasi-particle'
+    summary_sort = 12
 
-# This function is basically doing the exact same as HSE and could
-# probably be refactored
-def bs_gw(row,
-          filename='gw-bs.png',
-          figsize=(5.5, 5),
-          fontsize=10,
-          show_legend=True,
-          s=0.5):
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
-    import matplotlib.patheffects as path_effects
-
-    data = row.data.get('results-asr.gw.json')
-    path = data['bandstructure']['path']
-    mpl.rcParams['font.size'] = fontsize
-    ef = data['efermi_gw_soc']
-
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-        reference = row.get('evac')
-    else:
-        label = r'$E - E_\mathrm{F}$ [eV]'
-        reference = ef
-
-    emin = row.get('vbm_gw', ef) - 3 - reference
-    emax = row.get('cbm_gw', ef) + 3 - reference
-
-    e_mk = data['bandstructure']['e_int_mk'] - reference
-    x, X, labels = path.get_linear_kpoint_axis()
-
-    # hse with soc
-    style = dict(
-        color='C1',
-        ls='-',
-        lw=1.0,
-        zorder=0)
-    ax = plt.figure(figsize=figsize).add_subplot(111)
-    for e_m in e_mk:
-        ax.plot(x, e_m, **style)
-    ax.set_ylim([emin, emax])
-    ax.set_xlim([x[0], x[-1]])
-    ax.set_ylabel(label)
-    ax.set_xticks(X)
-    ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
-
-    xlim = ax.get_xlim()
-    x0 = xlim[1] * 0.01
-    ax.axhline(ef - reference, c='C1', ls=':')
-    text = ax.annotate(
-        r'$E_\mathrm{F}$',
-        xy=(x0, ef - reference),
-        ha='left',
-        va='bottom',
-        fontsize=fontsize * 1.3)
-    text.set_path_effects([
-        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
-        path_effects.Normal()
-    ])
-
-    # add PBE band structure with soc
-    from asr.bandstructure import add_bs_pbe
-    if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_pbe(row, ax, reference=row.get('evac', row.get('efermi')),
-                        color=[0.8, 0.8, 0.8])
-
-    for Xi in X:
-        ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
-
-    ax.plot([], [], **style, label='G0W0')
-    plt.legend(loc='upper right')
-
-    if not show_legend:
-        ax.legend_.remove()
-    plt.savefig(filename, bbox_inches='tight')
-
-
-def get_kpts_size(atoms, kptdensity):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=kptdensity)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
+    @staticmethod
+    def plot_bs(row, filename):
+        from asr.hse import plot_bs
+        data = row.data['results-asr.gw.json']
+        return plot_bs(row, filename=filename, bs_label='G₀W₀',
+                       data=data,
+                       efermi=data['efermi_gw_soc'],
+                       cbm=row.get('cbm_gw'),
+                       vbm=row.get('vbm_gw'))
 
 
 @command(requires=['gs.gpw'],
@@ -130,14 +61,13 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
-    import numpy as np
 
     # check that the system is a semiconductor
     calc = GPAW('gs.gpw', txt=None)
-    pbe_gap, _, _ = bandgap(calc, output=None)
-    if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = "
-                        + str(pbe_gap) + " eV is too small!")
+    scf_gap, _, _ = bandgap(calc, output=None)
+    if scf_gap < 0.05:
+        raise Exception("GW: Only for semiconductors, SCF gap = "
+                        + str(scf_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
@@ -146,7 +76,7 @@ def gs(kptdensity: float = 5.0, ecut: float = 200.0) -> ASRResult:
                         + str(len(atoms)) + " > 4 atoms!")
 
     # setup k points/parameters
-    dim = np.sum(atoms.pbc.tolist())
+    dim = sum(atoms.pbc)
     if dim == 3:
         kpts = {'density': kptdensity, 'gamma': True, 'even': True}
     elif dim == 2:
@@ -180,14 +110,13 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
     from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     from gpaw.response.g0w0 import G0W0
-    import numpy as np
 
     # check that the system is a semiconductor
     calc = GPAW('gs.gpw', txt=None)
-    pbe_gap, _, _ = bandgap(calc, output=None)
-    if pbe_gap < 0.05:
-        raise Exception("GW: Only for semiconductors, PBE gap = "
-                        + str(pbe_gap) + " eV is too small!")
+    scf_gap, _, _ = bandgap(calc, output=None)
+    if scf_gap < 0.05:
+        raise Exception("GW: Only for semiconductors, SCF gap = "
+                        + str(scf_gap) + " eV is too small!")
 
     # check that the system is small enough
     atoms = calc.get_atoms()
@@ -196,21 +125,15 @@ def gw(ecut: float = 200.0, mode: str = 'G0W0') -> ASRResult:
                         + str(len(atoms)) + " > 4 atoms!")
 
     # Setup parameters
-    dim = np.sum(atoms.pbc.tolist())
+    dim = sum(atoms.pbc)
     if dim == 3:
         truncation = 'wigner-seitz'
         q0_correction = False
     elif dim == 2:
         truncation = '2D'
         q0_correction = True
-    elif dim == 1:
-        raise NotImplementedError('asr for dim=1 not implemented!')
-        truncation = '1D'
-        q0_correction = False
-    elif dim == 0:
-        raise NotImplementedError('asr for dim=0 not implemented!')
-        truncation = '0D'
-        q0_correction = False
+    else:
+        raise NotImplementedError(f'dim={dim} not implemented!')
 
     if mode == 'GWG':
         raise NotImplementedError('GW: asr for GWG not implemented!')
@@ -285,52 +208,9 @@ def empirical_mean_z(correctgw: bool = True,
 
 
 def webpanel(result, row, key_descriptions):
-
-    prop = table(row, 'Property', [
-        'gap_gw', 'gap_dir_gw',
-    ], key_descriptions)
-
-    if row.get('evac'):
-        prop['rows'].extend(
-            [['Valence band maximum wrt. vacuum level (G0W0)',
-              f'{row.vbm_gw - row.evac:.2f} eV'],
-             ['Conduction band minimum wrt. vacuum level (G0W0)',
-              f'{row.cbm_gw - row.evac:.2f} eV']])
-    else:
-        prop['rows'].extend(
-            [['Valence band maximum wrt. Fermi level (G0W0)',
-              f'{row.vbm_gw - row.efermi:.2f} eV'],
-             ['Conduction band minimum wrt. Fermi level (G0W0)',
-              f'{row.cbm_gw - row.efermi:.2f} eV']])
-
-    panel = {'title': describe_entry('Electronic band structure (G0W0)',
-                                     panel_description),
-             'columns': [[fig('gw-bs.png')], [fig('bz-with-gaps.png'), prop]],
-             'plot_descriptions': [{'function': bs_gw,
-                                    'filenames': ['gw-bs.png']}],
-             'sort': 16}
-
-    if row.get('gap_gw'):
-        description = (
-            'The electronic band gap calculated with '
-            'G0W0 including spin-orbit effects. \n\n'
-        )
-        rows = [
-            [
-                describe_entry('Band gap (G0W0)', description),
-                f'{row.gap_gw:0.2f} eV'
-            ]
-        ]
-
-        summary = {'title': 'Summary',
-                   'columns': [[{'type': 'table',
-                                 'header': ['Electronic properties', ''],
-                                 'rows': rows}]],
-                   'sort': 12}
-
-        return [panel, summary]
-
-    return [panel]
+    from asr.utils.gw_hse import gw_hse_webpanel
+    return gw_hse_webpanel(result, row, key_descriptions, GWInfo(row),
+                           sort=16)
 
 
 @prepare_result
@@ -352,20 +232,20 @@ class Result(ASRResult):
     efermi_gw_soc: float
     bandstructure: BandStructure
     key_descriptions = {
-        "vbm_gw_nosoc": "Valence band maximum w/o soc. (G0W0) [eV]",
-        "cbm_gw_nosoc": "Conduction band minimum w/o soc. (G0W0) [eV]",
-        "gap_dir_gw_nosoc": "Direct gap w/o soc. (G0W0) [eV]",
-        "gap_gw_nosoc": "Gap w/o soc. (G0W0) [eV]",
-        "kvbm_nosoc": "k-point of G0W0 valence band maximum w/o soc",
-        "kcbm_nosoc": "k-point of G0W0 conduction band minimum w/o soc",
-        "vbm_gw": "Valence band maximum (G0W0) [eV]",
-        "cbm_gw": "Conduction band minimum (G0W0) [eV]",
-        "gap_dir_gw": "Direct band gap (G0W0) [eV]",
-        "gap_gw": "Band gap (G0W0) [eV]",
-        "kvbm": "k-point of G0W0 valence band maximum",
-        "kcbm": "k-point of G0W0 conduction band minimum",
-        "efermi_gw_nosoc": "Fermi level w/o soc. (G0W0) [eV]",
-        "efermi_gw_soc": "Fermi level (G0W0) [eV]",
+        "vbm_gw_nosoc": "Valence band maximum w/o soc. (G₀W₀) [eV]",
+        "cbm_gw_nosoc": "Conduction band minimum w/o soc. (G₀W₀) [eV]",
+        "gap_dir_gw_nosoc": "Direct gap w/o soc. (G₀W₀) [eV]",
+        "gap_gw_nosoc": "Gap w/o soc. (G₀W₀) [eV]",
+        "kvbm_nosoc": "k-point of G₀W₀ valence band maximum w/o soc",
+        "kcbm_nosoc": "k-point of G₀W₀ conduction band minimum w/o soc",
+        "vbm_gw": "Valence band maximum (G₀W₀) [eV]",
+        "cbm_gw": "Conduction band minimum (G₀W₀) [eV]",
+        "gap_dir_gw": "Direct band gap (G₀W₀) [eV]",
+        "gap_gw": "Band gap (G₀W₀) [eV]",
+        "kvbm": "k-point of G₀W₀ valence band maximum",
+        "kcbm": "k-point of G₀W₀ conduction band minimum",
+        "efermi_gw_nosoc": "Fermi level w/o soc. (G₀W₀) [eV]",
+        "efermi_gw_soc": "Fermi level (G₀W₀) [eV]",
         "bandstructure": "GW bandstructure."
     }
     formats = {"ase_webpanel": webpanel}

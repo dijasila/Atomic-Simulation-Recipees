@@ -74,29 +74,56 @@ def calculate(calculator: dict = {
     return ASRResult()
 
 
-def webpanel(result, row, key_descriptions):
-
-    parameter_description = entry_parameter_description(
+def _get_parameter_description(row):
+    desc = entry_parameter_description(
         row.data,
         'asr.gs@calculate',
         exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
                           'idiotproof', 'maxiter', 'hund', 'random',
                           'experimental', 'basis', 'setups']))
+    return desc
+
+
+def _explain_bandgap(row, gap_name):
+    parameter_description = _get_parameter_description(row)
+
+    if gap_name == 'gap':
+        name = 'Band gap'
+        adjective = ''
+    elif gap_name == 'gap_dir':
+        name = 'Direct band gap'
+        adjective = 'direct '
+    else:
+        raise ValueError(f'Bad gapname {gap_name}')
+
+    txt = (f'The {adjective}electronic single-particle band gap '
+           'including spin–orbit effects.')
+
+    description = f'{txt}\n\n{parameter_description}'
+    return describe_entry(name, description=description)
+
+
+def webpanel(result, row, key_descriptions):
+    parameter_description = _get_parameter_description(row)
 
     explained_keys = []
-    for key in ['gap', 'gap_dir',
-                'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
+
+    explained_keys += [
+        _explain_bandgap(row, 'gap'),
+        _explain_bandgap(row, 'gap_dir'),
+    ]
+
+    for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
         if key in result.key_descriptions:
             key_description = result.key_descriptions[key]
             explanation = (f'{key_description} '
-                           '(Including spin-orbit effects).\n\n'
+                           '(Including spin–orbit effects).\n\n'
                            + parameter_description)
             explained_key = describe_entry(key, description=explanation)
         else:
             explained_key = key
         explained_keys.append(explained_key)
 
-    gap = describe_entry('gap', description=explanation)
     t = table(result, 'Property',
               explained_keys,
               key_descriptions)
@@ -105,44 +132,43 @@ def webpanel(result, row, key_descriptions):
 
     if gap > 0:
         if result.get('evac'):
-            t['rows'].extend(
-                [['Valence band maximum wrt. vacuum level',
-                  f'{result.vbm - result.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level',
-                  f'{result.cbm - result.evac:.2f} eV']])
+            eref = result.evac
+            vbm_title = 'Valence band maximum wrt. vacuum level'
+            cbm_title = 'Conduction band minimum wrt. vacuum level'
         else:
-            t['rows'].extend(
-                [['Valence band maximum wrt. Fermi level',
-                  f'{result.vbm - result.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level',
-                  f'{result.cbm - result.efermi:.2f} eV']])
+            eref = result.efermi
+            vbm_title = 'Valence band maximum wrt. Fermi level'
+            cbm_title = 'Conduction band minimum wrt. Fermi level'
+
+        vbm_displayvalue = result.vbm - eref
+        cbm_displayvalue = result.cbm - eref
+        info = [[vbm_title, f'{vbm_displayvalue:.3f} eV'],
+                [cbm_title, f'{cbm_displayvalue:.3f} eV']]
+        t['rows'].extend(info)
+
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+    title = f'Basic electronic properties ({xcname})'
 
     panel = WebPanel(
-        title=describe_entry(
-            'Basic electronic properties (PBE)',
-            panel_description),
+        title=describe_entry(title, panel_description),
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.gs@calculate',
-        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                          'idiotproof', 'maxiter', 'hund', 'random',
-                          'experimental', 'basis', 'setups']))
-    description = ('The electronic band gap including spin-orbit effects. \n\n'
-                   + parameter_description)
-    datarow = [describe_entry('Band gap (PBE)',
-                              description=description),
-               f'{result.gap:0.2f} eV']
+    description = _explain_bandgap(row, 'gap')
+    datarow = [description, f'{result.gap:0.2f} eV']
+
     summary = WebPanel(
         title=describe_entry(
             'Summary',
-            description='This panel contains a summary of the most '
-            'important properties of this material.'),
-        columns=[[{'type': 'table',
-                   'header': ['Electronic properties', ''],
-                   'rows': [datarow]}]],
+            description='This panel contains a summary of '
+            'basic properties of the material.'),
+        columns=[[{
+            'type': 'table',
+            'header': ['Electronic properties', ''],
+            'rows': [datarow],
+            'columnwidth': 3,
+        }]],
         plot_descriptions=[{'function': bz_with_band_extremums,
                             'filenames': ['bz-with-gaps.png']}],
         sort=10)
@@ -155,10 +181,14 @@ def bz_with_band_extremums(row, fname):
     from matplotlib import pyplot as plt
     import numpy as np
     ndim = sum(row.pbc)
-    cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
+
+    # Standardize the cell rotation via Bravais lattice roundtrip:
+    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc)
+    cell = lat.tocell()
+
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
+
     gsresults = row.data.get('results-asr.gs.json')
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
@@ -168,7 +198,7 @@ def bz_with_band_extremums(row, fname):
         if not row.is_magnetic:
             op_scc = np.concatenate([op_scc, -op_scc])
         ax = plt.gca()
-        icell_cv = np.linalg.inv(row.cell).T
+        icell_cv = cell.reciprocal()
         vbm_style = {'marker': 'o', 'facecolor': 'w',
                      'edgecolors': 'C0', 's': 50, 'lw': 2,
                      'zorder': 4}
@@ -177,19 +207,23 @@ def bz_with_band_extremums(row, fname):
         vbm_sc = np.dot(op_scc.transpose(0, 2, 1), vbm_c)
         cbm_sv = np.dot(cbm_sc, icell_cv)
         vbm_sv = np.dot(vbm_sc, icell_cv)
+
         if ndim < 3:
             ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
             ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
+
+            # We need to keep the limits set by ASE in 3D, else the aspect
+            # ratio goes haywire.  Hence this bit is also for ndim < 3 only.
+            xlim = np.array(ax.get_xlim()) * 1.4
+            ylim = np.array(ax.get_ylim()) * 1.4
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
         else:
             ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]],
                        [vbm_sv[:, 2]], **vbm_style, label='VBM')
             ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]],
                        [cbm_sv[:, 2]], **cbm_style, label='CBM')
 
-        xlim = np.array(ax.get_xlim()) * 1.4
-        ylim = np.array(ax.get_ylim()) * 1.4
-        ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
         plt.legend(loc='upper center', ncol=3, prop={'size': 9})
 
     plt.tight_layout()
@@ -341,7 +375,7 @@ class VacuumLevelResults(ASRResult):
         'z_z': 'Grid points for potential [Å].',
         'v_z': 'Electrostatic potential [eV].',
         'evacdiff': 'Difference of vacuum levels on both sides of slab [eV].',
-        'dipz': 'Out-of-plane dipole [e * Ang].',
+        'dipz': 'Out-of-plane dipole [e · Å].',
         'evac1': 'Top side vacuum level [eV].',
         'evac2': 'Bottom side vacuum level [eV]',
         'evacmean': 'Average vacuum level [eV].',
@@ -461,11 +495,11 @@ class Result(ASRResult):
     key_descriptions = dict(
         etot='Total energy [eV].',
         workfunction="Workfunction [eV]",
-        forces='Forces on atoms [eV/Angstrom].',
-        stresses='Stress on unit cell [eV/Angstrom^dim].',
+        forces='Forces on atoms [eV/Å].',
+        stresses='Stress on unit cell [eV/Å^dim].',
         evac='Vacuum level [eV].',
         evacdiff='Vacuum level shift (Vacuum level shift) [eV].',
-        dipz='Out-of-plane dipole [e * Ang].',
+        dipz='Out-of-plane dipole [e · Å].',
         efermi='Fermi level [eV].',
         gap='Band gap [eV].',
         vbm='Valence band maximum [eV].',

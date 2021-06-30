@@ -53,6 +53,13 @@ def unique(ls, selector=None):
 
 
 def parse_reactions(reactionsstr):
+    """Parse experimental HOF.
+
+    Matches string in files looking like:
+
+    Mo2S4 -0.03
+    SO3 +0.1
+    """
     import re
 
     with open(reactionsstr, "r") as f:
@@ -84,6 +91,14 @@ def parse_reactions(reactionsstr):
 
 
 def parse_refs(refsstr):
+    """Parse elements to correct.
+
+    Matches a file with:
+
+    Ne
+    O
+    F
+    """
     import re
 
     with open(refsstr, "r") as f:

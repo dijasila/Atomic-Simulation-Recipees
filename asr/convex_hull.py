@@ -65,24 +65,19 @@ def webpanel(result, row, key_descriptions):
     }
 
     thermostab = row.get('thermodynamic_stability_level')
-    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
-    high = 'Heat of formation < convex hull + 0.2 eV/atom'
-    medium = 'convex hull + 0.2 eV/atom < Heat of formation < 0 eV/atom'
-    low = '0.0 eV/atom < Heat of formation'
+
+    stability_texts = [
+        [stability_names[stab], stability_descriptions[stab]]
+        for stab in [LOW, MEDIUM, HIGH]
+    ]
+
     thermodynamic = describe_entry(
         'Thermodynamic',
         'Classifier for the thermodynamic stability of a material.'
         + br
-        + dl(
-            [
-                ['LOW', low],
-                ['MEDIUM', medium],
-                ['HIGH', high],
-            ]
-        )
+        + dl(stability_texts)
     )
-    row = [thermodynamic,
-           stabilities[thermostab].upper()]
+    row = [thermodynamic, stability_names[thermostab]]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -91,18 +86,6 @@ def webpanel(result, row, key_descriptions):
                              'columnwidth': 3}]],
                'sort': 1}
     return [panel, summary]
-
-
-# class Reference(TypedDict):
-#     """Container for information on a reference."""
-
-#     hform: float
-#     formula: str
-#     uid: str
-#     natoms: int
-#     name: str
-#     label: str
-#     link: str
 
 
 @prepare_result
@@ -167,13 +150,13 @@ def main(databases: List[str]) -> Result:
     .. code-block:: javascript
 
         {
-            'title': 'Bulk reference phases',
-            'legend': 'Bulk',
-            'name': '{row.formula}',
-            'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
-            'label': '{row.formula}',
-            'method': 'DFT',
-            'energy_key': 'total_energy',
+            "title": "Bulk reference phases",
+            "legend": "Bulk",
+            "name": "{row.formula}",
+            "link": "https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}",
+            "label": "{row.formula}",
+            "method": "DFT",
+            "energy_key": "total_energy"
         }
 
     Parameters
@@ -278,18 +261,26 @@ def main(databases: List[str]) -> Result:
         results['coefs'] = coefs.tolist()
 
     results['ehull'] = ehull
-
-    if hform > 0:
-        thermodynamic_stability = 1
-    elif hform is None or ehull is None:
-        thermodynamic_stability = None
-    elif ehull >= 0.2:
-        thermodynamic_stability = 2
-    else:
-        thermodynamic_stability = 3
-
-    results['thermodynamic_stability_level'] = thermodynamic_stability
+    results['thermodynamic_stability_level'] = stability_rating(hform, ehull)
     return Result(data=results)
+
+
+LOW = 1
+MEDIUM = 2
+HIGH = 3
+stability_names = {LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH'}
+stability_descriptions = {
+    LOW: 'Heat of formation > 0.2 eV/atom',
+    MEDIUM: 'convex hull + 0.2 eV/atom < Heat of formation < 0.2 eV/atom',
+    HIGH: 'Heat of formation < convex hull + 0.2 eV/atom'}
+
+
+def stability_rating(hform, ehull):
+    if 0.2 < hform:
+        return LOW
+    if ehull + 0.2 < hform:
+        return MEDIUM
+    return HIGH
 
 
 def get_reference_energies(atoms, references, energy_key='energy'):
@@ -399,8 +390,7 @@ def plot(row, fname, thisrow):
         colors.append(color)
         sizes.append(size)
 
-    pd = PhaseDiagram(pdrefs,
-                      verbose=False)
+    pd = PhaseDiagram(pdrefs, verbose=False)
 
     fig = plt.figure(figsize=(6, 5))
     ax = fig.gca()
@@ -427,6 +417,7 @@ def plot(row, fname, thisrow):
         for i, j in simplices:
             ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
+        s = np.array(sizes)
         if row.hform < 0:
             mask = e < 0.05
             e = e[mask]
@@ -434,20 +425,19 @@ def plot(row, fname, thisrow):
             edgecolors = edgecolors[mask]
             hull = hull[mask]
             names = [name for name, m in zip(names, mask) if m]
+            s = s[mask]
 
         ax.scatter(
             x[~hull], e[~hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=np.array(sizes)[~hull],
-            zorder=9,
-        )
+            edgecolor=np.array(edgecolors)[~hull], s=s[~hull],
+            zorder=9)
 
         ax.scatter(
             x[hull], e[hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=np.array(sizes)[hull],
-            zorder=10,
-        )
+            edgecolor=np.array(edgecolors)[hull], s=s[hull],
+            zorder=10)
 
         # ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
 

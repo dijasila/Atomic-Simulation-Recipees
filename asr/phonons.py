@@ -1,4 +1,9 @@
-"""Phonon band structure and dynamical stability."""
+"""Phonon band structure and dynamical stability.
+
+Deprecated: Please use the more efficient and optimized asr.phonopy
+recipe for calculating phonon properties instead.
+
+"""
 from pathlib import Path
 import typing
 
@@ -101,29 +106,28 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
     # Make sure to converge forces! Can be important
     params['convergence'] = {'forces': fconverge}
 
-    fd = open('phonons.txt'.format(n), 'a')
-    params['txt'] = fd
-    calc = get_calculator()(**params)
+    with open('phonons.txt'.format(n), 'a') as fd:
+        params['txt'] = fd
+        calc = get_calculator()(**params)
 
-    nd = sum(atoms.get_pbc())
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
+        nd = sum(atoms.get_pbc())
+        if nd == 3:
+            supercell = (n, n, n)
+        elif nd == 2:
+            supercell = (n, n, 1)
+        elif nd == 1:
+            supercell = (n, 1, 1)
 
-    p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
-    p.run()
+        p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
+        p.run()
 
-    # Read creates files
-    files = {}
-    for filename in creates():
-        dct = todict(filename)
-        dct['__tofile__'] = 'asr.phonons@topckl'
-        files[filename] = dct
-    data = {'__files__': files}
-    fd.close()
+        # Read creates files
+        files = {}
+        for filename in creates():
+            dct = todict(filename)
+            dct['__tofile__'] = 'asr.phonons@topckl'
+            files[filename] = dct
+        data = {'__files__': files}
     return data
 
 
@@ -142,8 +146,8 @@ def webpanel(result, row, key_descriptions):
 
     dynstab = row.get('dynamic_stability_phonons')
 
-    high = 'Min. Hessian eig. > -0.01 meV/Ang<sup>2</sup>'
-    low = 'Min. Hessian eig. <= -0.01 meV/Ang<sup>2</sup>'
+    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Å²'
+    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Å²'
 
     row = [
         describe_entry(
@@ -180,7 +184,7 @@ class Result(ASRResult):
     interp_freqs_kl: typing.List[typing.List[float]]
 
     key_descriptions = {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Ang^2`]",
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
         "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
         "q_qc": "List of momenta consistent with supercell.",
         "omega_kl": "Phonon frequencies.",

@@ -14,6 +14,7 @@
    src/generated/recipes
    src/generated/api
    src/developing
+   src/contact
 
 
 Welcome to Atomic Simulation Recipes's documentation!

@@ -10,7 +10,7 @@ The stiffness tensor (C) is a rank-4 tensor that relates the stress of a
 material to the applied strain. In Voigt notation, C is expressed as a NxN
 matrix relating the N independent components of the stress and strain
 tensors. C is calculated as a finite difference of the stress under an applied
-stress with full relaxation of atomic coordinates. A negative eigenvalue of C
+strain with full relaxation of atomic coordinates. A negative eigenvalue of C
 indicates a dynamical instability.
 """,
     articles=['C2DB'],
@@ -21,8 +21,8 @@ def webpanel(result, row, key_descriptions):
     import numpy as np
 
     stiffnessdata = row.data['results-asr.stiffness.json']
-    c_ij = stiffnessdata['stiffness_tensor']
-    eigs = stiffnessdata['eigenvalues']
+    c_ij = stiffnessdata['stiffness_tensor'].copy()
+    eigs = stiffnessdata['eigenvalues'].copy()
     nd = np.sum(row.pbc)
 
     if nd == 2:
@@ -39,23 +39,25 @@ def webpanel(result, row, key_descriptions):
                       for ie, eig in enumerate(sorted(eigs,
                                                       key=lambda x: x.real))])
     elif nd == 3:
+        eigs *= 1e-9
+        c_ij *= 1e-9
         ctable = matrixtable(
-            stiffnessdata['stiffness_tensor'],
-            title='C<sub>ij</sub> (10^9 N/m^2)',
+            c_ij,
+            title='C<sub>ij</sub> (10⁹ N/m²)',
             columnlabels=['xx', 'yy', 'zz', 'yz', 'xz', 'xy'],
             rowlabels=['xx', 'yy', 'zz', 'yz', 'xz', 'xy'])
 
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue {ie}', f'{eig.real:.2f} * 10^9 N/m^2']
-                      for ie, eig in enumerate(sorted(eigs,
-                                                      key=lambda x: x.real))])
+                   + [[f'Eigenvalue {ie}', f'{eig.real:.2f} · 10⁹ N/m²']
+                      for ie, eig
+                      in enumerate(sorted(eigs, key=lambda x: x.real))])
     else:
         ctable = dict(
             type='table',
             rows=[])
         eig = complex(eigs[0])
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue', f'{eig.real:.2f} * 10^(-10) N']])
+                   + [[f'Eigenvalue', f'{eig.real:.2f} * 10⁻¹⁰ N']])
 
     eigtable = dict(
         type='table',
@@ -66,8 +68,8 @@ def webpanel(result, row, key_descriptions):
              'sort': 2}
 
     dynstab = row.dynamic_stability_stiffness
-    high = 'Min. Stiffness eig. > 0'
-    low = 'Min. Stiffness eig. < 0'
+    high = 'Minimum stiffness tensor eigenvalue > 0'
+    low = 'Minimum stiffness tensor eigenvalue < 0'
 
     row = [
         describe_entry(

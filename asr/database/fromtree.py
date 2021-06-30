@@ -270,13 +270,31 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                                      for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
-            elif name.is_file() and fnmatch(name, "info.json"):
-                tmpkvp, tmpdata = collect_info(name)
-                kvp.update(tmpkvp)
-                data.update(tmpdata)
-            elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
-                tmpkvp, tmpdata = collect_file(name)
-                kvp.update(tmpkvp)
+            else:
+                if name.is_file() and name.name == 'info.json':
+                    tmpkvp, tmpdata = collect_info(name)
+                elif name.is_file() and any(fnmatch(name, pattern)
+                                            for pattern in patterns):
+                    tmpkvp, tmpdata = collect_file(name)
+                else:
+                    continue
+
+                for key, value in tmpkvp.items():
+                    # Skip values not suitable for a database column:
+                    if key == 'folder':
+                        continue
+                    if key == 'etot':
+                        # Clash between etot from relax and gs!
+                        # What do we do about this?
+                        continue
+                    if isinstance(value, (bool, int, float, str)):
+                        if key in kvp and kvp[key] != value:
+                            raise ValueError(
+                                f'Found {key}={value} in {name}: '
+                                f'{key} already read once: '
+                                f'{key}={kvp[key]}')
+                        kvp[key] = value
+
                 data.update(tmpdata)
 
         if not data['__children__']:

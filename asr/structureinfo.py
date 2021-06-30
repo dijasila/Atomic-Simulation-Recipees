@@ -59,7 +59,7 @@ def webpanel(result, row, key_descriptions):
         + dl(
             [
                 [code('stoi'), 'Stoichiometry.'],
-                [code('spg no.'), f'The spacegroup calculated with {spglib}.'],
+                [code('spg no.'), f'The space group calculated with {spglib}.'],
                 [code('occ. wyck. pos.'),
                  'Alphabetically sorted list of occupied '
                  f'wyckoff positions determined with {spglib}.'],
@@ -75,21 +75,21 @@ def webpanel(result, row, key_descriptions):
     )
 
     spg_list_link = href(
-        'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
+        'Space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
     )
     spacegroup = describe_entry(
         'spacegroup',
-        f"The {spg_list_link} is determined with {spglib}."
+        f"{spg_list_link} determined with {spglib}."
     )
 
     spgnum = describe_entry(
         'spgnum',
-        f"The {spg_list_link} number is determined with {spglib}."
+        f"{spg_list_link} number determined with {spglib}."
     )
 
     pointgroup = describe_entry(
         'pointgroup',
-        f"The point group is determined with {spglib}."
+        f"Point group determined with {spglib}."
     )
 
     icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
@@ -128,7 +128,7 @@ def webpanel(result, row, key_descriptions):
     doi = row.get('doi')
     doistring = describe_entry(
         'Reported DOI',
-        'DOI of article where material has been synthesized.'
+        'DOI of article reporting the synthesis of the material.'
     )
     if doi:
         rows.append([
@@ -171,7 +171,7 @@ class Result(ASRResult):
     formula: str
 
     key_descriptions = {
-        "cell_area": "Area of unit-cell [`Ang^2`]",
+        "cell_area": "Area of unit-cell [`Å²`]",
         "has_inversion_symmetry": "Material has inversion symmetry",
         "stoichiometry": "Stoichiometry",
         "spacegroup": "Space group",
