@@ -1,6 +1,7 @@
 """Implement cache functionality."""
 import os
 import pathlib
+from pathlib import Path
 import typing
 from .record import Record
 from .utils import write_file, only_master, link_file
@@ -20,17 +21,13 @@ def get_external_file_path(dir, uid, name):
     return newpath
 
 
-class FileCacheBackend():
+class FileCacheBackend:
 
-    def __init__(
-            self,
-            cache_dir: str = 'records',
-            ext_file_dir: str = 'external_files',
-            serializer: JSONSerializer = JSONSerializer(),
-    ):
-        self.serializer = serializer
-        self.cache_dir = ASRPath(cache_dir)
-        self.ext_file_dir = ASRPath(ext_file_dir)
+    def __init__(self, path: Path):
+        self.serializer = JSONSerializer()
+        self.path = path
+        self.cache_dir = ASRPath('records')
+        self.ext_file_dir = ASRPath('external_files')
         self.record_table_path = ASRPath('record-table.json')
         self.lock = Lock(ASRPath('lock'), timeout=10)
 
@@ -339,6 +336,8 @@ def get_cache(backend: typing.Optional[str] = None) -> Cache:
         backend = config.backend
 
     if backend == 'filesystem':
-        return Cache(backend=FileCacheBackend())
+        from asr.core.root import Repository
+        repo = Repository.find_root()
+        return repo.cache
     elif backend == 'memory':
         return Cache(backend=MemoryBackend())

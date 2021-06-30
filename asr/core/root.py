@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 
 
 error_not_initialized = """\
@@ -11,6 +11,36 @@ class ASRRootNotFound(Exception):
     pass
 
 
+class Repository:
+    def __init__(self, root: Path):
+        from asr.core.cache import Cache, FileCacheBackend
+
+        root = root.absolute()
+        cache_dir = root / ASR_DIR
+
+        if not cache_dir.is_dir():
+            raise ASRRootNotFound(f'Root not initialized in {self.root}')
+
+        self.cache = Cache(backend=FileCacheBackend(cache_dir))
+
+    @property
+    def root(self):
+        return self.cache.path.parent
+
+    @classmethod
+    def find_root(cls, path='.'):
+        root = find_root(path)
+        return cls(root)
+
+    @classmethod
+    def initialize(cls, root: Path):
+        initialize_root(root)
+        return cls(root)
+
+    def __repr__(self):
+        return f'{type(self).__name__}(root={self.root})'
+
+
 def root_is_initialized():
     try:
         find_root()
@@ -19,18 +49,19 @@ def root_is_initialized():
         return False
 
 
-def initialize_root(directory: pathlib.Path = pathlib.Path('.')):
+def initialize_root(directory: Path = Path('.')):
     asr_dir = directory / ASR_DIR
     assert not asr_dir.exists()
     asr_dir.mkdir()
 
 
 def find_root(path: str = '.'):
-    path = pathlib.Path(path).absolute()
+    path = Path(path).absolute()
+    origpath = path
     while not (path / ASR_DIR).is_dir():
-        if path == pathlib.Path('/'):
+        if path == Path('/'):
             raise ASRRootNotFound(error_not_initialized
-                                  .format(directory=path))
+                                  .format(directory=origpath))
         path = path.parent
     assert (path / ASR_DIR).is_dir()
     return path
@@ -41,4 +72,4 @@ def find_repo_root(path: str = '.'):
     return root / ASR_DIR
 
 
-ASR_DIR = pathlib.Path('.asr')
+ASR_DIR = Path('.asr')
