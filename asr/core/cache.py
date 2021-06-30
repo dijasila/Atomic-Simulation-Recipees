@@ -8,7 +8,6 @@ from .utils import write_file, only_master, link_file
 from .serialize import JSONSerializer
 from .selector import Selector
 from .filetype import find_external_files, ASRPath
-from .config import root_is_initialized
 from .lock import Lock, lock
 
 
@@ -76,7 +75,8 @@ class FileCacheBackend:
 
     @property
     def initialized(self):
-        if not root_is_initialized():
+        from asr.core.root import Repository
+        if not Repository.root_is_initialized():
             return False
         return self.record_table_path.is_file()
 

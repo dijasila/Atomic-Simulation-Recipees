@@ -5,7 +5,7 @@ from .selector import Selector
 from .serialize import JSONSerializer
 from .specification import RunSpecification
 from .utils import chdir, write_file, read_file
-from .root import root_is_initialized
+from .root import Repository
 from .filetype import ASRPath
 from .lock import lock, Lock
 
@@ -20,7 +20,7 @@ def get_workdir_name(
         run_specification: RunSpecification) -> Path:
     name = run_specification.name
     uid = run_specification.uid
-    assert root_is_initialized()
+    assert Repository.root_is_initialized()
 
     data_file = ASRPath('work_dirs.json')
     if not data_file.is_file():

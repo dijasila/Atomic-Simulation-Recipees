@@ -33,6 +33,14 @@ class Repository:
         return cls(root)
 
     @classmethod
+    def root_is_initialized(cls):
+        try:
+            cls.find_root()
+        except ASRRootNotFound:
+            return False
+        return True
+
+    @classmethod
     def initialize(cls, root: Path):
         initialize_root(root)
         return cls(root)
@@ -41,12 +49,6 @@ class Repository:
         return f'{type(self).__name__}(root={self.root})'
 
 
-def root_is_initialized():
-    try:
-        find_root()
-        return True
-    except ASRRootNotFound:
-        return False
 
 
 def initialize_root(directory: Path = Path('.')):
