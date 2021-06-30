@@ -26,8 +26,15 @@ class Repository:
 
     @classmethod
     def find_root(cls, path=Path()) -> 'Repository':
-        root = find_root(path)
-        return cls(root)
+        path = Path(path).absolute()
+        origpath = path
+        while not (path / ASR_DIR).is_dir():
+            if path == Path('/'):
+                raise ASRRootNotFound(error_not_initialized
+                                      .format(directory=origpath))
+            path = path.parent
+        assert (path / ASR_DIR).is_dir()
+        return cls(path)
 
     @classmethod
     def root_is_initialized(cls) -> bool:
@@ -52,15 +59,7 @@ class Repository:
 
 
 def find_root(path: str = '.'):
-    path = Path(path).absolute()
-    origpath = path
-    while not (path / ASR_DIR).is_dir():
-        if path == Path('/'):
-            raise ASRRootNotFound(error_not_initialized
-                                  .format(directory=origpath))
-        path = path.parent
-    assert (path / ASR_DIR).is_dir()
-    return path
+    return Repository.find_root(path).root
 
 
 ASR_DIR = Path('.asr')
