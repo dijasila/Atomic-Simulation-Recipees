@@ -1,18 +1,27 @@
 The `setup.params` recipe
 =========================
 
-All material folders can contain a `params.json`-file. This file
-specifies new defaults and take precedence over the standard defaults
-that are specified in the actual recipes.
+All folders can contain a `params.json`-file. This file specifies new
+defaults and take precedence over the standard defaults that are
+specified in the actual instructions.
 
-This file can be edited manually or the `setup.params` recipe can be
-used to generate and manipulate it. The general syntax when using the
-`setup.params` recipe is given from the help
+This file can be edited manually or the `asr params` tool can be used
+to generate and manipulate it. The general syntax when using
+`asr params` is given from the help
 
 
 .. code-block:: console
 
    $ asr params -h
+   Usage: asr params [OPTIONS] RECIPE OPTION=VALUE...
+   
+     Compile a params.json file with all options and defaults.
+   
+     This recipe compiles a list of all options and their default values for
+     all recipes to be used for manually changing values for specific options.
+   
+   Options:
+     -h, --help  Show this message and exit.
 
 For example, to set custom default of the `asr.gs:calculate` recipe we
 can run
@@ -58,7 +67,6 @@ i.e.,
        "ecut": 800
       },
       "xc": "PBE",
-      "basis": "dzp",
       "occupations": {
        "name": "fermi-dirac",
        "width": 0.05
@@ -87,7 +95,7 @@ specified simultaneously by using
 
 .. code-block:: console
 
-   $ asr params asr.relax d3=True asr.gs:calculate "calculator={'kpts':{...,'density':8.0},...}"
+   $ asr params asr.relax d3=True fmax=1e-3
 
 
 In this way all default parameters exposed through the CLI of a recipe
