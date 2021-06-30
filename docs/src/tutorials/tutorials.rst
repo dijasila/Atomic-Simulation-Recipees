@@ -7,6 +7,6 @@ Tutorials
    :maxdepth: 1
 
    getting-started
-   setup-params
+   params
    result-objects-and-web-panels
    developer/intro-to-testing
