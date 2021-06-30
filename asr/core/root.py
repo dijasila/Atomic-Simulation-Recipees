@@ -25,7 +25,7 @@ class Repository:
         self.cache = Cache(backend=FileCacheBackend(cache_dir))
 
     @classmethod
-    def find_root(cls, path='.'):
+    def find_root(cls, path=Path()):
         root = find_root(path)
         return cls(root)
 
@@ -61,11 +61,6 @@ def find_root(path: str = '.'):
         path = path.parent
     assert (path / ASR_DIR).is_dir()
     return path
-
-
-def find_repo_root(path: str = '.'):
-    root = find_root()
-    return root / ASR_DIR
 
 
 ASR_DIR = Path('.asr')
