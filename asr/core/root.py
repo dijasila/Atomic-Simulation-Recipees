@@ -25,12 +25,12 @@ class Repository:
         self.cache = Cache(backend=FileCacheBackend(cache_dir))
 
     @classmethod
-    def find_root(cls, path=Path()):
+    def find_root(cls, path=Path()) -> 'Repository':
         root = find_root(path)
         return cls(root)
 
     @classmethod
-    def root_is_initialized(cls):
+    def root_is_initialized(cls) -> bool:
         try:
             cls.find_root()
         except ASRRootNotFound:
@@ -38,7 +38,7 @@ class Repository:
         return True
 
     @classmethod
-    def initialize(cls, root: Path):
+    def initialize(cls, root: Path) -> 'Repository':
         asr_dir = root / ASR_DIR
 
         if asr_dir.exists():
