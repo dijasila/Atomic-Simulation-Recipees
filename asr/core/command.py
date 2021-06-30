@@ -80,7 +80,7 @@ class ASRCommand:
         # Setup the CLI
         functools.update_wrapper(self, self._wrapped_function)
 
-    @lazyproperty
+    @property
     def cache(self):
         # Commands are defined at import time, but (meaningfully)
         # getting the cache requires that the root is initalized.
