@@ -111,9 +111,6 @@ def webpanel(result, context):
 
     dynstab = result['dynamic_stability_phonons']
 
-    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Å²'
-    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Å²'
-
     row = [
         describe_entry(
             'Dynamical (phonons)',
@@ -121,8 +118,8 @@ def webpanel(result, context):
             'based on the minimum eigenvalue of the Hessian.'
             + dl(
                 [
-                    ["LOW", low],
-                    ["HIGH", high],
+                    ["LOW", dynstab_text_low],
+                    ["HIGH", dynstab_text_high],
                 ]
             )
         ),
@@ -277,11 +274,6 @@ def main(
     eigs = np.array(eigs)
     mineig = np.min(eigs)
 
-    if mineig < -0.01:
-        dynamic_stability = 'low'
-    else:
-        dynamic_stability = 'high'
-
     # Next calculate an approximate phonon band structure
     path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)
     freqs_kl = phonons.band_structure(path.kpts, modes=False, born=False,
@@ -292,10 +284,22 @@ def main(
         q_qc=q_qc,
         modes_kl=u_kl,
         minhessianeig=mineig,
-        dynamic_stability_phonons=dynamic_stability,
+        dynamic_stability_phonons=get_dynamic_stability(mineig),
         interp_freqs_kl=freqs_kl,
         path=path,
     )
+
+
+dynstab_limit = -0.01
+dynstab_text_low = f'Minimum eigenvalue of Hessian ≤ {dynstab_limit} meV/Å²'
+dynstab_text_high = f'Minimum eigenvalue of Hessian > {dynstab_limit} meV/Å²'
+
+
+def get_dynamic_stability(mineig):
+    if mineig <= dynstab_limit:
+        return 'low'
+    else:
+        return 'high'
 
 
 def plot_phonons(row, fname):

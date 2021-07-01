@@ -17,11 +17,8 @@ class Comparator:
     def __call__(self, othervalue):
         return self.function(self.value, othervalue, *self.args, **self.kwargs)
 
-    def __str__(self):
-        return f'{self.name}({self.value})'
-
     def __repr__(self):
-        return str(self)
+        return f'{self.name}({self.value})'
 
 
 def compare_any(selectors, value2):

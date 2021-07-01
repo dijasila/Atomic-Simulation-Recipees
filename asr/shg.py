@@ -216,8 +216,7 @@ def main(
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.nlopt.shg import get_shg
 
-    pbc = atoms.pbc.tolist()
-    nd = np.sum(pbc)
+    nd = sum(atoms.pbc)
     kpts = get_kpts(kptdensity, nd, atoms.cell)
     sym_chi = get_chi_symmetry(atoms)
 
@@ -257,7 +256,7 @@ def main(
 
         # Do the calculation
         chi_dict = {}
-        for pol in sorted(sym_chi.keys()):
+        for pol in sorted(sym_chi):
             if pol == 'zero':
                 continue
             # Do the SHG calculation
@@ -410,7 +409,7 @@ def make_full_chi(sym_chi, chi_dict):
         return 0
 
     # Make the full chi from its symmetries
-    for pol in sorted(sym_chi.keys()):
+    for pol in sorted(sym_chi):
         if pol != 'zero':
             chidata = chi_dict[pol]
             nw = len(chidata)

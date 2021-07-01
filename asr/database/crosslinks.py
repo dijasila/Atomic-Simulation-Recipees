@@ -90,9 +90,9 @@ def check_metadata(db, dbname, target):
     elif not target:
         print(f'INFO: check metadata of linkage DB ({dbname}) ...')
 
-    if ('link_name' in metadata.keys()
-        and 'link_url' in metadata.keys()
-            and 'title' in metadata.keys()):
+    if ('link_name' in metadata
+        and 'link_url' in metadata
+            and 'title' in metadata):
         pass
     else:
         raise KeyError(f'Metadata of DB ({dbname}) is not in '
