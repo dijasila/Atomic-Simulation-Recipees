@@ -1,4 +1,5 @@
 """Generate defective atomic structures."""
+import numpy as np
 from typing import List
 from pathlib import Path
 from asr.core import command, option, ASRResult, atomsopt
@@ -88,8 +89,6 @@ def main(
       'params.json' file which contains specific parameters as well as the charge states
       of the different defect structures.
     """
-    import numpy as np
-
     # only run SJ setup if halfinteger is True
     if halfinteger:
         setup_halfinteger()
@@ -193,7 +192,6 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
     :return supercell_final: supercell structure with suitable vacuum size
                              applied
     """
-    import numpy as np
     if is_2D:
         cell = structure_sc.get_cell()
         oldvac = cell[2][2]
@@ -514,7 +512,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
             sub_dict = structure_dict[element]
             j = 0
             for sub_element in sub_dict:
-                defect_name = [key for key in sub_dict.keys()]
+                defect_name = list(sub_dict)
                 defect_folder_name = defect_name[j]
                 j = j + 1
                 try:
@@ -608,7 +606,6 @@ def create_general_supercell(structure, size=12.5):
     least number of atoms. Only works in 2D so far!
     """
     from ase.build import make_supercell
-    import numpy as np
     # b1 = n1*a1 + m1*a2
     # b2 = n2*a1 + m2*a2
     # we restrict ourselves such that m1=0

@@ -128,8 +128,7 @@ def main(
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.nlopt.shift import get_shift
 
-    pbc = atoms.pbc.tolist()
-    nd = np.sum(pbc)
+    nd = sum(atoms.pbc)
     kpts = get_kpts(kptdensity, nd, atoms.cell)
     sym_chi = get_chi_symmetry(atoms)
 
@@ -214,23 +213,10 @@ def plot_shift(context, *filename):
 
     # Read the data from the disk
     data = context.get_record('asr.shift').result
-    # data = row.data.get('results-asr.shift.json')
     atoms = context.atoms
     gs_result = context.gs_results()
     gap = gs_result['gap']
-    # gap = row.get('gap')
-
-    pbc = atoms.pbc.tolist()
-    nd = np.sum(pbc)
-    # if data is None:
-    #     return
-    # XXX why are we calling this function with no data in the first place?
-
-    # Remove the files if it is already exist
-    # for fname in filename:
-    #    if Path(fname).is_file():
-    #        os.remove(fname)
-    # XXX probably not web plot function's job to delete files
+    nd = sum(atoms.pbc)
 
     # Plot the data and add the axis labels
     sym_chi = data['symm']
