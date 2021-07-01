@@ -47,7 +47,7 @@ can run
 
    .. code-block:: console
 
-      $ asr run "setup.params asr.gs:calculate:calculator {'kpts': {..., 'density': 8.0}, ...}"
+      $ asr params asr.gs:calculate calculator="{'kpts': {..., 'density': 8.0}, ...}"
 
 This generates a file `params.json` with the contents printed above.',
 i.e.,
