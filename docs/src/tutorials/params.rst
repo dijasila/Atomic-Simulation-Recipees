@@ -13,13 +13,12 @@ to generate and manipulate it. The general syntax when using
 .. code-block:: console
 
    $ asr params -h
-   Usage: asr params [OPTIONS] RECIPE OPTION=VALUE [OPTION=VALUE]...
+   Usage: asr params [OPTIONS] RECIPE OPTION=VALUE...
    
      Compile a params.json file with all options and defaults.
    
-     This tool compiles a list of all options and their default
-     values for all instructions to be used for manually changing values
-     for specific options.
+     This tool compiles a list of all options and their default values for all
+     instructions to be used for manually changing values for specific options.
    
    Options:
      -h, --help  Show this message and exit.

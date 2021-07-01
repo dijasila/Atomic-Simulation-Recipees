@@ -305,7 +305,7 @@ def recipes_as_dict():
 @click.argument('recipe', nargs=1)
 @click.argument(
     'params', nargs=-1, type=str, required=True,
-    metavar='OPTION=VALUE [OPTION=VALUE]...',
+    metavar='OPTION=VALUE...',
 )
 def params(recipe, params: Union[str, None] = None):
     """Compile a params.json file with all options and defaults.
