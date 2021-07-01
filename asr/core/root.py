@@ -16,13 +16,13 @@ class Repository:
         from asr.core.cache import Cache, FileCacheBackend
 
         root = root.absolute()
-        cache_dir = root / ASR_DIR
+        asr_dir = root / ASR_DIR
 
-        if not cache_dir.is_dir():
+        if not asr_dir.is_dir():
             raise ASRRootNotFound(f'Root not initialized in {self.root}')
 
         self.root = root
-        self.cache = Cache(backend=FileCacheBackend(cache_dir))
+        self.cache = Cache(backend=FileCacheBackend(asr_dir))
 
     def asr_path(self, path):
         return self.cache.backend.asr_path(path)
