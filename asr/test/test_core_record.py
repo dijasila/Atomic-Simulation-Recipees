@@ -15,11 +15,16 @@ from asr.core.parameters import Parameters
         ),
     ]
 )
-def test_record_to_string(data, result):
+def test_record_repr(data, result):
     rec = Record(**data)
-    string = str(rec)
+    string = repr(rec)
 
     assert string == result
+
+
+@pytest.mark.ci
+def test_record_str(record):
+    assert 'name=asr.test' in str(record)
 
 
 @pytest.mark.ci

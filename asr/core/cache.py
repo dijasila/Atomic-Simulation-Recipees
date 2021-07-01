@@ -137,6 +137,8 @@ class FileCacheBackend():
         # XXX We should probably get a O(1) __contains__ method
         # XXX record == record2 seems to fail with an error
         assert record.uid == self.get_record_from_uid(record.uid).uid
+        if not record.dependencies:
+            return
         for dep in record.dependencies:
             yield self.get_record_from_uid(dep.uid)
 

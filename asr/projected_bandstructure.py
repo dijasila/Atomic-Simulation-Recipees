@@ -96,7 +96,6 @@ def add_bsrestart(record):
 
 @command(
     module='asr.projected_bandstructure',
-    migrations=[add_bsrestart],
 )
 @atomsopt
 @calcopt

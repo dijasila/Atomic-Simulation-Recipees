@@ -3,7 +3,7 @@ import typing
 import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt,
-    Selector, make_migration_generator,
+    Selector,
 )
 from asr.database.browser import (
     fig, table, href, make_panel_description, describe_entry)
@@ -141,6 +141,19 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
+sel = Selector()
+sel.version = sel.EQ(-1)
+sel.parameters = sel.NOT(
+    sel.ANY(
+        sel.CONTAINS('bandfactor'),
+        sel.CONTAINS('xc'),
+        sel.CONTAINS('phononcalculator'),
+    )
+)
+sel.name = sel.EQ('asr.infraredpolarizability:main')
+
+
+@asr.migration(selector=sel)
 def prepare_for_resultfile_migration(record):
     """Prepare record for resultfile migration."""
     phononpar = record.parameters.dependency_parameters['asr.phonons:calculate']
@@ -180,28 +193,8 @@ def prepare_for_resultfile_migration(record):
     return record
 
 
-sel = Selector()
-sel.version = sel.EQ(-1)
-sel.parameters = sel.NOT(
-    sel.ANY(
-        sel.CONTAINS('bandfactor'),
-        sel.CONTAINS('xc'),
-        sel.CONTAINS('phononcalculator'),
-    )
-)
-sel.name = sel.EQ('asr.infraredpolarizability:main')
-
-
-make_migrations = make_migration_generator(
-    selector=sel,
-    function=prepare_for_resultfile_migration,
-    uid='048c99cc09c641c187929ed67d9ffc39',
-)
-
-
 @command(
     "asr.infraredpolarizability",
-    migrations=[make_migrations],
 )
 @atomsopt
 @asr.calcopt(aliases=['-b', '--borncalculator'], help='Born calculator.')

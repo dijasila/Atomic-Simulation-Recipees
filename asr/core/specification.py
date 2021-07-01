@@ -1,3 +1,4 @@
+import textwrap
 import copy
 import typing
 import uuid
@@ -48,9 +49,14 @@ class RunSpecification:  # noqa
         if fmt == '':
             return str(self)
 
-    def __repr__(self):  # noqa
-        return (f'RunSpec(name={self.name}, params={self.parameters}, '
-                f'version={self.version}, codes={self.codes}, uid={self.uid})')
+    def __repr__(self):
+        lines = []
+        for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
+            value = str(value)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
+            lines.append(f'{key}={value}')
+        return '\n'.join(lines)
 
 
 def construct_run_spec(

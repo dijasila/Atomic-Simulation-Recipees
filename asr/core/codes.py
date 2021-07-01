@@ -1,6 +1,8 @@
+import textwrap
 import typing
 import importlib
 from ase.utils import search_current_git_hash
+from dataclasses import dataclass
 
 
 def get_package_version_and_hash(package: str):
@@ -11,12 +13,12 @@ def get_package_version_and_hash(package: str):
     return version, githash
 
 
-class Code:  # noqa
+@dataclass
+class Code:
 
-    def __init__(self, package, version, git_hash=None):  # noqa
-        self.package = package
-        self.version = version
-        self.git_hash = git_hash
+    package: typing.Optional[str] = None
+    version: typing.Optional[str] = None
+    git_hash: typing.Optional[str] = None
 
     @classmethod
     def from_string(cls, package: str):  # noqa
@@ -25,11 +27,13 @@ class Code:  # noqa
         return cls(package, version, git_hash)
 
     def __str__(self):
-        if self.git_hash:
-            return (f'Code(package={self.package}, '
-                    f'version={self.version}, '
-                    f'git={self.git_hash[:8]})')
-        return f'version={self.version}'
+        lines = []
+        for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
+            value = str(value)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
+            lines.append(f'{key}={value}')
+        return '\n'.join(lines)
 
     def __eq__(self, other):
         if not isinstance(other, Code):
@@ -37,16 +41,18 @@ class Code:  # noqa
         return self.__dict__ == other.__dict__
 
 
+@dataclass
 class Codes:
-
-    def __init__(self, codes: typing.List[Code]):
-        self.codes = codes
+    codes: typing.List[Code]
 
     def __str__(self):
-        codes = []
-        for code in self.codes:
-            codes.append(str(code))
-        return '[' + ', '.join(codes) + ']'
+        lines = []
+        for code in sorted(self.codes, key=lambda item: item.package):
+            value = str(code)
+            if '\n' in value:
+                value = '\n' + textwrap.indent(value, ' ')
+            lines.append(f'code={value}')
+        return '\n'.join(lines)
 
     def __eq__(self, other):
         if not isinstance(other, Codes):

@@ -16,7 +16,7 @@ from ase import Atoms
 import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, AtomsFile,
-    make_migration_generator, Selector,
+    Selector,
 )
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
@@ -157,8 +157,14 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-def construct_calculator_from_old_parameters(record):
+sel = Selector()
+sel.name = sel.OR(sel.EQ('asr.phonons:main'), sel.EQ('asr.phonons:calculate'))
+sel.version = sel.EQ(-1)
 
+
+@asr.migration(selector=sel)
+def construct_calculator_from_old_parameters(record):
+    """Construct calculator from old parameters."""
     params = record.parameters
     if 'calculator' in params:
         return record
@@ -196,21 +202,8 @@ def construct_calculator_from_old_parameters(record):
     return record
 
 
-sel = Selector()
-sel.name = sel.OR(sel.EQ('asr.phonons:main'), sel.EQ('asr.phonons:calculate'))
-sel.version = sel.EQ(-1)
-
-make_migrations = make_migration_generator(
-    selector=sel,
-    function=construct_calculator_from_old_parameters,
-    description='Construct calculator from old parameters.',
-    uid='1dd9655e96114de4abd81d223575080d',
-)
-
-
 @command(
     'asr.phonons',
-    migrations=[make_migrations],
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')

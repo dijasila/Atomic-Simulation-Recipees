@@ -1,35 +1,20 @@
+import os
 import pytest
 import pathlib
-import subprocess
-import shlex
 
 from asr.core import chdir
+from .utils import (
+    run_shell_command, get_commands_and_outputs,
+    get_asr_home_path, get_asr_library_path
+)
 
 
 @pytest.fixture
 def command_outputs(request):
-    import textwrap
     path = request.param
     txt = path.read_text()
     lines = txt.split('\n')
-    command_lines = []
-    for il, line in enumerate(lines):
-        if line.startswith('   $ '):
-            command_lines.append(il)
-
-    commands_outputs = []
-    for il in command_lines:
-        output = []
-        for line in lines[il + 1:]:
-            if line.startswith('   ') and not line.startswith('   $ '):
-                output.append(line)
-            else:
-                break
-        command = lines[il][5:]
-        if output:
-            output = textwrap.dedent('\n'.join(output)).split('\n')
-        commands_outputs.append((command, output))
-    return commands_outputs
+    return get_commands_and_outputs(lines)
 
 
 directory = pathlib.Path('docs/src')
@@ -39,29 +24,33 @@ rstfiles = list(directory.rglob('tutorials/getting-started.rst'))
 
 @pytest.mark.parametrize("command_outputs", rstfiles, indirect=True)
 def test_tutorial(command_outputs, tmpdir):
+    my_env = os.environ.copy()
+    asrhome = get_asr_home_path()
+    my_env['ASRHOME'] = asrhome
+    print('ASRHOME', asrhome)
     with chdir(tmpdir):
+        asrlib = get_asr_library_path()
+        my_env['ASRLIB'] = asrlib
         print(f'Running in {tmpdir}')
-        for command, output in command_outputs:
+        for _, _, command, output in command_outputs:
             print(command)
-            completed_process = subprocess.run(
-                shlex.split(command), capture_output=True)
-            try:
-                actual_output = completed_process.stdout.decode()
-            except UnicodeDecodeError:
-                actual_output = completed_process.stderr.decode()
-            actual_output = actual_output.split('\n')
-            if actual_output[-1] == '':
-                actual_output.pop()
-            # This is a hack for removing printed uids since they change
-            # on every run. A better solution can probably be found.
-            remove_anything_after_record_uid_occurs(output)
-            remove_anything_after_record_uid_occurs(actual_output)
-            assert output == actual_output, (output, actual_output)
+            actual_output = run_shell_command(command, env=my_env)
+            # Below is a hack for removing printed uids and other stuff
+            # that change on every run. A better solution can probably
+            # be found.
+            new_output = prepare_output_for_comparison(output)
+            new_actual_output = prepare_output_for_comparison(actual_output)
+            assert new_output == new_actual_output, (output, actual_output)
 
 
-def remove_anything_after_record_uid_occurs(output):
+def prepare_output_for_comparison(output):
+    new_output = []
     for il, line in enumerate(output):
-        if 'record.uid' in line:
-            part1, *_ = line.split('record.uid')
-            output[il] = part1
-    return output
+        line, *_ = line.split('uid')
+        line, *_ = line.split('execution_')
+        line, *_ = line.split('created')
+        line, *_ = line.split('modified')
+        line, *_ = line.split('latest_revision')
+        line, *_ = line.split('version=')
+        new_output.append(line)
+    return new_output

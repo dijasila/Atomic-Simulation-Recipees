@@ -6,7 +6,7 @@ import asr
 from asr.calculators import Calculation
 from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
-    AtomsFile, Selector, make_migration_generator,
+    AtomsFile, Selector,
 )
 from asr.gs import calculate as calculategs
 from asr.gs import main as maings
@@ -31,7 +31,18 @@ class BandstructureCalculationResult(ASRResult):
     key_descriptions = dict(calculation='Calculation object')
 
 
+sel = Selector()
+sel.name = sel.EQ('asr.bandstructure:calculate')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.AND(
+    sel.CONTAINS('emptybands'),
+    sel.NOT(sel.CONTAINS('bsrestart')),
+)
+
+
+@asr.migration(selector=sel)
 def remove_emptybands_and_make_bsrestart(record):
+    """Remove param="emptybands" and make param='bsrestart'."""
     record.parameters.bsrestart = {
         'nbands': -record.parameters.emptybands,
         'txt': 'bs.txt',
@@ -44,25 +55,8 @@ def remove_emptybands_and_make_bsrestart(record):
     return record
 
 
-sel = Selector()
-sel.name = sel.EQ('asr.bandstructure:calculate')
-sel.version = sel.EQ(-1)
-sel.parameters = sel.AND(
-    sel.CONTAINS('emptybands'),
-    sel.NOT(sel.CONTAINS('bsrestart')),
-)
-
-make_migrations = make_migration_generator(
-    selector=sel,
-    function=remove_emptybands_and_make_bsrestart,
-    description='Remove param="emptybands" and make param="bsrestart"',
-    uid='a0887cebb5224e1097010f1545ce766f',
-)
-
-
 @command(
     'asr.bandstructure',
-    migrations=[make_migrations],
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
@@ -514,7 +508,15 @@ class Result(ASRResult):
     formats = {"webpanel2": webpanel}
 
 
+sel = Selector()
+sel.name = sel.EQ('asr.bandstructure:main')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.NOT(sel.CONTAINS('bsrestart'))
+
+
+@asr.migration(selector=sel)
 def set_bsrestart_from_dependencies(record):
+    """Construct "bsrestart" parameters from "emptybands" parameter."""
     emptybands = (
         record.parameters.dependency_parameters[
             'asr.bandstructure:calculate']['emptybands']
@@ -532,22 +534,8 @@ def set_bsrestart_from_dependencies(record):
     return record
 
 
-sel = Selector()
-sel.name = sel.EQ('asr.bandstructure:main')
-sel.version = sel.EQ(-1)
-sel.parameters = sel.NOT(sel.CONTAINS('bsrestart'))
-
-make_migrations = make_migration_generator(
-    uid='0eda638a2c624a45a3bafd7dca11c9ca',
-    function=set_bsrestart_from_dependencies,
-    description='Construct "bsrestart" parameters from "emptybands" parameter.',
-    selector=sel,
-)
-
-
 @command(
     'asr.bandstructure',
-    migrations=[make_migrations],
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
