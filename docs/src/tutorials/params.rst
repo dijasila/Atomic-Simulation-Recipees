@@ -1,9 +1,9 @@
-The `setup.params` recipe
-=========================
+Customizing defaults
+====================
 
 All folders can contain a `params.json`-file. This file specifies new
 defaults and take precedence over the standard defaults that are
-specified in the actual instructions.
+specified in the instructions.
 
 This file can be edited manually or the `asr params` tool can be used
 to generate and manipulate it. The general syntax when using
@@ -13,17 +13,18 @@ to generate and manipulate it. The general syntax when using
 .. code-block:: console
 
    $ asr params -h
-   Usage: asr params [OPTIONS] RECIPE OPTION=VALUE...
+   Usage: asr params [OPTIONS] RECIPE OPTION=VALUE [OPTION=VALUE]...
    
      Compile a params.json file with all options and defaults.
    
-     This recipe compiles a list of all options and their default values for
-     all recipes to be used for manually changing values for specific options.
+     This tool compiles a list of all options and their default
+     values for all instructions to be used for manually changing values
+     for specific options.
    
    Options:
      -h, --help  Show this message and exit.
 
-For example, to set custom default of the `asr.gs:calculate` recipe we
+For example, to set custom defaults of the `asr.gs:calculate` instruction we
 can run
 
 .. code-block:: console
@@ -32,7 +33,7 @@ can run
 
 .. note::
    
-   The ellipsis operator ("...") is used for recipe arguments which
+   The ellipsis operator ("...") is used for instruction arguments which
    dict-type defaults and indicates that the only the default values
    of the specified keys should be updated.
 
@@ -98,5 +99,5 @@ specified simultaneously by using
    $ asr params asr.relax d3=True fmax=1e-3
 
 
-In this way all default parameters exposed through the CLI of a recipe
+In this way all default parameters exposed through the CLI of an instruction
 can be corrected.

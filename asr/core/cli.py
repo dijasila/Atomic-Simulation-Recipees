@@ -305,13 +305,13 @@ def recipes_as_dict():
 @click.argument('recipe', nargs=1)
 @click.argument(
     'params', nargs=-1, type=str, required=True,
-    metavar='OPTION=VALUE...',
+    metavar='OPTION=VALUE [OPTION=VALUE]...',
 )
 def params(recipe, params: Union[str, None] = None):
     """Compile a params.json file with all options and defaults.
 
-    This recipe compiles a list of all options and their default
-    values for all recipes to be used for manually changing values
+    This tool compiles a list of all options and their default
+    values for all instructions to be used for manually changing values
     for specific options.
     """
     return _params(recipe, params)
