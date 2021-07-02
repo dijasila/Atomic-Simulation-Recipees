@@ -4,12 +4,16 @@ from typing import Tuple
 import numpy as np
 from ase import Atoms
 
-from asr.core import ASRResult, atomsopt, calcopt, command, prepare_result
+from asr.calculators import get_calculator_class
+from asr.core import (ASRResult, atomsopt, calcopt, command, option,
+                      prepare_result)
 from asr.gs import calculate as gscalculate
 from asr.gs import main as groundstate
+from asr.magnetic_anisotropy import get_spin_axis
 from asr.relax import main as relax
 from asr.setup.strains import get_relevant_strains
 from asr.setup.strains import main as make_strained_atoms
+from asr.utils.gpw2eigs import calc2eigs
 
 
 def webpanel(result, context):
@@ -30,44 +34,88 @@ def webpanel(result, context):
 
 
 @prepare_result
-class Result(ASRResult):
-    formats = {'webpanel2': webpanel}
+class EdgesResult(ASRResult):
+    vbm: float
+    cbm: float
+    vbm_nosoc: float
+    cbm_nosoc: float
+    vacuumlevel: float
 
 
-def get_edges(atoms,
-              calculator,
-              edge_positions):
+@command('asr.deformationpotentials')
+def calculate(atoms: Atoms,
+              calculator: dict,
+              edge_positions: Tuple[Tuple[int, int, int],
+                                    Tuple[int, int, int],
+                                    Tuple[int, int],
+                                    Tuple[int, int]]) -> EdgesResult:
     """
-    sKn1: Tuple[int, int, int],
-    sKn2: Tuple[int, int, int]) -> Tuple[float, float]
     """
-    e1, e2, e1soc, e2soc = ...
+    (s1, K1, n1), (s2, K2, n2), (K1soc, n1soc), (K2soc, n2soc) = edge_positions
 
-    s1, K1, n1 = sKn1
-    s2, K2, n2 = sKn2
+    calculator = calculator.copy()
+    name = calculator.pop('name')
+    calc = get_calculator_class(name)(**calculator)
+    atoms.calc = calc
+    atoms.get_potential_energy()
+    kd = calc.wfs.kd
+
     k1 = kd.bz2ibz_k[K1]
     k2 = kd.bz2ibz_k[K2]
     if kd.nspins == 1:
         s1 = 0
         s2 = 0
-    e1 = calc.get_eigenvalues(spin=s1, kpt=k1)[n1]
-    e2 = calc.get_eigenvalues(spin=s2, kpt=k2)[n2]
-    return e1, e2
+    vbm_nosoc = calc.get_eigenvalues(spin=s1, kpt=k1)[n1]
+    cbm_nosoc = calc.get_eigenvalues(spin=s2, kpt=k2)[n2]
+
+    theta, phi = get_spin_axis(atoms, calculator=calculator)
+    e_km, efermi = calc2eigs(calc,
+                             soc=True, theta=theta, phi=phi)
+    vbm = e_km[K1soc, n1soc]
+    cbm = e_km[K2soc, n2soc]
+
+    assert (atoms.pbc == [1, 1, 0]).all()
+    vacuumlevel = calc.get_electrostatic_potential()[:, :, 5].mean()
+
+    return EdgesResult.from_data(
+        vbm=vbm,
+        cbm=cbm,
+        vbm_nosoc=vbm_nosoc,
+        cbm_nosoc=cbm_nosoc,
+        vacuumlevel=vacuumlevel)
+
+
+@prepare_result
+class Result(ASRResult):
+    edges: np.ndarray
+    deformation_potentials: np.ndarray
+    edges_nosoc: np.ndarray
+    deformation_potentials_nosoc: np.ndarray
+
+    key_descriptions = dict(
+        edges='Array of band edges',
+        deformation_potentials='Deformation potentials',
+        edges_nosoc='Array of band edges without SOC',
+        deformation_potentials_nosoc='Deformation potentials without SOC')
+
+    formats = {'webpanel2': webpanel}
 
 
 @command('asr.deformationpotentials')
 @atomsopt
 @calcopt
+@option('--strain-percent', help='Strain fraction.', type=float)
 def main(
         atoms: Atoms,
-        calculator: dict = groundstate.defaults.calculator) -> Result:
+        calculator: dict = groundstate.defaults.calculator,
+        strain_percent: float = 1.0) -> Result:
     """Calculate deformation potentials.
 
     Calculate the deformation potential both with and without spin orbit
     coupling, for both the conduction band and the valence band, and return as
     a dictionary.
     """
-    strains = [-1.0, 1.0]
+    strains = [-strain_percent, strain_percent]
 
     ij = get_relevant_strains(atoms.pbc)
 
@@ -92,8 +140,12 @@ def main(
     calc = gscalc.calculation.load()
     kd = calc.wfs.kd
 
+    _, K1soc, n1soc = gsresults['skn1']
+    _, K2soc, n2soc = gsresults['skn2']
+
     s1, k1, n1 = gsresults['gaps_nosoc']['skn1']
     s2, k2, n2 = gsresults['gaps_nosoc']['skn2']
+
     # Convert from IBZ to full BZ index:
     K1 = kd.ibz2bz_k[k1]
     K2 = kd.ibz2bz_k[k2]
@@ -102,8 +154,8 @@ def main(
 
     edge_positions = [(s1, K1, n1),
                       (s2, K2, n2),
-                      (spin-projection?, K1soc, n1soc),
-                      ...]
+                      (K1soc, n1soc),
+                      (K2soc, n2soc)]
 
     for i, j in ij:
         for ip, strain in enumerate(strains):
@@ -117,15 +169,17 @@ def main(
                 calculator=calculator,
                 fixcell=True)
 
-            e1, e2, e1soc, e2soc = get_edges(relaxresults.atoms,
-                                             calculator,
-                                             edge_positions)
+            edges = calculate(relaxresults.atoms,
+                              calculator,
+                              edge_positions)
 
-            evac = gsresults['evac']
-            edges_pin[ip, ij_to_voigt[i][j], 0] = e1soc - evac
-            edges_nosoc_pin[ip, ij_to_voigt[i][j], 0] = e1 - evac
-            edges_pin[ip, ij_to_voigt[i][j], 1] = e2soc - evac
-            edges_nosoc_pin[ip, ij_to_voigt[i][j], 1] = e2 - evac
+            evac = edges.vacuumlevel
+
+            v = ij_to_voigt[i][j]
+            edges_pin[ip, v, 0] = edges.vbm - evac
+            edges_nosoc_pin[ip, v, 0] = edges.vbm_nosoc - evac
+            edges_pin[ip, v, 1] = edges.cbm - evac
+            edges_nosoc_pin[ip, v, 1] = edges.cbm_nosoc - evac
 
     results = {'edges': edges_pin,
                'edges_nosoc': edges_nosoc_pin}
