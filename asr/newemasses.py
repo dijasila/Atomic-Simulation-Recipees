@@ -312,6 +312,37 @@ class BandFit:
         bs_data = [BandstructureData.from_dict(bsd) for bsd in bs_data]
         return BandFit(**dct, bt=bt, bs_data=bs_data)
 
+    def plot(self):
+        """Create a plot with bandstructure and fit shown."""
+        import matplotlib.pyplot as plt
+
+        for bs in self.bs_data:
+            if self.bt == BT.vb:
+                ref_index = np.argmax(bs.e_k)
+            else:
+                ref_index = np.argmin(bs.e_k)
+
+            xk = np.linalg.norm(bs.kpts_kv - bs.kpts_kv[ref_index, :], axis=1)
+            xk[:ref_index] = -xk[:ref_index]
+            plt.plot(xk, bs.e_k, label="Energies")
+            fit_e_k = get_model(self.fit_params, bs.kpts_kv * Bohr)
+            plt.plot(xk, fit_e_k, label="Fit", linestyle="dashed")
+
+            # fit_e_k = get_model(self.fit_params, self.kpts_kv)
+            # plt.plot(self.eps_k * Ha, label="energ")
+            # plt.plot(fit_e_k, label="fit", linestyle="dashed")
+            # indices = np.abs(self.eps_k - np.max(self.eps_k)) < 5e-3/Ha
+            # sol, _, _ = do_2nd_lstsq(self.kpts_kv[indices], self.eps_k[indices])
+            # fit2 = get_model(sol, self.kpts_kv)
+            # plt.plot(fit2)
+            # indices = np.abs(self.eps_k - np.max(self.eps_k)) < 1e3
+            # sol, _, _ = do_2nd_lstsq(self.kpts_kv[indices], self.eps_k[indices])
+            # fit2 = get_model(sol, self.kpts_kv)
+            # plt.plot(fit2)
+            # break
+        plt.legend()
+        plt.show()
+
 
 def make_bandfit(kpts_kv, eps_k, bt, band, ndim):
     assert bt in [BT.vb, BT.cb]
@@ -531,6 +562,9 @@ def perform_fit(bandfit, fitting_fnc=polynomial_fit,
         expected_sign = -1 if bandfit.bt == BT.vb else 1
         correct_number_masses = len(masses) == bandfit.ndim
         correct_signs = all(np.sign(mass) == expected_sign for mass in masses)
+        # TODO May want to reject calculation if mass is too large; at least
+        # TODO the first couple of eranges. If the mass is still large
+        # TODO even with the biggest erange, then it is probably ok.
         if correct_number_masses and correct_signs:
             bandfit.erange = erange
             bandfit.fit_params = fit_params
@@ -611,7 +645,6 @@ def create_or_read_calc(bf, direction, calc):
     from pathlib import Path
     from gpaw.mpi import serial_comm
 
-    # TODO Add bs_erange and bs_npoints here
     fname = f'em_bs_band={bf.band}_bt={bf.bt.value}_dir={direction}'
     fname = fname + f'_erange={bf.bs_erange}_npoints={bf.bs_npoints}.gpw'
 
@@ -784,6 +817,7 @@ def calc_errors(bt, kpts_kv, e_k, fit_e_k, eranges):
 
 def get_model(fit_params, kpts_kv):
     # ! Converts to eV
+    # TODO Refactor: Duplicate code in do_2nd_lstsq
     kx_k = kpts_kv[:, 0]
     ky_k = kpts_kv[:, 1]
     kz_k = kpts_kv[:, 2]
