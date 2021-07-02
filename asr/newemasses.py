@@ -771,7 +771,8 @@ def calc_errors(bt, kpts_kv, e_k, fit_e_k, eranges):
         indices = np.where(np.abs(e_k - reference_energy) < erange)
 
         mae = np.mean(np.abs(e_k[indices] - fit_e_k[indices]))
-        mare = np.mean(np.abs((e_k[indices] - fit_e_k[indices]) / e_k[indices]))
+        mean_e = np.mean(np.abs(e_k[indices] - reference_energy))
+        mare = np.mean(np.abs((e_k[indices] - fit_e_k[indices]) / mean_e))
 
         maes[i, 0] = erange
         maes[i, 1] = mae
