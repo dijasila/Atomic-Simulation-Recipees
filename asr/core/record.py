@@ -17,6 +17,28 @@ from .dependencies import Dependencies
 
 @dataclass
 class Record:
+    """Class that represent a record object.
+
+    The Record object is used to store contextual data about the execution of
+    an instruction.
+
+    Attributes
+    ----------
+    result
+        The result of the instruction.
+    run_specification: asr.RunSpecification
+        The description of the run particular run.
+    resources: asr.Resources
+        The resources consumed during the run.
+    dependencies: asr.Dependencies
+        The record dependencies.
+    history: asr.RevisionHistory
+        The revision history.
+    tags
+        Custom tags of the record.
+    metadata: asr.Metadata
+        The record metadata.
+    """
 
     result: typing.Optional[typing.Any] = None
     run_specification: typing.Optional[RunSpecification] = None
