@@ -4,6 +4,12 @@
  Getting started
 =================
 
+.. contents::
+   :local:
+
+Part 1 - Implementing recipes and instructions
+==============================================
+
 The atomic simulation recipes (ASR) is a Python package that assists
 computational scientists with tools for storing calculation results
 and related contextual data. To see how this works in practice, we
@@ -28,7 +34,7 @@ folder or (stepwise) in any of the parent folders and use the first
 one found for storage.
 
 Instructions
-============
+------------
 
 The most basic element of ASR is an Instruction. Instructions are
 simply python functions decorated with the :func:`asr.instruction`
@@ -67,7 +73,7 @@ that file and the function name, in this case amounting to
 the instruction name enclosed in quotes.
 
 The cache
-=========
+---------
 
 Whenever an instruction has been run ASR generates an
 :py:class:`asr.Record` containing contextual information about the
@@ -123,9 +129,9 @@ couple of these:
    unique identifier given to all records. This can be used to
    uniquely select records.  The Record provides a shortcut to the UID
    through :attr:`asr.Record.uid`.
- - The `run_specification.name` property stores the name of the instruction.
+ - The :attr:`run_specification.name` property stores the name of the instruction.
    The Record provides a shortcut to the name through :attr:`Record.name`.
- - The `run_specification.parameters` stores the parameters of the
+ - The :attr:`run_specification.parameters` stores the parameters of the
    given run. The Record object provides a shortcut the parameters
    through :attr:`Record.parameters`.
  - The :attr:`result` property stores the result of the instruction.
@@ -294,9 +300,8 @@ From which we can see that the EMT calculator predicts the FCC crystal
 structure to be the most stable crystal structure for all tested
 metals which is also true in reality.
 
-=====================================
-Getting started - part 2 - migrations
-=====================================
+Part 2 - Migrations
+===================
 
 ..
    $ cp $ASRHOME/docs/src/tutorials/getting-started-ver2.py $ASRLIB/tutorial.py

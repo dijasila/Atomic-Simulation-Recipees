@@ -12,6 +12,11 @@ from asr.core import (  # noqa
     calcopt,
     instruction,
     Record,
+    RunSpecification,
+    Resources,
+    Dependencies,
+    RevisionHistory,
+    Metadata,
 )
 
 matchers = comparators

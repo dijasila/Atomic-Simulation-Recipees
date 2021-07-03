@@ -24,10 +24,3 @@ There are several points to be made here
 
 The ``webpanel`` formatter takes a ``result`` object an
 ``ase.db.AtomsRow`` object and a ``key_descriptions`` dictionary.
-
-To test a webpanel I suggest the following temporary solution
-
-.. code-block:: console
-
-   $ cp /home/niflheim/mogje/c2db_mos2.db c2db_mos2.db
-   $ asr run "database.app c2db_mos2.db"

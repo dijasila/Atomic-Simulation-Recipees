@@ -1,16 +1,17 @@
+import sys
 import os
 import tempfile
 import pathlib
-import textwrap
 from asr.core import chdir
 from asr.test.utils import (
     run_shell_command, get_command_and_output_ranges,
     get_asr_home_path, get_asr_library_path,
 )
 
-def update_tutorials():
-    tutorials = ['src/tutorials/getting-started.rst']
-    for tutorial in tutorials:
+
+def update_tutorials(files):
+    rstfiles = [pathlib.Path(filename) for filename in files]
+    for tutorial in rstfiles:
         path = pathlib.Path(tutorial).absolute()
         env = os.environ.copy()
         asrhome = get_asr_home_path()
@@ -39,5 +40,5 @@ def update_tutorials():
 
 
 if __name__ == '__main__':
-    update_tutorials()
-
+    files = sys.argv[1:]
+    update_tutorials(files)
