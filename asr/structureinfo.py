@@ -1,57 +1,13 @@
 """Structural information."""
+import numpy as np
 from ase import Atoms
 
 from asr.core import command, ASRResult, prepare_result, option, AtomsFile
 
 
-def get_reduced_formula(formula, stoichiometry=False):
-    """Get reduced formula from formula.
-
-    Returns the reduced formula corresponding to a chemical formula,
-    in the same order as the original formula
-    E.g. Cu2S4 -> CuS2
-
-    Parameters
-    ----------
-    formula : str
-    stoichiometry : bool
-        If True, return the stoichiometry ignoring the
-        elements appearing in the formula, so for example "AB2" rather than
-        "MoS2"
-
-    Returns
-    -------
-        A string containing the reduced formula.
-    """
-    # XXX This can probably be replaced by
-    #   reduced_formula, _count = Formula(formula).reduce()
-    #   return reduced_formula
-    from functools import reduce
-    from math import gcd
-    import string
-    import re
-    split = re.findall('[A-Z][^A-Z]*', formula)
-    matches = [re.match('([^0-9]*)([0-9]+)', x)
-               for x in split]
-    numbers = [int(x.group(2)) if x else 1 for x in matches]
-    symbols = [matches[i].group(1) if matches[i] else split[i]
-               for i in range(len(matches))]
-    divisor = reduce(gcd, numbers)
-    result = ''
-    numbers = [x // divisor for x in numbers]
-    numbers = [str(x) if x != 1 else '' for x in numbers]
-    if stoichiometry:
-        numbers = sorted(numbers)
-        symbols = string.ascii_uppercase
-    for symbol, number in zip(symbols, numbers):
-        result += symbol + number
-    return result
-
-
 def webpanel(result, context):
     from asr.database.browser import (table, describe_entry, code, bold,
                                       br, href, dl, div)
-    key_descriptions = context.descriptions
 
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
     crystal_type = describe_entry(
@@ -122,7 +78,7 @@ def webpanel(result, context):
     basictable = table(result, 'Structure info', [
         crystal_type, cls, spacegroup, spgnum, pointgroup,
         # icsd_id, cod_id
-    ], key_descriptions, 2)
+    ], context.descriptions, 2)
     basictable['columnwidth'] = 4
     # rows = basictable['rows']
 
@@ -195,14 +151,11 @@ def main(atoms: Atoms) -> Result:
     state properties that requires only an atomic structure. This recipes read
     the atomic structure in `structure.json`.
     """
-    import numpy as np
-
     info = {}
 
-    formula = atoms.get_chemical_formula(mode='metal')
-    stoichimetry = get_reduced_formula(formula, stoichiometry=True)
-    info['formula'] = formula
-    info['stoichiometry'] = stoichimetry
+    formula = atoms.symbols.formula.convert('metal')
+    info['formula'] = str(formula)
+    info['stoichiometry'] = formula.stoichiometry()[0]
 
     # Get crystal symmetries
     from asr.utils.symmetry import atoms2symmetry

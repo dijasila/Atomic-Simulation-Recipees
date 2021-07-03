@@ -81,8 +81,7 @@ def calculate(
     from gpaw.response.bse import BSE
     from gpaw.occupations import FermiDirac
 
-    pbc = atoms.pbc.tolist()
-    ND = np.sum(pbc)
+    ND = sum(atoms.pbc)
     if ND == 3:
         eta = 0.1
         kpts = {'density': kptdensity, 'gamma': True, 'even': True}
@@ -165,6 +164,7 @@ def calculate(
 
     w_w = np.linspace(-2.0, 8.0, 10001)
 
+    pbc = atoms.pbc
     w_w, alphax_w = bse.get_polarizability(eta=eta,
                                            filename='bse_polx.csv',
                                            direction=0,

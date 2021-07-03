@@ -74,7 +74,7 @@ class RunSpecification:
         if fmt == '':
             return str(self)
 
-    def __str__(self):
+    def __repr__(self):
         lines = []
         for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
             value = str(value)
@@ -82,9 +82,6 @@ class RunSpecification:
                 value = '\n' + textwrap.indent(value, ' ')
             lines.append(f'{key}={value}')
         return '\n'.join(lines)
-
-    def __repr__(self):  # noqa
-        return self.__str__()
 
 
 def construct_run_spec(

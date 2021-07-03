@@ -72,16 +72,13 @@ class Selector:
     def __getitem__(self, item):
         return self.__getattr__(item)
 
-    def __str__(self):
+    def __repr__(self):
         parts = [
             f'{key}={repr(value)}'
             for key, value in
             self.selection.items()
         ]
         return 'Selector(' + ', '.join(parts) + ')'
-
-    def __repr__(self):
-        return self.__str__()
 
     def __call__(self, obj: typing.Any) -> bool:
         return self.matches(obj)

@@ -20,9 +20,8 @@ def calculate(
     result = gscalculate(atoms=atoms, calculator=calculator)
     calc = result.calculation.load(fixdensity=False)
     atoms = calc.atoms
-    pbc = atoms.pbc.tolist()
 
-    nd = np.sum(pbc)
+    nd = sum(atoms.pbc)
     if nd != 2:
         raise NotImplementedError('asr.exchange is only implemented '
                                   'for 2D systems.')

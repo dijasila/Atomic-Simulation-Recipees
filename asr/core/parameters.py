@@ -67,10 +67,6 @@ class Parameters:  # noqa
     def __init__(self, parameters: typing.Dict[str, typing.Any]):  # noqa
         self.__dict__.update(parameters)
 
-    def __hash__(self):
-        """Make parameter hash."""
-        return hash(self.__dict__)
-
     def keys(self):  # noqa
         return self.__dict__.keys()
 
