@@ -181,13 +181,13 @@ def main(
                               edge_positions,
                               theta, phi)
 
-            evac = edges.vacuumlevel
+            evac = edges['vacuumlevel']
 
             v = ij_to_voigt[i][j]
-            edges_pin[ip, v, 0] = edges.vbm - evac
-            edges_nosoc_pin[ip, v, 0] = edges.vbm_nosoc - evac
-            edges_pin[ip, v, 1] = edges.cbm - evac
-            edges_nosoc_pin[ip, v, 1] = edges.cbm_nosoc - evac
+            edges_pin[ip, v, 0] = edges['vbm'] - evac
+            edges_nosoc_pin[ip, v, 0] = edges['vbm_nosoc'] - evac
+            edges_pin[ip, v, 1] = edges['cbm'] - evac
+            edges_nosoc_pin[ip, v, 1] = edges['cbm_nosoc'] - evac
 
     results = {'edges': edges_pin,
                'edges_nosoc': edges_nosoc_pin}
