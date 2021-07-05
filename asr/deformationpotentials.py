@@ -42,7 +42,7 @@ class EdgesResult(ASRResult):
     vacuumlevel: float
 
 
-@command('asr.deformationpotentials')
+# @command('asr.deformationpotentials')
 def calculate(atoms: Atoms,
               calculator: dict,
               edge_positions: Tuple[Tuple[int, int, int],
