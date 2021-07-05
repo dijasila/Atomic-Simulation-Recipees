@@ -54,6 +54,9 @@ def calculate(atoms: Atoms,
     (s1, K1, n1), (s2, K2, n2), (K1soc, n1soc), (K2soc, n2soc) = edge_positions
 
     calculator = calculator.copy()
+    theta, phi = get_spin_axis(atoms, calculator=calculator)
+    atoms = atoms.copy()
+
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
     atoms.calc = calc
@@ -68,7 +71,6 @@ def calculate(atoms: Atoms,
     vbm_nosoc = calc.get_eigenvalues(spin=s1, kpt=k1)[n1]
     cbm_nosoc = calc.get_eigenvalues(spin=s2, kpt=k2)[n2]
 
-    theta, phi = get_spin_axis(atoms, calculator=calculator)
     e_km, efermi = calc2eigs(calc,
                              soc=True, theta=theta, phi=phi)
     vbm = e_km[K1soc, n1soc]
@@ -107,7 +109,7 @@ class Result(ASRResult):
 @option('--strain-percent', help='Strain fraction.', type=float)
 def main(
         atoms: Atoms,
-        calculator: dict = groundstate.defaults.calculator,
+        calculator: dict = groundstate.defaults.calculator,  # mutable ?????
         strain_percent: float = 1.0) -> Result:
     """Calculate deformation potentials.
 
@@ -150,6 +152,7 @@ def main(
     K1 = kd.ibz2bz_k[k1]
     K2 = kd.ibz2bz_k[k2]
 
+    calculator = calculator.copy()
     calculator['kpts'] = {'size': kd.N_c, 'gamma': True}
 
     edge_positions = [(s1, K1, n1),
