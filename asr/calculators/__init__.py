@@ -211,12 +211,13 @@ def get_calculator_class(name):
                     id=id,
                     cls_name='emt',
                     state=self.calculator.__dict__,
-                )
+                    paths=[])
 
             @classmethod
-            def load(cls, calculation: Calculation) -> 'EMTAdapter':
+            def load(cls, calculation: Calculation,
+                     **kwargs) -> 'EMTAdapter':
                 obj = cls.__new__(cls)
-                obj.__dict__.update(calculation.dct)
+                obj.__dict__.update(calculation.state)
                 return obj
 
         return EMTAdapter

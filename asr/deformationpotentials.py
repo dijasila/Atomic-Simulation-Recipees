@@ -4,11 +4,10 @@ from typing import Tuple
 import numpy as np
 from ase import Atoms
 
+import asr.gs
 from asr.calculators import get_calculator_class
 from asr.core import (ASRResult, atomsopt, calcopt, command, option,
                       prepare_result)
-from asr.gs import calculate as gscalculate
-from asr.gs import main as groundstate
 from asr.magnetic_anisotropy import get_spin_axis
 from asr.relax import main as relax
 from asr.setup.strains import get_relevant_strains
@@ -48,13 +47,14 @@ def calculate(atoms: Atoms,
               edge_positions: Tuple[Tuple[int, int, int],
                                     Tuple[int, int, int],
                                     Tuple[int, int],
-                                    Tuple[int, int]]) -> EdgesResult:
+                                    Tuple[int, int]],
+              theta: float,
+              phi: float) -> EdgesResult:
     """
     """
     (s1, K1, n1), (s2, K2, n2), (K1soc, n1soc), (K2soc, n2soc) = edge_positions
 
     calculator = calculator.copy()
-    theta, phi = get_spin_axis(atoms, calculator=calculator)
     atoms = atoms.copy()
 
     name = calculator.pop('name')
@@ -79,7 +79,7 @@ def calculate(atoms: Atoms,
     assert (atoms.pbc == [1, 1, 0]).all()
     vacuumlevel = calc.get_electrostatic_potential()[:, :, 5].mean()
 
-    return EdgesResult.from_data(
+    return EdgesResult.fromdata(
         vbm=vbm,
         cbm=cbm,
         vbm_nosoc=vbm_nosoc,
@@ -109,7 +109,7 @@ class Result(ASRResult):
 @option('--strain-percent', help='Strain fraction.', type=float)
 def main(
         atoms: Atoms,
-        calculator: dict = groundstate.defaults.calculator,  # mutable ?????
+        calculator: dict = asr.gs.main.defaults.calculator,  # mutable ?????
         strain_percent: float = 1.0) -> Result:
     """Calculate deformation potentials.
 
@@ -117,6 +117,8 @@ def main(
     coupling, for both the conduction band and the valence band, and return as
     a dictionary.
     """
+    from asr.gs import calculate as gscalculate
+    from asr.gs import main as groundstate
     strains = [-strain_percent, strain_percent]
 
     ij = get_relevant_strains(atoms.pbc)
@@ -152,6 +154,8 @@ def main(
     K1 = kd.ibz2bz_k[k1]
     K2 = kd.ibz2bz_k[k2]
 
+    theta, phi = get_spin_axis(atoms, calculator=calculator)
+
     calculator = calculator.copy()
     calculator['kpts'] = {'size': kd.N_c, 'gamma': True}
 
@@ -174,7 +178,8 @@ def main(
 
             edges = calculate(relaxresults.atoms,
                               calculator,
-                              edge_positions)
+                              edge_positions,
+                              theta, phi)
 
             evac = edges.vacuumlevel
 
