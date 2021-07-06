@@ -325,7 +325,7 @@ def get_emass_dict_from_row(row, has_mae=False):
     ordered_cb_indices = sorted(cb_indices, key=lambda el: el[1])
     ordered_vb_indices = sorted(vb_indices, key=lambda el: -el[1])
 
-    def get_the_dict(ordered_indices, name, offset_sym):
+    def get_the_dict(ordered_indices, name, offset_sym, has_mae):
         # Write a dictionary that will be turned into a table
         # The dict keys are the table row name
         # and the dict values are the effective masses
@@ -382,8 +382,8 @@ def get_emass_dict_from_row(row, has_mae=False):
 
         return my_dict
 
-    electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')
-    hole_dict = get_the_dict(ordered_vb_indices, 'VB', '-')
+    electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+', has_mae)
+    hole_dict = get_the_dict(ordered_vb_indices, 'VB', '-', has_mae)
 
     return electron_dict, hole_dict
 
@@ -545,9 +545,9 @@ def make_the_plots(row, *args):
             mass = cb_masses[cb_tuple][direction]
             fit_data = fit_data_list[direction]
 
-            kpts_kv, xk, e_km, sz_km = get_plot_data(fit_data, reference,
-                                                     cell_cv)
-
+            if i == 0:
+                kpts_kv, xk, e_km, sz_km = get_plot_data(fit_data, reference,
+                                                         cell_cv)
             plot_fit(axes, mass, reference, cell_cv,
                      xk, kpts_kv, data['cb_soc_2ndOrderFit'])
 
@@ -583,8 +583,9 @@ def make_the_plots(row, *args):
             mass = vb_masses[vb_tuple][direction]
             fit_data = fit_data_list[direction]
 
-            kpts_kv, xk, e_km, sz_km = get_plot_data(fit_data, reference,
-                                                     cell_cv)
+            if i == 0:
+                kpts_kv, xk, e_km, sz_km = get_plot_data(fit_data, reference,
+                                                         cell_cv)
 
             plot_fit(axes, mass, reference, cell_cv,
                      xk, kpts_kv, data['vb_soc_2ndOrderFit'])
