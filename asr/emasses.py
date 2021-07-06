@@ -545,9 +545,9 @@ def make_the_plots(row, *args):
             mass = cb_masses[cb_tuple][direction]
             fit_data = fit_data_list[direction]
 
-            kpts_kv, xk, e_km, sz_km = get_plot_data(fit_data, reference,
-                                                     cell_cv)
-
+            if i == 0:
+                kpts_kv, xk, e_km, sz_km = get_plot_data(fit_data, reference,
+                                                         cell_cv)
             plot_fit(axes, mass, reference, cell_cv,
                      xk, kpts_kv, data['cb_soc_2ndOrderFit'])
 
@@ -583,8 +583,9 @@ def make_the_plots(row, *args):
             mass = vb_masses[vb_tuple][direction]
             fit_data = fit_data_list[direction]
 
-            kpts_kv, xk, e_km, sz_km = get_plot_data(fit_data, reference,
-                                                     cell_cv)
+            if i == 0:
+                kpts_kv, xk, e_km, sz_km = get_plot_data(fit_data, reference,
+                                                         cell_cv)
 
             plot_fit(axes, mass, reference, cell_cv,
                      xk, kpts_kv, data['vb_soc_2ndOrderFit'])
