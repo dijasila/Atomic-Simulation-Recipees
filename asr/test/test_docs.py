@@ -18,7 +18,9 @@ def command_outputs(request):
 
 
 def rstfiles():
-    directory = pathlib.Path('../../docs/src/tutorials')
+    asrlib = get_asr_library_path()
+    directory = asrlib.parent / 'docs/src/tutorials'
+    assert directory.is_dir(), directory
     rstfiles = list(directory.rglob('*.rst'))
     assert len(rstfiles) > 0
     return rstfiles
