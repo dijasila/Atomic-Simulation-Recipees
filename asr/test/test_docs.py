@@ -1,6 +1,5 @@
 import os
 import pytest
-import pathlib
 
 from asr.core import chdir
 from .utils import (
