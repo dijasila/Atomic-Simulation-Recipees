@@ -7,6 +7,7 @@ from ase.units import Ha, Bohr
 from asr.utils.gpw2eigs import gpw2eigs, calc2eigs
 from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 from asr.core import command, option, ASRResult, prepare_result, read_json
+from asr.database.browser import make_panel_description, describe_entry
 from ase.parallel import parprint
 
 
@@ -27,6 +28,59 @@ class BT(Enum):
     cb = 'cb'
 
 
+panel_description = make_panel_description(
+    """
+The effective mass tensor represents the second derivative of the band energy
+w.r.t. wave vector at a band extremum. The effective masses of the valence
+bands (VB) and conduction bands (CB) are obtained as the eigenvalues of the
+mass tensor. The latter is determined by fitting a 2nd order polynomium to the
+band energies on a fine k-point mesh around the band extrema. Spin–orbit
+interactions are included. The fit curve is shown for the highest VB and
+lowest CB. The “parabolicity” of the band is quantified by the
+mean absolute relative error (MARE) of the fit to the band energy in an energy
+range of 25 meV.
+""",
+    articles=[
+        'C2DB',
+    ],
+)
+
+
+def test_plot(row, *args):
+    import matplotlib.pyplot as plt
+    results = row.data.get('results-asr.newemasses.json')
+    bandfits = [BandFit.from_dict(dct) for dct in results.bandfit_dicts]
+    cb_bandfits = [bf for bf in bandfits if bf.bt == BT.cb]
+    cb_bandfits = sorted(cb_bandfits, key=lambda bf: -bf.band)
+    cbm = cb_bandfits[0]
+    bs_data = cbm.bs_data[1]
+    plot_kpts_kv = bs_data.kpts_kv
+    from ase.dft.kpoints import labels_from_kpts
+    cell_cv = row.cell
+    xk, _, _ = labels_from_kpts(kpts=plot_kpts_kv, cell=cell_cv, eps=1)
+    xk -= xk[-1] / 2
+    e_k = bs_data.e_k
+    plt.scatter(xk, e_k)
+    fit_params = cbm.fit_params
+    fit_e_k = get_model(fit_params, plot_kpts_kv * Bohr)
+    print(fit_params)
+    plt.plot(xk, fit_e_k, linestyle="dashed", color="red")
+    plt.savefig("test.png")
+    # plt.close()
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+    panel = {'title': describe_entry(f'New Effective Masses ({xcname})',
+                                     panel_description),
+             'plot_descriptions':
+             [{'function': test_plot,
+               'filenames': ['test.png']}]}
+
+    return [panel]
+
+
 @prepare_result
 class EmassResult(ASRResult):
     bandfit_dicts: List[dict]
@@ -43,6 +97,8 @@ class EmassResult(ASRResult):
                             "vb_masses[i][m] is mass for band i in direction m"]),
         cbm_masses="Masses for bottommost conduction band",
         vbm_masses="Masses for topmost valence band")
+
+    formats =  {'ase_webpanel': webpanel}
 
 
 def check_pbc(gpw):
@@ -859,24 +915,6 @@ def main():
     results = read_json('results-asr.newemasses@calculate_parabolicities.json')
     return results
 
-
-def webpanel():
-    raise NotImplementedError
-
-
-"""
-TODO Implement Results objects
-
-Refine: Main output is .gpw files. No results objects.
-
-calculate_fits: Return dictionalized bandfits + summary info such as the found emasses.
-
-calculate_bandstructure: Return dictionalized bandfits
- - now with BS info - and summary info
-
-main: Nothing currently, I suppose.
-
-"""
 
 
 if __name__ == "__main__":
