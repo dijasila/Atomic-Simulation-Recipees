@@ -51,22 +51,71 @@ def test_plot(row, *args):
     results = row.data.get('results-asr.newemasses.json')
     bandfits = [BandFit.from_dict(dct) for dct in results.bandfit_dicts]
     cb_bandfits = [bf for bf in bandfits if bf.bt == BT.cb]
-    cb_bandfits = sorted(cb_bandfits, key=lambda bf: -bf.band)
+    cb_bandfits = sorted(cb_bandfits, key=lambda bf: bf.band)
+    vb_bandfits = [bf for bf in bandfits if bf.bt == BT.vb]
+    vb_bandfits = sorted(vb_bandfits, key=lambda bf: -bf.band)
     cbm = cb_bandfits[0]
-    bs_data = cbm.bs_data[1]
-    plot_kpts_kv = bs_data.kpts_kv
-    from ase.dft.kpoints import labels_from_kpts
+    vbm = vb_bandfits[0]
     cell_cv = row.cell
-    xk, _, _ = labels_from_kpts(kpts=plot_kpts_kv, cell=cell_cv, eps=1)
-    xk -= xk[-1] / 2
-    e_k = bs_data.e_k
-    plt.scatter(xk, e_k)
-    fit_params = cbm.fit_params
-    fit_e_k = get_model(fit_params, plot_kpts_kv * Bohr)
-    print(fit_params)
-    plt.plot(xk, fit_e_k, linestyle="dashed", color="red")
+    ndim = cbm.ndim
+    # Check whether material necessarily has no spin-degeneracy
+    spin_degenerate = row.magstate == 'NM' and row.has_inversion_symmetry
+    sdir = row.get('spin_axis', 'z')
+    ref_label = r'E_\mathrm{vac}' if 'evac' in row else r'E_\mathrm{F}'
+
+    fig, axes = plt.subplots(nrows=2, ncols=ndim, figsize=(6 + 6/8, 5))
+    for ax, bf in zip(axes, [vbm, cbm]):
+        plot_bf(fig, ax, bf, cell_cv, spin_degenerate, sdir, ref_label)
+    plt.tight_layout()
     plt.savefig("test.png")
     # plt.close()
+
+
+def plot_bf(fig, ax, bf, cell_cv, spin_degenerate, sdir, ref_label):
+    from ase.dft.kpoints import labels_from_kpts
+    for i, (sax, bs_data) in enumerate(zip(ax, bf.bs_data)):
+        plot_kpts_kv = bs_data.kpts_kv
+        xk, _, _ = labels_from_kpts(kpts=plot_kpts_kv, cell=cell_cv, eps=1)
+        xk -= xk[-1] / 2
+        e_k = bs_data.e_k
+        if spin_degenerate:
+            sax.scatter(xk, e_k)
+        else:
+            colors = bs_data.spin_k
+            scatterdata = sax.scatter(xk, e_k, c=colors, vmin=-1, vmax=1)
+            cbar = fig.colorbar(scatterdata, ax=sax)
+            cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
+            cbar.set_label(rf'$\langle S_{sdir} \rangle$')
+            cbar.update_ticks()
+
+        fit_params = bf.fit_params
+        fit_e_k = get_model(fit_params, plot_kpts_kv * Bohr)
+        sax.plot(xk, fit_e_k, linestyle="dashed", color="red")
+
+        # Set view range
+        if bf.bt == BT.vb:
+            y1 = np.max(e_k) - 0.030
+            y2 = np.max(e_k) + 0.005
+        else:
+            y1 = np.min(e_k) - 0.005
+            y2 = np.min(e_k) + 0.030
+        if bf.bt == BT.vb:
+            x1_index = np.argmax(e_k > y1)
+            x2_index = len(e_k) - np.argmax((e_k > y1)[::-1])
+        else:
+            x1_index = np.argmax(e_k < y2)
+            x2_index = len(e_k) - np.argmax((e_k < y2)[::-1])
+        x1 = xk[x1_index]
+        x2 = xk[x2_index]
+        x1 -= (x2 - x1) * 0.05
+        x2 += (x2 - x1) * 0.05
+        sax.set_xlim((x1, x2))
+        sax.set_ylim((y1, y2))
+
+        title = "Valence band" if bf.bt == BT.vb else "Conduction band"
+        sax.set_title(f"{title} dir. {i+1}")
+        sax.set_xlabel(r'$\Delta k$ [1/$\mathrm{\AA}$]')
+        sax.set_ylabel(rf'$E-{ref_label}$ [eV]')
 
 
 def webpanel(result, row, key_descriptions):
