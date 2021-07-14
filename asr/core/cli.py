@@ -784,23 +784,16 @@ def graph(draw=False, labels=False, saveto=None):
 
 
 def make_panels(record, cache):
-    from asr.core.material import (get_row_from_folder,
-                                   new_make_panel_figures,
-                                   make_panel_figures)
+    from asr.core.material import new_make_panel_figures
     from asr.core.datacontext import DataContext
     result = record.result
     formats = result.get_formats()
 
     if 'webpanel2' in formats:
-        row = get_row_from_folder('.')  # XXX remove
-        context = DataContext(row, record)
+        # XXX should not have row at all
+        context = DataContext(None, record, cache)
         panels = result.format_as('webpanel2', context)
         new_make_panel_figures(context, panels, uid=record.uid[:10])
-    elif 'ase_webpanel' in formats:
-        row = get_row_from_folder('.')
-        panels = result.format_as('ase_webpanel', row,
-                                  DataContext.descriptions)
-        make_panel_figures(row, panels, uid=record.uid[:10])
     else:
         panels = []
 

@@ -58,34 +58,3 @@ def new_make_panel_figures(context, panels, uid):
                 paths.append(path / filename)
 
     return paths
-
-
-def make_panel_figures(material, panels, uid=None):
-    """Make figures in list of panels.
-
-    Parameters
-    ----------
-    material : :class:`asr.core.material.Material`
-        Material of interest
-    panels : list
-        List of panels and contents
-    Returns
-    -------
-    None
-    """
-    pds = []
-    for panel in panels:
-        pd = panel.get('plot_descriptions', [])
-        if pd:
-            pds.extend(pd)
-            # panel.pop('plot_descriptions')
-
-    for pd in pds:
-        if uid is not None:
-            filenames = [uid + '-' + filename for filename in pd['filenames']]
-        else:
-            filenames = pd['filenames']
-
-        pd['function'](material, *filenames)
-        figures = ','.join(filenames)
-        print(f'Saved figures: {figures}')
