@@ -100,7 +100,7 @@ class FileCacheBackend():
     @lock
     def add_uid_to_table(self, run_uid, path: ASRPath):
         self.initialize()
-        uid_table = self.uid_table
+        uid_table = self.read_uid_table()
         uid_table[run_uid] = path
         self._write_file(
             self.record_table_path,
@@ -110,15 +110,14 @@ class FileCacheBackend():
     @lock
     def remove_uid_from_table(self, run_uid):
         assert self.initialized
-        uid_table = self.uid_table
+        uid_table = self.read_uid_table()
         del uid_table[run_uid]
         self._write_file(
             self.record_table_path,
             self.serializer.serialize(uid_table),
         )
 
-    @property
-    def uid_table(self):
+    def read_uid_table(self):
         self.initialize()
         text = self._read_file(self.record_table_path)
         uid_table = self.serializer.deserialize(text)
@@ -156,18 +155,30 @@ class FileCacheBackend():
                 yield dep_record
 
     def get_record_from_uid(self, run_uid):
-        path = self.uid_table[run_uid]
+        table = self.read_uid_table()
+        path = table[run_uid]
+        return self._read_record(path)
+
+    def _read_record(self, path) -> Record:
         serialized_object = self._read_file(path)
         obj = self.serializer.deserialize(serialized_object)
+        assert isinstance(obj, Record)
         return obj
+
+    def _read_all_records(self):
+        table = self.read_uid_table()
+        all_records = [self._read_record(path) for path in table.values()]
+        return all_records
 
     def select(self, selector: Selector = None):
         if not self.initialized:
             return []
-        all_records = [self.get_record_from_uid(run_uid)
-                       for run_uid in self.uid_table]
+
+        all_records = self._read_all_records()
+
         if selector is None:
             return all_records
+
         selected = []
         for record in all_records:
             if selector.matches(record):
@@ -177,17 +188,16 @@ class FileCacheBackend():
     @lock
     def remove(self, selector: Selector = None):
         assert self.initialized, 'No cache here!'
-        all_records = [self.get_record_from_uid(run_uid)
-                       for run_uid in self.uid_table]
+
         if selector is None:
             return []
 
-        selected = []
-        for record in all_records:
-            if selector.matches(record):
-                selected.append(record)
+        all_records = self._read_all_records()
+
+        selected = self.select(selector)
 
         for record in selected:
+            # FIXME O(N) work in every step
             self.remove_uid_from_table(record.uid)
             pth = self._record_to_path(record)
             pth.unlink()
