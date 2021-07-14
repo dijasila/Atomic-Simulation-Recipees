@@ -1,6 +1,5 @@
 """Implement cache functionality."""
 import os
-import pathlib
 from pathlib import Path
 import typing
 from .record import Record

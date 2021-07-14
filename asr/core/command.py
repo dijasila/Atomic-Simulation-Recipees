@@ -15,7 +15,6 @@ from .dependencies import register_dependencies
 from .resources import register_resources
 from .selector import Selector
 from .metadata import register_metadata
-from ase.utils import lazyproperty
 
 
 def format_param_string(params: dict):

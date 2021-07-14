@@ -3,7 +3,6 @@ import numpy as np
 from ase.parallel import world, broadcast
 from asr.core import write_json
 from .materials import std_test_materials, BN
-import os
 import pytest
 import datetime
 from _pytest.tmpdir import _mk_tmp

@@ -1,7 +1,6 @@
 import os
 import pytest
 from asr.core.lock import Lock
-from asr.core.filetype import ASRPath
 
 
 @pytest.mark.ci
