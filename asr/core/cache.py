@@ -123,6 +123,9 @@ class FileCacheBackend():
         uid_table = self.serializer.deserialize(text)
         return uid_table
 
+    def __contains__(self, record):
+        return record.uid in self.read_uid_table()
+
     def has(self, selector: 'Selector'):
         if not self.initialized:
             return False
@@ -131,28 +134,6 @@ class FileCacheBackend():
             if selector.matches(record):
                 return True
         return False
-
-    def _immediate_dependencies(self, record):
-        # XXX We should probably get a O(1) __contains__ method
-        # XXX record == record2 seems to fail with an error
-        assert record.uid == self.get_record_from_uid(record.uid).uid
-        if not record.dependencies:
-            return
-        for dep in record.dependencies:
-            yield self.get_record_from_uid(dep.uid)
-
-    def _all_dependencies_with_duplicates(self, record):
-        for dep_record in self._immediate_dependencies(record):
-            yield dep_record
-            yield from self._all_dependencies_with_duplicates(dep_record)
-
-    def recurse_dependencies(self, record):
-        found = {record.uid}
-        for dep_record in self._all_dependencies_with_duplicates(record):
-            uid = dep_record.uid
-            if uid not in found:
-                found.add(uid)
-                yield dep_record
 
     def get_record_from_uid(self, run_uid):
         table = self.read_uid_table()
@@ -212,7 +193,6 @@ class FileCacheBackend():
 
 
 class Cache:
-
     def __init__(self, backend):
         self.backend = backend
 
@@ -291,9 +271,31 @@ class Cache:
 
         return wrapper
 
-    def __contains__(self, record: Record):
-        return self.has(uid=record.uid)
+    def _immediate_dependencies(self, record):
+        # XXX We should probably get a O(1) __contains__ method
+        # XXX record == record2 seems to fail with an error
+        backend = self.backend
+        assert record.uid == backend.get_record_from_uid(record.uid).uid
+        if not record.dependencies:
+            return
+        for dep in record.dependencies:
+            yield backend.get_record_from_uid(dep.uid)
 
+    def _all_dependencies_with_duplicates(self, record):
+        for dep_record in self._immediate_dependencies(record):
+            yield dep_record
+            yield from self._all_dependencies_with_duplicates(dep_record)
+
+    def recurse_dependencies(self, record):
+        found = {record.uid}
+        for dep_record in self._all_dependencies_with_duplicates(record):
+            uid = dep_record.uid
+            if uid not in found:
+                found.add(uid)
+                yield dep_record
+
+    def __contains__(self, record: Record):
+        return record in self.backend
 
 def default_make_selector(run_specification):
     selector = Selector()
@@ -309,8 +311,14 @@ class MemoryBackend:
     def __init__(self):
         self.records = {}
 
+    def __contains__(self, record):
+        return record.uid in self.records
+
     def add(self, record):
         self.records[record.uid] = record
+
+    def get_record_from_uid(self, uid):
+        return self.records[uid]
 
     def has(self, selector: Selector):
         for value in self.records.values():

@@ -48,7 +48,7 @@ class DataContext:
             cache = get_cache()
 
         # XXX Avoid depending directly on backend
-        return list(cache.backend.recurse_dependencies(self.record))
+        return list(cache.recurse_dependencies(self.record))
 
     def gs_parameters(self):
         # XXX Some records do not depend on main, only calculate.
