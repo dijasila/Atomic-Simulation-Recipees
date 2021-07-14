@@ -173,8 +173,6 @@ class FileCacheBackend():
         if selector is None:
             return []
 
-        all_records = self._read_all_records()
-
         selected = self.select(selector)
 
         for record in selected:
@@ -296,6 +294,7 @@ class Cache:
 
     def __contains__(self, record: Record):
         return record in self.backend
+
 
 def default_make_selector(run_specification):
     selector = Selector()
