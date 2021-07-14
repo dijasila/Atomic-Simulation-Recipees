@@ -37,26 +37,6 @@ def get_row_from_folder(folder='.'):
     return row
 
 
-def get_webpanels_from_row(material, recipe):
-    """Return web-panels of recipe.
-
-    Parameters
-    ----------
-    material : :class:`asr.core.material.Material`
-        Material on which the webpanel should be evaluated
-    recipe : :class:`asr.core.ASRCommand`
-        Recipe instance
-
-    Returns
-    -------
-    panels : list
-        List of panels and contents.
-    """
-    from asr.database.app import create_key_descriptions
-    kd = create_key_descriptions()
-    return recipe.format_as('ase_webpanel', material, kd)
-
-
 def new_make_panel_figures(context, panels, uid):
     from ase.utils import workdir
     paths = []
