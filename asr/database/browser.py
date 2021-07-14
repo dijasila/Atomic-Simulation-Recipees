@@ -597,7 +597,6 @@ def layout(
         pool: Optional[multiprocessing.Pool] = None,
 ) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
-
     params = {'legend.fontsize': 'large',
               'axes.labelsize': 'large',
               'axes.titlesize': 'large',
