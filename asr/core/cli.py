@@ -783,7 +783,7 @@ def graph(draw=False, labels=False, saveto=None):
             print(node, '<-', graph[node])
 
 
-def make_panels(record):
+def make_panels(record, cache):
     from asr.core.material import (get_row_from_folder,
                                    new_make_panel_figures,
                                    make_panel_figures)
@@ -835,7 +835,7 @@ def results(selection, show):
             continue
 
         try:
-            panels = make_panels(record)
+            panels = make_panels(record, cache)
         except Exception as ex:
             raise BadResults(record) from ex
 
