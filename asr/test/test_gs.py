@@ -91,7 +91,7 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     record = main.get(atoms=atoms)
     result = record.result
     row = get_row_from_folder('.')
-    context = DataContext(row, record)
+    context = DataContext(row, record, row.cache)
     panels = result.format_as('webpanel2', context)
     paths = new_make_panel_figures(context, panels, uid=record.uid[:10])
 
