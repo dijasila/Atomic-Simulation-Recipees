@@ -725,12 +725,17 @@ def test_validation_mare():
     rerror = 0.1
     fit_e_k = e_k * (1.0 + rerror)
 
+    erange = e_k[0] - e_k[11]
+    indices = np.where(np.abs(e_k - np.min(e_k)) < erange)
+    mean_de = np.mean(np.abs(e_k[indices] - np.min(e_k[indices])))
+    expected_error = np.mean(np.abs((fit_e_k[indices] - e_k[indices])/mean_de))
+
     maes, mares = calc_errors(BT.cb, kpts_kv, e_k, fit_e_k, [e_k[0] - e_k[11]])
 
     assert len(maes) == 1
     assert len(mares) == 1
 
-    assert np.allclose(mares[0, 1], rerror)
+    assert np.allclose(mares[0, 1], expected_error)
 
 
 @pytest.mark.ci
@@ -752,7 +757,6 @@ def test_integration_cb():
 
     perform_fit(bf)
 
-
     class MockCalc:
         def get_bz_k_points(self):
             return kpoint_convert(cell_cv, ckpts_kv=kpts_kv)
@@ -770,15 +774,14 @@ def test_integration_cb():
 
         s_kvm = np.zeros((npts, 3, nbands))
 
-        return np.array([e_k * Ha]), None, s_kvm
+        return np.array([e_k * Ha]).T, None, s_kvm
 
     def spinindex():
         return 0
 
     calc_bandstructure(bf, None, createcalc, eigscalc, spinaxis, spinindex)
         
-        
-    calc_parabolicities(bandfits=[bf])
+    calc_parabolicities(bandfits=[bf], eranges=[(np.max(e_k) - np.min(e_k)) * Ha])
 
     assert np.allclose(bf.bs_data[0].maes[:, 1], 0.0)
     assert np.allclose(bf.bs_data[0].mares[:, 1], 0.0)
@@ -824,36 +827,15 @@ def test_integration_vb():
 
         s_kvm = np.zeros((npts, 3, nbands))
 
-        return np.array([e_k * Ha]), None, s_kvm
+        return np.array([e_k * Ha]).T, None, s_kvm
 
     def spinindex():
         return 0
 
     calc_bandstructure(bf, None, createcalc, eigscalc, spinaxis, spinindex)
-        
-        
-    calc_parabolicities([bf])
+
+    calc_parabolicities([bf], eranges=[(np.max(e_k) - np.min(e_k)) * Ha])
 
     assert np.allclose(bf.bs_data[0].maes[:, 1], 0.0)
     assert np.allclose(bf.bs_data[0].mares[:, 1], 0.0)
     
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -87,7 +87,7 @@ class EmassResult(ASRResult):
     cb_masses: List[List[float]]
     vb_masses: List[List[float]]
     cbm_masses: List[float]
-    vbm_masses: List[float]  # Masses for topmost valence band
+    vbm_masses: List[float]
 
     key_descriptions = dict(
         bandfit_dicts="List of BandFit objs serialized to dicts",
@@ -383,19 +383,6 @@ class BandFit:
             plt.plot(xk, bs.e_k, label="Energies")
             fit_e_k = get_model(self.fit_params, bs.kpts_kv * Bohr)
             plt.plot(xk, fit_e_k, label="Fit", linestyle="dashed")
-
-            # fit_e_k = get_model(self.fit_params, self.kpts_kv)
-            # plt.plot(self.eps_k * Ha, label="energ")
-            # plt.plot(fit_e_k, label="fit", linestyle="dashed")
-            # indices = np.abs(self.eps_k - np.max(self.eps_k)) < 5e-3/Ha
-            # sol, _, _ = do_2nd_lstsq(self.kpts_kv[indices], self.eps_k[indices])
-            # fit2 = get_model(sol, self.kpts_kv)
-            # plt.plot(fit2)
-            # indices = np.abs(self.eps_k - np.max(self.eps_k)) < 1e3
-            # sol, _, _ = do_2nd_lstsq(self.kpts_kv[indices], self.eps_k[indices])
-            # fit2 = get_model(sol, self.kpts_kv)
-            # plt.plot(fit2)
-            # break
         plt.legend()
         plt.show()
 
@@ -687,7 +674,8 @@ def calculate_bandstructures(fname: str = 'fitdata.npy',
         calc = vb_calc if bf.bt == BT.vb else cb_calc
         bf.bs_erange = bs_erange
         bf.bs_npoints = bs_npoints
-        calc_bandstructure(bf, calc)
+
+        calc_bandstructure(bf, calc, extra_bands, num_bands)
 
     result = convert_to_result(bandfits)
     return result
@@ -737,13 +725,13 @@ def calc_bandstructure(bf: BandFit, calc,
         # It is a little ugly to return k_kv here, but it seems to
         # be the best way
         calc_serial, k_kv = createcalc_fn(bf, direction, calc)
-
         k_kc = calc_serial.get_bz_k_points()
+
         theta, phi = spinaxis_fn()
         e_km, _, s_kvm = eigscalc_fn(calc_serial, soc=True, return_spin=True,
                                      theta=theta, phi=phi)
-
-        sz_km = s_kvm[:, spinindex_fn(), :]
+        spinindex = spinindex_fn()
+        sz_km = s_kvm[:, spinindex, :]
 
         bsd = make_bs_data(k_kc, k_kv, e_km[:, bf.band], sz_km[:, bf.band])
 
@@ -818,7 +806,7 @@ def calculate_parabolicities(eranges=[10e-3, 15e-3, 25e-3]) -> EmassResult:
     data = result.bandfit_dicts
     bandfits = [BandFit.from_dict(d) for d in data]
     bandfits = calc_parabolicities(bandfits,
-                                   eranges=eranges)  # TODO Update this to new MARE
+                                   eranges=eranges)
 
     result = convert_to_result(bandfits)
     return result
