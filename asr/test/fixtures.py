@@ -3,13 +3,13 @@ import numpy as np
 from ase.parallel import world, broadcast
 from asr.core import write_json
 from .materials import std_test_materials, BN
-import os
 import pytest
 import datetime
 from _pytest.tmpdir import _mk_tmp
 from pathlib import Path
-from asr.core import get_cache, initialize_root
+from asr.core import get_cache
 from asr.core.specification import construct_run_spec
+from asr.core.root import Repository
 from asr.core.record import Record
 from asr.core.dependencies import Dependencies
 
@@ -77,19 +77,18 @@ def asr_tmpdir(request, tmp_path_factory):
     A context manager that creates a temporary folder and changes
     the current working directory to it for isolated filesystem tests.
     """
+    from ase.utils import workdir
     if world.rank == 0:
         path = _mk_tmp(request, tmp_path_factory)
     else:
         path = None
     path = broadcast(path)
-    cwd = os.getcwd()
-    os.chdir(path)
-    if world.rank == 0:
-        initialize_root()
-    try:
+
+    with workdir(path):
+        if world.rank == 0:
+            Repository.initialize(path)
+
         yield path
-    finally:
-        os.chdir(cwd)
 
 
 def _get_webcontent(name='database.db'):

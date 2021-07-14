@@ -1,13 +1,12 @@
 """Implement cache functionality."""
 import os
-import pathlib
+from pathlib import Path
 import typing
 from .record import Record
 from .utils import write_file, only_master, link_file
 from .serialize import JSONSerializer
 from .selector import Selector
-from .filetype import find_external_files, ASRPath
-from .config import root_is_initialized
+from .filetype import find_external_files
 from .lock import Lock, lock
 
 
@@ -20,19 +19,16 @@ def get_external_file_path(dir, uid, name):
     return newpath
 
 
-class FileCacheBackend():
+class FileCacheBackend:
 
-    def __init__(
-            self,
-            cache_dir: str = 'records',
-            ext_file_dir: str = 'external_files',
-            serializer: JSONSerializer = JSONSerializer(),
-    ):
-        self.serializer = serializer
-        self.cache_dir = ASRPath(cache_dir)
-        self.ext_file_dir = ASRPath(ext_file_dir)
-        self.record_table_path = ASRPath('record-table.json')
-        self.lock = Lock(ASRPath('lock'), timeout=10)
+    def __init__(self, path: Path):
+        assert path.is_absolute()
+        self.path = path
+        self.cache_dir = path / 'records'
+        self.ext_file_dir = path / 'external_files'
+        self.record_table_path = path / 'record-table.json'
+        self.lock = Lock(path / 'lock', timeout=10)
+        self.serializer = JSONSerializer()
 
     def _record_to_path(self, run_record: Record):
         run_specification = run_record.run_specification
@@ -79,7 +75,8 @@ class FileCacheBackend():
 
     @property
     def initialized(self):
-        if not root_is_initialized():
+        from asr.core.root import Repository
+        if not Repository.root_is_initialized():
             return False
         return self.record_table_path.is_file()
 
@@ -97,11 +94,22 @@ class FileCacheBackend():
         serialized_object = self.serializer.serialize({})
         self._write_file(self.record_table_path, serialized_object)
 
+    def asr_path(self, path):
+        path = Path(path)
+        if path.is_absolute():
+            if self.path in path.parents:
+                return path
+            else:
+                raise RuntimeError(f'Path not under cache: {path}')
+
+        return self.path / path
+
     @lock
-    def add_uid_to_table(self, run_uid, path: ASRPath):
+    def add_uid_to_table(self, run_uid, path: Path):
         self.initialize()
         uid_table = self.read_uid_table()
-        uid_table[run_uid] = path
+        uid_table[run_uid] = self.asr_path(path)
+
         self._write_file(
             self.record_table_path,
             self.serializer.serialize(uid_table),
@@ -182,11 +190,11 @@ class FileCacheBackend():
             pth.unlink()
         return selected
 
-    def _write_file(self, path: ASRPath, text: str):
-        write_file(path, text)
+    def _write_file(self, path: Path, text: str):
+        write_file(self.asr_path(path), text)
 
-    def _read_file(self, path: ASRPath) -> str:
-        serialized_object = pathlib.Path(path).read_text()
+    def _read_file(self, path: Path) -> str:
+        serialized_object = self.asr_path(path).read_text()
         return serialized_object
 
 
@@ -356,6 +364,8 @@ def get_cache(backend: typing.Optional[str] = None) -> Cache:
         backend = config.backend
 
     if backend == 'filesystem':
-        return Cache(backend=FileCacheBackend())
+        from asr.core.root import Repository
+        repo = Repository.find_root()
+        return repo.cache
     elif backend == 'memory':
         return Cache(backend=MemoryBackend())

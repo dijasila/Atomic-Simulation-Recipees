@@ -26,7 +26,7 @@ from .migrate import (  # noqa
     RevisionHistory, Revision,
 )  # noqa
 from .comparators import comparators  # noqa
-from .root import find_root, initialize_root  # noqa
+
 from .resources import Resources  # noqa
 from .dependencies import Dependencies  # noqa
 from .metadata import Metadata  # noqa

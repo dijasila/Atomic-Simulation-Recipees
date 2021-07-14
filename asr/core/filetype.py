@@ -1,79 +1,12 @@
+from os import PathLike
 import typing
 from pathlib import Path
 from asr.core.utils import sha256sum
 from .utils import only_master, link_file
-from .root import find_root, ASR_DIR
-
-
-class RootPath:
-    """Pathlike object that measure paths relative to ASR root."""
-
-    def __init__(self, path: typing.Union[str, Path]):
-        path = Path(path)
-        assert not path.is_absolute()
-        self.path = path
-
-    def __fspath__(self):
-        return str(find_root() / self.path)
-
-    def unlink(self):
-        """Delete path."""
-        return Path(self).unlink()
-
-    def is_dir(self):
-        """Is path directory."""
-        return Path(self).is_dir()
-
-    def is_file(self):
-        """Is file."""
-        return Path(self).is_file()
-
-    def __repr__(self):
-        return self.__fspath__()
-
-    def __eq__(self, other):
-        if not isinstance(other, RootPath):
-            return False
-        return self.path == other.path
-
-    def __truediv__(self, other):
-        """Compose paths."""
-        cls = type(self)
-        if isinstance(other, (str, Path)):
-            return cls(self.path / other)
-        elif isinstance(other, cls):
-            return cls(self.path / other.path)
-        else:
-            return NotImplemented
-
-    def __rtruediv__(self, other):
-        """Compose paths."""
-        cls = type(self)
-        if isinstance(other, (str, Path)):
-            return (other / self.path)
-        elif isinstance(other, cls):
-            return cls(other.path / self.path)
-        else:
-            return NotImplemented
-
-        return self.__truediv__(other)
-
-
-class ASRPath(RootPath):
-
-    def __fspath__(self):
-        return str(find_root() / ASR_DIR / self.path)
-
-
-PathLike = typing.Union[Path, ASRPath, RootPath]
 
 
 class ExternalFile:
-
-    def __init__(
-            self,
-            path: PathLike,
-    ):
+    def __init__(self, path: PathLike):
         self.path = Path(path).absolute()
         self.hashes = {'sha256': sha256sum(path)}
 
