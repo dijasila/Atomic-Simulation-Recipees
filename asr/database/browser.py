@@ -594,7 +594,7 @@ def layout(
         row: AtomsRow,
         key_descriptions: Dict[str, Tuple[str, str, str]],
         prefix: Path,
-        pool: Optional[multiprocessing.Pool] = None
+        pool: Optional[multiprocessing.Pool] = None,
 ) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
     """Page layout."""
     params = {'legend.fontsize': 'large',
@@ -625,7 +625,7 @@ def _layout(row, key_descriptions, prefix, pool):
     # Locate all webpanels
 
     for record in row.records:
-        context = DataContext(row, record)
+        context = DataContext(row, record, row.cache)
 
         result = record.result
         if not isinstance(result, ASRResult):

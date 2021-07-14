@@ -17,9 +17,10 @@ class DataContext:
     # But not the records themselves -- they're not part of the database
     # and we would like it to be possible to generate the figures
     # from a database without additional info.
-    def __init__(self, row, record):
+    def __init__(self, row, record, cache):
         self.row = row
         self.record = record
+        self.cache = cache
 
     @lazyproperty
     def descriptions(self):
@@ -40,10 +41,8 @@ class DataContext:
 
     @lazymethod
     def _dependencies(self):
-        from asr.core.cache import get_cache
-        cache = get_cache()
         # XXX Avoid depending directly on backend
-        return list(cache.backend.recurse_dependencies(self.record))
+        return list(self.cache.recurse_dependencies(self.record))
 
     def gs_parameters(self):
         # XXX Some records do not depend on main, only calculate.
