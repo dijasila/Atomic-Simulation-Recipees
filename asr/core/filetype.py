@@ -3,7 +3,6 @@ import typing
 from pathlib import Path
 from asr.core.utils import sha256sum
 from .utils import only_master, link_file
-from .root import find_root, ASR_DIR
 
 
 class ExternalFile:
