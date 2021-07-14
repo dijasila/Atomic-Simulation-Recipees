@@ -3,11 +3,10 @@
 A material object closely mimics the behaviour of an ase.db.atomsrow.
 """
 from pathlib import Path
-from ase.db.row import AtomsRow
+from ase.utils import workdir
 
 
 def make_panel_figures(context, panels, uid):
-    from ase.utils import workdir
     paths = []
     for panel in panels:
         for plot_description in panel.get('plot_descriptions', []):
