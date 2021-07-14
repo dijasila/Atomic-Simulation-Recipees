@@ -784,7 +784,7 @@ def graph(draw=False, labels=False, saveto=None):
 
 
 def make_panels(record, cache):
-    from asr.core.material import new_make_panel_figures
+    from asr.core.material import make_panel_figures
     from asr.core.datacontext import DataContext
     result = record.result
     formats = result.get_formats()
@@ -793,7 +793,7 @@ def make_panels(record, cache):
         # XXX should not have row at all
         context = DataContext(None, record, cache)
         panels = result.format_as('webpanel2', context)
-        new_make_panel_figures(context, panels, uid=record.uid[:10])
+        make_panel_figures(context, panels, uid=record.uid[:10])
     else:
         panels = []
 
