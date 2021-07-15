@@ -1,9 +1,14 @@
 import typing
+from math import pi
 import numpy as np
 from pathlib import Path
+import ase.units as units
 from asr.core import (command, ASRResult, prepare_result,
                       read_json)
 from gpaw import restart
+from gpaw.typing import Array1D
+from gpaw.wavefunctions.base import WaveFunctions
+from gpaw.hyperfine import expand
 
 
 def get_atoms_close_to_center(center, row):
@@ -171,6 +176,46 @@ def main() -> Result:
         center=center,
         delta_E_hyp=ht_int_en,
         sc_time=sct)
+
+
+def fermi_contact_interaction_fractions(wfs: WaveFunctions) -> Array1D:
+    """Fractions of the defect electron being of the Fermi contact
+    interaction with the nuclei.
+
+    See::
+
+        Y. Tu, Z. Tang, X. G. Zhao, Y. Chen, Z. Q. Zhu, J. H. Chu,
+        and J. C. Fang: doi.org/10.1063/1.4818659
+    """
+    # Fine-structure constant: (~1/137)
+    alpha = 0.5 * units._mu0 * units._c * units._e**2 / units._hplanck
+    assert wfs.world.size == 1
+
+    for kpt_major, kpt_minor in wfs.kpt_qs:
+        nocc_major = (kpt_major.f_n > 0.5 * kpt_major.weight).sum()
+        nocc_minor = (kpt_minor.f_n > 0.5 * kpt_minor.weight).sum()
+        assert nocc_major > nocc_minor
+
+        dN_a = []
+        for a, P_ni in kpt_major.projections.items():
+            P_i = P_ni[nocc_major - 1]
+            D_ii = np.outer(P_i.conj(), P_i)
+            setup = wfs.setups[a]
+            D_jj = expand(D_ii.real, setup.l_j, l=0)[0]
+            phi_jg = np.array(setup.data.phi_jg)
+            rgd = setup.rgd
+            n_g = np.einsum('ab, ag, bg -> g',
+                            D_jj, phi_jg, phi_jg) / (4 * pi)**0.5
+
+            # n(r) = k * r^(-beta)
+            beta = 2 * (1 - (1 - (setup.Z * alpha)**2)**0.5)
+            k = n_g[1] * rgd.r_g[1]**beta
+            r_proton = 0.875e-5 / units.Bohr
+            r_nucleus = setup.Z**(1 / 3) * r_proton
+
+            dN_a.append(4 * pi / (3 - beta) * k * r_nucleus**(-beta))
+
+    return np.array(dN_a)
 
 
 def MHz_to_eV(MHz):
@@ -396,13 +441,17 @@ def calculate_hyperfine(atoms, calc):
     A_max = MHz_to_eV(A_max)
 
     # hyperfine interaction energy in eV
-    hf_int_en = 0.5 * A_max / N_nb * _mu_bohr * (0.01 * abundance) * nuclear_spin
-    print(f'Nuclear spin of {sym} is {nuclear_spin:.2f} with nuclear abbundance {abundance:.3f}.')
+    wfs = calc.wfs
+    hf_int_en = (0.5 * A_max * max(fermi_contact_interaction_fractions(wfs))
+                 * (0.01 * abundance) * nuclear_spin)
+    print(f'Nuclear spin of {sym} is {nuclear_spin:.2f} with '
+          f'nuclear abbundance {abundance:.3f}.')
     print(f'Hyperfine interaction energy: {hf_int_en:.2e} eV')
     sct = 0.5 * _hbar / hf_int_en * 1e3
     print(f'Spin coherence time: {sct:.2e} ms')
 
     return hyperfine_results, gyro_results, hf_int_en, sct
+
 
 if __name__ == '__main__':
     main.cli()
