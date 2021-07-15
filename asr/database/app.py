@@ -105,9 +105,10 @@ class Summary:
                                          for c in self.constraints)
 
 
-def setup_app():
+def setup_app(app):
+    route = app.flask.route
 
-    @app.route("/")
+    @route("/")
     def index():
         return render_template(
             "asr/database/templates/projects.html",
@@ -119,21 +120,23 @@ def setup_app():
             ),
         )
 
-    @app.route("/<project>/file/<uid>/<name>")
+    @route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
         assert project in projects
         path = tmpdir / f"{project}/{uid}-{name}"
         return send_file(str(path))
 
-    setup_data_endpoints()
+    setup_data_endpoints(app)
 
 
-def setup_data_endpoints():
+def setup_data_endpoints(app):
     """Set endpoints for downloading data."""
     from ase.io.jsonio import MyEncoder
     app.json_encoder = MyEncoder
 
-    @app.route('/<project_name>/row/<uid>/all_data')
+    route = app.flask.route
+
+    @route('/<project_name>/row/<uid>/all_data')
     def get_all_data(project_name: str, uid: str):
         """Show details for one database row."""
         project = projects[project_name]
@@ -147,7 +150,7 @@ def setup_data_endpoints():
             headers={'Content-Disposition':
                      f'attachment;filename={uid}_data.json'})
 
-    @app.route('/<project_name>/row/<uid>/data')
+    @route('/<project_name>/row/<uid>/data')
     def show_row_data(project_name: str, uid: str):
         """Show details for one database row."""
         project = projects[project_name]
@@ -159,7 +162,7 @@ def setup_data_endpoints():
         return render_template('asr/database/templates/data.html',
                                data=sorted_data, uid=uid, project_name=project_name)
 
-    @app.route('/<project_name>/row/<uid>/data/<filename>')
+    @route('/<project_name>/row/<uid>/data/<filename>')
     def get_row_data_file(project_name: str, uid: str, filename: str):
         """Show details for one database row."""
         project = projects[project_name]
@@ -178,7 +181,7 @@ def setup_data_endpoints():
         except (UnknownDataFormat, UndefinedError):
             return redirect(f'{filename}/json')
 
-    @app.route('/<project_name>/row/<uid>/data/<filename>/json')
+    @route('/<project_name>/row/<uid>/data/<filename>/json')
     def get_row_data_file_json(project_name: str, uid: str, filename: str):
         """Show details for one database row."""
         project = projects[project_name]
@@ -274,7 +277,7 @@ def _main(databases, host, test, extra_kvp_descriptions, pool):
     for database in databases:
         initialize_project(database, extra_kvp_descriptions, pool)
 
-    setup_app()
+    setup_app(dbapp)
 
     if test:
         import traceback
