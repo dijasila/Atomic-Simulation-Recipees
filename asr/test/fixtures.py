@@ -91,26 +91,25 @@ def asr_tmpdir(request, tmp_path_factory):
         yield path
 
 
-def _get_webcontent(name='database.db'):
+def _get_webcontent(dbname='database.db'):
     from asr.database.fromtree import main as fromtree
     # from asr.database.material_fingerprint import main as mf
 
     # mf()
     fromtree(recursive=True)
     content = ""
-    from asr.database import app as appmodule
+    from asr.database.app import ASRDBApp
 
     if world.rank == 0:
-        from asr.database.app import app, initialize_project, projects
-
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
-        appmodule.tmpdir = tmpdir
-        initialize_project(name)
+        dbapp = ASRDBApp(tmpdir)
+        dbapp.initialize_project(dbname)
+        flask = dbapp.flask
 
-        app.testing = True
-        with app.test_client() as c:
-            project = projects["database.db"]
+        flask.testing = True
+        with flask.test_client() as c:
+            project = dbapp.projects["database.db"]
             db = project["database"]
             uid_key = project["uid_key"]
             row = db.get(id=1)
