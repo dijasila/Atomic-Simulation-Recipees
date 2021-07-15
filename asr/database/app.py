@@ -4,6 +4,7 @@ import multiprocessing
 import tempfile
 from pathlib import Path
 import warnings
+from contextlib import contextmanager
 
 from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json as flask_json
@@ -70,19 +71,21 @@ class ASRDBApp(DBApp):
             ),
         }
 
+
+@contextmanager
 def new_dbapp():
-    tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))
-    dbapp = ASRDBApp(tmpdir)
+    with tempfile.TemporaryDirectory(prefix='asr-app-') as tmpdir:
+        dbapp = ASRDBApp(Path(tmpdir))
 
-    @dbapp.flask.template_filter()
-    def asr_sort_key_descriptions(value):
-        """Sort column drop down menu."""
-        def sort_func(item):
-            return item[1][1]
+        @dbapp.flask.template_filter()
+        def asr_sort_key_descriptions(value):
+            """Sort column drop down menu."""
+            def sort_func(item):
+                return item[1][1]
 
-        return sorted(value.items(), key=sort_func)
+            return sorted(value.items(), key=sort_func)
 
-    return dbapp
+        yield dbapp
 
 
 def create_key_descriptions(db=None, extra_kvp_descriptions=None):
@@ -192,13 +195,14 @@ def setup_data_endpoints(dbapp):
     """Set endpoints for downloading data."""
     from ase.io.jsonio import MyEncoder
     dbapp.flask.json_encoder = MyEncoder
+    projects = dbapp.projects
 
     route = dbapp.flask.route
 
     @route('/<project_name>/row/<uid>/all_data')
     def get_all_data(project_name: str, uid: str):
         """Show details for one database row."""
-        project = dbapp.projects[project_name]
+        project = projects[project_name]
         uid_key = project['uid_key']
         row = project['database'].get('{uid_key}={uid}'
                                       .format(uid_key=uid_key, uid=uid))
@@ -273,12 +277,12 @@ def main(databases: List[str], host: str = "0.0.0.0",
     # We could use more cores, but they tend to fail to close
     # correctly on KeyboardInterrupt.
     pool = multiprocessing.Pool(1)
-    dbapp = new_dbapp()
-    try:
-        _main(dbapp, databases, host, test, extra_kvp_descriptions, pool)
-    finally:
-        pool.close()
-        pool.join()
+    with new_dbapp() as dbapp:
+        try:
+            _main(dbapp, databases, host, test, extra_kvp_descriptions, pool)
+        finally:
+            pool.close()
+            pool.join()
 
 
 def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
