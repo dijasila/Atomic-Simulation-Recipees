@@ -270,22 +270,23 @@ def main(databases: List[str], host: str = "0.0.0.0",
     # correctly on KeyboardInterrupt.
     pool = multiprocessing.Pool(1)
     try:
-        _main(databases, host, test, extra_kvp_descriptions, pool)
+        _main(dbapp, databases, host, test, extra_kvp_descriptions, pool)
     finally:
         pool.close()
         pool.join()
 
 
-def _main(databases, host, test, extra_kvp_descriptions, pool):
+def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
     for database in databases:
         initialize_project(database, extra_kvp_descriptions, pool)
 
     setup_app(dbapp)
+    flask = dbapp.flask
 
     if test:
         import traceback
-        app.testing = True
-        with app.test_client() as c:
+        flask.testing = True
+        with flask.test_client() as c:
             for name in projects:
                 print(f'Testing {name}')
                 c.get(f'/{name}/').data.decode()
@@ -320,7 +321,7 @@ def _main(databases, host, test, extra_kvp_descriptions, pool):
                             fid.write(exc)
                             print(exc)
     else:
-        app.run(host=host, debug=True)
+        flask.run(host=host, debug=True)
 
 
 if __name__ == "__main__":
