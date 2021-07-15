@@ -126,6 +126,7 @@ coverage:
   stage: coverage
   script:
     - tox -e coverage-report
+  coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
   artifacts:
     paths:
       - .tox/htmlcov/
