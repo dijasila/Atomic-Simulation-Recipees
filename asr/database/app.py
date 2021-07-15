@@ -27,6 +27,48 @@ class ASRDBApp(DBApp):
         template_path = Path(asr.__file__).parent.parent
         self.flask.jinja_loader.searchpath.append(str(template_path))
 
+    def initialize_project(self, database, extra_kvp_descriptions=None,
+                           pool=None):
+        from asr.database import browser
+        from functools import partial
+
+        db = connect(database, serial=True)
+        metadata = db.metadata
+        name = metadata.get("name", Path(database).name)
+
+        (self.tmpdir / name).mkdir()
+
+        def layout(*args, **kwargs):
+            return browser.layout(*args, pool=pool, **kwargs)
+
+        metadata = db.metadata
+        self.projects[name] = {
+            "name": name,
+            "title": metadata.get("title", name),
+            "key_descriptions": create_key_descriptions(
+                db, extra_kvp_descriptions),
+            "uid_key": metadata.get("uid", "uid"),
+            "database": db,
+            "handle_query_function": args2query,
+            "row_to_dict_function": partial(
+                row_to_dict, layout_function=layout, tmpdir=self.tmpdir,
+            ),
+            "default_columns": metadata.get("default_columns",
+                                            ["formula", "uid"]),
+            "table_template": str(
+                metadata.get(
+                    "table_template", "asr/database/templates/table.html",
+                )
+            ),
+            "search_template": str(
+                metadata.get(
+                    "search_template", "asr/database/templates/search.html"
+                )
+            ),
+            "row_template": str(
+                metadata.get("row_template", "asr/database/templates/row.html")
+            ),
+        }
 
 def new_dbapp():
     tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))
@@ -208,7 +250,7 @@ def setup_data_endpoints(dbapp):
         return jsonify(row.data.get(filename))
 
 
-def handle_query(args):
+def args2query(args):
     return args["query"]
 
 
@@ -220,50 +262,6 @@ def row_to_dict(row, project, layout_function, tmpdir):
                 key_descriptions=project['key_descriptions'],
                 prefix=str(tmpdir / f'{project_name}/{uid}-'))
     return s
-
-
-def initialize_project(dbapp, database, extra_kvp_descriptions=None,
-                       pool=None):
-    from asr.database import browser
-    from functools import partial
-
-    db = connect(database, serial=True)
-    metadata = db.metadata
-    name = metadata.get("name", Path(database).name)
-
-    # Make temporary directory
-    (dbapp.tmpdir / name).mkdir()
-
-    def layout(*args, **kwargs):
-        return browser.layout(*args, pool=pool, **kwargs)
-
-    metadata = db.metadata
-    dbapp.projects[name] = {
-        "name": name,
-        "title": metadata.get("title", name),
-        "key_descriptions": create_key_descriptions(db,
-                                                    extra_kvp_descriptions),
-        "uid_key": metadata.get("uid", "uid"),
-        "database": db,
-        "handle_query_function": handle_query,
-        "row_to_dict_function": partial(
-            row_to_dict, layout_function=layout, tmpdir=dbapp.tmpdir,
-        ),
-        "default_columns": metadata.get("default_columns", ["formula", "uid"]),
-        "table_template": str(
-            metadata.get(
-                "table_template", "asr/database/templates/table.html",
-            )
-        ),
-        "search_template": str(
-            metadata.get(
-                "search_template", "asr/database/templates/search.html"
-            )
-        ),
-        "row_template": str(
-            metadata.get("row_template", "asr/database/templates/row.html")
-        ),
-    }
 
 
 def main(databases: List[str], host: str = "0.0.0.0",
@@ -286,7 +284,7 @@ def main(databases: List[str], host: str = "0.0.0.0",
 def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
     projects = dbapp.projects
     for database in databases:
-        initialize_project(dbapp, database, extra_kvp_descriptions, pool)
+        dbapp.initialize_project(database, extra_kvp_descriptions, pool)
 
     setup_app(dbapp)
     flask = dbapp.flask
