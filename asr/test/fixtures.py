@@ -101,16 +101,18 @@ def _get_webcontent(name='database.db'):
     from asr.database import app as appmodule
 
     if world.rank == 0:
-        from asr.database.app import app, initialize_project, projects
+        from asr.database.app import initialize_project
+        dbapp = appmodule.dbapp
 
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
-        appmodule.tmpdir = tmpdir
-        initialize_project(name)
+        dbapp.tmpdir = tmpdir
+        initialize_project(dbapp, name)
+        flask = dbapp.flask
 
-        app.testing = True
-        with app.test_client() as c:
-            project = projects["database.db"]
+        flask.testing = True
+        with flask.test_client() as c:
+            project = dbapp.projects["database.db"]
             db = project["database"]
             uid_key = project["uid_key"]
             row = db.get(id=1)

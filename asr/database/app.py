@@ -19,14 +19,24 @@ import asr
 from asr.core import ASRResult, decode_object, UnknownDataFormat
 
 
-dbapp = DBApp()
+class ASRDBApp(DBApp):
+    def __init__(self, tmpdir):
+        self.tmpdir = tmpdir  # used to cache png-files
+        super().__init__()
+
+        template_path = Path(asr.__file__).parent.parent
+        self.flask.jinja_loader.searchpath.append(str(template_path))
+
+
+def new_dbapp():
+    tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))
+    dbapp = ASRDBApp(tmpdir)
+    return dbapp
+
+
+dbapp = new_dbapp()
 app = dbapp.flask
 projects = dbapp.projects
-
-tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
-
-path = Path(asr.__file__).parent.parent
-app.jinja_loader.searchpath.append(str(path))
 
 
 def create_key_descriptions(db=None, extra_kvp_descriptions=None):
@@ -108,8 +118,8 @@ class Summary:
         self.constraints = constraints
 
 
-def setup_app(app):
-    route = app.flask.route
+def setup_app(dbapp):
+    route = dbapp.flask.route
 
     @route("/")
     def index():
@@ -126,10 +136,10 @@ def setup_app(app):
     @route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
         assert project in projects
-        path = tmpdir / f"{project}/{uid}-{name}"
+        path = dbapp.tmpdir / f"{project}/{uid}-{name}"
         return send_file(str(path))
 
-    setup_data_endpoints(app)
+    setup_data_endpoints(dbapp)
 
 
 def setup_data_endpoints(app):
@@ -217,7 +227,8 @@ def row_to_dict(row, project, layout_function, tmpdir):
     return s
 
 
-def initialize_project(database, extra_kvp_descriptions=None, pool=None):
+def initialize_project(dbapp, database, extra_kvp_descriptions=None,
+                       pool=None):
     from asr.database import browser
     from functools import partial
 
@@ -226,13 +237,13 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
     name = metadata.get("name", Path(database).name)
 
     # Make temporary directory
-    (tmpdir / name).mkdir()
+    (dbapp.tmpdir / name).mkdir()
 
     def layout(*args, **kwargs):
         return browser.layout(*args, pool=pool, **kwargs)
 
     metadata = db.metadata
-    projects[name] = {
+    dbapp.projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
         "key_descriptions": create_key_descriptions(db,
@@ -241,7 +252,7 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
         "database": db,
         "handle_query_function": handle_query,
         "row_to_dict_function": partial(
-            row_to_dict, layout_function=layout, tmpdir=tmpdir,
+            row_to_dict, layout_function=layout, tmpdir=dbapp.tmpdir,
         ),
         "default_columns": metadata.get("default_columns", ["formula", "uid"]),
         "table_template": str(
@@ -277,8 +288,9 @@ def main(databases: List[str], host: str = "0.0.0.0",
 
 
 def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
+    projects = dbapp.projects
     for database in databases:
-        initialize_project(database, extra_kvp_descriptions, pool)
+        initialize_project(dbapp, database, extra_kvp_descriptions, pool)
 
     setup_app(dbapp)
     flask = dbapp.flask
