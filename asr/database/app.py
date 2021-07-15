@@ -43,9 +43,6 @@ def new_dbapp():
     return dbapp
 
 
-dbapp = new_dbapp()
-
-
 def create_key_descriptions(db=None, extra_kvp_descriptions=None):
     from asr.database.key_descriptions import key_descriptions
     from asr.database.fromtree import parse_key_descriptions
@@ -278,6 +275,7 @@ def main(databases: List[str], host: str = "0.0.0.0",
     # We could use more cores, but they tend to fail to close
     # correctly on KeyboardInterrupt.
     pool = multiprocessing.Pool(1)
+    dbapp = new_dbapp()
     try:
         _main(dbapp, databases, host, test, extra_kvp_descriptions, pool)
     finally:

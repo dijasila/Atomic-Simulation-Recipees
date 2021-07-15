@@ -99,14 +99,14 @@ def _get_webcontent(name='database.db'):
     fromtree(recursive=True)
     content = ""
     from asr.database import app as appmodule
+    from asr.database.app import ASRDBApp
 
     if world.rank == 0:
         from asr.database.app import initialize_project
-        dbapp = appmodule.dbapp
 
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
-        dbapp.tmpdir = tmpdir
+        dbapp = ASRDBApp(tmpdir)
         initialize_project(dbapp, name)
         flask = dbapp.flask
 
