@@ -56,8 +56,3 @@ class WebPanel:
     def __repr__(self):  # noqa
         return (f'WebPanel(title="{self.title}",'
                 f'columns={self.columns},sort={self.sort},...)')
-
-    def render(self) -> str:
-        from jinja2 import Template
-        path = Path(__file__).parent / 'templates/webpanel.html'
-        return Template(path.read_text()).render(webpanel=self)
