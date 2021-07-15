@@ -6,7 +6,7 @@ from pathlib import Path
 import warnings
 
 from flask import render_template, send_file, Response, jsonify, redirect
-import flask.json
+import flask.json as flask_json
 from jinja2 import UndefinedError
 from ase.db import connect
 from ase import Atoms
@@ -31,12 +31,19 @@ class ASRDBApp(DBApp):
 def new_dbapp():
     tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))
     dbapp = ASRDBApp(tmpdir)
+
+    @dbapp.flask.template_filter()
+    def asr_sort_key_descriptions(value):
+        """Sort column drop down menu."""
+        def sort_func(item):
+            return item[1][1]
+
+        return sorted(value.items(), key=sort_func)
+
     return dbapp
 
 
 dbapp = new_dbapp()
-app = dbapp.flask
-projects = dbapp.projects
 
 
 def create_key_descriptions(db=None, extra_kvp_descriptions=None):
@@ -128,35 +135,35 @@ def setup_app(dbapp):
             projects=sorted(
                 [
                     (name, proj["title"], proj["database"].count())
-                    for name, proj in projects.items()
+                    for name, proj in dbapp.projects.items()
                 ]
             ),
         )
 
     @route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
-        assert project in projects
+        assert project in dbapp.projects
         path = dbapp.tmpdir / f"{project}/{uid}-{name}"
         return send_file(str(path))
 
     setup_data_endpoints(dbapp)
 
 
-def setup_data_endpoints(app):
+def setup_data_endpoints(dbapp):
     """Set endpoints for downloading data."""
     from ase.io.jsonio import MyEncoder
-    app.json_encoder = MyEncoder
+    dbapp.flask.json_encoder = MyEncoder
 
-    route = app.flask.route
+    route = dbapp.flask.route
 
     @route('/<project_name>/row/<uid>/all_data')
     def get_all_data(project_name: str, uid: str):
         """Show details for one database row."""
-        project = projects[project_name]
+        project = dbapp.projects[project_name]
         uid_key = project['uid_key']
         row = project['database'].get('{uid_key}={uid}'
                                       .format(uid_key=uid_key, uid=uid))
-        content = flask.json.dumps(row.data)
+        content = flask_json.dumps(row.data)
         return Response(
             content,
             mimetype='application/json',
@@ -202,15 +209,6 @@ def setup_data_endpoints(app):
         row = project['database'].get('{uid_key}={uid}'
                                       .format(uid_key=uid_key, uid=uid))
         return jsonify(row.data.get(filename))
-
-
-@app.template_filter()
-def asr_sort_key_descriptions(value):
-    """Sort column drop down menu."""
-    def sort_func(item):
-        return item[1][1]
-
-    return sorted(value.items(), key=sort_func)
 
 
 def handle_query(args):
