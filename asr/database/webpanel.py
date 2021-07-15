@@ -1,5 +1,5 @@
-from pathlib import Path
 from collections.abc import Mapping
+
 
 class WebPanel(Mapping):
     def __init__(self, title, columns=None, plot_descriptions=None, sort=99,
