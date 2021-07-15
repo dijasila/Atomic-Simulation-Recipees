@@ -51,7 +51,7 @@ def create_key_descriptions(db=None, extra_kvp_descriptions=None):
                            'or python -m asr.database.set_metadata DATABASEFILE.')
         keys = metadata.get('keys')
     else:
-        keys = list(flatten.keys())
+        keys = list(flatten)
 
     kd = {}
     for key in keys:
@@ -81,28 +81,31 @@ class Summary:
         self.lengths = par[:3]
         self.angles = par[3:]
 
-        self.stress = row.get('stress')
-        if self.stress is not None:
-            self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
+        stress = row.get('stress')
+        if stress is not None:
+            stress = ', '.join('{0:.3f}'.format(s) for s in stress)
+        self.stress = stress
 
-        self.formula = Formula(
-            Formula(row.formula).format('metal')).format('html')
+        self.formula = Formula(row.formula).convert('metal').format('html')
 
         kd = key_descriptions
         self.layout = create_layout(row, kd, prefix)
 
-        self.dipole = row.get('dipole')
-        if self.dipole is not None:
-            self.dipole = ', '.join('{0:.3f}'.format(d) for d in self.dipole)
+        dipole = row.get('dipole')
+        if dipole is not None:
+            dipole = ', '.join('{0:.3f}'.format(d) for d in dipole)
+        self.dipole = dipole
 
-        self.data = row.get('data')
-        if self.data:
-            self.data = ', '.join(self.data.keys())
+        data = row.get('data')
+        if data:
+            data = ', '.join(data)
+        self.data = data
 
-        self.constraints = row.get('constraints')
-        if self.constraints:
-            self.constraints = ', '.join(c.__class__.__name__
-                                         for c in self.constraints)
+        constraints = row.get('constraints')
+        if constraints:
+            constraints = ', '.join(c.__class__.__name__
+                                    for c in self.constraints)
+        self.constraints = constraints
 
 
 def setup_app(app):
