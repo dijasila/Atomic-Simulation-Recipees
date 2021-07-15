@@ -46,7 +46,7 @@ range of 25 meV.
 )
 
 
-def test_plot(row, *args):
+def emass_plots(row, *args):
     import matplotlib.pyplot as plt
     results = row.data.get('results-asr.newemasses.json')
     bandfits = [BandFit.from_dict(dct) for dct in results.bandfit_dicts]
@@ -63,12 +63,12 @@ def test_plot(row, *args):
     sdir = row.get('spin_axis', 'z')
     ref_label = r'E_\mathrm{vac}' if 'evac' in row else r'E_\mathrm{F}'
 
-    fig, axes = plt.subplots(nrows=2, ncols=ndim, figsize=(6 + 6/8, 5))
-    for ax, bf in zip(axes, [vbm, cbm]):
-        plot_bf(fig, ax, bf, cell_cv, spin_degenerate, sdir, ref_label)
-    plt.tight_layout()
-    plt.savefig("test.png")
-    # plt.close()
+    for bf in [vbm, cbm]:
+        fig, axes = plt.subplots(nrows=ndim, ncols=1, figsize=(6 + 6/8, 3))
+        plot_bf(fig, axes, bf, cell_cv, spin_degenerate, sdir, ref_label)
+        plt.tight_layout()
+        plt.savefig(f"emasses_{bf.bt.value}.png")
+        plt.close()
 
 
 def plot_bf(fig, ax, bf, cell_cv, spin_degenerate, sdir, ref_label):
@@ -120,12 +120,25 @@ def plot_bf(fig, ax, bf, cell_cv, spin_degenerate, sdir, ref_label):
 
 def webpanel(result, row, key_descriptions):
     from asr.utils.hacks import gs_xcname_from_row
+    from asr.database.browser import fig as asrfig
     xcname = gs_xcname_from_row(row)
+    vbname = f'emasses_{BT.vb.value}.png'
+    cbname = f'emasses_{BT.cb.value}.png'
+    columns = [[asrfig(vbname)], [asrfig(cbname)]]
+    table = {'type': 'table', 'header': ['Test table', 'Value', 'MARE (25 meV)'],
+             'rows': [('Direction 1', '0.2m<sub>e</sub>', 'Not')]}
+    columns[0].append(table)
+    columns[1].append(table)
     panel = {'title': describe_entry(f'New Effective Masses ({xcname})',
                                      panel_description),
+             'columns': columns,
              'plot_descriptions':
-             [{'function': test_plot,
-               'filenames': ['test.png']}]}
+             [{'function': emass_plots,
+               'filenames': [vbname, cbname]}]}
+
+    print(panel["columns"][0])
+    print("--------------------")
+    print(panel["columns"][1])
 
     return [panel]
 
@@ -148,6 +161,24 @@ class EmassResult(ASRResult):
         vbm_masses="Masses for topmost valence band")
 
     formats =  {'ase_webpanel': webpanel}
+
+
+@prepare_result
+class PartialEmassResult(ASRResult):
+    bandfit_dicts: List[dict]
+    cb_masses: List[List[float]]
+    vb_masses: List[List[float]]
+    cbm_masses: List[float]
+    vbm_masses: List[float]
+
+    key_descriptions = dict(
+        bandfit_dicts="List of BandFit objs serialized to dicts",
+        cb_masses=" ".join(["List of lists of masses",
+                            "cb_masses[i][m] is mass for band i in direction m"]),
+        vb_masses=" ".join(["List of lists of masses",
+                            "vb_masses[i][m] is mass for band i in direction m"]),
+        cbm_masses="Masses for bottommost conduction band",
+        vbm_masses="Masses for topmost valence band")
 
 
 def check_pbc(gpw):
@@ -459,7 +490,7 @@ def get_name(soc, bt):
                        'asr.magnetic_anisotropy'])
 @option('--gpwfilename', type=str, help='GS fname')
 @option('--delta', type=float, help='delta')
-def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1) -> EmassResult:
+def calculate_fits(gpwfilename: str = 'gs.gpw', delta: float = 0.1):
     # Identify relevant bands and BE locations
     # Separate data out into BandFit objects
     # For each band, perform fitting procedure
@@ -669,17 +700,23 @@ def perform_fit(bandfit, fitting_fnc=polynomial_fit,
             f'Could not construct any good fit for band {band}. Got masses: {masses}')
 
 
-def convert_to_result(bandfits):
+def convert_to_result(bandfits, final=False):
     """Convert a list of bandfits into intermediate result."""
     cbm_bf = min([bf for bf in bandfits if bf.bt == BT.cb], key=lambda x: x.band)
     vbm_bf = max([bf for bf in bandfits if bf.bt == BT.vb], key=lambda x: x.band)
-    result = EmassResult.fromdata(bandfit_dicts=[bf.to_dict() for bf in bandfits],
-                                  cb_masses=[list(bf.mass_n)
-                                             for bf in bandfits if bf.bt == BT.cb],
-                                  vb_masses=[list(bf.mass_n)
-                                             for bf in bandfits if bf.bt == BT.vb],
-                                  cbm_masses=list(cbm_bf.mass_n),
-                                  vbm_masses=list(vbm_bf.mass_n))
+    
+    if final:
+        result_class = EmassResult
+    else:
+        result_class = PartialEmassResult
+        
+    result = result_class.fromdata(bandfit_dicts=[bf.to_dict() for bf in bandfits],
+                                   cb_masses=[list(bf.mass_n)
+                                              for bf in bandfits if bf.bt == BT.cb],
+                                   vb_masses=[list(bf.mass_n)
+                                              for bf in bandfits if bf.bt == BT.vb],
+                                   cbm_masses=list(cbm_bf.mass_n),
+                                   vbm_masses=list(vbm_bf.mass_n))
 
     return result
 
@@ -701,7 +738,7 @@ def convert_to_result(bandfits):
 @option('--bs_npoints', type=int, help='npts')
 def calculate_bandstructures(fname: str = 'fitdata.npy',
                              bs_erange: float = 250e-3 / Ha,
-                             bs_npoints: int = 91) -> EmassResult:
+                             bs_npoints: int = 91):
     # In new ASR this should just be a call to asr.emasses@calculate_fits
     # Or take bandfits as input?
     result = read_json('results-asr.newemasses@calculate_fits.json')
@@ -724,7 +761,7 @@ def calculate_bandstructures(fname: str = 'fitdata.npy',
         bf.bs_erange = bs_erange
         bf.bs_npoints = bs_npoints
 
-        calc_bandstructure(bf, calc, extra_bands, num_bands)
+        calc_bandstructure(bf, calc)
 
     result = convert_to_result(bandfits)
     return result
@@ -834,30 +871,29 @@ def get_kpts_for_bandstructure(bf, direction, bs_erange, bs_npoints, cell_cv, pb
     return k_kc, k_kv
 
 
-@command(module='asr.newemasses',
+@command('asr.newemasses',
          requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
                    'gs.gpw', 'results-asr.structureinfo.json',
                    'results-asr.gs.json',
                    'results-asr.magnetic_anisotropy.json',
                    'results-asr.newemasses@calculate_fits.json',
                    'results-asr.newemasses@calculate_bandstructures.json'],
-         dependencies=['asr.newemasses@calculate_bandstructures',
+         dependencies=['asr.newemasses@refine',
+                       'asr.newemasses@calculate_bandstructures',
                        'asr.newemasses@calculate_fits',
-                       'asr.newemasses@refine',
                        'asr.gs@calculate',
                        'asr.gs',
                        'asr.structureinfo',
                        'asr.magnetic_anisotropy'])
-@option('--eranges', type=List[float], help='Eranges')
-def calculate_parabolicities(eranges=[10e-3, 15e-3, 25e-3]) -> EmassResult:
-
+def main() -> EmassResult:
+    eranges = [10e-3, 15e-3, 25e-3]
     result = read_json('results-asr.newemasses@calculate_bandstructures.json')
     data = result.bandfit_dicts
     bandfits = [BandFit.from_dict(d) for d in data]
     bandfits = calc_parabolicities(bandfits,
                                    eranges=eranges)
 
-    result = convert_to_result(bandfits)
+    result = convert_to_result(bandfits, final=True)
     return result
 
 
@@ -924,35 +960,36 @@ def get_model(fit_params, kpts_kv):
     return A_kp.dot(fit_params) * Ha
 
 
-@command('asr.newemasses',
-         requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
-                   'gs.gpw', 'results-asr.structureinfo.json',
-                   'results-asr.gs.json',
-                   'results-asr.magnetic_anisotropy.json',
-                   'results-asr.newemasses@calculate_fits.json',
-                   'results-asr.newemasses@calculate_bandstructures.json',
-                   'results-asr.newemasses@calculate_parabolicities.json'],
-         dependencies=['asr.newemasses@refine',
-                       'asr.newemasses@calculate_parabolicities',
-                       'asr.newemasses@calculate_bandstructures',
-                       'asr.newemasses@calculate_fits',
-                       'asr.gs@calculate',
-                       'asr.gs',
-                       'asr.structureinfo',
-                       'asr.magnetic_anisotropy'])
-def main():
-    # refine()
-    # subresults = calculate_fits()
-    # subresults = calculate_bandstructures(subresults)
-    # subresults = calculate_parabolicities(subresults)
+# @command('asr.newemasses',
+#          requires=['em_circle_vb_soc.gpw', 'em_circle_cb_soc.gpw',
+#                    'gs.gpw', 'results-asr.structureinfo.json',
+#                    'results-asr.gs.json',
+#                    'results-asr.magnetic_anisotropy.json',
+#                    'results-asr.newemasses@calculate_fits.json',
+#                    'results-asr.newemasses@calculate_bandstructures.json',
+#                    'results-asr.newemasses@calculate_parabolicities.json'],
+#          dependencies=['asr.newemasses@refine',
+#                        'asr.newemasses@calculate_parabolicities',
+#                        'asr.newemasses@calculate_bandstructures',
+#                        'asr.newemasses@calculate_fits',
+#                        'asr.gs@calculate',
+#                        'asr.gs',
+#                        'asr.structureinfo',
+#                        'asr.magnetic_anisotropy'])
+# def main() -> EmassResult:
+#     # refine()
+#     # subresults = calculate_fits()
+#     # subresults = calculate_bandstructures(subresults)
+#     # subresults = calculate_parabolicities(subresults)
 
-    # result = make_asrresult(subresults)
+#     # result = make_asrresult(subresults)
 
-    # return result
-    results = read_json('results-asr.newemasses@calculate_parabolicities.json')
-    return results
+#     # return result
+#     results = read_json('results-asr.newemasses@calculate_parabolicities.json')
+#     return results
 
 
 
 if __name__ == "__main__":
+    print("HWIDJAOWIJ")
     main.cli()
