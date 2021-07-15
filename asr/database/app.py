@@ -331,7 +331,3 @@ def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
                             print(exc)
     else:
         flask.run(host=host, debug=True)
-
-
-if __name__ == "__main__":
-    main.cli()
