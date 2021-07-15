@@ -28,6 +28,9 @@ class ASRDBApp(DBApp):
         template_path = Path(asr.__file__).parent.parent
         self.flask.jinja_loader.searchpath.append(str(template_path))
 
+        self.setup_app()
+        self.setup_data_endpoints()
+
     def initialize_project(self, database, extra_kvp_descriptions=None,
                            pool=None):
         from asr.database import browser
@@ -70,6 +73,90 @@ class ASRDBApp(DBApp):
                 metadata.get("row_template", "asr/database/templates/row.html")
             ),
         }
+
+    def setup_app(self):
+        route = self.flask.route
+
+        @route("/")
+        def index():
+            return render_template(
+                "asr/database/templates/projects.html",
+                projects=sorted(
+                    [
+                        (name, proj["title"], proj["database"].count())
+                        for name, proj in self.projects.items()
+                    ]
+                ),
+            )
+
+        @route("/<project>/file/<uid>/<name>")
+        def file(project, uid, name):
+            assert project in self.projects
+            path = self.tmpdir / f"{project}/{uid}-{name}"
+            return send_file(str(path))
+
+    def setup_data_endpoints(self):
+        """Set endpoints for downloading data."""
+        from ase.io.jsonio import MyEncoder
+        self.flask.json_encoder = MyEncoder
+        projects = self.projects
+
+        route = self.flask.route
+
+        @route('/<project_name>/row/<uid>/all_data')
+        def get_all_data(project_name: str, uid: str):
+            """Show details for one database row."""
+            project = projects[project_name]
+            uid_key = project['uid_key']
+            row = project['database'].get('{uid_key}={uid}'
+                                          .format(uid_key=uid_key, uid=uid))
+            content = flask_json.dumps(row.data)
+            return Response(
+                content,
+                mimetype='application/json',
+                headers={'Content-Disposition':
+                         f'attachment;filename={uid}_data.json'})
+
+        @route('/<project_name>/row/<uid>/data')
+        def show_row_data(project_name: str, uid: str):
+            """Show details for one database row."""
+            project = projects[project_name]
+            uid_key = project['uid_key']
+            row = project['database'].get('{uid_key}={uid}'
+                                          .format(uid_key=uid_key, uid=uid))
+            sorted_data = {key: value for key, value
+                           in sorted(row.data.items(), key=lambda x: x[0])}
+            return render_template(
+                'asr/database/templates/data.html',
+                data=sorted_data, uid=uid, project_name=project_name)
+
+        @route('/<project_name>/row/<uid>/data/<filename>')
+        def get_row_data_file(project_name: str, uid: str, filename: str):
+            """Show details for one database row."""
+            project = projects[project_name]
+            uid_key = project['uid_key']
+            row = project['database'].get('{uid_key}={uid}'
+                                          .format(uid_key=uid_key, uid=uid))
+            try:
+                result = decode_object(row.data[filename])
+                return render_template(
+                    'asr/database/templates/result_object.html',
+                    result=result,
+                    filename=filename,
+                    project_name=project_name,
+                    uid=uid,
+                )
+            except (UnknownDataFormat, UndefinedError):
+                return redirect(f'{filename}/json')
+
+        @route('/<project_name>/row/<uid>/data/<filename>/json')
+        def get_row_data_file_json(project_name: str, uid: str, filename: str):
+            """Show details for one database row."""
+            project = projects[project_name]
+            uid_key = project['uid_key']
+            row = project['database'].get('{uid_key}={uid}'
+                                          .format(uid_key=uid_key, uid=uid))
+            return jsonify(row.data.get(filename))
 
 
 @contextmanager
@@ -167,93 +254,6 @@ class Summary:
         self.constraints = constraints
 
 
-def setup_app(dbapp):
-    route = dbapp.flask.route
-
-    @route("/")
-    def index():
-        return render_template(
-            "asr/database/templates/projects.html",
-            projects=sorted(
-                [
-                    (name, proj["title"], proj["database"].count())
-                    for name, proj in dbapp.projects.items()
-                ]
-            ),
-        )
-
-    @route("/<project>/file/<uid>/<name>")
-    def file(project, uid, name):
-        assert project in dbapp.projects
-        path = dbapp.tmpdir / f"{project}/{uid}-{name}"
-        return send_file(str(path))
-
-    setup_data_endpoints(dbapp)
-
-
-def setup_data_endpoints(dbapp):
-    """Set endpoints for downloading data."""
-    from ase.io.jsonio import MyEncoder
-    dbapp.flask.json_encoder = MyEncoder
-    projects = dbapp.projects
-
-    route = dbapp.flask.route
-
-    @route('/<project_name>/row/<uid>/all_data')
-    def get_all_data(project_name: str, uid: str):
-        """Show details for one database row."""
-        project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
-        content = flask_json.dumps(row.data)
-        return Response(
-            content,
-            mimetype='application/json',
-            headers={'Content-Disposition':
-                     f'attachment;filename={uid}_data.json'})
-
-    @route('/<project_name>/row/<uid>/data')
-    def show_row_data(project_name: str, uid: str):
-        """Show details for one database row."""
-        project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
-        sorted_data = {key: value for key, value
-                       in sorted(row.data.items(), key=lambda x: x[0])}
-        return render_template('asr/database/templates/data.html',
-                               data=sorted_data, uid=uid, project_name=project_name)
-
-    @route('/<project_name>/row/<uid>/data/<filename>')
-    def get_row_data_file(project_name: str, uid: str, filename: str):
-        """Show details for one database row."""
-        project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
-        try:
-            result = decode_object(row.data[filename])
-            return render_template(
-                'asr/database/templates/result_object.html',
-                result=result,
-                filename=filename,
-                project_name=project_name,
-                uid=uid,
-            )
-        except (UnknownDataFormat, UndefinedError):
-            return redirect(f'{filename}/json')
-
-    @route('/<project_name>/row/<uid>/data/<filename>/json')
-    def get_row_data_file_json(project_name: str, uid: str, filename: str):
-        """Show details for one database row."""
-        project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
-        return jsonify(row.data.get(filename))
-
-
 def args2query(args):
     return args["query"]
 
@@ -290,7 +290,6 @@ def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
     for database in databases:
         dbapp.initialize_project(database, extra_kvp_descriptions, pool)
 
-    setup_app(dbapp)
     flask = dbapp.flask
 
     if test:
