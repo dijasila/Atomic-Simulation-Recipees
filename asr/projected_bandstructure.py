@@ -420,17 +420,7 @@ def projected_bs_scf(context, filename,
     eref = context.energy_reference()
     ref = eref.value
 
-    # Determine plotting window based on band gap
-    gs_results = context.gs_results()
-    gaps = gs_results['gaps_nosoc']
-    if gaps.get('vbm'):
-        emin = gaps.get('vbm') - 3
-    else:
-        emin = ef - 3
-    if gaps.get('cbm'):
-        emax = gaps.get('cbm') + 3
-    else:
-        emax = ef + 3
+    emin, emax = context.bs_energy_window()
 
     # Take bands with energies in range
     e_skn = d['bs_nosoc']['energies']

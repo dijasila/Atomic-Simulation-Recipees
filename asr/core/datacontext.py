@@ -139,6 +139,23 @@ class DataContext:
                   'experimental', 'basis', 'setups'}
         return self.parameter_description(recipename, exclude=boring)
 
+    def bs_energy_window(self):
+        gs_result = self.gs_results()
+        bs_result = self.get_record('asr.bandstructure').result
+
+        gaps = gs_result['gaps_nosoc']
+        efermi = bs_result['bs_nosoc']['efermi']  # uhh get this from GS maybe?
+
+        offsetmin = offsetmax = efermi
+
+        if gaps.get('vbm'):
+            offsetmin = gaps['vbm']
+
+        if gaps.get('cbm'):
+            offsetmax = gaps['cbm']
+
+        return offsetmin - 3, offsetmax + 3
+
 
 @dataclass
 class EnergyReference:
