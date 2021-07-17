@@ -141,8 +141,6 @@ class DataContext:
 
     def bs_energy_window(self):
         gs_result = self.gs_results()
-        bs_result = self.get_record('asr.bandstructure').result
-
         gaps = gs_result['gaps_nosoc']
         efermi = gaps['efermi']
 
