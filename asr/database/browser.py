@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-import sys
 import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any, Optional
@@ -9,19 +8,12 @@ import multiprocessing
 
 import numpy as np
 import matplotlib.pyplot as plt
-from asr.core import (decode_object, ASRResult, get_recipe_from_name)
+from asr.core import decode_object, ASRResult
 from asr.core.cache import Cache, MemoryBackend
 from asr.core.datacontext import DataContext
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
 from .webpanel import WebPanel
-
-
-plotlyjs = (
-    '<script src="https://cdn.plot.ly/plotly-latest.min.js">' + '</script>')
-external_libraries = [plotlyjs]
-
-unique_key = 'uid'
 
 
 def create_table(row,  # AtomsRow
