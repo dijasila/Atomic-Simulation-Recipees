@@ -222,7 +222,3 @@ def main(
                      atomsfile=atomsfile, copy=copy,
                      patterns=patterns,
                      update_tree=update_tree)
-
-
-if __name__ == '__main__':
-    main.cli()

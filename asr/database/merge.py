@@ -92,7 +92,3 @@ def main(databases: str, databaseout: str,
 
     # Copy the file to the final destination
     tmpdest.rename(dest)
-
-
-if __name__ == '__main__':
-    main.cli()
