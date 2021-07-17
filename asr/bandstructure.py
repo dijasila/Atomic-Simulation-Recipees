@@ -442,17 +442,6 @@ def plot_bs_png(context,
 
 
 def webpanel(result, context):
-    from typing import Tuple, List
-
-    def rmxclabel(d: 'Tuple[str, str, str]',
-                  xcs: List) -> 'Tuple[str, str, str]':
-        def rm(s: str) -> str:
-            for xc in xcs:
-                s = s.replace('({})'.format(xc), '')
-            return s.rstrip()
-
-        return tuple(rm(s) for s in d)
-
     xcname = context.xcname
 
     panel = {'title': describe_entry(f'Electronic band structure ({xcname})',

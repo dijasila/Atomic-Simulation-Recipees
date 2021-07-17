@@ -144,7 +144,7 @@ class DataContext:
         bs_result = self.get_record('asr.bandstructure').result
 
         gaps = gs_result['gaps_nosoc']
-        efermi = bs_result['bs_nosoc']['efermi']  # uhh get this from GS maybe?
+        efermi = gaps['efermi']
 
         offsetmin = offsetmax = efermi
 
