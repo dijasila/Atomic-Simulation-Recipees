@@ -259,7 +259,3 @@ def main(database: str) -> ASRResult:
     metadata = db.metadata
     metadata.update({'keys': sorted(list(keys))})
     db.metadata = metadata
-
-
-if __name__ == '__main__':
-    main.cli()

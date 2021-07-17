@@ -132,7 +132,3 @@ def main(source: str, destination: str, patterns: str,
                             if Path(dest).is_file():
                                 Path(dest).unlink()
                             dest.symlink_to(src.resolve())
-
-
-if __name__ == '__main__':
-    main.cli()

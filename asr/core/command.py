@@ -5,7 +5,7 @@ import click
 import copy
 import inspect
 import typing
-from .parallel import parprint
+from ase.parallel import parprint
 from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
 from .record import Record

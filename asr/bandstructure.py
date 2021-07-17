@@ -119,17 +119,8 @@ def plot_bs_html(context,
     ref = context.energy_reference()
     label = ref.html_plotlabel()
 
-    gsresults = context.gs_results()
-    gaps = gsresults.get('gaps_nosoc')
+    emin, emax = context.bs_energy_window()
 
-    if gaps.get('vbm'):
-        emin = gaps.get('vbm', ef) - 3
-    else:
-        emin = ef - 3
-    if gaps.get('cbm'):
-        emax = gaps.get('cbm', ef) + 3
-    else:
-        emax = ef + 3
     e_skn = d['bs_nosoc']['energies']
     shape = e_skn.shape
     cell = context.atoms.cell
@@ -364,10 +355,8 @@ def plot_bs_png(context,
     d = context.result
     xcname = context.xcname
     eref = context.energy_reference()
-    gsresults = context.gs_results()
 
     path = d['bs_nosoc']['path']
-    ef_nosoc = d['bs_nosoc']['efermi']
     ef_soc = d['bs_soc']['efermi']
 
     ref_soc = eref.value
@@ -385,16 +374,7 @@ def plot_bs_png(context,
     nspins = e_skn.shape[0]
     e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
 
-    gaps = gsresults['gaps_nosoc']
-
-    if gaps.get('vbm'):
-        emin = gaps.get('vbm') - 3
-    else:
-        emin = ef_nosoc - 3
-    if gaps.get('cbm'):
-        emax = gaps.get('cbm') + 3
-    else:
-        emax = ef_nosoc + 3
+    emin, emax = context.bs_energy_window()
 
     bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
     # without soc
@@ -462,17 +442,6 @@ def plot_bs_png(context,
 
 
 def webpanel(result, context):
-    from typing import Tuple, List
-
-    def rmxclabel(d: 'Tuple[str, str, str]',
-                  xcs: List) -> 'Tuple[str, str, str]':
-        def rm(s: str) -> str:
-            for xc in xcs:
-                s = s.replace('({})'.format(xc), '')
-            return s.rstrip()
-
-        return tuple(rm(s) for s in d)
-
     xcname = context.xcname
 
     panel = {'title': describe_entry(f'Electronic band structure ({xcname})',
