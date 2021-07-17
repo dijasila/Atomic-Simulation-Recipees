@@ -139,6 +139,21 @@ class DataContext:
                   'experimental', 'basis', 'setups'}
         return self.parameter_description(recipename, exclude=boring)
 
+    def bs_energy_window(self):
+        gs_result = self.gs_results()
+        gaps = gs_result['gaps_nosoc']
+        efermi = gaps['efermi']
+
+        offsetmin = offsetmax = efermi
+
+        if gaps.get('vbm'):
+            offsetmin = gaps['vbm']
+
+        if gaps.get('cbm'):
+            offsetmax = gaps['cbm']
+
+        return offsetmin - 3, offsetmax + 3
+
 
 @dataclass
 class EnergyReference:

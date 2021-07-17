@@ -21,18 +21,6 @@ import ase.parallel as parallel
 from ast import literal_eval
 
 
-def make_property(name):  # noqa
-
-    def get_data(self):
-        return self.data[name]
-
-    def set_data(self, value):
-        # assert self.data[name] is None, f'{name} was already set.'
-        self.data[name] = value
-
-    return property(get_data, set_data)
-
-
 def parse_dict_string(string, dct=None):
     """Convert a string-serialized dict, return a real dict."""
     if dct is None:

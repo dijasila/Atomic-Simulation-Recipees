@@ -102,7 +102,3 @@ def check_metadata(db, dbname, target):
                        'are needed: "title", "link_name", "link_url"!')
 
     return None
-
-
-if __name__ == '__main__':
-    main.cli()
