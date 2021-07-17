@@ -1,19 +1,9 @@
-from pathlib import Path
+from collections.abc import Mapping
 
 
-def make_property(name):
-    def getter(self):
-        return self.data[name]
-
-    def setter(self, value):
-        self.data[name] = value
-
-    return property(getter, setter)
-
-
-class WebPanel:
-
-    def __init__(self, title, columns=None, plot_descriptions=None, sort=99, id=None):
+class WebPanel(Mapping):
+    def __init__(self, title, columns=None, plot_descriptions=None, sort=99,
+                 id=None):
 
         if plot_descriptions is None:
             plot_descriptions = []
@@ -32,40 +22,15 @@ class WebPanel:
             id=id,
         )
 
-    columns = make_property('columns')
-    title = make_property('title')
-    plot_descriptions = make_property('plot_descriptions')
-    sort = make_property('sort')
-    id = make_property('id')
+    def __len__(self):
+        return len(self.data)
 
-    def __getitem__(self, item):  # noqa
+    def __getitem__(self, item):
         return self.data[item]
 
-    def get(self, item, default):
-        return self.data.get(item, default)
+    def __iter__(self):
+        return iter(self.data)
 
-    def update(self, dct):
-        self.data.update(dct)
-
-    def items(self):
-        return self.data.items
-
-    def __contains__(self, key):  # noqa
-        return key in self.data
-
-    def __repr__(self):  # noqa
+    def __repr__(self):
         return (f'WebPanel(title="{self.title}",'
                 f'columns={self.columns},sort={self.sort},...)')
-
-    def render(self) -> str:
-        from jinja2 import Template
-        path = Path(__file__).parent / 'templates/webpanel.html'
-        return Template(path.read_text()).render(webpanel=self)
-
-
-SummaryLayout = [
-    WebPanel(title='Summary'),
-    WebPanel(title='Thermodynamic stability'),
-    WebPanel(title='Stiffness tensor'),
-    WebPanel(title='Phonons'),
-]
