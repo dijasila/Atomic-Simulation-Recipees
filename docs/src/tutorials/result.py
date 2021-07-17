@@ -1,12 +1,10 @@
-from asr.core import ASRResult, prepare_result
-from asr.database.browser import WebPanel, describe_entry, entry_parameter_description
 import typing
+from asr.core import ASRResult, prepare_result
+from asr.database.browser import WebPanel, describe_entry
 
 
-def webpanel(result, row, key_descriptions):
-    parameter_description = entry_parameter_description(
-        row.data, 'asr.gs@calculate'
-    )
+def webpanel(result, context):
+    parameter_description = context.parameter_description('asr.gs@calculate')
 
     energy = describe_entry(result.energy, parameter_description)
     prop_table = {'type': 'table',
@@ -34,7 +32,7 @@ class Result(ASRResult):
         forces='The forces on the atoms of the material.',
     )
 
-    formats = {'ase_webpanel': webpanel}
+    formats = {'webpanel2': webpanel}
 
 
 # # Call like this

@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-import sys
 import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any, Optional
@@ -9,21 +8,12 @@ import multiprocessing
 
 import numpy as np
 import matplotlib.pyplot as plt
-from asr.core import (decode_object, ASRResult, get_recipe_from_name)
+from asr.core import decode_object, ASRResult
 from asr.core.cache import Cache, MemoryBackend
 from asr.core.datacontext import DataContext
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
 from .webpanel import WebPanel
-
-
-assert sys.version_info >= (3, 4)
-
-plotlyjs = (
-    '<script src="https://cdn.plot.ly/plotly-latest.min.js">' + '</script>')
-external_libraries = [plotlyjs]
-
-unique_key = 'uid'
 
 
 def create_table(row,  # AtomsRow
@@ -291,29 +281,6 @@ def combine_elements(items, spacer=(br + br)):
     return spacer.join(items)
 
 
-def entry_parameter_description(data, name, exclude_keys: set = set()):
-    """Make a parameter description.
-
-    Parameters
-    ----------
-    data: dict
-        Data object containing result objects (typically row.data).
-    name: str
-        Name of recipe from which to extract parameters, e.g. "asr.gs@calculate".
-    exclude_keys: set
-        Set of keys to exclude from parameter description.
-
-    """
-    recipe = get_recipe_from_name(name)
-    if f'results-{name}.json' in data:
-        record = data.get_record(f'results-{name}.json')
-        params = record.parameters
-    else:
-        params = recipe.defaults
-
-    return format_parameter_description(name, params, exclude_keys)
-
-
 def format_parameter_description(name, params, exclude_keys):
     link_name = get_recipe_href(name)
     lst = dict_to_list(params, exclude_keys=exclude_keys)
@@ -325,18 +292,6 @@ def format_parameter_description(name, params, exclude_keys):
     )
 
     return description
-
-
-def val2str(row, key: str, digits=2) -> str:
-    value = row.get(key)
-    if value is not None:
-        if isinstance(value, float):
-            value = '{:.{}f}'.format(value, digits)
-        elif not isinstance(value, str):
-            value = str(value)
-    else:
-        value = ''
-    return value
 
 
 def fig(filename: str, link: str = None,
