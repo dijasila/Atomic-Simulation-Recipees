@@ -2,26 +2,8 @@
 
 from ase import Atoms
 
-from pathlib import Path
 import asr
 from asr.core import command, option, ASRResult, atomsopt
-
-
-def get_displacement_folder(atomic_index,
-                            cartesian_index,
-                            displacement_sign,
-                            displacement):
-    """Generate folder name from (ia, iv, sign, displacement)."""
-    cartesian_symbol = 'xyz'[cartesian_index]
-    displacement_symbol = ' +-'[displacement_sign]
-    foldername = (f'{displacement}-{atomic_index}'
-                  f'-{displacement_symbol}{cartesian_symbol}')
-    folder = Path('displacements') / foldername
-    return folder
-
-
-def create_displacements_folder(folder):
-    folder.mkdir(parents=True, exist_ok=False)
 
 
 def get_all_displacements(atoms):
