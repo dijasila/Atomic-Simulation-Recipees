@@ -35,27 +35,60 @@ def get_symmetry_array(sym_results, vbm, cbm):
     return symmetry_array, sym_rowlabels
 
 
-def get_state_array(state_results, vbm, cbm):
+def get_state_array(state_results, vbm, cbm, row):
     import numpy as np
+
+    data = row.data.get('results-asr.defect_symmetry.json')
+    gsdata = row.data.get('results-asr.gs.json')
+    eref = row.data.get('results-asr.get_wfs.json')['eref']
+    ef = gsdata['efermi'] - eref
 
     Nrows = len(state_results)
     state_array = np.empty((Nrows, 2), dtype='object')
-    state_rowlabels = []
-    state_spins = []
-    state_energies = []
+    state_rowlabels_0 = []
+    state_rowlabels_1 = []
+    state_spins_0 = []
+    state_energies_0 = []
+    state_spins_1 = []
+    state_energies_1 = []
     for i, row in enumerate(state_array):
         rowname = f"{int(state_results[i]['state']):.0f}"
         if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
-            state_rowlabels.append(rowname)
-            state_spins.append(f"{int(state_results[i]['spin']):.0f}")
-            state_energies.append(f"{state_results[i]['energy']:.2f}")
-    Nrows = len(state_rowlabels)
-    state_array = np.empty((Nrows, 2), dtype='object')
-    for i in range(Nrows):
-        state_array[i, 0] = state_spins[i]
-        state_array[i, 1] = state_energies[i]
+            if int(state_results[i]['spin']) == 0:
+                state_rowlabels_0.append(rowname)
+                state_spins_0.append(f"{int(state_results[i]['spin']):.0f}")
+                state_energies_0.append(f"{state_results[i]['energy']:.2f}")
+    Nrows_0 = len(state_rowlabels_0)
+    Nrows_1 = len(state_rowlabels_1)
+    state_array_0 = np.empty((Nrows_0, 2), dtype='object')
+    state_rowlabels_0.sort(reverse=True)
+    for i in range(Nrows_0):
+        state_array_0[i, 0] = state_spins_0[i]
+        state_array_0[i, 1] = state_energies_0[i]
+    state_array_0 = state_array_0[state_array_0[:, 1].argsort()]
 
-    return state_array, state_rowlabels
+    N_homo = 0
+    N_lumo = 0
+    for i in range(len(state_array_0)):
+        if float(state_array_0[i, 1]) > ef:
+            N_lumo += 1
+        elif float(state_array_0[i, 1]) <= ef:
+            N_homo += 1
+
+    for i in range(len(state_array_0)):
+        if float(state_array_0[i, 1]) > ef:
+            state_rowlabels_0[i] = f'LUMO + {N_lumo - 1}'
+            N_lumo = N_lumo - 1
+            if N_lumo == 0:
+                state_rowlabels_0[i] = 'LUMO'
+        elif float(state_array_0[i, 1]) <= ef:
+            state_rowlabels_0[i] = f'HOMO + {N_homo}'
+            N_homo = N_homo - 1
+            if N_homo == 0:
+                state_rowlabels_0[i] = 'HOMO'
+
+
+    return state_array_0, state_rowlabels_0
 
 
 def webpanel(result, row, key_descriptions):
@@ -82,7 +115,7 @@ def webpanel(result, row, key_descriptions):
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
               'gapstates!')
-        state_array, state_rownames = get_state_array(result.symmetries, vbm, cbm)
+        state_array, state_rownames = get_state_array(result.symmetries, vbm, cbm, row)
         state_table = matrixtable(state_array,
                                   digits=None,
                                   title='Orbital no.',
@@ -95,7 +128,7 @@ def webpanel(result, row, key_descriptions):
                                              'filenames': ['ks_gap.png']}],
                          sort=3)
     else:
-        state_array, state_rownames = get_state_array(result.symmetries, vbm, cbm)
+        state_array, state_rownames = get_state_array(result.symmetries, vbm, cbm, row)
         state_table = matrixtable(state_array,
                                   digits=None,
                                   title='Orbital no.',
@@ -632,8 +665,8 @@ def draw_band_edge(energy, edge, color, offset=2, ax=None):
         eoffset = energy + offset
         elabel = energy + offset / 2
 
-    ax.plot([0, 1], [energy] * 2, color=color, lw=2, zorder=1)
-    ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color=color, alpha=0.5)
+    ax.plot([0, 1], [energy] * 2, color='black', zorder=1)
+    ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color='grey', alpha=0.5)
     ax.text(0.5, elabel, edge.upper(), color='w', ha='center', va='center')
 
 
@@ -682,11 +715,16 @@ class Level:
 
     def add_label(self, label, static=None):
         """Add symmetry label of the irrep of the point group."""
+        def split(word):
+            return [char for char in word]
         shift = self.size / 5
         if static is None:
-            labelstr = label.upper()
+            labelstr = label.lower()
+            splitstr = split(labelstr)
+            if len(splitstr) == 2:
+                labelstr = f'{splitstr[0]}$_{splitstr[1]}$'
         else:
-            labelstr = 'A'
+            labelstr = 'a'
         if (self.off == 0 and self.spin == 0):
             self.ax.text(self.relpos - self.size - shift,
                          self.energy,

@@ -542,6 +542,8 @@ def plot_formation_energies(row, fname):
     ax1.axvspan(-20, 0, color='grey', alpha=0.5)
     ax1.axvspan(gap, 20, color='grey', alpha=0.5)
     ax1.axhline(0, color='black', linestyle='dotted')
+    ax1.axvline(gap, color='black', linestyle='solid')
+    ax1.axvline(0, color='black', linestyle='solid')
     for element in eform:
         ax1.plot([0, gap], [f(0, element[1], element[0]),
                             f(gap, element[1], element[0])],
@@ -636,6 +638,8 @@ def plot_charge_transitions(row, fname):
     # plt.axhline(cbm, color='C1')
     plt.axhspan(-5, 0, color='grey', alpha=0.5)
     plt.axhspan(gap, gap + 5, color='grey', alpha=0.5)
+    plt.axhline(0, color='black', linestyle='solid')
+    plt.axhline(gap, color='black', linestyle='solid')
     plt.text(0, -0.1 * gap, 'VBM', color='white',
              ha='center', va='center', weight='bold')
     plt.text(0, gap + 0.1 * gap, 'CBM', color='white',
