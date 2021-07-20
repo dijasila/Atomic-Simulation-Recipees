@@ -97,7 +97,7 @@ def webpanel(result, row, key_description):
                          description=result.key_descriptions['sc_time']),
           f'{result.sc_time:.2e} ms']])
 
-    hyperfine = WebPanel('Hyperfine structure',
+    hyperfine = WebPanel('HF coupling and zero-field-splitting',
                          columns=[[hf_table], [gyro_table, sct_table]],
                          sort=1)
 
