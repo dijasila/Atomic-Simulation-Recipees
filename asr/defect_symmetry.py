@@ -7,36 +7,134 @@ from pathlib import Path
 from ase import Atoms
 
 
-def get_symmetry_array(sym_results, vbm, cbm):
+def get_symmetry_table(state_results, vbm, cbm, row):
     import numpy as np
+    from asr.database.browser import (matrixtable, table,
+        describe_entry)
 
-    sym_rowlabels = []
-    sym_states = []
-    sym_spins = []
-    sym_accuracy = []
-    sym_loc_ratio = []
-    for i, row in enumerate(sym_results):
-        if sym_results[i]['energy'] < cbm and sym_results[i]['energy'] > vbm:
-            rowname = sym_results[i]['best']
-            sym_rowlabels.append(rowname)
-            sym_states.append(f"{int(sym_results[i]['state'])}")
-            sym_spins.append(f"{int(sym_results[i]['spin'])}")
-            sym_accuracy.append(f"{sym_results[i]['error']:.2f}")
-            sym_loc_ratio.append(f"{sym_results[i]['loc_ratio']:.2f}")
+    data = row.data.get('results-asr.defect_symmetry.json')
+    gsdata = row.data.get('results-asr.gs.json')
+    eref = row.data.get('results-asr.get_wfs.json')['eref']
+    ef = gsdata['efermi'] - eref
 
-    Nrows = len(sym_rowlabels)
-    symmetry_array = np.empty((Nrows, 4), dtype='object')
-    for i in range(Nrows):
-        symmetry_array[i, 0] = sym_states[i]
-        symmetry_array[i, 1] = sym_spins[i]
-        symmetry_array[i, 2] = sym_accuracy[i]
-        symmetry_array[i, 3] = sym_loc_ratio[i]
+    Nrows = len(state_results)
+    state_array = np.empty((Nrows, 5), dtype='object')
+    state_rowlabels_0 = []
+    state_rowlabels_1 = []
+    state_spins_0 = []
+    state_energies_0 = []
+    state_label_0 = []
+    state_accuracy_0 = []
+    state_loc_ratio_0 = []
+    state_spins_1 = []
+    state_energies_1 = []
+    state_energies_1 = []
+    state_label_1 = []
+    state_accuracy_1 = []
+    state_loc_ratio_1 = []
+    for i, row in enumerate(state_array):
+        rowname = f"{int(state_results[i]['state']):.0f}"
+        label = str(state_results[i]['best'])
+        labelstr = label.lower()
+        splitstr = split(labelstr)
+        if len(splitstr) == 2:
+            labelstr = f'{splitstr[0]}<sub>{splitstr[1]}</sub>'
+        if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
+            if int(state_results[i]['spin']) == 0:
+                state_rowlabels_0.append(rowname)
+                state_spins_0.append(f"{int(state_results[i]['spin']):.0f}")
+                state_energies_0.append(f"{state_results[i]['energy']:.2f}")
+                state_label_0.append(labelstr)
+                state_accuracy_0.append(f"{state_results[i]['error']:.2f}")
+                state_loc_ratio_0.append(f"{state_results[i]['loc_ratio']:.2f}")
+            elif int(state_results[i]['spin']) == 1:
+                state_rowlabels_1.append(rowname)
+                state_spins_1.append(f"{int(state_results[i]['spin']):.0f}")
+                state_energies_1.append(f"{state_results[i]['energy']:.2f}")
+                state_label_1.append(labelstr)
+                state_accuracy_1.append(f"{state_results[i]['error']:.2f}")
+                state_loc_ratio_1.append(f"{state_results[i]['loc_ratio']:.2f}")
+    Nrows_0 = len(state_rowlabels_0)
+    Nrows_1 = len(state_rowlabels_1)
+    state_array_0 = np.empty((Nrows_0, 5), dtype='object')
+    state_rowlabels_0.sort(reverse=True)
+    state_array_1 = np.empty((Nrows_1, 5), dtype='object')
+    state_rowlabels_1.sort(reverse=True)
+    for i in range(Nrows_0):
+        state_array_0[i, 0] = state_label_0[i]
+        state_array_0[i, 1] = state_spins_0[i]
+        state_array_0[i, 2] = state_accuracy_0[i]
+        state_array_0[i, 3] = state_loc_ratio_0[i]
+        state_array_0[i, 4] = state_energies_0[i]
+    state_array_0 = state_array_0[state_array_0[:, -1].argsort()]
+    for i in range(Nrows_1):
+        state_array_1[i, 0] = state_label_1[i]
+        state_array_1[i, 1] = state_spins_1[i]
+        state_array_1[i, 2] = state_accuracy_1[i]
+        state_array_1[i, 3] = state_loc_ratio_1[i]
+        state_array_1[i, 4] = state_energies_1[i]
+    state_array_1 = state_array_1[state_array_1[:, -1].argsort()]
 
-    return symmetry_array, sym_rowlabels
+    N_homo = 0
+    N_lumo = 0
+    for i in range(len(state_array_0)):
+        if float(state_array_0[i, 4]) > ef:
+            N_lumo += 1
+    for i in range(len(state_array_0)):
+        if float(state_array_0[i, 4]) > ef:
+            state_rowlabels_0[i] = f'LUMO + {N_lumo - 1}'
+            N_lumo = N_lumo - 1
+            if N_lumo == 0:
+                state_rowlabels_0[i] = 'LUMO'
+        elif float(state_array_0[i, 4]) <= ef:
+            state_rowlabels_0[i] = f'HOMO - {N_homo}'
+            if N_homo == 0:
+                state_rowlabels_0[i] = 'HOMO'
+            N_homo = N_homo + 1
+    state_array_0 = np.delete(state_array_0, -1, 1)
+
+    N_homo = 0
+    N_lumo = 0
+    for i in range(len(state_array_1)):
+        if float(state_array_1[i, 4]) > ef:
+            N_lumo += 1
+    for i in range(len(state_array_1)):
+        if float(state_array_1[i, 4]) > ef:
+            state_rowlabels_1[i] = f'LUMO + {N_lumo - 1}'
+            N_lumo = N_lumo - 1
+            if N_lumo == 0:
+                state_rowlabels_1[i] = 'LUMO'
+        elif float(state_array_1[i, 4]) <= ef:
+            state_rowlabels_1[i] = f'HOMO - {N_homo}'
+            if N_homo == 0:
+                state_rowlabels_1[i] = 'HOMO'
+            N_homo = N_homo + 1
+
+    state_array_1 = np.delete(state_array_1, -1, 1)
+    state_table_0 = matrixtable(state_array_0,
+                                digits=None,
+                                title='Orbital',
+                                columnlabels=['Symmetry',
+                                              'Spin',
+                                              'Accuracy',
+                                              'Localization ratio'],
+                                rowlabels=state_rowlabels_0)
+    state_table_1 = matrixtable(state_array_1,
+                                digits=None,
+                                title='Orbital',
+                                columnlabels=['Symmetry',
+                                              'Spin',
+                                              'Accuracy',
+                                              'Localization ratio'],
+                                rowlabels=state_rowlabels_1)
+
+    return state_table_0, state_table_1
 
 
-def get_state_array(state_results, vbm, cbm, row):
+def get_state_table(state_results, vbm, cbm, row):
     import numpy as np
+    from asr.database.browser import (matrixtable, table,
+        describe_entry)
 
     data = row.data.get('results-asr.defect_symmetry.json')
     gsdata = row.data.get('results-asr.gs.json')
@@ -58,37 +156,95 @@ def get_state_array(state_results, vbm, cbm, row):
                 state_rowlabels_0.append(rowname)
                 state_spins_0.append(f"{int(state_results[i]['spin']):.0f}")
                 state_energies_0.append(f"{state_results[i]['energy']:.2f}")
+            elif int(state_results[i]['spin']) == 1:
+                state_rowlabels_1.append(rowname)
+                state_spins_1.append(f"{int(state_results[i]['spin']):.0f}")
+                state_energies_1.append(f"{state_results[i]['energy']:.2f}")
     Nrows_0 = len(state_rowlabels_0)
     Nrows_1 = len(state_rowlabels_1)
     state_array_0 = np.empty((Nrows_0, 2), dtype='object')
     state_rowlabels_0.sort(reverse=True)
+    state_array_1 = np.empty((Nrows_1, 2), dtype='object')
+    state_rowlabels_1.sort(reverse=True)
     for i in range(Nrows_0):
         state_array_0[i, 0] = state_spins_0[i]
         state_array_0[i, 1] = state_energies_0[i]
     state_array_0 = state_array_0[state_array_0[:, 1].argsort()]
+    for i in range(Nrows_1):
+        state_array_1[i, 0] = state_spins_1[i]
+        state_array_1[i, 1] = state_energies_1[i]
+    state_array_1 = state_array_1[state_array_1[:, 1].argsort()]
 
     N_homo = 0
     N_lumo = 0
     for i in range(len(state_array_0)):
         if float(state_array_0[i, 1]) > ef:
             N_lumo += 1
-        elif float(state_array_0[i, 1]) <= ef:
-            N_homo += 1
 
+    E_homo = vbm
+    E_lumo = cbm
     for i in range(len(state_array_0)):
         if float(state_array_0[i, 1]) > ef:
             state_rowlabels_0[i] = f'LUMO + {N_lumo - 1}'
             N_lumo = N_lumo - 1
             if N_lumo == 0:
                 state_rowlabels_0[i] = 'LUMO'
+                E_lumo = float(state_array_0[i, 1])
         elif float(state_array_0[i, 1]) <= ef:
-            state_rowlabels_0[i] = f'HOMO + {N_homo}'
-            N_homo = N_homo - 1
+            state_rowlabels_0[i] = f'HOMO - {N_homo}'
             if N_homo == 0:
                 state_rowlabels_0[i] = 'HOMO'
+                E_homo = float(state_array_0[i, 1])
+            N_homo = N_homo + 1
+    E_hl_0 = E_lumo - E_homo
 
+    N_homo = 0
+    N_lumo = 0
+    for i in range(len(state_array_1)):
+        if float(state_array_1[i, 1]) > ef:
+            N_lumo += 1
 
-    return state_array_0, state_rowlabels_0
+    E_homo = vbm
+    E_lumo = cbm
+    for i in range(len(state_array_1)):
+        if float(state_array_1[i, 1]) > ef:
+            state_rowlabels_1[i] = f'LUMO + {N_lumo - 1}'
+            N_lumo = N_lumo - 1
+            if N_lumo == 0:
+                state_rowlabels_1[i] = 'LUMO'
+                E_lumo = float(state_array_1[i, 1])
+        elif float(state_array_1[i, 1]) <= ef:
+            state_rowlabels_1[i] = f'HOMO - {N_homo}'
+            if N_homo == 0:
+                state_rowlabels_1[i] = 'HOMO'
+                E_homo = float(state_array_1[i, 1])
+            N_homo = N_homo + 1
+    E_hl_1 = E_lumo - E_homo
+
+    state_table_0 = matrixtable(state_array_0,
+                                digits=None,
+                                title='Orbital',
+                                columnlabels=['Spin',
+                                              'Energy [eV]'],
+                                rowlabels=state_rowlabels_0)
+    state_table_1 = matrixtable(state_array_1,
+                                digits=None,
+                                title='Orbital',
+                                columnlabels=['Spin',
+                                              'Energy [eV]'],
+                                rowlabels=state_rowlabels_1)
+
+    transition_table = table(row, 'Kohn-Sham HOMO-LUMO gap', [])
+    transition_table['rows'].extend(
+        [[describe_entry('Spin 0',
+                         'KS HOMO-LUMO gap for spin 0 channel.'),
+          f'{E_hl_0:.2f} eV']])
+    transition_table['rows'].extend(
+        [[describe_entry('Spin 1',
+                         'KS HOMO-LUMO gap for spin 1 channel.'),
+          f'{E_hl_1:.2f} eV']])
+
+    return state_table_0, state_table_1, transition_table
 
 
 def webpanel(result, row, key_descriptions):
@@ -115,40 +271,61 @@ def webpanel(result, row, key_descriptions):
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
               'gapstates!')
-        state_array, state_rownames = get_state_array(result.symmetries, vbm, cbm, row)
-        state_table = matrixtable(state_array,
-                                  digits=None,
-                                  title='Orbital no.',
-                                  columnlabels=['Spin',
-                                                'Energy [eV]'],
-                                  rowlabels=state_rownames)
-        panel = WebPanel('One-electron states',
-                         columns=[[fig('ks_gap.png')], [state_table]],
-                         plot_descriptions=[{'function': plot_gapstates,
-                                             'filenames': ['ks_gap.png']}],
-                         sort=3)
+        state_table_0, state_table_1, transition_table = get_state_table(
+            result.symmetries, vbm, cbm, row)
+        if len(state_table_0['rows']) > 1 and len(state_table_1['rows']) > 1:
+            panel = WebPanel('One-electron states',
+                             columns=[[fig('ks_gap.png')], [state_table_0,
+                                                            state_table_1,
+                                                            transition_table]],
+                             plot_descriptions=[{'function': plot_gapstates,
+                                                 'filenames': ['ks_gap.png']}],
+                             sort=3)
+        elif len(state_table_0['rows']) == 1 and len(state_table_1['rows']) > 1:
+            panel = WebPanel('One-electron states',
+                             columns=[[fig('ks_gap.png')], [state_table_1,
+                                                            transition_table]],
+                             plot_descriptions=[{'function': plot_gapstates,
+                                                 'filenames': ['ks_gap.png']}],
+                             sort=3)
+        elif len(state_table_1['rows']) == 1 and len(state_table_0['rows']) > 1:
+            panel = WebPanel('One-electron states',
+                             columns=[[fig('ks_gap.png')], [state_table_0,
+                                                            transition_table]],
+                             plot_descriptions=[{'function': plot_gapstates,
+                                                 'filenames': ['ks_gap.png']}],
+                             sort=3)
+
     else:
-        state_array, state_rownames = get_state_array(result.symmetries, vbm, cbm, row)
-        state_table = matrixtable(state_array,
-                                  digits=None,
-                                  title='Orbital no.',
-                                  columnlabels=['Spin',
-                                                'Energy [eV]'],
-                                  rowlabels=state_rownames)
-        symmetry_array, symmetry_rownames = get_symmetry_array(result.symmetries, vbm, cbm)
-        symmetry_table = matrixtable(symmetry_array,
-                                     digits=None,
-                                     title='Symmetry (label)',
-                                     columnlabels=['Orbital no.',
-                                                   'Spin',
-                                                   'Symmetry (accuracy)',
-                                                   'Localization ratio'],
-                                     rowlabels=symmetry_rownames)
-        panel = WebPanel('One-electron states',
-                         columns=[[fig('ks_gap.png'), symmetry_table], [state_table]],
-                         plot_descriptions=[{'function': plot_gapstates,
-                                             'filenames': ['ks_gap.png']}],
-                         sort=3)
+        state_table_0, state_table_1, transition_table = get_state_table(
+            result.symmetries, vbm, cbm, row)
+        symmetry_table_0, symmetry_table_1 = get_symmetry_table(
+            result.symmetries, vbm, cbm, row)
+        if len(symmetry_table_0['rows']) > 1 and len(symmetry_table_1['rows']) > 1:
+            panel = WebPanel('One-electron states',
+                             columns=[[symmetry_table_0, symmetry_table_1,
+                                       fig('ks_gap.png')],
+                                      [state_table_0, state_table_1,
+                                       transition_table]],
+                             plot_descriptions=[{'function': plot_gapstates,
+                                                 'filenames': ['ks_gap.png']}],
+                             sort=3)
+        elif len(symmetry_table_0['rows']) == 1 and len(symmetry_table_1['rows']) > 1:
+            panel = WebPanel('One-electron states',
+                             columns=[[symmetry_table_1,
+                                       fig('ks_gap.png')],
+                                      [state_table_1, transition_table]],
+                             plot_descriptions=[{'function': plot_gapstates,
+                                                 'filenames': ['ks_gap.png']}],
+                             sort=3)
+        elif len(symmetry_table_1['rows']) == 1 and len(symmetry_table_0['rows']) > 1:
+            panel = WebPanel('One-electron states',
+                             columns=[[symmetry_table_0,
+                                       fig('ks_gap.png')],
+                                      [state_table_0, transition_table]],
+                             plot_descriptions=[{'function': plot_gapstates,
+                                                 'filenames': ['ks_gap.png']}],
+                             sort=3)
 
     summary = {'title': 'Summary',
                'columns': [[basictable], []],
@@ -670,6 +847,10 @@ def draw_band_edge(energy, edge, color, offset=2, ax=None):
     ax.text(0.5, elabel, edge.upper(), color='w', ha='center', va='center')
 
 
+def split(word):
+    return [char for char in word]
+
+
 class Level:
     """Class to draw a single defect state level in the gap."""
 
@@ -715,8 +896,6 @@ class Level:
 
     def add_label(self, label, static=None):
         """Add symmetry label of the irrep of the point group."""
-        def split(word):
-            return [char for char in word]
         shift = self.size / 5
         if static is None:
             labelstr = label.lower()
