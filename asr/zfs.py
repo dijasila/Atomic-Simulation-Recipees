@@ -68,3 +68,7 @@ def main() -> Result:
 
     return Result.fromdata(
         D_vv=D_vv)
+
+
+if __name__ == '__main__':
+    main.cli()
