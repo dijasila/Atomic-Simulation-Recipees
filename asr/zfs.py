@@ -3,6 +3,30 @@ from gpaw import restart
 import numpy as np
 
 
+def webpanel(result, row, key_description):
+    from asr.database.browser import WebPanel, matrixtable
+
+    zfs_array = np.zeros((2, 3))
+    rowlabels = ['Spin 0', 'Spin 1']
+    for i, element in enumerate(zfs_array):
+        zfs_array[i, 0] = f"{result.zfs['D_vv'][i][0]:.2f}"
+        zfs_array[i, 1] = f"{result.zfs['D_vv'][i][1]:.2f}"
+        zfs_array[i, 2] = f"{result.zfs['D_vv'][i][2]:.2f}"
+
+    zfs_table = matrixtable(zfs_array,
+                            title='ZFS',
+                            columnlabels=['D<sub>xx</sub>',
+                                          'D<sub>yy</sub>',
+                                          'D<sub>zz</sub>'],
+                            rowlabels=rowlabels)
+
+    zfs = WebPanel('HF coupling and zero-field-splitting',
+                   columns=[[], [zfs_table]],
+                   sort=2)
+
+    return [zfs]
+
+
 @prepare_result
 class Result(ASRResult):
     """Container for zero-field-splitting results."""
@@ -12,6 +36,8 @@ class Result(ASRResult):
     key_descriptions = dict(
         D_vv='Zero-field-splitting components for each spin channel '
              'and each direction (x, y, z) [MHz].')
+
+    formats = {'ase_webpanel': webpanel}
 
 
 @command(module='asr.zfs',
