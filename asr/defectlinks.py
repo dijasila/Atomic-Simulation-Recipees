@@ -1,29 +1,27 @@
 from asr.core import command, ASRResult, prepare_result, chdir
-from gpaw import restart
-import numpy as np
 import typing
 
 
 def webpanel(result, row, key_description):
     from asr.database.browser import (WebPanel,
-                                      describe_entry,
-                                      table,
-                                      matrixtable,
-                                      fig,
-                                      href)
+                                      table)
 
     baselink = 'http://gauss:5000/database.db/row/'
     charged_table = table(row, 'Charged systems', [])
     for element in result.chargedlinks:
         charged_table['rows'].extend(
             [[f'{element[1]}',
-              f'<a href="{baselink}{element[0]}">QuPoD link</a>']])
+              f'<a href="{baselink}{element[0]}">link</a>']])
 
     neutral_table = table(row, 'Within the same material', [])
     for element in result.neutrallinks:
         neutral_table['rows'].extend(
             [[f'{element[1]}',
-              f'<a href="{baselink}{element[0]}">QuPoD link</a>']])
+              f'<a href="{baselink}{element[0]}">link</a>']])
+    for element in result.pristinelinks:
+        neutral_table['rows'].extend(
+            [[f'{element[1]}',
+              f'<a href="{baselink}{element[0]}">link</a>']])
 
     panel = WebPanel('Related materials',
                      columns=[[charged_table], [neutral_table]],
@@ -37,10 +35,12 @@ class Result(ASRResult):
     """Container for defectlinks results."""
     chargedlinks: typing.List
     neutrallinks: typing.List
+    pristinelinks: typing.List
 
     key_descriptions = dict(
         chargedlinks='Links tuple for the charged states of the same defect.',
-        neutrallinks='Links tuple for other defects within the same material.')
+        neutrallinks='Links tuple for other defects within the same material.',
+        pristinelinks='Link for pristine material.')
 
     formats = {'ase_webpanel': webpanel}
 
@@ -63,7 +63,7 @@ def main() -> Result:
     chargedlist = list(p.glob('./../charge_*'))
     for charged in chargedlist:
         if (Path(charged / 'structure.json').is_file() and not
-            str(charged.absolute()).endswith('charge_0')):
+           str(charged.absolute()).endswith('charge_0')):
             with chdir(charged):
                 material_fingerprint()
                 res = read_json('results-asr.database.material_fingerprint.json')
@@ -99,9 +99,20 @@ def main() -> Result:
             host = f"{host:html}"
             neutrallinks.append((uid, f"{defect} in {host}"))
 
+    # Third, the pristine material
+    pristinelinks = []
+    pristine = list(p.glob('./../../defects.pristine_sc*'))[0]
+    if (Path(pristine / 'structure.json').is_file()):
+        with chdir(pristine):
+            material_fingerprint()
+            res = read_json('results-asr.database.material_fingerprint.json')
+            uid = res['uid']
+        pristinelinks.append((uid, f"pristine material"))
+
     return Result.fromdata(
         chargedlinks=chargedlinks,
-        neutrallinks=neutrallinks)
+        neutrallinks=neutrallinks,
+        pristinelinks=pristinelinks)
 
 
 def split(word):
