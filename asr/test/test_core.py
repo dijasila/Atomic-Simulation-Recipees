@@ -4,8 +4,8 @@ from asr.core import command, argument, option, ASRResult, Parameters
 from time import sleep
 from asr.core.root import ASRRootNotFound
 
-
-@command("test_recipe")
+modname = 'asr.test.test_core'
+@command(modname)
 @argument("nx")
 @option("--ny", help="Optional number of y's")
 def tmp_recipe(nx, ny=4) -> ASRResult:
@@ -31,7 +31,7 @@ def test_recipe_defaults(asr_tmpdir, recipe):
 def test_recipe_setting_new_defaults(asr_tmpdir, recipe):
     """Test that defaults set in params.json are correctly applied."""
     from asr.core import write_json
-    params = {'test_recipe:tmp_recipe': {'ny': 5}}
+    params = {f'{modname}:tmp_recipe': {'ny': 5}}
     write_json('params.json', params)
     defaults = recipe.defaults
     assert defaults == Parameters({'ny': 5})

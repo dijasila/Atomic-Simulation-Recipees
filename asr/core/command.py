@@ -175,8 +175,9 @@ class ASRCommand:
         return parameters
 
     def make_run_specification(self, parameters: Parameters):
+        # func = self.get_wrapped_function()
         run_specification = construct_run_spec(
-            name=obj_to_id(self.get_wrapped_function()),
+            name=self.name,
             parameters=parameters,
             version=self.version,
             codes=self.package_dependencies,

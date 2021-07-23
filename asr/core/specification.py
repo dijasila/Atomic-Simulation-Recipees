@@ -60,7 +60,9 @@ class RunSpecification:
             *args,
             **kwargs
     ):
-        obj = get_object_matching_obj_id(self.name)
+        from asr.core import get_recipe_from_name
+        obj = get_recipe_from_name(self.name)
+        #obj = get_object_matching_obj_id(self.name)
         function = obj.get_wrapped_function()
         parameters = copy.deepcopy(self.parameters)
         return function(*args, **kwargs, **parameters)

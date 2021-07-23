@@ -270,8 +270,9 @@ def parse_mod_func(name):
     if not func:
         func = ['main']
 
-    assert len(func) == 1, \
-        'You cannot have multiple : in your function description'
+    if len(func) > 1:
+        raise RuntimeError(
+            f'Cannot have multiple : in function description: {func}')
 
     return mod, func[0]
 
