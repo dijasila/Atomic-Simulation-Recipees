@@ -162,10 +162,6 @@ def construct_record_from_resultsfile(
         resources = Resources()
 
     name = result.metadata.asr_name
-    if '@' not in name:
-        name += ':main'
-    else:
-        name = name.replace('@', ':')
 
     uid = uids[path]
     dependencies = get_dependencies(path, uids)
