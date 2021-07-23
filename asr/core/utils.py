@@ -265,12 +265,8 @@ def get_recipe_from_name(name):
 
 def parse_mod_func(name):
     # Split a module function reference like
-    # asr.relax@main into asr.relax and main.
-    if '@' in name:
-        split_char = '@'
-    else:
-        split_char = ':'
-    mod, *func = name.split(split_char)
+    # asr.relax:calculate into asr.relax and calculate.
+    mod, *func = name.split(':')
     if not func:
         func = ['main']
 
