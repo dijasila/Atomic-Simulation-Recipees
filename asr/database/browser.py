@@ -416,12 +416,8 @@ class DataFilenameTranslator:
 
     def filename_to_selector(self, filename):
         sel = self.cache.make_selector()
-        funcname = filename[8:-5]
-        if '@' not in funcname:
-            funcname += ':main'
-        else:
-            funcname = funcname.replace('@', ':')
-        sel.run_specification.name = sel.EQ(funcname)
+        name = filename[8:-5].replace('@', ':')
+        sel.run_specification.name = sel.EQ(name)
         return sel
 
     def get(self, item, default=None):
