@@ -9,7 +9,7 @@ from ase.parallel import parprint
 from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
 from .record import Record
-from .specification import construct_run_spec, obj_to_id
+from .specification import construct_run_spec
 from .runner import runner
 from .dependencies import register_dependencies
 from .resources import register_resources
