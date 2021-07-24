@@ -158,7 +158,7 @@ class Result(ASRResult):
 
 
 sel = Selector()
-sel.name = sel.OR(sel.EQ('asr.phonons:main'), sel.EQ('asr.phonons:calculate'))
+sel.name = sel.OR(sel.EQ('asr.phonons'), sel.EQ('asr.phonons:calculate'))
 sel.version = sel.EQ(-1)
 
 

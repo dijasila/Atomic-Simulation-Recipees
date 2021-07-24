@@ -38,7 +38,7 @@ def test_asr_run(asr_tmpdir_w_params):
 
     result = runner.invoke(cli, ['run', '--dry-run', 'structureinfo'])
     assert result.exit_code == 0
-    assert 'Would run asr.structureinfo:main in 1 folders.' in result.output
+    assert 'Would run asr.structureinfo in 1 folders.' in result.output
 
     pathlib.Path("folder1").mkdir()
     pathlib.Path("folder2").mkdir()
@@ -46,7 +46,7 @@ def test_asr_run(asr_tmpdir_w_params):
                                  'structureinfo',
                                  'folder1', 'folder2'])
 
-    assert ('Number of folders: 2\nWould run asr.structureinfo:main'
+    assert ('Number of folders: 2\nWould run asr.structureinfo'
             ' in 2 folders.\n') in result.output
 
     assert result.exit_code == 0

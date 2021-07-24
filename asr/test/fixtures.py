@@ -157,35 +157,35 @@ def asr_tmpdir_w_params(asr_tmpdir):
         "xc": "PBE",
     }
     params = {
-        'asr.gs@calculate': {
+        'asr.gs:calculate': {
             'calculator': fast_calc,
         },
-        'asr.gs@main': {
+        'asr.gs': {
             'calculator': fast_calc,
         },
-        'asr.bandstructure@main': {
+        'asr.bandstructure': {
             'npoints': 10,
             'calculator': fast_calc,
         },
-        'asr.hse@main': {
+        'asr.hse': {
             'calculator': fast_calc,
             'kptdensity': 2,
         },
-        'asr.gw@gs': {
+        'asr.gw:gs': {
             'kptdensity': 2,
         },
-        'asr.bse@calculate': {
+        'asr.bse:calculate': {
             'kptdensity': 2,
         },
-        'asr.pdos@calculate': {
+        'asr.pdos:calculate': {
             'kptdensity': 2,
             'emptybands': 5,
         },
-        'asr.piezoelectrictensor@main': {
+        'asr.piezoelectrictensor': {
             'calculator': fast_calc,
             'relaxcalculator': fast_calc
         },
-        'asr.formalpolarization@main': {
+        'asr.formalpolarization': {
             'calculator': {
                 "name": "gpaw",
                 "kpts": {"density": 2},

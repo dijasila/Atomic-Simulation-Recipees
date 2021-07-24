@@ -103,7 +103,7 @@ def _explain_bandgap(gap_name, parameter_description):
 
 
 # @cache_webpanel(
-#     'asr.gs:main',
+#     'asr.gs',
 #     '+,calculator.mode.ecut',
 #     '+,calculator.kpts.density',
 # )
