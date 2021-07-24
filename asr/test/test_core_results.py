@@ -40,7 +40,7 @@ class MyResult(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command(module='test_core_results')
+@command(module='asr.test.test_core_results')
 def recipe() -> MyResult:
     return MyResult.fromdata(a=2)
 

@@ -302,7 +302,7 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.gw:main')
+sel.name = sel.EQ('asr.gw')
 
 
 @asr.migration(selector=sel)

@@ -71,7 +71,7 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.projected_bandstructure:main')
+sel.name = sel.EQ('asr.projected_bandstructure')
 
 
 @asr.migration(selector=sel)

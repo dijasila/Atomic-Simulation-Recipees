@@ -50,9 +50,6 @@ class DataContext:
         return self.get_record('asr.gs:calculate').parameters
 
     def get_record(self, name):
-        if ':' not in name:
-            name += ':main'  # XXX fixme
-
         records = self._dependencies()
         matches = [record for record in records if record.name == name]
 
