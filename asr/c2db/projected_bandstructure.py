@@ -28,7 +28,7 @@ scf_projected_bs_filename = 'scf-projected-bs.png'
 
 def webpanel(result, context):
     # XXX Why is it named bandstructure:calculate, why not projected?
-    desc1 = context.parameter_description('asr.bandstructure:calculate')
+    desc1 = context.parameter_description('asr.c2db.bandstructure:calculate')
     desc2 = context.parameter_description_picky('asr.gs')
 
     explanation = ('Orbital projected band structure without '
@@ -71,7 +71,7 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.projected_bandstructure:main')
+sel.name = sel.EQ('asr.c2db.projected_bandstructure:main')
 
 
 @asr.migration(selector=sel)
@@ -79,7 +79,7 @@ def add_bsrestart(record):
     """Add bsrestart parameters."""
     emptybands = (
         record.parameters.dependency_parameters[
-            'asr.bandstructure:calculate']['emptybands']
+            'asr.c2db.bandstructure:calculate']['emptybands']
     )
     record.parameters.bsrestart = {
         'nbands': -emptybands,
@@ -90,12 +90,12 @@ def add_bsrestart(record):
         'symmetry': 'off'
     }
     del record.parameters.dependency_parameters[
-        'asr.bandstructure:calculate']['emptybands']
+        'asr.c2db.bandstructure:calculate']['emptybands']
     return record
 
 
 @command(
-    module='asr.projected_bandstructure',
+    module='asr.c2db.projected_bandstructure',
 )
 @atomsopt
 @calcopt
@@ -412,7 +412,7 @@ def projected_bs_scf(context, filename,
     c_i = get_yl_ordering(yl_i, data['symbols'])
 
     # Extract band structure data
-    d = context.get_record('asr.bandstructure').result
+    d = context.get_record('asr.c2db.bandstructure').result
     path = d['bs_nosoc']['path']
     ef = d['bs_nosoc']['efermi']
 

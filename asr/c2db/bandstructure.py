@@ -32,7 +32,7 @@ class BandstructureCalculationResult(ASRResult):
 
 
 sel = Selector()
-sel.name = sel.EQ('asr.bandstructure:calculate')
+sel.name = sel.EQ('asr.c2db.bandstructure:calculate')
 sel.version = sel.EQ(-1)
 sel.parameters = sel.AND(
     sel.CONTAINS('emptybands'),
@@ -56,7 +56,7 @@ def remove_emptybands_and_make_bsrestart(record):
 
 
 @command(
-    'asr.bandstructure',
+    'asr.c2db.bandstructure',
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
@@ -478,7 +478,7 @@ class Result(ASRResult):
 
 
 sel = Selector()
-sel.name = sel.EQ('asr.bandstructure:main')
+sel.name = sel.EQ('asr.c2db.bandstructure:main')
 sel.version = sel.EQ(-1)
 sel.parameters = sel.NOT(sel.CONTAINS('bsrestart'))
 
@@ -488,7 +488,7 @@ def set_bsrestart_from_dependencies(record):
     """Construct "bsrestart" parameters from "emptybands" parameter."""
     emptybands = (
         record.parameters.dependency_parameters[
-            'asr.bandstructure:calculate']['emptybands']
+            'asr.c2db.bandstructure:calculate']['emptybands']
     )
     record.parameters.bsrestart = {
         'nbands': -emptybands,
@@ -499,7 +499,7 @@ def set_bsrestart_from_dependencies(record):
         'symmetry': 'off'
     }
     del record.parameters.dependency_parameters[
-        'asr.bandstructure:calculate']['emptybands']
+        'asr.c2db.bandstructure:calculate']['emptybands']
     return record
 
 
