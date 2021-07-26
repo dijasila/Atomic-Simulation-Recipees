@@ -504,7 +504,7 @@ def set_bsrestart_from_dependencies(record):
 
 
 @command(
-    'asr.bandstructure',
+    'asr.c2db.bandstructure',
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')

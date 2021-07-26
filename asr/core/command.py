@@ -1,11 +1,14 @@
 """Implement ASRCommand class and related decorators."""
-from . import clickify_docstring
 import functools
-import click
 import copy
 import inspect
 import typing
+from pathlib import Path
+
+import click
 from ase.parallel import parprint
+
+from . import clickify_docstring
 from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
 from .record import Record
@@ -330,11 +333,11 @@ class ASRCommand:
 
 def get_recipe_module_names():
     # Find all modules containing recipes
-    from pathlib import Path
     asrfolder = Path(__file__).parent.parent
     folders_with_recipes = [asrfolder / '.',
                             asrfolder / 'setup',
-                            asrfolder / 'database']
+                            asrfolder / 'database',
+                            asrfolder / 'c2db']
     files = [filename for folder in folders_with_recipes
              for filename in folder.glob("[a-zA-Z]*.py")]
     modulenames = []

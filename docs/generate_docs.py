@@ -81,6 +81,8 @@ def make_recipe_documentation(module):
     steps = [value for (name, value) in members
              if (isinstance(value, ASRCommand) and value.__module__ == module)]
 
+    assert steps, module
+
     title = f'{module}'
     rst = [
         f'.. _recipe_{module}:',
@@ -194,16 +196,9 @@ def generate_api_summary():
 
 
 def get_recipe_modules():
-    paths = []
-    for package in [ROOTDIR / 'asr', ROOTDIR / 'asr/setup']:
-        paths.extend(get_modules_from_path(package))
-
-    names = get_names_from_paths(paths)
-    names = sorted(filter(lambda x: ('__' not in x) and (not x == 'asr.asr')
-                          and (not x == 'asr.setinfo')
-                          and (not x == 'asr.setup.materials'),
-                          names))
-    return names
+    from asr.core.command import get_recipes
+    recipes = get_recipes()
+    return set(recipe.module for recipe in recipes)
 
 
 def get_module_docstring_title(mod):
