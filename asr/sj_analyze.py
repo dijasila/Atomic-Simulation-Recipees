@@ -176,8 +176,7 @@ class Result(ASRResult):
 @command(module='asr.sj_analyze',
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
                    '../../unrelaxed.json',
-                   'gs.gpw',
-                   'results-asr.setup.defects.json'],
+                   'gs.gpw'],
          resources='24:2h',
          returns=Result)
 def main() -> Result:
