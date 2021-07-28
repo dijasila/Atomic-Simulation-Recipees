@@ -390,6 +390,10 @@ def plot(row, fname, thisrow):
         colors.append(color)
         sizes.append(size)
 
+    # print('PDREFS')
+    # print(pdrefs)
+    # for name, val in pdrefs:
+    #    print(name, val)
     pd = PhaseDiagram(pdrefs, verbose=False)
 
     fig = plt.figure(figsize=(6, 5))
@@ -411,13 +415,16 @@ def plot(row, fname, thisrow):
 
     if len(count) == 2:
         xcoord, energy, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
+        # for xx, ee in zip(xcoord, energy):
+        #     print(xx, ee)
+        # print('hull', hull)
         hull = np.array(hull_energies) < 0.05
         edgecolors = np.array(['C2' if hull_energy < 0.05 else 'C3'
                                for hull_energy in hull_energies])
         for i, j in simplices:
             ax.plot(xcoord[[i, j]], energy[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
-        s = np.array(sizes)
+        sizes = np.array(sizes)
         if row.hform < 0:
             mask = energy < 0.05
             energy = energy[mask]
@@ -425,21 +432,21 @@ def plot(row, fname, thisrow):
             edgecolors = edgecolors[mask]
             hull = hull[mask]
             names = [name for name, m in zip(names, mask) if m]
-            s = s[mask]
+            sizes = sizes[mask]
 
         xcoord0 = xcoord[~hull]
         energy0 = energy[~hull]
         ax.scatter(
             xcoord0, energy0,
-            #x[~hull], e[~hull],
+            # x[~hull], e[~hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=s[~hull],
+            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
             zorder=9)
 
         ax.scatter(
             xcoord[hull], energy[hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=s[hull],
+            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
             zorder=10)
 
         # ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
@@ -488,14 +495,14 @@ def plot(row, fname, thisrow):
         ax.scatter(
             x[~hull], y[~hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=np.array(sizes)[~hull],
+            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
             zorder=9,
         )
 
         ax.scatter(
             x[hull], y[hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=np.array(sizes)[hull],
+            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
             zorder=10,
         )
 
