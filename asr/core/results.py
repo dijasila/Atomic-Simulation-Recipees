@@ -479,7 +479,13 @@ class MetaData:
     @property
     def asr_name(self):
         """For example 'asr.gs'."""
-        return self._get('asr_name')
+        # Can this attribute be initialized from outdated files?
+        # I don't know, but let's defend against that:
+        name = self._get('asr_name')
+        name = name.replace('@', ':')
+        if name.endswith(':main'):
+            name = name.rsplit(':', 1)[0]
+        return name
 
     @asr_name.setter
     def asr_name(self, value):

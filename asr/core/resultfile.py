@@ -162,10 +162,6 @@ def construct_record_from_resultsfile(
         resources = Resources()
 
     name = result.metadata.asr_name
-    if '@' not in name:
-        name += ':main'
-    else:
-        name = name.replace('@', ':')
 
     uid = uids[path]
     dependencies = get_dependencies(path, uids)
@@ -388,11 +384,11 @@ def update_resultfile_record_to_version_0(record):
     unused_old_params.remove('atomic_structures')
 
     # remove_keys = set(['dependency_parameters'])
-    # if name == 'asr.formalpolarization:main':
+    # if name == 'asr.formalpolarization':
     #     remove_keys.add('gpwname')
-    # elif name == 'asr.setup.displacements:main':
+    # elif name == 'asr.setup.displacements':
     #     remove_keys.add('copy_params')
-    # elif name in {'asr.emasses:refine', 'asr.emasses:main'}:
+    # elif name in {'asr.emasses:refine', 'asr.emasses'}:
     #     remove_keys.add('gpwfilename')
     # unused_old_params = unused_old_params - remove_keys
 

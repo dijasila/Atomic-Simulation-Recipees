@@ -829,7 +829,7 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.emasses:main')
+sel.name = sel.EQ('asr.emasses')
 
 
 @asr.migration(selector=sel)

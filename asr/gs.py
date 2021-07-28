@@ -103,7 +103,7 @@ def _explain_bandgap(gap_name, parameter_description):
 
 
 # @cache_webpanel(
-#     'asr.gs:main',
+#     'asr.gs',
 #     '+,calculator.mode.ecut',
 #     '+,calculator.kpts.density',
 # )
@@ -177,7 +177,7 @@ def webpanel(result, context):
 def bz_with_band_extrema(context, fname):
     from matplotlib import pyplot as plt
 
-    assert context.name == 'asr.gs:main', context.name
+    assert context.name == 'asr.gs', context.name
     gsresults = context.result
 
     atoms = context.atoms

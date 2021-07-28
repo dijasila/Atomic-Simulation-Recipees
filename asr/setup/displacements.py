@@ -24,7 +24,7 @@ def displace_atom(atoms, ia, iv, sign, delta):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.setup.displacements:main')
+sel.name = sel.EQ('asr.setup.displacements')
 
 
 @asr.migration(selector=sel)

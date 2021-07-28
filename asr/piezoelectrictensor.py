@@ -124,7 +124,7 @@ def convert_density_to_size(parameters):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.piezoelectrictensor:main')
+sel.name = sel.EQ('asr.piezoelectrictensor')
 sel.parameters = sel.NOT(sel.CONTAINS('relaxcalculator'))
 
 
@@ -132,18 +132,18 @@ sel.parameters = sel.NOT(sel.CONTAINS('relaxcalculator'))
 def add_relaxcalculator_parameter(record):
     """Add relaxcalculator parameter and delete unused dependency parameters."""
     dep_params = record.parameters.dependency_parameters
-    record.parameters.relaxcalculator = dep_params['asr.relax:main']['calculator']
+    record.parameters.relaxcalculator = dep_params['asr.relax']['calculator']
     del_par = {'calculator', 'd3',
                'allow_symmetry_breaking', 'fixcell'}
     for par in del_par:
-        del dep_params['asr.relax:main'][par]
+        del dep_params['asr.relax'][par]
 
     del_par = {'gpwname'}
     for par in del_par:
-        del dep_params['asr.formalpolarization:main'][par]
+        del dep_params['asr.formalpolarization'][par]
 
     if 'calculator' in record.parameters:
-        del dep_params['asr.formalpolarization:main']['calculator']
+        del dep_params['asr.formalpolarization']['calculator']
     return record
 
 

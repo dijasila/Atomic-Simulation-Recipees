@@ -48,7 +48,7 @@ def check_if_supercell(spos_ac, Z_a):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.setup.reduce:main')
+sel.name = sel.EQ('asr.setup.reduce')
 
 
 @asr.migration(selector=sel)
