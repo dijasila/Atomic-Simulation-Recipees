@@ -61,7 +61,7 @@ class CalculateResult(ASRResult):
     }
 
 
-@command(module='asr.berry')
+@command(module='asr.c2db.berry')
 @atomsopt
 @calcopt
 @option('--kpar', help='K-points along path', type=int)
@@ -169,7 +169,7 @@ def calculate(
         if world.rank == 0:
             os.system('rm gs_berry.gpw')
     else:
-        raise NotImplementedError('asr.berry@calculate is not implemented '
+        raise NotImplementedError('asr.c2db.berry@calculate is not implemented '
                                   'for <2D systems.')
 
     return CalculateResult(data=results)
@@ -178,7 +178,7 @@ def calculate(
 def plot_phases(context, f0, f1, f2, fpi):
     import pylab as plt
 
-    results = context.get_record('asr.berry:calculate').result
+    results = context.get_record('asr.c2db.berry:calculate').result
 
     for f, label in [(f0, 0), (f1, 1), (f2, 2), (fpi, '0_pi')]:
         phit_km = results.get(f'phi{label}_km')
@@ -290,7 +290,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command(module='asr.berry')
+@command(module='asr.c2db.berry')
 @atomsopt
 @calcopt
 @option('--kpar', help='K-points along path', type=int)

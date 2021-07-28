@@ -15,7 +15,7 @@ def test_bse(
     mocker.patch.object(gpaw.occupations, "FermiDirac")
     gpaw.occupations.FermiDirac.return_value = None
 
-    from asr.bse import main
+    from asr.c2db.bse import main
     ndim = sum(test_material.pbc)
 
     def calculate(self):

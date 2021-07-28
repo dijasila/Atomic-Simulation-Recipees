@@ -7,7 +7,7 @@ from pytest import approx
 def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
                get_webcontent, fast_calc, topology):
     import numpy as np
-    from asr.berry import calculate
+    from asr.c2db.berry import calculate
 
     kpar = 10
     nbands = 2
@@ -26,8 +26,8 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
     results = calculate(atoms=test_material,
                         calculator=fast_calc)
 
-    # check that all phi_km and s_km are returned by asr.berry@calculate
-    # note that asr.berry@calculate does not return any phi_km, s_km for 1D materials
+    # check that all phi_km and s_km are returned by asr.c2db.berry@calculate
+    # note that asr.c2db.berry@calculate does not return any phi_km, s_km for 1D materials
     directions = []
     if nd == 3:
         directions = ['0', '1', '2', '0_pi']
@@ -37,7 +37,7 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         assert results[f'phi{d}_km'] == approx(np.zeros([kpar, nbands]))
         assert results[f's{d}_km'] == approx(np.zeros([kpar, nbands]))
 
-    from asr.berry import main
+    from asr.c2db.berry import main
     results = main(
         atoms=test_material,
         topology=topology,
