@@ -510,7 +510,6 @@ def plot(row, fname, thisrow):
         )
         plt.axis('off')
 
-    plt.show()
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
