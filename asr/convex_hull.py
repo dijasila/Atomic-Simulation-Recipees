@@ -389,6 +389,7 @@ def plot(row, fname, thisrow):
             size = 2
         colors.append(color)
         sizes.append(size)
+    sizes = np.array(sizes)
 
     # print('PDREFS')
     # print(pdrefs)
@@ -424,7 +425,7 @@ def plot(row, fname, thisrow):
         for i, j in simplices:
             ax.plot(xcoord[[i, j]], energy[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
-        sizes = np.array(sizes)
+
         if row.hform < 0:
             mask = energy < 0.05
             energy = energy[mask]
