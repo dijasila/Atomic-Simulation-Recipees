@@ -360,20 +360,11 @@ def plot(row, fname, thisrow):
         return
 
     references = data['references']
-    thisreference = {
-        'hform': thisrow.hform,
-        'formula': thisrow.formula,
-        'uid': thisrow.uid,
-        'natoms': thisrow.natoms,
-        'legend': None,
-        'label': thisrow.formula,
-        'size': 1,
-    }
+
     pdrefs = []
     legends = []
-    colors = []
     sizes = []
-    references = [thisreference] + references
+
     for reference in references:
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
@@ -382,19 +373,12 @@ def plot(row, fname, thisrow):
             legends.append(legend)
         if legend in legends:
             idlegend = legends.index(reference['legend'])
-            color = f'C{idlegend + 2}'
             size = (3 * idlegend + 3)**2
         else:
-            color = 'k'
             size = 2
-        colors.append(color)
         sizes.append(size)
     sizes = np.array(sizes)
 
-    # print('PDREFS')
-    # print(pdrefs)
-    # for name, val in pdrefs:
-    #    print(name, val)
     pd = PhaseDiagram(pdrefs, verbose=False)
 
     fig = plt.figure(figsize=(6, 5))
@@ -416,9 +400,6 @@ def plot(row, fname, thisrow):
 
     if len(count) == 2:
         xcoord, energy, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
-        # for xx, ee in zip(xcoord, energy):
-        #     print(xx, ee)
-        # print('hull', hull)
         hull = np.array(hull_energies) < 0.05
         edgecolors = np.array(['C2' if hull_energy < 0.05 else 'C3'
                                for hull_energy in hull_energies])
