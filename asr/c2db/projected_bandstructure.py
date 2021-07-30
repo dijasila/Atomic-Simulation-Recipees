@@ -161,7 +161,7 @@ def get_orbital_ldos(calc):
     import gpaw.mpi as mpi
     from gpaw.utilities.dos import raw_orbital_LDOS
     from gpaw.utilities.progressbar import ProgressBar
-    from asr.pdos import get_l_a
+    from asr.c2db.pdos import get_l_a
 
     ns = calc.get_number_of_spins()
     zs = calc.atoms.get_atomic_numbers()

@@ -83,7 +83,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.borncharges')
+@command('asr.c2db.borncharges')
 @atomsopt
 @calcopt
 @option('--displacement', help='Atomic displacement (Å)', type=float)
