@@ -26,7 +26,7 @@ from matplotlib import patches
 # from matplotlib.legend_handler import HandlerLine2D, HandlerTuple
 
 
-from asr.gs import main as groundstate
+from asr.c2db.gs import main as groundstate
 
 known_methods = ['DFT', 'DFT+D3']
 

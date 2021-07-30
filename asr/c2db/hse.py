@@ -5,7 +5,7 @@ import asr
 from asr.core import command, option, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
-from asr.gs import calculate as calculategs
+from asr.c2db.gs import calculate as calculategs
 from asr.c2db.bandstructure import (calculate as bscalculate, main as bsmain,
                                     legend_on_top)
 from asr.database.browser import make_panel_description

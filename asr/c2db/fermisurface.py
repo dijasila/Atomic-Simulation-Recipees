@@ -1,7 +1,7 @@
 """Fermi surfaces."""
 import numpy as np
 from ase import Atoms
-from asr.gs import calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 from asr.core import command, ASRResult, prepare_result, atomsopt, calcopt
 from asr.database.browser import fig, make_panel_description, describe_entry
 

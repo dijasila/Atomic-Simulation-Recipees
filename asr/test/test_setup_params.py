@@ -17,20 +17,20 @@ def test_setup_params(asr_tmpdir):
 
     result = runner.invoke(
         paramsfunc,
-        ['asr.gs:calculate', 'calculator={"name": "testname", ...}']
+        ['asr.c2db.gs:calculate', 'calculator={"name": "testname", ...}']
     )
     assert result.exit_code == 0
     params = read_json('params.json')
     assert params['asr.c2db.relax']['d3'] is True
-    assert params['asr.gs:calculate']['calculator']['name'] == 'testname'
-    assert params['asr.gs:calculate']['calculator']['charge'] == 0
+    assert params['asr.c2db.gs:calculate']['calculator']['name'] == 'testname'
+    assert params['asr.c2db.gs:calculate']['calculator']['charge'] == 0
 
     result = runner.invoke(paramsfunc, ['asr.c2db.relax', 'd3=False'])
     assert result.exit_code == 0
     params = read_json('params.json')
     assert params['asr.c2db.relax']['d3'] is False
-    assert params['asr.gs:calculate']['calculator']['name'] == 'testname'
-    assert params['asr.gs:calculate']['calculator']['charge'] == 0
+    assert params['asr.c2db.gs:calculate']['calculator']['name'] == 'testname'
+    assert params['asr.c2db.gs:calculate']['calculator']['charge'] == 0
 
 
 @pytest.mark.xfail
@@ -55,11 +55,11 @@ def test_setup_params_recurse_dict(asr_tmpdir):
     runner = CliRunner()
     result = runner.invoke(
         paramsfunc,
-        ['asr.gs:calculate',
+        ['asr.c2db.gs:calculate',
          'calculator={"name": "testname", "mode": {"ecut": 400, ...}, ...}']
     )
     assert result.exit_code == 0
     params = read_json('params.json')
-    assert params['asr.gs:calculate']['calculator']['name'] == 'testname'
-    assert params['asr.gs:calculate']['calculator']['mode']['name'] == 'pw'
-    assert params['asr.gs:calculate']['calculator']['mode']['ecut'] == 400
+    assert params['asr.c2db.gs:calculate']['calculator']['name'] == 'testname'
+    assert params['asr.c2db.gs:calculate']['calculator']['mode']['name'] == 'pw'
+    assert params['asr.c2db.gs:calculate']['calculator']['mode']['ecut'] == 400

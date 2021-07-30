@@ -5,7 +5,7 @@ from ase import Atoms
 
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt)
-from asr.gs import calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 from asr.database.browser import (fig, describe_entry, WebPanel,
                                   make_panel_description, href)
 
@@ -248,7 +248,8 @@ def plot_phases(context, f0, f1, f2, fpi):
 
 def webpanel(result, context):
     xcname = context.xcname
-    parameter_description = context.parameter_description('asr.gs:calculate')
+    parameter_description = context.parameter_description(
+        'asr.c2db.gs:calculate')
 
     description = ('Topological invariant characterizing the '
                    'occupied bands\n\n'

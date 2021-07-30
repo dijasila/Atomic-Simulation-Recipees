@@ -6,7 +6,7 @@ from asr.core import (
     command, option, ASRResult, prepare_result,
     atomsopt, calcopt, ExternalFile,
 )
-from asr.gs import calculate as calculategs
+from asr.c2db.gs import calculate as calculategs
 from asr.c2db.bandstructure import main as bsmain
 from ase.spectrum.band_structure import BandStructure
 from click import Choice

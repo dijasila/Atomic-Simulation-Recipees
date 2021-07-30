@@ -13,7 +13,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     import asr.c2db.relax
     from asr.core import read_json
     from asr.core.cache import get_cache
-    from asr.gs import calculate, main
+    from asr.c2db.gs import calculate, main
     from ase.parallel import world
     import gpaw
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
@@ -40,7 +40,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     dep_names = [dep_record.run_specification.name
                  for dep_record in dep_records]
     assert (set(dep_names)
-            == set(['asr.gs:calculate', 'asr.c2db.magnetic_anisotropy']))
+            == set(['asr.c2db.gs:calculate', 'asr.c2db.magnetic_anisotropy']))
     gsfile = calculateresult.calculation.paths[0]
     assert Path(gsfile).is_file()
     gs = read_json(gsfile)
@@ -54,7 +54,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
         Path('.asr/records').glob(
             'asr.c2db.magnetic_anisotropy*.json'))) == 1
     assert len(list(
-        Path('.asr/records').glob('asr.gs:calculate*.json'))) == 1
+        Path('.asr/records').glob('asr.c2db.gs:calculate*.json'))) == 1
     assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
     assert results.get("efermi") == approx(fermi_level, abs=0.1)
     if gap >= fermi_level:
@@ -81,7 +81,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
 @pytest.mark.ci
 def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     from .materials import std_test_materials
-    from asr.gs import main
+    from asr.c2db.gs import main
     from ase.db import connect
     from asr.core.material import make_panel_figures
     from asr.core.datacontext import DataContext
@@ -137,7 +137,7 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 ])
 def test_gs_integration_gpaw(asr_tmpdir, atoms, calculator, results):
     """Check that the groundstates produced by GPAW are correct."""
-    from asr.gs import main as groundstate
+    from asr.c2db.gs import main as groundstate
     from asr.c2db.magstate import main as magstate
     gsresults = groundstate(atoms=atoms, calculator=calculator)
 

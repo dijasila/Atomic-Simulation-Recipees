@@ -81,8 +81,8 @@ def construct_record_from_resultsfile(
         metadata = result.metadata.todict()
     else:
         assert isinstance(result, dict)
-        if recipename == 'asr.gs@calculate':
-            from asr.gs import GroundStateCalculationResult
+        if recipename == 'asr.c2db.gs@calculate':
+            from asr.c2db.gs import GroundStateCalculationResult
             from asr.calculators import Calculation
             calculation = Calculation(
                 id='gs',
@@ -117,7 +117,7 @@ def construct_record_from_resultsfile(
 
     try:
         parameters = result.metadata.params
-        if recipename == 'asr.gs@calculate' and 'name' in parameters:
+        if recipename == 'asr.c2db.gs@calculate' and 'name' in parameters:
             del parameters['name']
     except MetaDataNotSetError:
         parameters = {}
@@ -193,56 +193,57 @@ def get_dependencies(path, uids):
             'asr.c2db.phonons', 'asr.c2db.borncharges',
             'asr.c2db.polarizability'],
         'asr.c2db.emasses@refine': [
-            'asr.structureinfo', 'asr.c2db.magnetic_anisotropy', 'asr.gs'],
+            'asr.structureinfo', 'asr.c2db.magnetic_anisotropy', 'asr.c2db.gs'],
         'asr.c2db.emasses': [
-            'asr.c2db.emasses@refine', 'asr.gs@calculate',
-            'asr.gs', 'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
+            'asr.c2db.emasses@refine', 'asr.c2db.gs@calculate',
+            'asr.c2db.gs', 'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
         'asr.c2db.emasses@validate': ['asr.c2db.emasses'],
-        'asr.berry@calculate': ['asr.gs'],
+        'asr.berry@calculate': ['asr.c2db.gs'],
         'asr.berry': ['asr.berry@calculate'],
-        'asr.c2db.gw@gs': ['asr.gs@calculate'],
+        'asr.c2db.gw@gs': ['asr.c2db.gs@calculate'],
         'asr.c2db.gw@gw': ['asr.c2db.gw@gs'],
         'asr.c2db.gw@empirical_mean_z': ['asr.c2db.gw@gw'],
         'asr.c2db.gw': ['asr.c2db.bandstructure',
                         'asr.c2db.gw@empirical_mean_z'],
-        'asr.c2db.pdos@calculate': ['asr.gs'],
-        'asr.c2db.pdos': ['asr.gs', 'asr.c2db.pdos@calculate'],
+        'asr.c2db.pdos@calculate': ['asr.c2db.gs'],
+        'asr.c2db.pdos': ['asr.c2db.gs', 'asr.c2db.pdos@calculate'],
         'asr.c2db.phonons@calculate': [],
         'asr.c2db.phonons': ['asr.c2db.phonons@calculate'],
         'asr.c2db.push': ['asr.structureinfo', 'asr.c2db.phonons'],
-        'asr.c2db.phonopy@calculate': ['asr.gs@calculate'],
+        'asr.c2db.phonopy@calculate': ['asr.c2db.gs@calculate'],
         'asr.c2db.phonopy': ['asr.c2db.phonopy@calculate'],
         'asr.c2db.hse@calculate': [
-            'asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
+            'asr.structureinfo', 'asr.c2db.gs@calculate', 'asr.c2db.gs'],
         'asr.c2db.hse': ['asr.c2db.hse@calculate', 'asr.c2db.bandstructure'],
-        'asr.c2db.exchange@calculate': ['asr.gs@calculate'],
+        'asr.c2db.exchange@calculate': ['asr.c2db.gs@calculate'],
         'asr.c2db.exchange': ['asr.c2db.exchange@calculate'],
-        'asr.c2db.plasmafrequency@calculate': ['asr.gs@calculate'],
+        'asr.c2db.plasmafrequency@calculate': ['asr.c2db.gs@calculate'],
         'asr.c2db.plasmafrequency': ['asr.c2db.plasmafrequency@calculate'],
-        'asr.c2db.shg': ['asr.gs@calculate'],
-        'asr.c2db.magstate': ['asr.gs@calculate'],
-        'asr.c2db.fermisurface': ['asr.gs', 'asr.structureinfo'],
-        'asr.c2db.magnetic_anisotropy': ['asr.gs@calculate',
+        'asr.c2db.shg': ['asr.c2db.gs@calculate'],
+        'asr.c2db.magstate': ['asr.c2db.gs@calculate'],
+        'asr.c2db.fermisurface': ['asr.c2db.gs', 'asr.structureinfo'],
+        'asr.c2db.magnetic_anisotropy': ['asr.c2db.gs@calculate',
                                          'asr.c2db.magstate'],
         'asr.c2db.convex_hull': [
             'asr.structureinfo', 'asr.database.material_fingerprint'],
-        'asr.c2db.borncharges': ['asr.gs@calculate'],
-        'asr.gs': [
-            'asr.gs@calculate',
+        'asr.c2db.borncharges': ['asr.c2db.gs@calculate'],
+        'asr.c2db.gs': [
+            'asr.c2db.gs@calculate',
             'asr.c2db.magnetic_anisotropy', 'asr.structureinfo'],
-        'asr.c2db.bandstructure@calculate': ['asr.gs@calculate'],
+        'asr.c2db.bandstructure@calculate': ['asr.c2db.gs@calculate'],
         'asr.c2db.bandstructure': [
-            'asr.c2db.bandstructure@calculate', 'asr.gs',
+            'asr.c2db.bandstructure@calculate', 'asr.c2db.gs',
             'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
-        'asr.defectformation': ['asr.setup.defects', 'asr.gs'],
-        'asr.c2db.deformationpotentials': ['asr.gs'],
-        'asr.c2db.bader': ['asr.gs'],
-        'asr.bse@calculate': ['asr.gs@calculate'],
-        'asr.bse': ['asr.bse@calculate', 'asr.gs'],
-        'asr.c2db.projected_bandstructure': ['asr.gs',
+        'asr.defectformation': ['asr.setup.defects', 'asr.c2db.gs'],
+        'asr.c2db.deformationpotentials': ['asr.c2db.gs'],
+        'asr.c2db.bader': ['asr.c2db.gs'],
+        'asr.bse@calculate': ['asr.c2db.gs@calculate'],
+        'asr.bse': ['asr.bse@calculate', 'asr.c2db.gs'],
+        'asr.c2db.projected_bandstructure': ['asr.c2db.gs',
                                              'asr.c2db.bandstructure'],
-        'asr.c2db.shift': ['asr.gs@calculate'],
-        'asr.c2db.polarizability': ['asr.structureinfo', 'asr.gs@calculate'],
+        'asr.c2db.shift': ['asr.c2db.gs@calculate'],
+        'asr.c2db.polarizability': ['asr.structureinfo',
+                                    'asr.c2db.gs@calculate'],
     }
 
     name = path.with_suffix('').name.split('-')[1]

@@ -6,7 +6,7 @@ from asr.core import (
 from ase import Atoms
 from ase.io import read
 
-from asr.gs import calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 
 
 # XXX: Hi Thomas. I removed the calculate step. and simply made it a

@@ -157,10 +157,10 @@ def asr_tmpdir_w_params(asr_tmpdir):
         "xc": "PBE",
     }
     params = {
-        'asr.gs:calculate': {
+        'asr.c2db.gs:calculate': {
             'calculator': fast_calc,
         },
-        'asr.gs': {
+        'asr.c2db.gs': {
             'calculator': fast_calc,
         },
         'asr.c2db.bandstructure': {

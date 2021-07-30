@@ -8,8 +8,8 @@ from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
     AtomsFile, Selector,
 )
-from asr.gs import calculate as calculategs
-from asr.gs import main as maings
+from asr.c2db.gs import calculate as calculategs
+from asr.c2db.gs import main as maings
 
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts

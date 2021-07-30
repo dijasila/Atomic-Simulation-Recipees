@@ -7,7 +7,7 @@ from asr.core import (
     command, option, DictStr, ASRResult, calcopt, atomsopt, prepare_result,
 )
 from asr.database.browser import make_panel_description, describe_entry
-from asr.gs import calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 
 panel_description = make_panel_description(
     """

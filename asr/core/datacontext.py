@@ -47,7 +47,7 @@ class DataContext:
     def gs_parameters(self):
         # XXX Some records do not depend on main, only calculate.
         # E.g. projected_bandstructure
-        return self.get_record('asr.gs:calculate').parameters
+        return self.get_record('asr.c2db.gs:calculate').parameters
 
     def get_record(self, name):
         records = self._dependencies()
@@ -66,7 +66,7 @@ class DataContext:
         return matches[0]
 
     def ground_state(self):
-        return self.get_record('asr.gs')
+        return self.get_record('asr.c2db.gs')
 
     def magstate(self):
         return self.get_record('asr.c2db.magstate')

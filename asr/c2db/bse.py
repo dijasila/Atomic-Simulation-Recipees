@@ -15,8 +15,8 @@ from asr.database.browser import (
     fig, table, make_panel_description, describe_entry)
 from asr.utils.kpts import get_kpts_size
 
-from asr.gs import calculate as gscalculate
-from asr.gs import main as gsmain
+from asr.c2db.gs import calculate as gscalculate
+from asr.c2db.gs import main as gsmain
 from asr.c2db.magstate import main as calcmagstate
 
 panel_description = make_panel_description(

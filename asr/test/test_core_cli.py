@@ -78,7 +78,7 @@ def test_asr_results_help():
 @pytest.mark.xfail
 @pytest.mark.ci
 def test_asr_results_bandstructure(asr_tmpdir, mockgpaw, mocker):
-    from asr.gs import main as calculate_gs
+    from asr.c2db.gs import main as calculate_gs
     from .materials import BN
     import matplotlib.pyplot as plt
     import gpaw
@@ -91,7 +91,7 @@ def test_asr_results_bandstructure(asr_tmpdir, mockgpaw, mocker):
     BN.write('structure.json')
     calculate_gs()
     runner = CliRunner()
-    result = runner.invoke(cli, ['results', 'asr.gs'])
+    result = runner.invoke(cli, ['results', 'asr.c2db.gs'])
     assert result.exit_code == 0, result
     assert 'Saved figures: bz-with-gaps.png' in result.output
 

@@ -151,7 +151,7 @@ def main(atoms: Atoms,
         phi: Azimuthal angle in radians
     """
     from asr.c2db.magstate import main as magstate
-    from asr.gs import calculate as calculategs
+    from asr.c2db.gs import calculate as calculategs
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
 

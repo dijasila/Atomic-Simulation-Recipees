@@ -347,8 +347,8 @@ def make_data_identifiers(filenames: List[str]):
     This function looks at the keys of `data` and identifies any
     result files. If a result file has been identified a key value
     pair with name has_asr_name=True will be returned. I.e. if
-    results-asr.gs@calculate.json is in `data` a key-value-pair with
-    name `has_asr_gs_calculate=True` will be generated
+    results-asr.c2db.gs@calculate.json is in `data` a key-value-pair with
+    name `has_asr_c2db_gs_calculate=True` will be generated
 
     Parameters
     ----------
@@ -359,7 +359,7 @@ def make_data_identifiers(filenames: List[str]):
     -------
     dict
         Dict containing identifying key-value-pairs,
-        i.e. {'has_asr_gs_calculate': True}.
+        i.e. {'has_asr_c2db_gs_calculate': True}.
     """
     kvp = {}
     for key in filter(lambda x: x.startswith('results-'), filenames):

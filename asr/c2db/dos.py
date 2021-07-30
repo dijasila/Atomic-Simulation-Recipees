@@ -1,6 +1,6 @@
 """Density of states."""
 from asr.core import command, option, atomsopt, calcopt
-from asr.gs import calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 from ase import Atoms
 
 
