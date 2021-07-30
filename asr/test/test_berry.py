@@ -27,7 +27,8 @@ def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
                         calculator=fast_calc)
 
     # check that all phi_km and s_km are returned by asr.c2db.berry@calculate
-    # note that asr.c2db.berry@calculate does not return any phi_km, s_km for 1D materials
+    # note that asr.c2db.berry@calculate does not return
+    # any phi_km, s_km for 1D materials
     directions = []
     if nd == 3:
         directions = ['0', '1', '2', '0_pi']
