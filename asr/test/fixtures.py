@@ -185,7 +185,7 @@ def asr_tmpdir_w_params(asr_tmpdir):
             'calculator': fast_calc,
             'relaxcalculator': fast_calc
         },
-        'asr.formalpolarization@main': {
+        'asr.c2db.formalpolarization@main': {
             'calculator': {
                 "name": "gpaw",
                 "kpts": {"density": 2},

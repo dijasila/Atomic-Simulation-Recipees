@@ -12,7 +12,7 @@ import typing
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 
-from asr.formalpolarization import main as formalpolarization
+from asr.c2db.formalpolarization import main as formalpolarization
 from asr.relax import main as relax
 
 import asr
@@ -140,10 +140,10 @@ def add_relaxcalculator_parameter(record):
 
     del_par = {'gpwname'}
     for par in del_par:
-        del dep_params['asr.formalpolarization:main'][par]
+        del dep_params['asr.c2db.formalpolarization:main'][par]
 
     if 'calculator' in record.parameters:
-        del dep_params['asr.formalpolarization:main']['calculator']
+        del dep_params['asr.c2db.formalpolarization:main']['calculator']
     return record
 
 

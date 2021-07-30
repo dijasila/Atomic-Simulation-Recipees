@@ -76,7 +76,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.shift')
+@command('asr.c2db.shift')
 @atomsopt
 @calcopt
 @option('--kptdensity', help='K-point density', type=float)
@@ -212,7 +212,7 @@ def plot_shift(context, *filename):
     from textwrap import wrap
 
     # Read the data from the disk
-    data = context.get_record('asr.shift').result
+    data = context.get_record('asr.c2db.shift').result
     atoms = context.atoms
     gs_result = context.gs_results()
     gap = gs_result['gap']
