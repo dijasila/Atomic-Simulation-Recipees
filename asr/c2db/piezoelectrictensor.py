@@ -2,7 +2,7 @@
 
 Module containing functionality for calculating the piezoelectric
 tensor. The central recipe of this module is
-:func:`asr.piezoelectrictensor.main`.
+:func:`asr.c2db.piezoelectrictensor.main`.
 
 """
 
@@ -124,7 +124,7 @@ def convert_density_to_size(parameters):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.piezoelectrictensor:main')
+sel.name = sel.EQ('asr.c2db.piezoelectrictensor:main')
 sel.parameters = sel.NOT(sel.CONTAINS('relaxcalculator'))
 
 
@@ -148,7 +148,7 @@ def add_relaxcalculator_parameter(record):
 
 
 @command(
-    module="asr.piezoelectrictensor",
+    module="asr.c2db.piezoelectrictensor",
     argument_hooks=[convert_density_to_size],
 )
 @atomsopt

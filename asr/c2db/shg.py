@@ -161,7 +161,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.shg')
+@command('asr.c2db.shg')
 @atomsopt
 @calcopt
 @option('--kptdensity', help='K-point density [1/Ang]', type=float)
@@ -301,7 +301,7 @@ def plot_shg(context, *filename):
     from textwrap import wrap
 
     # Read the data from the disk
-    data = context.get_record('asr.shg').result
+    data = context.get_record('asr.c2db.shg').result
     gsresult = context.gs_results()
     gap = gsresult['gap']
     nd = context.ndim

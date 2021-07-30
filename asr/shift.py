@@ -7,7 +7,7 @@ from ase import Atoms
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt,
 )
-from asr.shg import CentroSymmetric, get_chi_symmetry, get_kpts
+from asr.c2db.shg import CentroSymmetric, get_chi_symmetry, get_kpts
 from asr.gs import main as gsmain, calculate as gscalculate
 
 

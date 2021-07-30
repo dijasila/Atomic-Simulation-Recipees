@@ -6,7 +6,7 @@ import pytest
 @pytest.mark.acceptance_test
 def test_piezo_BN(asr_tmpdir_w_params):
     from ..materials import BN
-    from asr.piezoelectrictensor import main
+    from asr.c2db.piezoelectrictensor import main
     from asr.setup.params import main as setupparams
 
     formal_calculator = {

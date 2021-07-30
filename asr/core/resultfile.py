@@ -193,8 +193,8 @@ def get_dependencies(path, uids):
     folder = path.parent
 
     deps = {
-        'asr.infraredpolarizability': [
-            'asr.phonons', 'asr.borncharges', 'asr.polarizability'],
+        'asr.c2db.infraredpolarizability': [
+            'asr.phonons', 'asr.borncharges', 'asr.c2db.polarizability'],
         'asr.emasses@refine': [
             'asr.structureinfo', 'asr.magnetic_anisotropy', 'asr.gs'],
         'asr.emasses': [
@@ -221,7 +221,7 @@ def get_dependencies(path, uids):
         'asr.exchange': ['asr.exchange@calculate'],
         'asr.plasmafrequency@calculate': ['asr.gs@calculate'],
         'asr.plasmafrequency': ['asr.plasmafrequency@calculate'],
-        'asr.shg': ['asr.gs@calculate'],
+        'asr.c2db.shg': ['asr.gs@calculate'],
         'asr.magstate': ['asr.gs@calculate'],
         'asr.fermisurface': ['asr.gs', 'asr.structureinfo'],
         'asr.magnetic_anisotropy': ['asr.gs@calculate', 'asr.magstate'],
@@ -242,13 +242,13 @@ def get_dependencies(path, uids):
         'asr.bse': ['asr.bse@calculate', 'asr.gs'],
         'asr.projected_bandstructure': ['asr.gs', 'asr.bandstructure'],
         'asr.shift': ['asr.gs@calculate'],
-        'asr.polarizability': ['asr.structureinfo', 'asr.gs@calculate'],
+        'asr.c2db.polarizability': ['asr.structureinfo', 'asr.gs@calculate'],
     }
 
     name = path.with_suffix('').name.split('-')[1]
 
     # Some manually implemented dependencies
-    if name == 'asr.piezoelectrictensor':
+    if name == 'asr.c2db.piezoelectrictensor':
         dependencies = []
         dependencies += list(folder.rglob('strains*/results-asr.relax.json'))
         dependencies += list(

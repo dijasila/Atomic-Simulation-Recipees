@@ -181,7 +181,7 @@ def asr_tmpdir_w_params(asr_tmpdir):
             'kptdensity': 2,
             'emptybands': 5,
         },
-        'asr.piezoelectrictensor@main': {
+        'asr.c2db.piezoelectrictensor@main': {
             'calculator': fast_calc,
             'relaxcalculator': fast_calc
         },
