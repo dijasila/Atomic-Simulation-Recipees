@@ -7,7 +7,7 @@ from asr.c2db.phonons import main as phonons
 from ase import Atoms
 
 
-@command('asr.push')
+@command('asr.c2db.push')
 @atomsopt
 @calcopt
 @option('-q', '--momentum', nargs=3, type=float,
