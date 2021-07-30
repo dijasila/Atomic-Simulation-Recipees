@@ -2,8 +2,8 @@
 from asr.core import (
     command, option, ASRResult,
     prepare_result, ExternalFile, atomsopt, calcopt)
-from asr.gs import calculate as gscalculate
-from asr.gs import main as gsmain
+from asr.c2db.gs import calculate as gscalculate
+from asr.c2db.gs import main as gsmain
 from collections import defaultdict
 import typing
 
@@ -18,7 +18,7 @@ def webpanel(result, context):
 
     desc = '\n'.join([
         context.parameter_description('asr.c2db.pdos:calculate'),
-        context.parameter_description_picky('asr.gs:calculate')
+        context.parameter_description_picky('asr.c2db.gs:calculate')
     ])
 
     explanation = ('Orbital projected density of states without spin–orbit '
@@ -120,7 +120,7 @@ def main(
 ) -> Result:
     from gpaw import GPAW
     from ase.parallel import parprint
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
 
     # Get refined ground state with more k-points
     res = calculate(

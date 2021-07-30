@@ -5,7 +5,7 @@ from asr.utils.kpts import get_kpts_size
 
 def nonselfc(atoms, calculator, txt=None, kptdensity=20.0, emptybands=20):
     """Non self-consistent calculation based on the density in gs.gpw."""
-    from asr.gs import calculate
+    from asr.c2db.gs import calculate
     res = calculate(atoms=atoms, calculator=calculator)
     calc = res.calculation.load()
 

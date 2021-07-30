@@ -8,8 +8,8 @@ from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
     AtomsFile, Selector,
 )
-from asr.gs import calculate as calculategs
-from asr.gs import main as maings
+from asr.c2db.gs import calculate as calculategs
+from asr.c2db.gs import main as maings
 
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
@@ -528,7 +528,7 @@ def main(
     from ase.dft.kpoints import BandPath
     import copy
     from asr.utils.gpw2eigs import gpw2eigs
-    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     bsresult = calculate(
         atoms=atoms,

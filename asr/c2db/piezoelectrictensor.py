@@ -13,7 +13,7 @@ from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 
 from asr.c2db.formalpolarization import main as formalpolarization
-from asr.relax import main as relax
+from asr.c2db.relax import main as relax
 
 import asr
 
@@ -132,11 +132,12 @@ sel.parameters = sel.NOT(sel.CONTAINS('relaxcalculator'))
 def add_relaxcalculator_parameter(record):
     """Add relaxcalculator parameter and delete unused dependency parameters."""
     dep_params = record.parameters.dependency_parameters
-    record.parameters.relaxcalculator = dep_params['asr.relax']['calculator']
+    record.parameters.relaxcalculator = \
+        dep_params['asr.c2db.relax']['calculator']
     del_par = {'calculator', 'd3',
                'allow_symmetry_breaking', 'fixcell'}
     for par in del_par:
-        del dep_params['asr.relax'][par]
+        del dep_params['asr.c2db.relax'][par]
 
     del_par = {'gpwname'}
     for par in del_par:

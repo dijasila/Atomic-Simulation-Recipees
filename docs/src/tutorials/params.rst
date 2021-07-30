@@ -23,12 +23,12 @@ to generate and manipulate it. The general syntax when using
    Options:
      -h, --help  Show this message and exit.
 
-For example, to set custom defaults of the `asr.gs:calculate` instruction we
+For example, to set custom defaults of the `asr.c2db.gs:calculate` instruction we
 can run
 
 .. code-block:: console
 
-   $ asr params asr.gs:calculate "calculator={'kpts':{...,'density':8.0},...}"
+   $ asr params asr.c2db.gs:calculate "calculator={'kpts':{...,'density':8.0},...}"
 
 .. note::
    
@@ -46,7 +46,7 @@ can run
 
    .. code-block:: console
 
-      $ asr params asr.gs:calculate calculator="{'kpts': {..., 'density': 8.0}, ...}"
+      $ asr params asr.c2db.gs:calculate calculator="{'kpts': {..., 'density': 8.0}, ...}"
 
 This generates a file `params.json` with the contents printed above.',
 i.e.,
@@ -55,7 +55,7 @@ i.e.,
 
    $ cat params.json
    {
-    "asr.gs:calculate": {
+    "asr.c2db.gs:calculate": {
      "calculator": {
       "kpts": {
        "density": 8.0,
@@ -86,11 +86,11 @@ defaults. For example, running
 
 .. code-block:: console
 
-   $ asr params asr.gs:calculate "calculator={'kpts':{...,'density':8.0},...}"
-   $ asr params asr.gs:calculate "calculator={'mode':{'ecut':600,...},...}"
+   $ asr params asr.c2db.gs:calculate "calculator={'kpts':{...,'density':8.0},...}"
+   $ asr params asr.c2db.gs:calculate "calculator={'mode':{'ecut':600,...},...}"
 
 would set both the `kpts` and `mode` keys of the `calculator` argument
-of the `asr.gs:calculate` instruction. Two parameters can also be
+of the `asr.c2db.gs:calculate` instruction. Two parameters can also be
 specified simultaneously by using
 
 .. code-block:: console

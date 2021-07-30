@@ -247,7 +247,7 @@ class Cache:
         Selector can be in the style of
 
         cache.select(uid=uid)
-        cache.select(name='asr.gs')
+        cache.select(name='asr.c2db.gs')
         """
         selector = self.make_selector(selector=selector, equals=equals)
         return self.backend.select(selector)

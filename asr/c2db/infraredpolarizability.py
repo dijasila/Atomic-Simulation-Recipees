@@ -189,8 +189,10 @@ def prepare_for_resultfile_migration(record):
         'charge': 0,
     }
     record.parameters.polarizabilitycalculator = \
-        record.parameters.dependency_parameters['asr.gs:calculate']['calculator']
-    del record.parameters.dependency_parameters['asr.gs:calculate']['calculator']
+        record.parameters.dependency_parameters[
+            'asr.c2db.gs:calculate']['calculator']
+    del record.parameters.dependency_parameters[
+        'asr.c2db.gs:calculate']['calculator']
     return record
 
 

@@ -6,7 +6,7 @@ from asr.core import (
 from ase import Atoms
 from ase.io import read
 
-from asr.gs import calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 
 
 # XXX: Hi Thomas. I removed the calculate step. and simply made it a
@@ -23,7 +23,7 @@ def calculate(
 
     nd = sum(atoms.pbc)
     if nd != 2:
-        raise NotImplementedError('asr.exchange is only implemented '
+        raise NotImplementedError('asr.c2db.exchange is only implemented '
                                   'for 2D systems.')
 
     magnetic = magnetic_atoms(atoms)
@@ -200,7 +200,7 @@ def webpanel(result, context):
     if not context.is_magnetic:
         return []
 
-    parameter_description = context.parameter_description('asr.exchange')
+    parameter_description = context.parameter_description('asr.c2db.exchange')
 
     explanation_J = ('The nearest neighbor exchange coupling\n\n'
                      + parameter_description)
@@ -248,7 +248,7 @@ class Result(ASRResult):
 
 
 @command(
-    module='asr.exchange',
+    module='asr.c2db.exchange',
 )
 @atomsopt
 @calcopt

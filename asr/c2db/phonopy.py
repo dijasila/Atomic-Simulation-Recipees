@@ -13,7 +13,7 @@ import asr
 from asr.core import (command, option, DictStr, ASRResult, prepare_result,
                       atomsopt)
 from asr.calculators import construct_calculator
-from asr.magstate import main as magstate
+from asr.c2db.magstate import main as magstate
 
 
 def lattice_vectors(N_c):

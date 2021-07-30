@@ -123,7 +123,7 @@ class Result(ASRResult):
     formats = {"webpanel2": webpanel}
 
 
-@command('asr.magnetic_anisotropy')
+@command('asr.c2db.magnetic_anisotropy')
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @asr.calcopt
@@ -150,8 +150,8 @@ def main(atoms: Atoms,
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """
-    from asr.magstate import main as magstate
-    from asr.gs import calculate as calculategs
+    from asr.c2db.magstate import main as magstate
+    from asr.c2db.gs import calculate as calculategs
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
 

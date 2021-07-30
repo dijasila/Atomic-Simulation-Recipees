@@ -34,7 +34,7 @@ class GroundStateCalculationResult(ASRResult):
 
 
 @asr.instruction(
-    module='asr.gs',
+    module='asr.c2db.gs',
 )
 @asr.atomsopt
 @asr.calcopt
@@ -54,13 +54,12 @@ def calculate(
         }) -> GroundStateCalculationResult:
     """Calculate ground state file.
 
-    This recipe saves the ground state to a file gs.gpw based on the structure
-    in 'structure.json'. This can then be processed by asr.gs@postprocessing
-    for storing any derived quantities. See asr.gs@postprocessing for more
-    information.
+    This recipe saves the ground state to a file gs.gpw based on the
+    input structure.
+
     """
     from ase.calculators.calculator import PropertyNotImplementedError
-    from asr.relax import set_initial_magnetic_moments
+    from asr.c2db.relax import set_initial_magnetic_moments
 
     if not atoms.has('initial_magmoms'):
         set_initial_magnetic_moments(atoms)
@@ -102,14 +101,9 @@ def _explain_bandgap(gap_name, parameter_description):
     return describe_entry(name, description=description)
 
 
-# @cache_webpanel(
-#     'asr.gs',
-#     '+,calculator.mode.ecut',
-#     '+,calculator.kpts.density',
-# )
 def webpanel(result, context):
     key_descriptions = context.descriptions
-    parameter_description = context.parameter_description_picky('asr.gs')
+    parameter_description = context.parameter_description_picky('asr.c2db.gs')
 
     explained_keys = []
 
@@ -177,7 +171,7 @@ def webpanel(result, context):
 def bz_with_band_extrema(context, fname):
     from matplotlib import pyplot as plt
 
-    assert context.name == 'asr.gs', context.name
+    assert context.name == 'asr.c2db.gs', context.name
     gsresults = context.result
 
     atoms = context.atoms
@@ -280,7 +274,7 @@ def gaps(atoms, calc, calculator, soc=True) -> GapsResult:
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
 
     if soc:
         ibzkpts = calc.get_bz_k_points()
@@ -345,7 +339,7 @@ def get_1bz_k(ibzkpts, calc, k_index):
 def get_gap_info(atoms, soc, direct, calc, calculator):
     from ase.dft.bandgap import bandgap
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
     # e1 is VBM, e2 is CBM
     if soc:
         theta, phi = get_spin_axis(atoms, calculator=calculator)
@@ -536,7 +530,7 @@ class Result(ASRResult):
 
 
 @asr.instruction(
-    module='asr.gs',
+    module='asr.c2db.gs',
     argument_hooks=[set_calculator_hook],
     version=0,
 )

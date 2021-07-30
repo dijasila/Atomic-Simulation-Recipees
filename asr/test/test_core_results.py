@@ -6,7 +6,7 @@ from asr.core import (ASRResult, prepare_result, WebPanelEncoder, command,
                       decode_result, UnknownDataFormat)
 from asr.utils.fix_object_ids import fix_object_id, _fix_folders
 import pytest
-from asr.gs import Result as GSResult
+from asr.c2db.gs import Result as GSResult
 
 
 class MyWebPanel(WebPanelEncoder):
@@ -97,7 +97,7 @@ def test_reading_older_version():
 @pytest.mark.ci
 def test_read_old_format():
     """Test that reading an old gs results file works."""
-    from asr.gs import webpanel, Result
+    from asr.c2db.gs import webpanel, Result
     dct = {
         "forces": None,
         "stresses": None,
@@ -797,7 +797,7 @@ def test_read_old_format():
             "KVP: Direct conduction band minimum (Dir. cond. band max.) [eV]",
             "gap_dir_nosoc": "KVP: Direct gap without SOC (Dir. gap wo. soc.) [eV]"
         },
-        "__asr_name__": "asr.gs",
+        "__asr_name__": "asr.c2db.gs",
         "__resources__": {
             "time": 33.32860088348389,
             "ncores": 1
@@ -820,7 +820,7 @@ def test_read_old_format():
     assert result.formats['webpanel2'] == webpanel
     assert isinstance(result, Result)
     assert result.etot == dct['etot']
-    assert result.metadata.asr_name == 'asr.gs'
+    assert result.metadata.asr_name == 'asr.c2db.gs'
 
 
 @pytest.mark.ci
@@ -834,12 +834,12 @@ def test_object_to_id(cls, result):
 @pytest.mark.parametrize(
     "filename,dct,result_object_id",
     [
-        ('results-asr.gs@calculate.json',
+        ('results-asr.c2db.gs@calculate.json',
          {'object_id': '__main__::CalculateResult'},
-         'asr.gs::CalculateResult'),
-        ('results-asr.convex_hull.json',
+         'asr.c2db.gs::CalculateResult'),
+        ('results-asr.c2db.convex_hull.json',
          {'object_id': '__main__::Result'},
-         'asr.convex_hull::Result')
+         'asr.c2db.convex_hull::Result')
 
     ]
 )
@@ -852,7 +852,7 @@ def test_bad_object_ids(filename, dct, result_object_id):
 @pytest.mark.parametrize(
     'obj,result',
     [
-        (GSResult, 'asr.gs:Result'),
+        (GSResult, 'asr.c2db.gs:Result'),
         (MyResult, 'asr.test.test_core_results:MyResult')
     ]
 )
@@ -863,7 +863,7 @@ def test_obj_to_id(obj, result):
 @pytest.mark.ci
 def test_fix_folders_corrupt_object_id(asr_tmpdir):
     folders = ['.']
-    write_json('results-asr.gs@calculate.json',
+    write_json('results-asr.c2db.gs@calculate.json',
                {'object_id': '__main__::Result',
                 'args': [],
                 'kwargs': dict(
@@ -873,14 +873,15 @@ def test_fix_folders_corrupt_object_id(asr_tmpdir):
                                         kwargs=dict(strict=False))),
                     strict=False)})
     _fix_folders(folders)
-    text = read_file('results-asr.gs@calculate.json')
+    text = read_file('results-asr.c2db.gs@calculate.json')
     dct = decode_json(text)
-    assert (dct['object_id'] == 'asr.gs:Result'
-            and dct['constructor'] == 'asr.gs:Result')
+    assert (dct['object_id'] == 'asr.c2db.gs:Result'
+            and dct['constructor'] == 'asr.c2db.gs:Result')
 
-    assert (dct['kwargs']['data']['gaps_nosoc']['object_id'] == 'asr.gs::GapsResult'
+    assert (dct['kwargs']['data']['gaps_nosoc']['object_id']
+            == 'asr.c2db.gs::GapsResult'
             and dct['kwargs']['data']['gaps_nosoc']['constructor']
-            == 'asr.gs::GapsResult')
+            == 'asr.c2db.gs::GapsResult')
 
 
 @pytest.mark.ci
@@ -893,10 +894,10 @@ def test_decode_result_raises_unknown_data_format(asr_tmpdir):
 @pytest.mark.ci
 def test_fix_folders_missing_object_id(asr_tmpdir):
     folders = ['.']
-    write_json('results-asr.gs.json',
+    write_json('results-asr.c2db.gs.json',
                {'etot': 0})
     _fix_folders(folders)
-    text = read_file('results-asr.gs.json')
+    text = read_file('results-asr.c2db.gs.json')
     dct = decode_json(text)
     result = decode_result(dct)
     assert result.etot == 0

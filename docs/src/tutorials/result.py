@@ -4,7 +4,8 @@ from asr.database.browser import WebPanel, describe_entry
 
 
 def webpanel(result, context):
-    parameter_description = context.parameter_description('asr.gs@calculate')
+    parameter_description = context.parameter_description(
+        'asr.c2db.gs@calculate')
 
     energy = describe_entry(result.energy, parameter_description)
     prop_table = {'type': 'table',

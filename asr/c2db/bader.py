@@ -7,7 +7,7 @@ from ase import Atoms
 from asr.core import (
     command, option, ASRResult, prepare_result, calcopt, atomsopt)
 
-from asr.gs import calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 from asr.database.browser import describe_entry, make_panel_description, href
 
 panel_description = make_panel_description(
