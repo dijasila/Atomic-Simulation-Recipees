@@ -5,8 +5,8 @@ import pytest
 @pytest.mark.ci
 @pytest.mark.parametrize("inputatoms", [Si, BN, GaAs])
 def test_shift(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent):
-    from asr.shg import get_chi_symmetry, CentroSymmetric
-    from asr.shift import main
+    from asr.c2db.shg import get_chi_symmetry, CentroSymmetric
+    from asr.c2db.shift import main
     import numpy as np
     import gpaw
     import gpaw.nlopt.shift

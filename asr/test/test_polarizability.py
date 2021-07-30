@@ -1,5 +1,5 @@
 import pytest
-from asr.polarizability import main
+from asr.c2db.polarizability import main
 
 
 @pytest.mark.ci

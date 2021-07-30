@@ -7,7 +7,7 @@ import pytest
 def test_shg(
         asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent,
         fast_calc):
-    from asr.shg import get_chi_symmetry, main, CentroSymmetric
+    from asr.c2db.shg import get_chi_symmetry, main, CentroSymmetric
     import numpy as np
     import gpaw
     import gpaw.nlopt.shg

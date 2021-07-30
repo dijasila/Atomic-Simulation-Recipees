@@ -163,7 +163,7 @@ def asr_tmpdir_w_params(asr_tmpdir):
         'asr.gs': {
             'calculator': fast_calc,
         },
-        'asr.bandstructure': {
+        'asr.c2db.bandstructure': {
             'npoints': 10,
             'calculator': fast_calc,
         },
@@ -181,11 +181,11 @@ def asr_tmpdir_w_params(asr_tmpdir):
             'kptdensity': 2,
             'emptybands': 5,
         },
-        'asr.piezoelectrictensor': {
+        'asr.c2db.piezoelectrictensor': {
             'calculator': fast_calc,
             'relaxcalculator': fast_calc
         },
-        'asr.formalpolarization': {
+        'asr.c2db.formalpolarization': {
             'calculator': {
                 "name": "gpaw",
                 "kpts": {"density": 2},

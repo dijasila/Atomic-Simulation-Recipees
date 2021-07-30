@@ -14,7 +14,7 @@ from click import Choice
 from ase import Atoms
 from asr.phonons import main as phonons
 from asr.borncharges import main as borncharges
-from asr.polarizability import main as polarizability
+from asr.c2db.polarizability import main as polarizability
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the infrared (IR) frequency regime
@@ -59,7 +59,7 @@ def webpanel(result, context):
 
 def create_plot(context, *fnames):
     infrareddct = context.result
-    electrondct = context.get_record('asr.polarizability').result
+    electrondct = context.get_record('asr.c2db.polarizability').result
     phonondata = context.get_record('asr.phonons').result
     maxphononfreq = phonondata['omega_kl'][0].max() * 1e3
 
@@ -150,7 +150,7 @@ sel.parameters = sel.NOT(
         sel.CONTAINS('phononcalculator'),
     )
 )
-sel.name = sel.EQ('asr.infraredpolarizability')
+sel.name = sel.EQ('asr.c2db.infraredpolarizability')
 
 
 @asr.migration(selector=sel)
@@ -194,7 +194,7 @@ def prepare_for_resultfile_migration(record):
 
 
 @command(
-    "asr.infraredpolarizability",
+    "asr.c2db.infraredpolarizability",
 )
 @atomsopt
 @asr.calcopt(aliases=['-b', '--borncalculator'], help='Born calculator.')

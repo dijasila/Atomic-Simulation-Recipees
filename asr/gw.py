@@ -7,7 +7,7 @@ from asr.core import (
     atomsopt, calcopt, ExternalFile,
 )
 from asr.gs import calculate as calculategs
-from asr.bandstructure import main as bsmain
+from asr.c2db.bandstructure import main as bsmain
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
 import typing
@@ -310,7 +310,7 @@ def migrate_1(record):
     """Prepare record for resultfile migration."""
     emptybands = (
         record.parameters.dependency_parameters[
-            'asr.bandstructure:calculate']['emptybands']
+            'asr.c2db.bandstructure:calculate']['emptybands']
     )
     record.parameters.ecut = 200.0
     record.parameters.kptdensity = 5.0
@@ -324,7 +324,7 @@ def migrate_1(record):
         'symmetry': 'off'
     }
     del record.parameters.dependency_parameters[
-        'asr.bandstructure:calculate']['emptybands']
+        'asr.c2db.bandstructure:calculate']['emptybands']
     return record
 
 

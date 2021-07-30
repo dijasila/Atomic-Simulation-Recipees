@@ -6,7 +6,7 @@ please see our explanation of the :ref:`Modern theory of
 polarization`, in particular to see the definition of the polarization
 phase.
 
-The central recipe of this module is :func:`asr.formalpolarization.main`.
+The central recipe of this module is :func:`asr.c2db.formalpolarization.main`.
 
 """
 import numpy as np
@@ -92,7 +92,7 @@ def distance_to_non_pbc_boundary(atoms, eps=1):
 
 
 sel = Selector()
-sel.name = sel.EQ('asr.formalpolarization')
+sel.name = sel.EQ('asr.c2db.formalpolarization')
 sel.version = sel.EQ(-1)
 sel.parameters = sel.CONTAINS('gpwname')
 
@@ -105,7 +105,7 @@ def remove_gpwname_from_parameters(record):
 
 
 @command(
-    'asr.formalpolarization',
+    'asr.c2db.formalpolarization',
 )
 @atomsopt
 @calcopt

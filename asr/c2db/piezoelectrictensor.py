@@ -2,7 +2,7 @@
 
 Module containing functionality for calculating the piezoelectric
 tensor. The central recipe of this module is
-:func:`asr.piezoelectrictensor.main`.
+:func:`asr.c2db.piezoelectrictensor.main`.
 
 """
 
@@ -12,7 +12,7 @@ import typing
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 
-from asr.formalpolarization import main as formalpolarization
+from asr.c2db.formalpolarization import main as formalpolarization
 from asr.relax import main as relax
 
 import asr
@@ -124,7 +124,7 @@ def convert_density_to_size(parameters):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.piezoelectrictensor')
+sel.name = sel.EQ('asr.c2db.piezoelectrictensor')
 sel.parameters = sel.NOT(sel.CONTAINS('relaxcalculator'))
 
 
@@ -140,15 +140,15 @@ def add_relaxcalculator_parameter(record):
 
     del_par = {'gpwname'}
     for par in del_par:
-        del dep_params['asr.formalpolarization'][par]
+        del dep_params['asr.c2db.formalpolarization'][par]
 
     if 'calculator' in record.parameters:
-        del dep_params['asr.formalpolarization']['calculator']
+        del dep_params['asr.c2db.formalpolarization']['calculator']
     return record
 
 
 @command(
-    module="asr.piezoelectrictensor",
+    module="asr.c2db.piezoelectrictensor",
     argument_hooks=[convert_density_to_size],
 )
 @atomsopt

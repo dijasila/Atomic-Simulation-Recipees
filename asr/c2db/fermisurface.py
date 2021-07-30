@@ -94,7 +94,7 @@ def plot_fermi(context, fname, sfs=1, dpi=200):
 def add_fermi(context, ax, s=0.25):
     from matplotlib import pyplot as plt
     import matplotlib.colors as colors
-    result = context.get_record('asr.fermisurface').result
+    result = context.get_record('asr.c2db.fermisurface').result
     verts = result['contours'].copy()
     normalize = colors.Normalize(vmin=-1, vmax=1)
     verts[:, :2] /= (2 * np.pi)
@@ -116,7 +116,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.fermisurface')
+@command('asr.c2db.fermisurface')
 @atomsopt
 @calcopt
 def main(

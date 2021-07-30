@@ -98,7 +98,7 @@ class Result(ASRResult):
 
 
 @command(
-    'asr.polarizability',
+    'asr.c2db.polarizability',
 )
 @atomsopt
 @calcopt

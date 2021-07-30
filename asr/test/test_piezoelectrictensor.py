@@ -70,7 +70,7 @@ def test_piezoelectrictensor(
     mocker.patch.object(GPAW, '_get_scaled_positions', new=_get_scaled_positions)
     mocker.patch.object(GPAW, '_get_setup_nvalence', new=_get_setup_nvalence)
     mocker.patch.object(GPAW, 'get_number_of_spins', new=get_number_of_spins)
-    from asr.piezoelectrictensor import main
+    from asr.c2db.piezoelectrictensor import main
 
     results = main(
         atoms=test_material,

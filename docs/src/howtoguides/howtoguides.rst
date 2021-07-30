@@ -92,7 +92,7 @@ converting it back to a result object
 
    >>> import numpy as np
    >>> from asr.core import decode_object
-   >>> from asr.piezoelectrictensor import Result
+   >>> from asr.c2db.piezoelectrictensor import Result
    >>> result = Result.fromdata(eps_vvv=np.ones((3, 3, 3), float), eps_clamped_vvv=np.ones((3, 3, 3), float))
    >>> dct = result.format_as('dict')
    >>> result = decode_object(dct)

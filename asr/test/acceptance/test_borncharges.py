@@ -33,7 +33,8 @@ def test_gpaw_berry_get_berry_phases_integration(asr_tmpdir_w_params):
         'charge': 0
     }
     setupparams(params={'asr.gs@calculate': {'calculator': calculator_params},
-                        'asr.formalpolarization': {'calculator': formal_calculator}})
+                        'asr.c2db.formalpolarization':
+                        {'calculator': formal_calculator}})
     BN.write('structure.json')
 
     results = main()

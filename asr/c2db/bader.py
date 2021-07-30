@@ -28,7 +28,7 @@ def webpanel(result, context):
              'rows': rows}
 
     title_description = (panel_description
-                         + context.parameter_description('asr.bader'))
+                         + context.parameter_description('asr.c2db.bader'))
 
     panel = {'title': describe_entry('Bader charges',
                                      description=title_description),
@@ -49,7 +49,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.bader')
+@command('asr.c2db.bader')
 @atomsopt
 @calcopt
 @option('--grid-spacing', help='Grid spacing (Å)', type=float)

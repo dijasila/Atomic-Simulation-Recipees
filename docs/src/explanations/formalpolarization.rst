@@ -26,8 +26,8 @@ Relevant recipes
 
 The following recipes are all relying on the Modern theory of Polarization:
 
-- :py:func:`asr.formalpolarization.main`
-- :py:func:`asr.piezoelectrictensor.main`
+- :py:func:`asr.c2db.formalpolarization.main`
+- :py:func:`asr.c2db.piezoelectrictensor.main`
 - :py:func:`asr.borncharges.main`
 
 Alternative literature

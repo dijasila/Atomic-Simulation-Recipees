@@ -1,6 +1,6 @@
 import pytest
 from ase.io import write
-from asr.bandstructure import main
+from asr.c2db.bandstructure import main
 from asr.structureinfo import main as structinfo
 
 
