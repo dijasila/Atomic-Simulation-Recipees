@@ -44,7 +44,7 @@ def find_results_files(directory: pathlib.Path) -> typing.List[pathlib.Path]:
         '*asr.setinfo*',
         '*asr.setup.params.json',
         '*asr.setup.params.json',
-        '*asr.exchange@calculate.json',
+        '*asr.c2db.exchange@calculate.json',
     ]
 
     paths = []
@@ -215,8 +215,8 @@ def get_dependencies(path, uids):
         'asr.c2db.hse@calculate': [
             'asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
         'asr.c2db.hse': ['asr.c2db.hse@calculate', 'asr.c2db.bandstructure'],
-        'asr.exchange@calculate': ['asr.gs@calculate'],
-        'asr.exchange': ['asr.exchange@calculate'],
+        'asr.c2db.exchange@calculate': ['asr.gs@calculate'],
+        'asr.c2db.exchange': ['asr.c2db.exchange@calculate'],
         'asr.plasmafrequency@calculate': ['asr.gs@calculate'],
         'asr.plasmafrequency': ['asr.plasmafrequency@calculate'],
         'asr.c2db.shg': ['asr.gs@calculate'],
