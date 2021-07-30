@@ -48,7 +48,7 @@ def set_default(settings):
 
 
 sel = asr.Selector()
-sel.name = sel.EQ('asr.emasses:refine')
+sel.name = sel.EQ('asr.c2db.emasses:refine')
 sel.version = sel.EQ(-1)
 sel.parameters = sel.AND(
     sel.NOT(sel.CONTAINS('settings')),
@@ -70,7 +70,7 @@ def add_settings_parameter_remove_gpwfilename(record):
 
 
 @command(
-    module='asr.emasses',
+    module='asr.c2db.emasses',
 )
 @atomsopt
 @calcopt
@@ -359,9 +359,9 @@ def maeformat(mae):
 
 def get_emass_dict_from_context(context, has_mae=False):
     if has_mae:
-        resultname = 'asr.emasses:validate'
+        resultname = 'asr.c2db.emasses:validate'
     else:
-        resultname = 'asr.emasses'
+        resultname = 'asr.c2db.emasses'
 
     results = context.get_record(resultname).result
 
@@ -532,7 +532,7 @@ def make_the_plots(context, *args):
     import matplotlib.pyplot as plt
     from asr.database.browser import fig as asrfig
 
-    results = context.get_record('asr.emasses').result
+    results = context.get_record('asr.c2db.emasses').result
     ref = context.energy_reference()
     sdir = context.spin_axis
     cell_cv = context.atoms.cell
@@ -708,7 +708,7 @@ def custom_table(values_dict, title, has_mae=False):
 def webpanel(result, context):
     from asr.core.datacontext import RecordNotFound
     try:
-        context.get_record('asr.emasses:validate')
+        context.get_record('asr.c2db.emasses:validate')
     except RecordNotFound:
         has_mae = False
     else:
@@ -740,7 +740,7 @@ def webpanel(result, context):
 def create_columns_fnames(context):
     from asr.database.browser import fig as asrfig
 
-    results = context.get_record('asr.emasses').result
+    results = context.get_record('asr.c2db.emasses').result
 
     cb_fnames = []
     vb_fnames = []
@@ -829,7 +829,7 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.emasses')
+sel.name = sel.EQ('asr.c2db.emasses')
 
 
 @asr.migration(selector=sel)
@@ -851,7 +851,7 @@ def prepare_parameters_for_version_0_migration(record):
     return record
 
 
-@command('asr.emasses')
+@command('asr.c2db.emasses')
 @atomsopt
 @calcopt
 @option('-s', '--settings', help='Settings for the two refinements',
@@ -1568,7 +1568,7 @@ class ValidateResult(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.emasses:validate')
+sel.name = sel.EQ('asr.c2db.emasses:validate')
 sel.parameters = sel.NOT(sel.CONTAINS('settings'))
 
 
@@ -1586,7 +1586,7 @@ def add_settings_parameter(record):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.emasses:validate')
+sel.name = sel.EQ('asr.c2db.emasses:validate')
 sel.parameters.dependency_parameters = \
     lambda value: bool(val for val in value.values()
                        if 'gpwname' in val)
@@ -1603,7 +1603,7 @@ def remove_gpwname_from_dependency_parameters(record):
 
 
 @command(
-    module='asr.emasses',
+    module='asr.c2db.emasses',
 )
 @atomsopt
 @calcopt

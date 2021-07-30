@@ -192,12 +192,12 @@ def get_dependencies(path, uids):
         'asr.c2db.infraredpolarizability': [
             'asr.c2db.phonons', 'asr.c2db.borncharges',
             'asr.c2db.polarizability'],
-        'asr.emasses@refine': [
+        'asr.c2db.emasses@refine': [
             'asr.structureinfo', 'asr.magnetic_anisotropy', 'asr.gs'],
-        'asr.emasses': [
-            'asr.emasses@refine', 'asr.gs@calculate',
+        'asr.c2db.emasses': [
+            'asr.c2db.emasses@refine', 'asr.gs@calculate',
             'asr.gs', 'asr.structureinfo', 'asr.magnetic_anisotropy'],
-        'asr.emasses@validate': ['asr.emasses'],
+        'asr.c2db.emasses@validate': ['asr.c2db.emasses'],
         'asr.berry@calculate': ['asr.gs'],
         'asr.berry': ['asr.berry@calculate'],
         'asr.gw@gs': ['asr.gs@calculate'],
@@ -390,7 +390,7 @@ def update_resultfile_record_to_version_0(record):
     #     remove_keys.add('gpwname')
     # elif name == 'asr.setup.displacements':
     #     remove_keys.add('copy_params')
-    # elif name in {'asr.emasses:refine', 'asr.emasses'}:
+    # elif name in {'asr.c2db.emasses:refine', 'asr.c2db.emasses'}:
     #     remove_keys.add('gpwfilename')
     # unused_old_params = unused_old_params - remove_keys
 
