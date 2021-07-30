@@ -190,7 +190,7 @@ def get_dependencies(path, uids):
 
     deps = {
         'asr.c2db.infraredpolarizability': [
-            'asr.phonons', 'asr.borncharges', 'asr.c2db.polarizability'],
+            'asr.c2db.phonons', 'asr.borncharges', 'asr.c2db.polarizability'],
         'asr.emasses@refine': [
             'asr.structureinfo', 'asr.magnetic_anisotropy', 'asr.gs'],
         'asr.emasses': [
@@ -205,9 +205,9 @@ def get_dependencies(path, uids):
         'asr.gw': ['asr.c2db.bandstructure', 'asr.gw@empirical_mean_z'],
         'asr.pdos@calculate': ['asr.gs'],
         'asr.pdos': ['asr.gs', 'asr.pdos@calculate'],
-        'asr.phonons@calculate': [],
-        'asr.phonons': ['asr.phonons@calculate'],
-        'asr.push': ['asr.structureinfo', 'asr.phonons'],
+        'asr.c2db.phonons@calculate': [],
+        'asr.c2db.phonons': ['asr.c2db.phonons@calculate'],
+        'asr.push': ['asr.structureinfo', 'asr.c2db.phonons'],
         'asr.phonopy@calculate': ['asr.gs@calculate'],
         'asr.phonopy': ['asr.phonopy@calculate'],
         'asr.hse@calculate': [

@@ -2,7 +2,7 @@
 # TODO: Should be moved to setup recipes.
 from typing import List
 from asr.core import command, option, atomsopt, calcopt
-from asr.phonons import main as phonons
+from asr.c2db.phonons import main as phonons
 
 from ase import Atoms
 
