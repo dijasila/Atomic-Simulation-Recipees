@@ -17,7 +17,7 @@ from asr.utils.kpts import get_kpts_size
 
 from asr.gs import calculate as gscalculate
 from asr.gs import main as gsmain
-from asr.magstate import main as calcmagstate
+from asr.c2db.magstate import main as calcmagstate
 
 panel_description = make_panel_description(
     """The optical absorption calculated from the Bethe–Salpeter Equation

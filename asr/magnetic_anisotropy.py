@@ -150,7 +150,7 @@ def main(atoms: Atoms,
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """
-    from asr.magstate import main as magstate
+    from asr.c2db.magstate import main as magstate
     from asr.gs import calculate as calculategs
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc

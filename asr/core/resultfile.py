@@ -220,9 +220,9 @@ def get_dependencies(path, uids):
         'asr.c2db.plasmafrequency@calculate': ['asr.gs@calculate'],
         'asr.c2db.plasmafrequency': ['asr.c2db.plasmafrequency@calculate'],
         'asr.c2db.shg': ['asr.gs@calculate'],
-        'asr.magstate': ['asr.gs@calculate'],
+        'asr.c2db.magstate': ['asr.gs@calculate'],
         'asr.c2db.fermisurface': ['asr.gs', 'asr.structureinfo'],
-        'asr.magnetic_anisotropy': ['asr.gs@calculate', 'asr.magstate'],
+        'asr.magnetic_anisotropy': ['asr.gs@calculate', 'asr.c2db.magstate'],
         'asr.convex_hull': [
             'asr.structureinfo', 'asr.database.material_fingerprint'],
         'asr.c2db.borncharges': ['asr.gs@calculate'],

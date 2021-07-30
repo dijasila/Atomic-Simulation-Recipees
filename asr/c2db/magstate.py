@@ -96,7 +96,7 @@ class Result(ASRResult):
     formats = {"webpanel2": webpanel}
 
 
-@command('asr.magstate')
+@command('asr.c2db.magstate')
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @asr.calcopt

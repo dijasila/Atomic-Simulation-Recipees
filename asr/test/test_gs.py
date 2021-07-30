@@ -138,7 +138,7 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 def test_gs_integration_gpaw(asr_tmpdir, atoms, calculator, results):
     """Check that the groundstates produced by GPAW are correct."""
     from asr.gs import main as groundstate
-    from asr.magstate import main as magstate
+    from asr.c2db.magstate import main as magstate
     gsresults = groundstate(atoms=atoms, calculator=calculator)
 
     assert gsresults['gap'] == results['gap']
