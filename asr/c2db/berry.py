@@ -76,7 +76,7 @@ def calculate(
     import os
     from gpaw.berryphase import parallel_transport
     from gpaw.mpi import world
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
 
     nd = sum(atoms.pbc)
 

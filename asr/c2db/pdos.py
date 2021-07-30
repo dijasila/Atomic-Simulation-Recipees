@@ -120,7 +120,7 @@ def main(
 ) -> Result:
     from gpaw import GPAW
     from ase.parallel import parprint
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
 
     # Get refined ground state with more k-points
     res = calculate(

@@ -123,7 +123,7 @@ class Result(ASRResult):
     formats = {"webpanel2": webpanel}
 
 
-@command('asr.magnetic_anisotropy')
+@command('asr.c2db.magnetic_anisotropy')
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @asr.calcopt

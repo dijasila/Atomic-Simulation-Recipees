@@ -125,7 +125,7 @@ def main(
 ) -> Result:
     from asr.utils.gpw2eigs import calc2eigs
     from gpaw.kpt_descriptor import to1bz
-    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     ndim = sum(atoms.pbc)
     assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'

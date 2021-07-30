@@ -72,7 +72,7 @@ class DataContext:
         return self.get_record('asr.c2db.magstate')
 
     def magnetic_anisotropy(self):
-        return self.get_record('asr.magnetic_anisotropy')
+        return self.get_record('asr.c2db.magnetic_anisotropy')
 
     def bandstructure(self):
         return self.get_record('asr.c2db.bandstructure')

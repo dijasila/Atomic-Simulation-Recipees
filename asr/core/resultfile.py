@@ -193,10 +193,10 @@ def get_dependencies(path, uids):
             'asr.c2db.phonons', 'asr.c2db.borncharges',
             'asr.c2db.polarizability'],
         'asr.c2db.emasses@refine': [
-            'asr.structureinfo', 'asr.magnetic_anisotropy', 'asr.gs'],
+            'asr.structureinfo', 'asr.c2db.magnetic_anisotropy', 'asr.gs'],
         'asr.c2db.emasses': [
             'asr.c2db.emasses@refine', 'asr.gs@calculate',
-            'asr.gs', 'asr.structureinfo', 'asr.magnetic_anisotropy'],
+            'asr.gs', 'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
         'asr.c2db.emasses@validate': ['asr.c2db.emasses'],
         'asr.berry@calculate': ['asr.gs'],
         'asr.berry': ['asr.berry@calculate'],
@@ -222,17 +222,18 @@ def get_dependencies(path, uids):
         'asr.c2db.shg': ['asr.gs@calculate'],
         'asr.c2db.magstate': ['asr.gs@calculate'],
         'asr.c2db.fermisurface': ['asr.gs', 'asr.structureinfo'],
-        'asr.magnetic_anisotropy': ['asr.gs@calculate', 'asr.c2db.magstate'],
+        'asr.c2db.magnetic_anisotropy': ['asr.gs@calculate',
+                                         'asr.c2db.magstate'],
         'asr.convex_hull': [
             'asr.structureinfo', 'asr.database.material_fingerprint'],
         'asr.c2db.borncharges': ['asr.gs@calculate'],
         'asr.gs': [
             'asr.gs@calculate',
-            'asr.magnetic_anisotropy', 'asr.structureinfo'],
+            'asr.c2db.magnetic_anisotropy', 'asr.structureinfo'],
         'asr.c2db.bandstructure@calculate': ['asr.gs@calculate'],
         'asr.c2db.bandstructure': [
             'asr.c2db.bandstructure@calculate', 'asr.gs',
-            'asr.structureinfo', 'asr.magnetic_anisotropy'],
+            'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
         'asr.defectformation': ['asr.setup.defects', 'asr.gs'],
         'asr.c2db.deformationpotentials': ['asr.gs'],
         'asr.c2db.bader': ['asr.gs'],

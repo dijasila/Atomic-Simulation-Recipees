@@ -528,7 +528,7 @@ def main(
     from ase.dft.kpoints import BandPath
     import copy
     from asr.utils.gpw2eigs import gpw2eigs
-    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     bsresult = calculate(
         atoms=atoms,

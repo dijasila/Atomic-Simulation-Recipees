@@ -280,7 +280,7 @@ def gaps(atoms, calc, calculator, soc=True) -> GapsResult:
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
 
     if soc:
         ibzkpts = calc.get_bz_k_points()
@@ -345,7 +345,7 @@ def get_1bz_k(ibzkpts, calc, k_index):
 def get_gap_info(atoms, soc, direct, calc, calculator):
     from ase.dft.bandgap import bandgap
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
     # e1 is VBM, e2 is CBM
     if soc:
         theta, phi = get_spin_axis(atoms, calculator=calculator)
