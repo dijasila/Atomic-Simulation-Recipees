@@ -54,7 +54,7 @@ class HSECalculationResult(ASRResult):
     )
 
 
-@command(module='asr.hse')
+@command(module='asr.c2db.hse')
 @asr.atomsopt
 @asr.calcopt
 @option('--kptdensity', help='K-point density', type=float)
@@ -320,7 +320,7 @@ class Result(ASRResult):
     formats = {"webpanel2": webpanel}
 
 
-@command(module='asr.hse')
+@command(module='asr.c2db.hse')
 @asr.atomsopt
 @asr.calcopt
 @option('--kptdensity', help='K-point density', type=float)

@@ -69,7 +69,7 @@ def distance_to_sc(nd, atoms, dist_max):
 
 
 @command(
-    "asr.phonopy",
+    "asr.c2db.phonopy",
 )
 @atomsopt
 @option("--d", type=float, help="Displacement size")
@@ -175,10 +175,6 @@ def calculate(
     return results
 
 
-def requires():
-    return ["results-asr.phonopy@calculate.json"]
-
-
 def webpanel(result, context):
     from asr.database.browser import table, fig
 
@@ -250,7 +246,7 @@ class Result(ASRResult):
 
 
 @command(
-    "asr.phonopy",
+    "asr.c2db.phonopy",
 )
 @atomsopt
 @option("--rc", type=float, help="Cutoff force constants matrix")
@@ -411,7 +407,7 @@ def main(
 def plot_phonons(context, fname):
     import matplotlib.pyplot as plt
 
-    data = context.get_record('asr.phonopy').result
+    data = context.get_record('asr.c2db.phonopy').result
     omega_kl = data["omega_kl"]
     gamma = omega_kl[0]
     fig = plt.figure(figsize=(6.4, 3.9))
@@ -439,7 +435,7 @@ def plot_bandstructure(context, fname):
     from matplotlib import pyplot as plt
     from ase.spectrum.band_structure import BandStructure
 
-    data = context.get_record('asr.phonopy').result
+    data = context.get_record('asr.c2db.phonopy').result
     path = data["path"]
     energies = data["omega_kl"]
     bs = BandStructure(path=path, energies=energies[None, :, :], reference=0)

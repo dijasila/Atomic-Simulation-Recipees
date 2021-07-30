@@ -12,8 +12,8 @@ import numpy as np
 from click import Choice
 
 from ase import Atoms
-from asr.phonons import main as phonons
-from asr.borncharges import main as borncharges
+from asr.c2db.phonons import main as phonons
+from asr.c2db.borncharges import main as borncharges
 from asr.c2db.polarizability import main as polarizability
 
 panel_description = make_panel_description(
@@ -60,7 +60,7 @@ def webpanel(result, context):
 def create_plot(context, *fnames):
     infrareddct = context.result
     electrondct = context.get_record('asr.c2db.polarizability').result
-    phonondata = context.get_record('asr.phonons').result
+    phonondata = context.get_record('asr.c2db.phonons').result
     maxphononfreq = phonondata['omega_kl'][0].max() * 1e3
 
     assert len(fnames) == 3
@@ -156,7 +156,8 @@ sel.name = sel.EQ('asr.c2db.infraredpolarizability')
 @asr.migration(selector=sel)
 def prepare_for_resultfile_migration(record):
     """Prepare record for resultfile migration."""
-    phononpar = record.parameters.dependency_parameters['asr.phonons:calculate']
+    phononpar = record.parameters.dependency_parameters[
+        'asr.c2db.phonons:calculate']
     fconverge = phononpar['fconverge']
     del phononpar['fconverge']
     record.parameters.bandfactor = 5

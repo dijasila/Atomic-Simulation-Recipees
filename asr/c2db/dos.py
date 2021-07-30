@@ -4,7 +4,7 @@ from asr.gs import calculate as gscalculate
 from ase import Atoms
 
 
-@command('asr.dos')
+@command('asr.c2db.dos')
 @atomsopt
 @calcopt
 @option('--kptdensity', help='K point kptdensity', type=float)

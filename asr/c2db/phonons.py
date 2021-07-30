@@ -1,6 +1,6 @@
 """Phonon band structure and dynamical stability.
 
-Deprecated: Please use the more efficient and optimized asr.phonopy
+Deprecated: Please use the more efficient and optimized asr.c2db.phonopy
 recipe for calculating phonon properties instead.
 
 """
@@ -45,7 +45,7 @@ class CalculateResult(ASRResult):
 
 
 @command(
-    'asr.phonons',
+    'asr.c2db.phonons',
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
@@ -158,7 +158,7 @@ class Result(ASRResult):
 
 
 sel = Selector()
-sel.name = sel.OR(sel.EQ('asr.phonons'), sel.EQ('asr.phonons:calculate'))
+sel.name = sel.OR(sel.EQ('asr.c2db.phonons'), sel.EQ('asr.c2db.phonons:calculate'))
 sel.version = sel.EQ(-1)
 
 
@@ -196,14 +196,14 @@ def construct_calculator_from_old_parameters(record):
         for dep_params in params['dependency_parameters'].values():
             if par in dep_params:
                 del dep_params[par]
-    if record.name == 'asr.phonons:calculate':
+    if record.name == 'asr.c2db.phonons:calculate':
         params.dependency_parameters = {}
     params.calculator = calculator
     return record
 
 
 @command(
-    'asr.phonons',
+    'asr.c2db.phonons',
 )
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
@@ -305,7 +305,7 @@ def get_dynamic_stability(mineig):
 def plot_phonons(row, fname):
     import matplotlib.pyplot as plt
 
-    data = row.data.get('results-asr.phonons.json')
+    data = row.data.get('results-asr.c2db.phonons.json')
     if data is None:
         return
 

@@ -32,7 +32,7 @@ def resultstest(results, vbmass, cbmass):
 def test_emasses_freelectron(asr_tmpdir_w_params, mockgpaw, mocker,
                              test_material, fast_calc, gap, fermi_level,
                              vbmass, cbmass):
-    from asr.emasses import main
+    from asr.c2db.emasses import main
     import gpaw
 
     unpatched = gpaw.GPAW.get_all_eigenvalues
@@ -63,7 +63,7 @@ def test_emasses_freelectron(asr_tmpdir_w_params, mockgpaw, mocker,
 def test_emasses_indirect(asr_tmpdir_w_params, mockgpaw, mocker,
                           test_material, fast_calc, gap, fermi_level,
                           vbmass, cbmass):
-    from asr.emasses import main
+    from asr.c2db.emasses import main
     import gpaw
 
     def get_all_eigs(self):
@@ -120,7 +120,7 @@ def _get_all_eigenvalues(self):
 # def test_emasses_rashba(asr_tmpdir_w_params, mockgpaw, mocker,
 #                              test_material, gap, fermi_level,
 #                              vbmass, cbmass):
-#     from asr.emasses import main
+#     from asr.c2db.emasses import main
 #     import gpaw
 
 

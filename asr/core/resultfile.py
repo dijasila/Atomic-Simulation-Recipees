@@ -190,29 +190,31 @@ def get_dependencies(path, uids):
 
     deps = {
         'asr.c2db.infraredpolarizability': [
-            'asr.phonons', 'asr.borncharges', 'asr.c2db.polarizability'],
-        'asr.emasses@refine': [
+            'asr.c2db.phonons', 'asr.c2db.borncharges',
+            'asr.c2db.polarizability'],
+        'asr.c2db.emasses@refine': [
             'asr.structureinfo', 'asr.magnetic_anisotropy', 'asr.gs'],
-        'asr.emasses': [
-            'asr.emasses@refine', 'asr.gs@calculate',
+        'asr.c2db.emasses': [
+            'asr.c2db.emasses@refine', 'asr.gs@calculate',
             'asr.gs', 'asr.structureinfo', 'asr.magnetic_anisotropy'],
-        'asr.emasses@validate': ['asr.emasses'],
+        'asr.c2db.emasses@validate': ['asr.c2db.emasses'],
         'asr.berry@calculate': ['asr.gs'],
         'asr.berry': ['asr.berry@calculate'],
-        'asr.gw@gs': ['asr.gs@calculate'],
-        'asr.gw@gw': ['asr.gw@gs'],
-        'asr.gw@empirical_mean_z': ['asr.gw@gw'],
-        'asr.gw': ['asr.c2db.bandstructure', 'asr.gw@empirical_mean_z'],
-        'asr.pdos@calculate': ['asr.gs'],
-        'asr.pdos': ['asr.gs', 'asr.pdos@calculate'],
-        'asr.phonons@calculate': [],
-        'asr.phonons': ['asr.phonons@calculate'],
-        'asr.push': ['asr.structureinfo', 'asr.phonons'],
-        'asr.phonopy@calculate': ['asr.gs@calculate'],
-        'asr.phonopy': ['asr.phonopy@calculate'],
-        'asr.hse@calculate': [
+        'asr.c2db.gw@gs': ['asr.gs@calculate'],
+        'asr.c2db.gw@gw': ['asr.c2db.gw@gs'],
+        'asr.c2db.gw@empirical_mean_z': ['asr.c2db.gw@gw'],
+        'asr.c2db.gw': ['asr.c2db.bandstructure',
+                        'asr.c2db.gw@empirical_mean_z'],
+        'asr.c2db.pdos@calculate': ['asr.gs'],
+        'asr.c2db.pdos': ['asr.gs', 'asr.c2db.pdos@calculate'],
+        'asr.c2db.phonons@calculate': [],
+        'asr.c2db.phonons': ['asr.c2db.phonons@calculate'],
+        'asr.c2db.push': ['asr.structureinfo', 'asr.c2db.phonons'],
+        'asr.c2db.phonopy@calculate': ['asr.gs@calculate'],
+        'asr.c2db.phonopy': ['asr.c2db.phonopy@calculate'],
+        'asr.c2db.hse@calculate': [
             'asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
-        'asr.hse': ['asr.hse@calculate', 'asr.c2db.bandstructure'],
+        'asr.c2db.hse': ['asr.c2db.hse@calculate', 'asr.c2db.bandstructure'],
         'asr.exchange@calculate': ['asr.gs@calculate'],
         'asr.exchange': ['asr.exchange@calculate'],
         'asr.plasmafrequency@calculate': ['asr.gs@calculate'],
@@ -223,7 +225,7 @@ def get_dependencies(path, uids):
         'asr.magnetic_anisotropy': ['asr.gs@calculate', 'asr.magstate'],
         'asr.convex_hull': [
             'asr.structureinfo', 'asr.database.material_fingerprint'],
-        'asr.borncharges': ['asr.gs@calculate'],
+        'asr.c2db.borncharges': ['asr.gs@calculate'],
         'asr.gs': [
             'asr.gs@calculate',
             'asr.magnetic_anisotropy', 'asr.structureinfo'],
@@ -389,7 +391,7 @@ def update_resultfile_record_to_version_0(record):
     #     remove_keys.add('gpwname')
     # elif name == 'asr.setup.displacements':
     #     remove_keys.add('copy_params')
-    # elif name in {'asr.emasses:refine', 'asr.emasses'}:
+    # elif name in {'asr.c2db.emasses:refine', 'asr.c2db.emasses'}:
     #     remove_keys.add('gpwfilename')
     # unused_old_params = unused_old_params - remove_keys
 

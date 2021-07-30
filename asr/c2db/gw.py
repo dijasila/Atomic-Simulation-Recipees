@@ -51,7 +51,7 @@ arXiv:2009.00314""",
 
     @staticmethod
     def plot_bs(context, filename):
-        from asr.hse import plot_bs
+        from asr.c2db.hse import plot_bs
         result = context.result
         return plot_bs(context, filename=filename, bs_label='G₀W₀',
                        data=result,
@@ -302,7 +302,7 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.gw')
+sel.name = sel.EQ('asr.c2db.gw')
 
 
 @asr.migration(selector=sel)
@@ -362,7 +362,7 @@ def main(
     from gpaw import GPAW
     from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
-    from asr.hse import MP_interpolate
+    from asr.c2db.hse import MP_interpolate
     from types import SimpleNamespace
 
     gsres = gs(
