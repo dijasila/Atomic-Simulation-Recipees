@@ -26,7 +26,7 @@ indicates a dynamical instability.
 
 
 def webpanel(result, context):
-    stiffnessdata = result  # row.data['results-asr.stiffness.json']
+    stiffnessdata = result  # row.data['results-asr.c2db.stiffness.json']
     c_ij = stiffnessdata['stiffness_tensor'].copy()
     eigs = stiffnessdata['eigenvalues'].copy()
     nd = context.ndim
@@ -212,7 +212,7 @@ def transform_stiffness_resultfile_record(record):
 
 
 @command(
-    module='asr.stiffness',
+    module='asr.c2db.stiffness',
 )
 @option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
         default='structure.json')

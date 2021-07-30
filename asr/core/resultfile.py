@@ -253,7 +253,7 @@ def get_dependencies(path, uids):
         dependencies += list(
             folder.rglob('strains*/results-asr.c2db.formalpolarization.json')
         )
-    elif name == 'asr.stiffness':
+    elif name == 'asr.c2db.stiffness':
         dependencies = []
         dependencies += list(folder.rglob('strains*/results-asr.relax.json'))
     else:
