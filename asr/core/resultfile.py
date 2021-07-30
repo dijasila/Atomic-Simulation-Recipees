@@ -208,8 +208,8 @@ def get_dependencies(path, uids):
         'asr.c2db.phonons@calculate': [],
         'asr.c2db.phonons': ['asr.c2db.phonons@calculate'],
         'asr.push': ['asr.structureinfo', 'asr.c2db.phonons'],
-        'asr.phonopy@calculate': ['asr.gs@calculate'],
-        'asr.phonopy': ['asr.phonopy@calculate'],
+        'asr.c2db.phonopy@calculate': ['asr.gs@calculate'],
+        'asr.c2db.phonopy': ['asr.c2db.phonopy@calculate'],
         'asr.hse@calculate': [
             'asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
         'asr.hse': ['asr.hse@calculate', 'asr.c2db.bandstructure'],

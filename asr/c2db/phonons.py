@@ -1,6 +1,6 @@
 """Phonon band structure and dynamical stability.
 
-Deprecated: Please use the more efficient and optimized asr.phonopy
+Deprecated: Please use the more efficient and optimized asr.c2db.phonopy
 recipe for calculating phonon properties instead.
 
 """
