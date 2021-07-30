@@ -171,7 +171,7 @@ def asr_tmpdir_w_params(asr_tmpdir):
             'calculator': fast_calc,
             'kptdensity': 2,
         },
-        'asr.gw:gs': {
+        'asr.c2db.gw:gs': {
             'kptdensity': 2,
         },
         'asr.bse:calculate': {
