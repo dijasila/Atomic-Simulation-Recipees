@@ -150,7 +150,7 @@ sel.parameters = sel.NOT(
         sel.CONTAINS('phononcalculator'),
     )
 )
-sel.name = sel.EQ('asr.c2db.infraredpolarizability:main')
+sel.name = sel.EQ('asr.c2db.infraredpolarizability')
 
 
 @asr.migration(selector=sel)

@@ -92,7 +92,7 @@ def distance_to_non_pbc_boundary(atoms, eps=1):
 
 
 sel = Selector()
-sel.name = sel.EQ('asr.c2db.formalpolarization:main')
+sel.name = sel.EQ('asr.c2db.formalpolarization')
 sel.version = sel.EQ(-1)
 sel.parameters = sel.CONTAINS('gpwname')
 

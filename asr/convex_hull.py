@@ -126,7 +126,7 @@ def convert_database_strings_to_files(parameters):
 
 
 def select_records_with_databases_as_string(record):
-    if record.name != 'asr.convex_hull:main':
+    if record.name != 'asr.convex_hull':
         return False
     for database in record.parameters.databases:
         if isinstance(database, str):

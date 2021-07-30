@@ -26,7 +26,8 @@ def rstfiles():
     return rstfiles
 
 
-@pytest.mark.xfail
+# XXX crashes pytest in parallel, or a plugin.
+@pytest.mark.skip
 @pytest.mark.parametrize("command_outputs", rstfiles(),
                          ids=lambda x: str(x), indirect=True)
 def test_rst_file(command_outputs, tmpdir):

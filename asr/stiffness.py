@@ -204,7 +204,7 @@ sel.version = sel.EQ(-1)
 def transform_stiffness_resultfile_record(record):
     """Remove fixcell and allow_symmetry_breaking from dependency_parameters."""
     dep_params = record.parameters['dependency_parameters']
-    relax_dep_params = dep_params['asr.relax:main']
+    relax_dep_params = dep_params['asr.relax']
     delparams = {'fixcell', 'allow_symmetry_breaking'}
     for param in delparams:
         del relax_dep_params[param]

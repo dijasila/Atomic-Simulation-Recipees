@@ -220,11 +220,13 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
 
     if isinstance(func, ASRCommand):
         is_asr_command = True
+        name = func.name
     else:
         is_asr_command = False
+        name = f'{module}:{function}'
 
     if dry_run:
-        prt(append_job(f'Would run {module}:{function} '
+        prt(append_job(f'Would run {name} '
                        f'in {nfolders} folders.', job_num=job_num))
         return
 
