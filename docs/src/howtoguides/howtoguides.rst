@@ -70,7 +70,7 @@ in the database.
 
 To unpack the project do::
 
-  $ asr run "database.totree project.db --run --patterns results-asr.gs.json,gs.gpw"
+  $ asr run "database.totree project.db --run --patterns results-asr.c2db.gs.json,gs.gpw"
 
 Then perform the calculations needed in the unpacked folders. When
 calculations are done package them and merge the databases::
@@ -103,14 +103,14 @@ How-to: Select rows in database with results from specific recipe
 
 When a database has been collected with ``asr.database.fromtree`` it
 automatically saves a special key-value-pair named as
-``has_asr_recipename``. Concretely if ``asr.gs@calculate`` is
+``has_asr_recipename``. Concretely if ``asr.c2db.gs:calculate`` is
 calculated for the specific row then it will have the
-``has_asr_gs_calculate`` key-value-pair defined. To select all rows
-where ``asr.gs@calculate`` is done then simply do
+``has_asr_c2db_gs_calculate`` key-value-pair defined. To select all rows
+where ``asr.c2db.gs@calculate`` is done then simply do
 
 .. code-block:: console
 
-   $ ase db database.db has_asr_gs_calculate
+   $ ase db database.db has_asr_c2db_gs_calculate
 
 
 to select those rows.
