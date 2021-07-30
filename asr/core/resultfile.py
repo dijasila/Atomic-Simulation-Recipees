@@ -224,7 +224,7 @@ def get_dependencies(path, uids):
         'asr.c2db.fermisurface': ['asr.gs', 'asr.structureinfo'],
         'asr.c2db.magnetic_anisotropy': ['asr.gs@calculate',
                                          'asr.c2db.magstate'],
-        'asr.convex_hull': [
+        'asr.c2db.convex_hull': [
             'asr.structureinfo', 'asr.database.material_fingerprint'],
         'asr.c2db.borncharges': ['asr.gs@calculate'],
         'asr.gs': [

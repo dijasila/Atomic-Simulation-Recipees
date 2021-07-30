@@ -837,9 +837,9 @@ def test_object_to_id(cls, result):
         ('results-asr.gs@calculate.json',
          {'object_id': '__main__::CalculateResult'},
          'asr.gs::CalculateResult'),
-        ('results-asr.convex_hull.json',
+        ('results-asr.c2db.convex_hull.json',
          {'object_id': '__main__::Result'},
-         'asr.convex_hull::Result')
+         'asr.c2db.convex_hull::Result')
 
     ]
 )

@@ -126,7 +126,7 @@ def convert_database_strings_to_files(parameters):
 
 
 def select_records_with_databases_as_string(record):
-    if record.name != 'asr.convex_hull':
+    if record.name != 'asr.c2db.convex_hull':
         return False
     for database in record.parameters.databases:
         if isinstance(database, str):
@@ -142,7 +142,7 @@ def convert_database_parameter_to_file(record):
     return record
 
 
-@command('asr.convex_hull',
+@command('asr.c2db.convex_hull',
          argument_hooks=[set_calculator_hook,
                          convert_database_strings_to_files],
          )

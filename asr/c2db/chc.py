@@ -611,8 +611,9 @@ def main(dbs: List[str],
 
 
 def results2ref(formula):
+    # XXX Seems to be old-master code
     from asr.core import read_json
-    data = read_json("results-asr.convex_hull.json")
+    data = read_json("results-asr.c2db.convex_hull.json")
     return Reference(formula, data["hform"])
 
 
