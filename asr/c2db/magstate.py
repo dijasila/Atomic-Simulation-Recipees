@@ -96,7 +96,7 @@ class Result(ASRResult):
     formats = {"webpanel2": webpanel}
 
 
-@command('asr.magstate')
+@command('asr.c2db.magstate')
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @asr.calcopt
@@ -114,7 +114,7 @@ def main(atoms: Atoms,
              'charge': 0
          }) -> Result:
     """Determine magnetic state."""
-    from asr.gs import calculate as calculategs
+    from asr.c2db.gs import calculate as calculategs
 
     calculateresult = calculategs(atoms=atoms, calculator=calculator)
     calc = calculateresult.calculation.load()

@@ -3,7 +3,7 @@ from ase import Atoms
 import typing
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt)
-from asr.gs import calculate as gscalculate, main as gsmain
+from asr.c2db.gs import calculate as gscalculate, main as gsmain
 
 import numpy as np
 

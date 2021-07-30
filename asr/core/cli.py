@@ -814,7 +814,7 @@ def results(selection, show):
     """Show results from records.
 
     Generate and save figures relating to recipe with NAME. Examples
-    of valid names are asr.bandstructure, asr.gs etc.
+    of valid names are asr.bandstructure, asr.c2db.gs etc.
 
     """
     from matplotlib import pyplot as plt

@@ -7,7 +7,7 @@ from asr.core import (
     command, option, DictStr, ASRResult, calcopt, atomsopt, prepare_result,
 )
 from asr.database.browser import make_panel_description, describe_entry
-from asr.gs import calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 
 panel_description = make_panel_description(
     """
@@ -89,7 +89,7 @@ def refine(
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
     import os.path
     set_default(settings)
     socs = [True]
@@ -144,7 +144,7 @@ def preliminary_refine(atoms, calculator, calc, soc=True, bandtype=None,
                        settings=None):
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
     # Get calc and current kpts
     ndim = calc.atoms.pbc.sum()
 
@@ -195,7 +195,7 @@ def preliminary_refine(atoms, calculator, calc, soc=True, bandtype=None,
 def get_gapskn(
         atoms, calculator, calculation, fallback_calculation=None, soc=True):
     from ase.dft.bandgap import bandgap
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
     from asr.utils.gpw2eigs import calc2eigs
     from ase.parallel import parprint
 
@@ -868,7 +868,7 @@ def main(
 ) -> ASRResult:
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
     import traceback
     res = gscalculate(atoms=atoms, calculator=calculator)
 
@@ -987,7 +987,7 @@ def embands(atoms, calculator, gpw, soc, bandtype, delta=0.1):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Bohr, Hartree
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
 
@@ -1043,7 +1043,7 @@ def calculate_bs_along_emass_vecs(
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
     from asr.core import file_barrier
     from gpaw import GPAW
     from gpaw.mpi import serial_comm

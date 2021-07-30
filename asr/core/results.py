@@ -440,17 +440,17 @@ class MetaData:
 
     Examples
     --------
-    >>> metadata = MetaData(asr_name='asr.gs')
+    >>> metadata = MetaData(asr_name='asr.c2db.gs')
     >>> metadata
-    Metadata(asr_name=asr.gs)
+    Metadata(asr_name=asr.c2db.gs)
     >>> metadata.code_versions = {'asr': '0.1.2'}
     >>> metadata
-    Metadata(asr_name=asr.gs,code_versions={'asr': '0.1.2'})
+    Metadata(asr_name=asr.c2db.gs,code_versions={'asr': '0.1.2'})
     >>> metadata.set(resources={'time': 10}, params={'a': 1})
     >>> metadata
-    Metadata(asr_name=asr.gs,code_versions={'asr': '0.1.2'},resources={'time': 10},params={'a': 1})
+    Metadata(asr_name=asr.c2db.gs,code_versions={'asr': '0.1.2'},resources={'time': 10},params={'a': 1})
     >>> metadata.todict()
-    {'asr_name': 'asr.gs', 'code_versions': {'asr': '0.1.2'},\
+    {'asr_name': 'asr.c2db.gs', 'code_versions': {'asr': '0.1.2'},\
  'resources': {'time': 10}, 'params': {'a': 1}}
     """ # noqa
 
@@ -478,7 +478,7 @@ class MetaData:
 
     @property
     def asr_name(self):
-        """For example 'asr.gs'."""
+        """For example 'asr.c2db.gs'."""
         # Can this attribute be initialized from outdated files?
         # I don't know, but let's defend against that:
         name = self._get('asr_name')

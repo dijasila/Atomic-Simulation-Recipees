@@ -10,7 +10,7 @@ from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt)
 import typing
 from asr.utils.kpts import get_kpts_size
-from asr.gs import calculate as gscalculate, main as gsmain
+from asr.c2db.gs import calculate as gscalculate, main as gsmain
 
 
 # XXX The plasmafrequency recipe should not be two steps. We don't
@@ -82,7 +82,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.plasmafrequency')
+@command('asr.c2db.plasmafrequency')
 @atomsopt
 @calcopt
 @option('--kptdensity', help='k-point density', type=float)

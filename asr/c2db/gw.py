@@ -6,7 +6,7 @@ from asr.core import (
     command, option, ASRResult, prepare_result,
     atomsopt, calcopt, ExternalFile,
 )
-from asr.gs import calculate as calculategs
+from asr.c2db.gs import calculate as calculategs
 from asr.c2db.bandstructure import main as bsmain
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
@@ -434,7 +434,7 @@ def main(
 
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import soc_eigenstates
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
     theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
     soc = soc_eigenstates(calc, eigenvalues=eps_skn,
                           n1=lb, n2=ub,

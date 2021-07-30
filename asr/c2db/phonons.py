@@ -21,7 +21,7 @@ from asr.core import (
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
 
-from asr.magstate import main as magstate
+from asr.c2db.magstate import main as magstate
 
 
 panel_description = make_panel_description(

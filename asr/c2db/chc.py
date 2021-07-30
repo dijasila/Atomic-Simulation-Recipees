@@ -387,7 +387,7 @@ class Reference:
             raise ValueError("Dont compare Reference to non-Reference")
             return False
         else:
-            from asr.fere import formulas_eq
+            from asr.c2db.fere import formulas_eq
             feq = formulas_eq(self.formula, other.formula)
             heq = np.allclose(self.hform, other.hform)
             return feq and heq
@@ -466,7 +466,7 @@ def webpanel(result, context):
 
 
 def filrefs(refs):
-    from asr.fere import formulas_eq
+    from asr.c2db.fere import formulas_eq
     nrefs = []
     visited = []
     for (form, v) in refs:
@@ -611,8 +611,9 @@ def main(dbs: List[str],
 
 
 def results2ref(formula):
+    # XXX Seems to be old-master code
     from asr.core import read_json
-    data = read_json("results-asr.convex_hull.json")
+    data = read_json("results-asr.c2db.convex_hull.json")
     return Reference(formula, data["hform"])
 
 
@@ -642,7 +643,7 @@ def row2ref(row, dbs):
     elif hasattr(row, "hof"):
         return Reference(row.formula, row.hof)
     else:
-        # from asr.fere import get_hof
+        # from asr.c2db.fere import get_hof
         # from ase.formula import Formula
         # hof = get_hof(dbs[0], Formula(row.formula), row=row)
         hof = get_hof(row.formula, row.energy, dbs[0])
@@ -846,7 +847,7 @@ def is_independent(v1, v2):
 
 
 def refs2ims(mat_ref, reactant_ref, refs):
-    from asr.fere import formulas_eq
+    from asr.c2db.fere import formulas_eq
     ims = []
     for ref in refs:
         if formulas_eq(ref.formula, mat_ref.formula):

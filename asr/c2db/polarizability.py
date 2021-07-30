@@ -18,7 +18,7 @@ from asr.database.browser import (
 from asr.utils.kpts import get_kpts_size
 
 
-from asr.gs import calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the long wave length limit (q=0)

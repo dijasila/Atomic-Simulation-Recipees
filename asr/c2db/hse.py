@@ -5,7 +5,7 @@ import asr
 from asr.core import command, option, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
-from asr.gs import calculate as calculategs
+from asr.c2db.gs import calculate as calculategs
 from asr.c2db.bandstructure import (calculate as bscalculate, main as bsmain,
                                     legend_on_top)
 from asr.database.browser import make_panel_description
@@ -120,7 +120,7 @@ def hse(atoms, calculator, kptdensity, emptybands):
 
 def hse_spinorbit(atoms, calculator, dct, calc):
     from gpaw.spinorbit import soc_eigenstates
-    from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     e_skn = dct.get('e_hse_skn')
     dct_soc = {}
@@ -157,7 +157,7 @@ def MP_interpolate(
     from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                                  monkhorst_pack_interpolate)
     from asr.core import singleprec_dict
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import get_spin_axis
 
     bandrange = np.arange(lb, ub)
     # read SCF (without SOC)

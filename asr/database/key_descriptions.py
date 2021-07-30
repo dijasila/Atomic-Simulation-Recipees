@@ -1,5 +1,5 @@
 from asr.core import get_recipes, ASRResult
-from asr.dimensionality import get_dimtypes
+from asr.c2db.dimensionality import get_dimtypes
 
 # Style: "KVP: Long description !short description! [unit]
 
@@ -228,7 +228,7 @@ for i in range(1, 4):
 
 key_descriptions['piezoelectrictensor'] = piezokd
 
-# Key descriptions like has_asr_gs_calculate
+# Key descriptions like has_asr_c2db_gs_calculate
 extras = {}
 for recipe in get_recipes():
     key = 'has_' + recipe.name.replace('.', '_').replace('@', '_')

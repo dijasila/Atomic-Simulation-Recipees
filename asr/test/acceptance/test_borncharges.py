@@ -32,7 +32,8 @@ def test_gpaw_berry_get_berry_phases_integration(asr_tmpdir_w_params):
         'txt': 'formalpol.txt',
         'charge': 0
     }
-    setupparams(params={'asr.gs@calculate': {'calculator': calculator_params},
+    setupparams(params={'asr.c2db.gs@calculate':
+                        {'calculator': calculator_params},
                         'asr.c2db.formalpolarization':
                         {'calculator': formal_calculator}})
     BN.write('structure.json')

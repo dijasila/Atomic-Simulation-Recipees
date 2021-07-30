@@ -4,7 +4,7 @@ import pytest
 @pytest.mark.skip
 @pytest.mark.acceptance_test
 def test_relax_fe_gpaw(asr_tmpdir):
-    from asr.relax import main
+    from asr.c2db.relax import main
     from ase import Atoms
     a = 1.41973054
     magmom = 2.26739285

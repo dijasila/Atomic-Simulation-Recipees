@@ -180,7 +180,7 @@ We create a new test by appending the following to
    # ... Rest of test_gs.py
 
    def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, test_material):
-       from asr.gs import main
+       from asr.c2db.gs import main
        
        test_material.write('structure.json')
        main()
@@ -206,7 +206,7 @@ anything. We can improve this by checking that the band gap is zero
    ...
 
    def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, test_material):
-       from asr.gs import main
+       from asr.c2db.gs import main
 
        test_material.write('structure.json')
        results = main()
@@ -245,7 +245,7 @@ to something non-trivial
    ...
 
    def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, mocker, test_material):
-       from asr.gs import main
+       from asr.c2db.gs import main
        from gpaw import GPAW
 
        mocker.patch.object(GPAW, '_get_band_gap')
@@ -279,7 +279,7 @@ arguments of the test one-by-one.
    @pytest.mark.parametrize('fermi_level', [0.5, 1.5])
    def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
                         gap, fermi_level):
-       from asr.gs import main
+       from asr.c2db.gs import main
        from gpaw import GPAW
 
        mocker.patch.object(GPAW, '_get_band_gap')
@@ -315,7 +315,7 @@ with the input band gap
    def test_gs_tutorial(asr_tmpdir_w_params, mockgpaw, mocker,
 	                get_webcontent, test_material,
                         gap, fermi_level):
-       from asr.gs import main
+       from asr.c2db.gs import main
        from gpaw import GPAW
 
        mocker.patch.object(GPAW, '_get_band_gap')

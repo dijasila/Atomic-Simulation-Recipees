@@ -80,7 +80,7 @@ def test_pdos_full(asr_tmpdir_w_params):
 
     # Dump json file to fake magnetic_anisotropy recipe
     dct = {'theta': theta, 'phi': phi}
-    write_json('results-asr.magnetic_anisotropy.json', dct)
+    write_json('results-asr.c2db.magnetic_anisotropy.json', dct)
 
     def dosef(dos, spin=None):
         return dos.raw_dos([0.0], spin, 0.0)[0]

@@ -10,7 +10,7 @@ from asr.core import (
 
 from asr.setup.strains import main as make_strained_atoms
 from asr.setup.strains import get_relevant_strains
-from asr.gs import main as groundstate
+from asr.c2db.gs import main as groundstate
 
 
 def webpanel(result, context):

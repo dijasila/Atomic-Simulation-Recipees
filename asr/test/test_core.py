@@ -104,5 +104,5 @@ def test_not_initialized(recipe, tmp_path):
 @pytest.mark.ci
 def test_recipe_has():
     from ase import Atoms
-    from asr.convex_hull import main
+    from asr.c2db.convex_hull import main
     assert not main.has(atoms=Atoms(), databases=['does_not_exist'])

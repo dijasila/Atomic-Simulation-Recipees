@@ -29,7 +29,7 @@ scf_projected_bs_filename = 'scf-projected-bs.png'
 def webpanel(result, context):
     # XXX Why is it named bandstructure:calculate, why not projected?
     desc1 = context.parameter_description('asr.c2db.bandstructure:calculate')
-    desc2 = context.parameter_description_picky('asr.gs')
+    desc2 = context.parameter_description_picky('asr.c2db.gs')
 
     explanation = ('Orbital projected band structure without '
                    'spin–orbit coupling\n\n' + desc1 + '\n' + desc2)

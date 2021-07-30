@@ -43,7 +43,7 @@ def plot_dimensionality_histogram(row: AtomsRow, path: Path) -> None:
     plt.close()
 
 
-@command('asr.dimensionality')
+@command('asr.c2db.dimensionality')
 @option('--atoms', type=AtomsFile(), default='structure.json')
 def main(atoms: Atoms) -> ASRResult:
     """Make cluster and dimensionality analysis of the input structure.
