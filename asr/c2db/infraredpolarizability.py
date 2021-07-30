@@ -13,7 +13,7 @@ from click import Choice
 
 from ase import Atoms
 from asr.c2db.phonons import main as phonons
-from asr.borncharges import main as borncharges
+from asr.c2db.borncharges import main as borncharges
 from asr.c2db.polarizability import main as polarizability
 
 panel_description = make_panel_description(

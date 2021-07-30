@@ -7,7 +7,7 @@ import numpy as np
 def test_borncharges(
         asr_tmpdir_w_params, mockgpaw, mocker, test_material, fast_calc):
     from gpaw import GPAW
-    from asr.borncharges import main
+    from asr.c2db.borncharges import main
 
     natoms = len(test_material)
 

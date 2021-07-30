@@ -190,7 +190,8 @@ def get_dependencies(path, uids):
 
     deps = {
         'asr.c2db.infraredpolarizability': [
-            'asr.c2db.phonons', 'asr.borncharges', 'asr.c2db.polarizability'],
+            'asr.c2db.phonons', 'asr.c2db.borncharges',
+            'asr.c2db.polarizability'],
         'asr.emasses@refine': [
             'asr.structureinfo', 'asr.magnetic_anisotropy', 'asr.gs'],
         'asr.emasses': [
@@ -223,7 +224,7 @@ def get_dependencies(path, uids):
         'asr.magnetic_anisotropy': ['asr.gs@calculate', 'asr.magstate'],
         'asr.convex_hull': [
             'asr.structureinfo', 'asr.database.material_fingerprint'],
-        'asr.borncharges': ['asr.gs@calculate'],
+        'asr.c2db.borncharges': ['asr.gs@calculate'],
         'asr.gs': [
             'asr.gs@calculate',
             'asr.magnetic_anisotropy', 'asr.structureinfo'],
