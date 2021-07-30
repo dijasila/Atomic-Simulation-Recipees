@@ -431,11 +431,13 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                 'spinpol': True}
                             parameters['asr.c2db.gs@calculate'] = {
                                 'calculator': calculator_gs}
-                            parameters['asr.c2db.gs@calculate']['calculator'
-                                                           ]['charge'] = q
+                            parameters[
+                                'asr.c2db.gs@calculate'][
+                                    'calculator']['charge'] = q
                             parameters['asr.c2db.relax'] = {
                                 'calculator': calculator_relax}
-                            parameters['asr.c2db.relax']['calculator']['charge'] = q
+                            parameters['asr.c2db.relax'][
+                                'calculator']['charge'] = q
                             charge_string = 'charge_{}'.format(q)
                             charge_dict[charge_string] = {
                                 'structure': defect, 'parameters': parameters}
