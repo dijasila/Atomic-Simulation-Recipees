@@ -1,5 +1,5 @@
 import pytest
-from asr.projected_bandstructure import main
+from asr.c2db.projected_bandstructure import main
 
 
 @pytest.mark.ci

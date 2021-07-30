@@ -202,7 +202,7 @@ def get_dependencies(path, uids):
         'asr.gw@gs': ['asr.gs@calculate'],
         'asr.gw@gw': ['asr.gw@gs'],
         'asr.gw@empirical_mean_z': ['asr.gw@gw'],
-        'asr.gw': ['asr.bandstructure', 'asr.gw@empirical_mean_z'],
+        'asr.gw': ['asr.c2db.bandstructure', 'asr.gw@empirical_mean_z'],
         'asr.pdos@calculate': ['asr.gs'],
         'asr.pdos': ['asr.gs', 'asr.pdos@calculate'],
         'asr.phonons@calculate': [],
@@ -212,7 +212,7 @@ def get_dependencies(path, uids):
         'asr.phonopy': ['asr.phonopy@calculate'],
         'asr.hse@calculate': [
             'asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
-        'asr.hse': ['asr.hse@calculate', 'asr.bandstructure'],
+        'asr.hse': ['asr.hse@calculate', 'asr.c2db.bandstructure'],
         'asr.exchange@calculate': ['asr.gs@calculate'],
         'asr.exchange': ['asr.exchange@calculate'],
         'asr.plasmafrequency@calculate': ['asr.gs@calculate'],
@@ -227,16 +227,17 @@ def get_dependencies(path, uids):
         'asr.gs': [
             'asr.gs@calculate',
             'asr.magnetic_anisotropy', 'asr.structureinfo'],
-        'asr.bandstructure@calculate': ['asr.gs@calculate'],
-        'asr.bandstructure': [
-            'asr.bandstructure@calculate', 'asr.gs',
+        'asr.c2db.bandstructure@calculate': ['asr.gs@calculate'],
+        'asr.c2db.bandstructure': [
+            'asr.c2db.bandstructure@calculate', 'asr.gs',
             'asr.structureinfo', 'asr.magnetic_anisotropy'],
         'asr.defectformation': ['asr.setup.defects', 'asr.gs'],
         'asr.c2db.deformationpotentials': ['asr.gs'],
-        'asr.bader': ['asr.gs'],
+        'asr.c2db.bader': ['asr.gs'],
         'asr.bse@calculate': ['asr.gs@calculate'],
         'asr.bse': ['asr.bse@calculate', 'asr.gs'],
-        'asr.projected_bandstructure': ['asr.gs', 'asr.bandstructure'],
+        'asr.c2db.projected_bandstructure': ['asr.gs',
+                                             'asr.c2db.bandstructure'],
         'asr.c2db.shift': ['asr.gs@calculate'],
         'asr.c2db.polarizability': ['asr.structureinfo', 'asr.gs@calculate'],
     }

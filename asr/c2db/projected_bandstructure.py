@@ -10,7 +10,7 @@ import typing
 
 from asr.database.browser import (make_panel_description,
                                   fig, describe_entry, WebPanel)
-from asr.bandstructure import calculate as bscalculate, main as bsmain
+from asr.c2db.bandstructure import calculate as bscalculate, main as bsmain
 
 
 panel_description = make_panel_description(

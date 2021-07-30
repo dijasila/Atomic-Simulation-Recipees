@@ -163,7 +163,7 @@ def asr_tmpdir_w_params(asr_tmpdir):
         'asr.gs': {
             'calculator': fast_calc,
         },
-        'asr.bandstructure': {
+        'asr.c2db.bandstructure': {
             'npoints': 10,
             'calculator': fast_calc,
         },
