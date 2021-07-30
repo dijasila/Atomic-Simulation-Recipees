@@ -17,8 +17,8 @@ def test_raman(asr_tmpdir_w_params, asr_tmpdir, test_material, get_webcontent):
             freqs_l=fl,
             amplitudes_vvwl=np.ones((3, 3, len(wl), len(fl)),
                                     dtype=complex)),
-        metadata={'asr_name': 'asr.raman'})
-    write_file('results-asr.raman.json', result.format_as('json'))
+        metadata={'asr_name': 'asr.c2db.raman'})
+    write_file('results-asr.c2db.raman.json', result.format_as('json'))
 
     # Check the webpanel
     content = get_webcontent()

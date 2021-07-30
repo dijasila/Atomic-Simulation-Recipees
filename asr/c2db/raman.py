@@ -71,7 +71,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.raman')
+@command('asr.c2db.raman')
 @atomsopt
 def main(atoms: Atoms) -> Result:
     raise NotImplementedError
