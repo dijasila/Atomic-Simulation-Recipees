@@ -308,7 +308,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                      'spinpol': True}
     parameters['asr.gs@calculate'] = {
         'calculator': calculator_gs}
-    parameters['asr.relax'] = {'calculator': calculator_relax}
+    parameters['asr.c2db.relax'] = {'calculator': calculator_relax}
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
 
     # incorporate the possible vacancies
@@ -361,8 +361,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                     parameters['asr.gs@calculate'] = {
                         'calculator': calculator_gs}
                     parameters['asr.gs@calculate']['calculator']['charge'] = q
-                    parameters['asr.relax'] = {'calculator': calculator_relax}
-                    parameters['asr.relax']['calculator']['charge'] = q
+                    parameters['asr.c2db.relax'] = {'calculator': calculator_relax}
+                    parameters['asr.c2db.relax']['calculator']['charge'] = q
                     charge_string = 'charge_{}'.format(q)
                     charge_dict[charge_string] = {
                         'structure': vacancy, 'parameters': parameters}
@@ -433,9 +433,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                 'calculator': calculator_gs}
                             parameters['asr.gs@calculate']['calculator'
                                                            ]['charge'] = q
-                            parameters['asr.relax'] = {
+                            parameters['asr.c2db.relax'] = {
                                 'calculator': calculator_relax}
-                            parameters['asr.relax']['calculator']['charge'] = q
+                            parameters['asr.c2db.relax']['calculator']['charge'] = q
                             charge_string = 'charge_{}'.format(q)
                             charge_dict[charge_string] = {
                                 'structure': defect, 'parameters': parameters}
@@ -574,7 +574,7 @@ def setup_halfinteger():
         params = read_json('params.json')
         params_m05 = params.copy()
         params_m05['asr.gs@calculate']['calculator']['charge'] = charge - 0.5
-        params_m05['asr.relax']['calculator']['charge'] = charge - 0.5
+        params_m05['asr.c2db.relax']['calculator']['charge'] = charge - 0.5
         write_json('sj_-0.5/params.json', params_m05)
         print('INFO: changed parameters m: {}'.format(params_m05))
         shutil.copyfile(foldername + '/structure.json',
@@ -588,7 +588,7 @@ def setup_halfinteger():
         charge = params.get('asr.gs@calculate').get('calculator').get('charge')
         print('INFO: initial charge {}'.format(charge))
         params_p05['asr.gs@calculate']['calculator']['charge'] = charge + 0.5
-        params_p05['asr.relax']['calculator']['charge'] = charge + 0.5
+        params_p05['asr.c2db.relax']['calculator']['charge'] = charge + 0.5
         write_json('sj_+0.5/params.json', params_p05)
         print('INFO: changed parameters p: {}'.format(params_p05))
         shutil.copyfile(foldername + '/structure.json',

@@ -60,7 +60,7 @@ def calculate(
     information.
     """
     from ase.calculators.calculator import PropertyNotImplementedError
-    from asr.relax import set_initial_magnetic_moments
+    from asr.c2db.relax import set_initial_magnetic_moments
 
     if not atoms.has('initial_magmoms'):
         set_initial_magnetic_moments(atoms)

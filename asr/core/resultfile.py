@@ -250,13 +250,15 @@ def get_dependencies(path, uids):
     # Some manually implemented dependencies
     if name == 'asr.c2db.piezoelectrictensor':
         dependencies = []
-        dependencies += list(folder.rglob('strains*/results-asr.relax.json'))
+        dependencies += list(folder.rglob(
+            'strains*/results-asr.c2db.relax.json'))
         dependencies += list(
             folder.rglob('strains*/results-asr.c2db.formalpolarization.json')
         )
     elif name == 'asr.c2db.stiffness':
         dependencies = []
-        dependencies += list(folder.rglob('strains*/results-asr.relax.json'))
+        dependencies += list(folder.rglob(
+            'strains*/results-asr.c2db.relax.json'))
     else:
         depnames = deps.get(name, [])
         dependencies = []

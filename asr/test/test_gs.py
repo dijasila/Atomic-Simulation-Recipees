@@ -10,7 +10,7 @@ from pathlib import Path
 @pytest.mark.parametrize("fermi_level", [0.5, 1.5])
 def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
             test_material, gap, fermi_level):
-    import asr.relax
+    import asr.c2db.relax
     from asr.core import read_json
     from asr.core.cache import get_cache
     from asr.gs import calculate, main
@@ -18,7 +18,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     import gpaw
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
-    spy = mocker.spy(asr.relax, "set_initial_magnetic_moments")
+    spy = mocker.spy(asr.c2db.relax, "set_initial_magnetic_moments")
     gpaw.GPAW._get_fermi_level.return_value = fermi_level
     gpaw.GPAW._get_band_gap.return_value = gap
 

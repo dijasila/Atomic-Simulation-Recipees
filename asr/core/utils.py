@@ -265,7 +265,7 @@ def get_recipe_from_name(name):
 
 def parse_mod_func(name):
     # Split a module function reference like
-    # asr.relax:calculate into asr.relax and calculate.
+    # asr.c2db.relax:calculate into asr.c2db.relax and calculate.
     mod, *func = name.split(':')
     if not func:
         func = ['main']

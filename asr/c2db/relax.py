@@ -265,7 +265,7 @@ def set_initial_magnetic_moments(atoms):
 
 @prepare_result
 class Result(ASRResult):
-    """Result class for :py:func:`asr.relax.main`."""
+    """Result class for :py:func:`asr.c2db.relax.main`."""
 
     version: int = 0
 
@@ -303,7 +303,7 @@ class Result(ASRResult):
 
 
 @command(
-    'asr.relax',
+    'asr.c2db.relax',
 )
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')

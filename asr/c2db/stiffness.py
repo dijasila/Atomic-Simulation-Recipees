@@ -10,7 +10,7 @@ from asr.core import (
 )
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
-from asr.relax import main as relax
+from asr.c2db.relax import main as relax
 
 panel_description = make_panel_description(
     """
@@ -204,7 +204,7 @@ sel.version = sel.EQ(-1)
 def transform_stiffness_resultfile_record(record):
     """Remove fixcell and allow_symmetry_breaking from dependency_parameters."""
     dep_params = record.parameters['dependency_parameters']
-    relax_dep_params = dep_params['asr.relax']
+    relax_dep_params = dep_params['asr.c2db.relax']
     delparams = {'fixcell', 'allow_symmetry_breaking'}
     for param in delparams:
         del relax_dep_params[param]
