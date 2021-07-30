@@ -17,7 +17,7 @@ def webpanel(result, context):
     from asr.database.browser import fig, describe_entry, WebPanel
 
     desc = '\n'.join([
-        context.parameter_description('asr.pdos:calculate'),
+        context.parameter_description('asr.c2db.pdos:calculate'),
         context.parameter_description_picky('asr.gs:calculate')
     ])
 
@@ -45,7 +45,7 @@ pdos_figfile = 'scf-pdos_nosoc.png'
 # ----- Slow steps ----- #
 
 
-@command(module='asr.pdos')
+@command(module='asr.c2db.pdos')
 @atomsopt
 @calcopt
 @option('-k', '--kptdensity', type=float, help='K-point density')
@@ -107,7 +107,7 @@ class Result(ASRResult):
     formats = {"webpanel2": webpanel}
 
 
-@command(module='asr.pdos')
+@command(module='asr.c2db.pdos')
 @atomsopt
 @calcopt
 @option('-k', '--kptdensity', type=float, help='K-point density')

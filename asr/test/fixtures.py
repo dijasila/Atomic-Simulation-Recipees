@@ -177,7 +177,7 @@ def asr_tmpdir_w_params(asr_tmpdir):
         'asr.bse:calculate': {
             'kptdensity': 2,
         },
-        'asr.pdos:calculate': {
+        'asr.c2db.pdos:calculate': {
             'kptdensity': 2,
             'emptybands': 5,
         },
