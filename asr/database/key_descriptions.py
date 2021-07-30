@@ -1,5 +1,5 @@
 from asr.core import get_recipes, ASRResult
-from asr.dimensionality import get_dimtypes
+from asr.c2db.dimensionality import get_dimtypes
 
 # Style: "KVP: Long description !short description! [unit]
 
