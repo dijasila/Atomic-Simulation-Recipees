@@ -8,7 +8,7 @@ def test_hse(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
     import gpaw
     from pathlib import Path
     import numpy as np
-    from asr.hse import main
+    from asr.c2db.hse import main
     from asr.structureinfo import main as structinfo
 
     test_material.write('structure.json')

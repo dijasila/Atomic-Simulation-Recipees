@@ -211,9 +211,9 @@ def get_dependencies(path, uids):
         'asr.c2db.push': ['asr.structureinfo', 'asr.c2db.phonons'],
         'asr.c2db.phonopy@calculate': ['asr.gs@calculate'],
         'asr.c2db.phonopy': ['asr.c2db.phonopy@calculate'],
-        'asr.hse@calculate': [
+        'asr.c2db.hse@calculate': [
             'asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
-        'asr.hse': ['asr.hse@calculate', 'asr.c2db.bandstructure'],
+        'asr.c2db.hse': ['asr.c2db.hse@calculate', 'asr.c2db.bandstructure'],
         'asr.exchange@calculate': ['asr.gs@calculate'],
         'asr.exchange': ['asr.exchange@calculate'],
         'asr.plasmafrequency@calculate': ['asr.gs@calculate'],
