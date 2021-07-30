@@ -1,7 +1,7 @@
 """Test bader recipe."""
 import subprocess
 import pytest
-from asr.bader import main, Result, webpanel
+from asr.c2db.bader import main, Result, webpanel
 from .materials import Si
 
 

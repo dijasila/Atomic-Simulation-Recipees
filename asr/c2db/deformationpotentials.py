@@ -35,7 +35,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.deformationpotentials')
+@command('asr.c2db.deformationpotentials')
 @atomsopt
 @calcopt
 @option('--strains', help='Strain percentages', type=float)

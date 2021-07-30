@@ -5,10 +5,9 @@ import asr
 from asr.core import command, option, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
-from asr.bandstructure import legend_on_top
 from asr.gs import calculate as calculategs
-from asr.bandstructure import main as bsmain
-from asr.bandstructure import calculate as bscalculate
+from asr.c2db.bandstructure import (calculate as bscalculate, main as bsmain,
+                                    legend_on_top)
 from asr.database.browser import make_panel_description
 from asr.utils.gw_hse import GWHSEInfo
 from asr.utils.kpts import get_kpts_size
@@ -265,8 +264,8 @@ def plot_bs(context,
     # XXXXX HSE does not depend on bandstruture, so combining those
     # in the same plot is not the problem of the HSE recipe!
     #
-    # from asr.bandstructure import add_bs_ks
-    # if 'results-asr.bandstructure.json' in row.data:
+    # from asr.c2db.bandstructure import add_bs_ks
+    # if 'results-asr.c2db.bandstructure.json' in row.data:
     #     ax = add_bs_ks(context, ax, reference=eref.value,
     #                    color=[0.8, 0.8, 0.8])
 

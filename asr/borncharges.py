@@ -4,7 +4,7 @@ import typing
 
 from ase import Atoms
 
-from asr.formalpolarization import main as formalpolarization
+from asr.c2db.formalpolarization import main as formalpolarization
 
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt,

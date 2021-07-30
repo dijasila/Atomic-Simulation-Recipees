@@ -189,8 +189,8 @@ def get_dependencies(path, uids):
     folder = path.parent
 
     deps = {
-        'asr.infraredpolarizability': [
-            'asr.phonons', 'asr.borncharges', 'asr.polarizability'],
+        'asr.c2db.infraredpolarizability': [
+            'asr.phonons', 'asr.borncharges', 'asr.c2db.polarizability'],
         'asr.emasses@refine': [
             'asr.structureinfo', 'asr.magnetic_anisotropy', 'asr.gs'],
         'asr.emasses': [
@@ -202,7 +202,7 @@ def get_dependencies(path, uids):
         'asr.gw@gs': ['asr.gs@calculate'],
         'asr.gw@gw': ['asr.gw@gs'],
         'asr.gw@empirical_mean_z': ['asr.gw@gw'],
-        'asr.gw': ['asr.bandstructure', 'asr.gw@empirical_mean_z'],
+        'asr.gw': ['asr.c2db.bandstructure', 'asr.gw@empirical_mean_z'],
         'asr.pdos@calculate': ['asr.gs'],
         'asr.pdos': ['asr.gs', 'asr.pdos@calculate'],
         'asr.phonons@calculate': [],
@@ -212,14 +212,14 @@ def get_dependencies(path, uids):
         'asr.phonopy': ['asr.phonopy@calculate'],
         'asr.hse@calculate': [
             'asr.structureinfo', 'asr.gs@calculate', 'asr.gs'],
-        'asr.hse': ['asr.hse@calculate', 'asr.bandstructure'],
+        'asr.hse': ['asr.hse@calculate', 'asr.c2db.bandstructure'],
         'asr.exchange@calculate': ['asr.gs@calculate'],
         'asr.exchange': ['asr.exchange@calculate'],
         'asr.plasmafrequency@calculate': ['asr.gs@calculate'],
         'asr.plasmafrequency': ['asr.plasmafrequency@calculate'],
-        'asr.shg': ['asr.gs@calculate'],
+        'asr.c2db.shg': ['asr.gs@calculate'],
         'asr.magstate': ['asr.gs@calculate'],
-        'asr.fermisurface': ['asr.gs', 'asr.structureinfo'],
+        'asr.c2db.fermisurface': ['asr.gs', 'asr.structureinfo'],
         'asr.magnetic_anisotropy': ['asr.gs@calculate', 'asr.magstate'],
         'asr.convex_hull': [
             'asr.structureinfo', 'asr.database.material_fingerprint'],
@@ -227,28 +227,29 @@ def get_dependencies(path, uids):
         'asr.gs': [
             'asr.gs@calculate',
             'asr.magnetic_anisotropy', 'asr.structureinfo'],
-        'asr.bandstructure@calculate': ['asr.gs@calculate'],
-        'asr.bandstructure': [
-            'asr.bandstructure@calculate', 'asr.gs',
+        'asr.c2db.bandstructure@calculate': ['asr.gs@calculate'],
+        'asr.c2db.bandstructure': [
+            'asr.c2db.bandstructure@calculate', 'asr.gs',
             'asr.structureinfo', 'asr.magnetic_anisotropy'],
         'asr.defectformation': ['asr.setup.defects', 'asr.gs'],
-        'asr.deformationpotentials': ['asr.gs'],
-        'asr.bader': ['asr.gs'],
+        'asr.c2db.deformationpotentials': ['asr.gs'],
+        'asr.c2db.bader': ['asr.gs'],
         'asr.bse@calculate': ['asr.gs@calculate'],
         'asr.bse': ['asr.bse@calculate', 'asr.gs'],
-        'asr.projected_bandstructure': ['asr.gs', 'asr.bandstructure'],
-        'asr.shift': ['asr.gs@calculate'],
-        'asr.polarizability': ['asr.structureinfo', 'asr.gs@calculate'],
+        'asr.c2db.projected_bandstructure': ['asr.gs',
+                                             'asr.c2db.bandstructure'],
+        'asr.c2db.shift': ['asr.gs@calculate'],
+        'asr.c2db.polarizability': ['asr.structureinfo', 'asr.gs@calculate'],
     }
 
     name = path.with_suffix('').name.split('-')[1]
 
     # Some manually implemented dependencies
-    if name == 'asr.piezoelectrictensor':
+    if name == 'asr.c2db.piezoelectrictensor':
         dependencies = []
         dependencies += list(folder.rglob('strains*/results-asr.relax.json'))
         dependencies += list(
-            folder.rglob('strains*/results-asr.formalpolarization.json')
+            folder.rglob('strains*/results-asr.c2db.formalpolarization.json')
         )
     elif name == 'asr.stiffness':
         dependencies = []
@@ -384,7 +385,7 @@ def update_resultfile_record_to_version_0(record):
     unused_old_params.remove('atomic_structures')
 
     # remove_keys = set(['dependency_parameters'])
-    # if name == 'asr.formalpolarization':
+    # if name == 'asr.c2db.formalpolarization':
     #     remove_keys.add('gpwname')
     # elif name == 'asr.setup.displacements':
     #     remove_keys.add('copy_params')

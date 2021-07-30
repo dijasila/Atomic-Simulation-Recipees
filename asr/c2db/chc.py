@@ -493,7 +493,7 @@ def chcut_plot(context, fname):
     import matplotlib.pyplot as plt
     from ase import Atoms
 
-    data = context.find_record('asr.chc').result
+    data = context.find_record('asr.c2db.chc').result
     mat_ref = Reference.from_dict(data['_matref'])
 
     if len(mat_ref.symbols) <= 2:
@@ -562,7 +562,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.chc')
+@command('asr.c2db.chc')
 @argument('dbs', nargs=-1, type=str)
 @atomsopt
 @option('-r', '--reactant', type=str,

@@ -237,7 +237,7 @@ def absorption(context, filename, direction='x'):
 
     ax = plt.figure().add_subplot(111)
 
-    result = context.get_record('asr.bse').result
+    result = context.get_record('asr.c2db.bse').result
     bse_data = np.array(result[f'bse_alpha{direction}_w'])
     wbse_w = bse_data[:, 0] + delta_bse
     if dim == 2:
@@ -250,7 +250,7 @@ def absorption(context, filename, direction='x'):
     xmax = wbse_w[-1]
 
     # TODO: Sometimes RPA pol doesn't exist, what to do?
-    # Answer: Nothing, that's someone else's problem, not asr.bse.
+    # Answer: Nothing, that's someone else's problem, not asr.c2db.bse.
     #
     # data = row.data.get('results-asr.polarizability.json')
     # if data:

@@ -1,5 +1,5 @@
 import pytest
-from asr.bandstructure import main
+from asr.c2db.bandstructure import main
 from ase.build import bulk
 
 
