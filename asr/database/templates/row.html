@@ -35,9 +35,9 @@
                 Unit cell <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li><a onclick="repeatCell(1, 1, 1);">1x1x1</a></li>
-                <li><a onclick="repeatCell({{ n1 }}, {{ n2 }}, {{ n3 }});">
-                {{ n1 }}x{{ n2 }}x{{ n3 }}</a></li>
+                <li><a onclick="repeatCell(1, 1, 1);">1 x 1 x 1</a></li>
+                <li><a onclick="repeatCell(2, 2, 1);">2 x 2 x 1</a></li>
+                <li><a onclick="repeatCell(3, 3, 3);">3 x 3 x 1</a></li>
             </ul>
         </div>
         <div class="btn-group pull-right">
@@ -126,7 +126,7 @@ jmol_isReady = function(applet)
     Jmol._getElement(applet, "appletdiv").style.border="1px solid lightgray";
     Jmol.script(jmolApplet0, "set displaycellparameters false;")
     Jmol.script(jmolApplet0,
-    "load /atoms/{{ p.name }}/{{ row.id }}/cif { {{ n1 }} {{ n2 }} {{ n3 }} };");
+    "load /atoms/{{ p.name }}/{{ row.id }}/cif { {{ 2 }} {{ 2 }} {{ 1 }} };");
     }
 </script>
 

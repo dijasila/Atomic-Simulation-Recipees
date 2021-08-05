@@ -200,7 +200,20 @@ def asr_sort_key_descriptions(value):
 
 
 def handle_query(args):
-    return args["query"]
+    parts = []
+    if args['query']:
+        parts.append(args['query'])
+    if args['defect_name']:
+        parts.append('defect_name=' + args['defect_name'])
+    if args['charge_state']:
+        parts.append('charge_state=(charge ' + args['charge_state'] + ')')
+    if args['dopability']:
+        parts.append('dopability=' + args['dopability'])
+    if args['is_magnetic']:
+        parts.append('is_magnetic=' + args['is_magnetic'])
+    # We only want to show charge 0 systems to the user by default
+    # parts.append('charge_state=(charge 0)')
+    return ','.join(parts)
 
 
 def row_to_dict(row, project, layout_function, tmpdir):

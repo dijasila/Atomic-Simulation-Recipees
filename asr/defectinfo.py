@@ -74,7 +74,7 @@ def webpanel(result, row, key_descriptions):
     if uid:
         basictable['rows'].extend(
             [[uidstring,
-              '<a href="https://cmrdb.fysik.dtu.dk/c2db/row/{uid}" target="_blank"'
+              '<a href="https://cmrdb.fysik.dtu.dk/c2db/row/{uid}"'
               '>{uid}</a>'.format(uid=uid)]])
 
     panel = {'title': 'Summary',
