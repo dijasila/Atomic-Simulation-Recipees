@@ -257,6 +257,10 @@ def webpanel(result, row, key_descriptions):
 
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
 
+    eref = row.data.get('results-asr.get_wfs.json')['eref']
+    gsdata = row.data.get('results-asr.gs.json')
+    ef = gsdata['efermi'] - eref
+
     basictable = table(row, 'Defect properties', [])
     basictable['rows'].extend(
         [[describe_entry('Defect point group',
@@ -265,7 +269,7 @@ def webpanel(result, row, key_descriptions):
 
     vbm = result.pristine['vbm']
     cbm = result.pristine['cbm']
-    adjust = compute_offset(result.symmetries, vbm)
+    adjust = compute_offset(result.symmetries, vbm, cbm, ef)
     vbm = vbm + adjust
     cbm = cbm + adjust
     if result.symmetries[0]['best'] is None:
@@ -292,6 +296,12 @@ def webpanel(result, row, key_descriptions):
             panel = WebPanel('One-electron states',
                              columns=[[fig('ks_gap.png')], [state_table_0,
                                                             transition_table]],
+                             plot_descriptions=[{'function': plot_gapstates,
+                                                 'filenames': ['ks_gap.png']}],
+                             sort=3)
+        else:
+            panel = WebPanel('One-electron states',
+                             columns=[[fig('ks_gap.png')], [transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
                              sort=3)
@@ -326,6 +336,13 @@ def webpanel(result, row, key_descriptions):
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
                              sort=3)
+        else:
+            panel = WebPanel('One-electron states',
+                             columns=[[fig('ks_gap.png')], [transition_table]],
+                             plot_descriptions=[{'function': plot_gapstates,
+                                                 'filenames': ['ks_gap.png']}],
+                             sort=3)
+
 
     summary = {'title': 'Summary',
                'columns': [[basictable], []],
@@ -930,7 +947,7 @@ class Level:
                          ha='left')
 
 
-def compute_offset(symmetrydata, evbm):
+def compute_offset(symmetrydata, evbm, ecbm, ef):
     closelist = []
     energylist_0 = []
     energylist_1 = []
@@ -950,10 +967,36 @@ def compute_offset(symmetrydata, evbm):
                 break
         except:
             continue
-    if energy == 0:
-        return 0
+    abovelist = []
+    belowlist = []
+    for element in energylist_0:
+        if element > ef:
+            abovelist.append(element)
+        elif element < ef:
+            belowlist.append(element)
+    if len(abovelist) == 0:
+        above = ecbm
     else:
+        above = min(abovelist)
+    if len(belowlist) == 0:
+        below = evbm
+    else:
+        below = max(belowlist)
+    # if ef < ecbm and ef > evbm:
+    if energy != 0:
         return energy - evbm
+    #     return 0
+    # else:
+    elif ef < evbm:
+        shift = evbm - ef + (above - ef) / 2
+        return energy - shift
+    elif ef > ecbm:
+        shift = ecbm - ef - (ef - below) / 2
+        return energy + shift
+    else:
+        return energy
+
+    # return 0
 
 
 def plot_gapstates(row, fname):
@@ -968,7 +1011,9 @@ def plot_gapstates(row, fname):
     evbm = data.pristine.vbm
     ecbm = data.pristine.cbm
     gap = data.pristine.gap
-    adjust = compute_offset(data.data['symmetries'], evbm)
+    eref = row.data.get('results-asr.get_wfs.json')['eref']
+    ef = gsdata['efermi'] - eref
+    adjust = compute_offset(data.data['symmetries'], evbm, ecbm, ef)
     evbm = evbm + adjust
     ecbm = ecbm + adjust
 
@@ -977,8 +1022,6 @@ def plot_gapstates(row, fname):
     draw_band_edge(ecbm, 'cbm', 'C1', offset=gap / 5, ax=ax)
     # Loop over eigenvalues to draw the level
 
-    eref = row.data.get('results-asr.get_wfs.json')['eref']
-    ef = gsdata['efermi'] - eref
     degoffset = 0
 
     if data.symmetries[0].best is None:

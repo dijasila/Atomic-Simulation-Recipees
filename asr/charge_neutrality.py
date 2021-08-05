@@ -26,20 +26,28 @@ def webpanel(result, row, key_descriptions):
         def_name = name.split('_')[1]
         scf_table = table(result, f'Eq. concentrations of {def_type}<sub>{def_name}</sub> [{unitstring}]', [])
         for altel in element['concentrations']:
-            scf_table['rows'].extend(
-                [[describe_entry(f'Charge {altel[1]:1d}',
-                                 description='Equilibrium concentration '
-                                             'in charge state q at T = '
-                                             f'{int(result.temperature):d} K.'),
-                  f'{altel[0]:.1e}']])
+            if altel[0] > 1e1:
+                scf_table['rows'].extend(
+                    [[describe_entry(f'<b>Charge {altel[1]:1d}</b>',
+                                     description='Equilibrium concentration '
+                                                 'in charge state q at T = '
+                                                 f'{int(result.temperature):d} K.'),
+                      f'<b>{altel[0]:.1e}</b>']])
+            else:
+                scf_table['rows'].extend(
+                    [[describe_entry(f'Charge {altel[1]:1d}',
+                                     description='Equilibrium concentration '
+                                                 'in charge state q at T = '
+                                                 f'{int(result.temperature):d} K.'),
+                      f'{altel[0]:.1e}']])
         table_list.append(scf_table)
 
     ef = result.efermi_sc
     gap = result.gap
     if ef < (gap / 4.):
-        dopability = 'p-type'
+        dopability = '<b style="color:red;">p-type</b>'
     elif ef > (3 * gap / 4.):
-        dopability = 'n-type'
+        dopability = '<b style="color:blue;">n-type</b>'
     else:
         dopability = 'intrinsic'
 
@@ -113,16 +121,24 @@ def webpanel(result, row, key_descriptions):
     scf_overview['rows'].extend([[is_dopable, dopability]])
     scf_overview['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
     scf_overview['rows'].extend([[pn, pn_strength]])
+    if result.n0 > 1e-5:
+        n0 = result.n0
+    else:
+        n0 = 0
     scf_overview['rows'].extend(
         [[describe_entry('Electron carrier concentration',
                          'Equilibrium electron carrier concentration at '
                          f'T = {int(result.temperature):d} K.'),
-          f'{result.n0:.1e} {unitstring}']])
+          f'{n0:.1e} {unitstring}']])
+    if result.p0 > 1e-5:
+        p0 = result.p0
+    else:
+        p0 = 0
     scf_overview['rows'].extend(
         [[describe_entry('Hole carrier concentration',
                          'Equilibrium hole carrier concentration at '
                          f'T = {int(result.temperature):d} K.'),
-          f'{result.p0:.1e} {unitstring}']])
+          f'{p0:.1e} {unitstring}']])
 
     figure = describe_entry(fig('charge_neutrality.png'),
                             description='Formation energies of all point defects '
