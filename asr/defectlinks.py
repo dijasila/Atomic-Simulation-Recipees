@@ -25,7 +25,7 @@ def webpanel(result, row, key_description):
 
     panel = WebPanel('Related materials',
                      columns=[[charged_table], [neutral_table]],
-                     sort=20)
+                     sort=45)
 
     return [panel]
 

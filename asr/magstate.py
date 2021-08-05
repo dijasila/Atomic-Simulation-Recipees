@@ -78,7 +78,7 @@ def webpanel(result, row, key_descriptions):
                'columns': [[{'type': 'table',
                               'header': ['Defect properties', ''],
                               'rows': rows_def}]],
-               'sort': 50}
+               'sort': 41}
 
     if result.magstate == 'NM':
         return [summary_def]
@@ -93,7 +93,7 @@ def webpanel(result, row, key_descriptions):
 
         panel = WebPanel(title='Basic magnetic properties (PBE)',
                          columns=[[], [magmoms_table]],
-                         sort=11)
+                         sort=41)
 
         return [summary_def, panel]
         # return [summary]

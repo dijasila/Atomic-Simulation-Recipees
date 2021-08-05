@@ -1,6 +1,7 @@
 """Self-consistent EF calculation for defect systems.."""
 from asr.core import command, option, ASRResult, prepare_result, DictStr
 from ase.dft.bandgap import bandgap
+from asr.database.browser import make_panel_description, href
 import typing
 from gpaw import restart
 import numpy as np
@@ -8,6 +9,20 @@ import numpy as np
 
 # TODO: implement test
 # TODO: automate degeneracy counting
+
+
+panel_description = make_panel_description(
+    """
+Equilibrium defect energetics evaluated by solving E<sub>F</sub> self-consistently
+until charge neutrality is achieved.
+""",
+    articles=[
+        href("""J. Buckeridge, Equilibrium point defect and charge carrier
+ concentrations in a meterial determined through calculation of the self-consistent
+ Fermi energy, Comp. Phys. Comm. 244 329 (2019)""",
+             'https://doi.org/10.1016/j.cpc.2019.06.017'),
+    ],
+)
 
 
 def webpanel(result, row, key_descriptions):
@@ -70,15 +85,15 @@ def webpanel(result, row, key_descriptions):
             [
                 [
                     '100/0',
-                    code('if E_F at VBM')
+                    code('if E<sub>F</sub> at VBM')
                 ],
                 [
                     '0/100',
-                    code('if E_F at CBM')
+                    code('if E<sub>F</sub> at CBM')
                 ],
                 [
                     '50/50',
-                    code('if E_F at E_gap * 0.5')
+                    code('if E<sub>F</sub> at E<sub>gap</sub> * 0.5')
                 ]
             ],
         )
@@ -92,15 +107,16 @@ def webpanel(result, row, key_descriptions):
             [
                 [
                     'p-type',
-                    code('if E_F < 0.25 * E_gap')
+                    code('if E<sub>F</sub> < 0.25 * E<sub>gap</sub>')
                 ],
                 [
                     'n-type',
-                    code('if E_F > 0.75 * E_gap')
+                    code('if E<sub>F</sub> 0.75 * E<sub>gap</sub>')
                 ],
                 [
                     'intrinsic',
-                    code('if 0.25 * E_gap < E_F < 0.75 * E_gap')
+                    code('if 0.25 * E<sub>gap</sub> < E<sub>F</sub> < '
+                         '0.75 * E<sub>gap</sub>')
                 ],
             ],
         )
@@ -147,11 +163,12 @@ def webpanel(result, row, key_descriptions):
                                         f'{int(result.temperature):d} K.')
 
     panel = WebPanel(
-        'Equilibrium defect energetics',
+        describe_entry('Equilibrium defect energetics',
+                       panel_description),
         columns=[[figure, scf_overview], table_list],
         plot_descriptions=[{'function': plot_formation_scf,
                             'filenames': ['charge_neutrality.png']}],
-        sort=10)
+        sort=25)
 
     summary = {'title': 'Summary',
                'columns': [[scf_summary], []],

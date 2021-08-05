@@ -1,10 +1,24 @@
 from ase.io import read
 from asr.core import command, option, ASRResult, prepare_result, read_json
+from asr.database.browser import make_panel_description, href
 from gpaw import restart
 import typing
 import numpy as np
 from pathlib import Path
 from ase import Atoms
+
+
+panel_description = make_panel_description(
+    """
+Analysis of defect states localized inside the pristine bandgap (energetics and
+ symmetry).
+""",
+    articles=[
+        href("""S. Kaappa et al. Point group symmetry anallysis of the electronic structure
+of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)""",
+             'https://doi.org/10.1021/acs.jpca.8b07923'),
+    ],
+)
 
 
 def get_symmetry_table(state_results, vbm, cbm, row):
@@ -262,10 +276,16 @@ def webpanel(result, row, key_descriptions):
     ef = gsdata['efermi'] - eref
 
     basictable = table(row, 'Defect properties', [])
+    pg_string = result.defect_pointgroup
+    pg_strlist = split(pg_string)
+    sub = ''.join(pg_strlist[1:])
+    pg_string = f'{pg_strlist[0]}<sub>{sub}</sub>'
     basictable['rows'].extend(
         [[describe_entry('Defect point group',
                          f'The defect point group is calculated with {spglib}.'),
-          result.defect_pointgroup]])
+          pg_string]])
+
+    description = describe_entry('One-electron states', panel_description)
 
     vbm = result.pristine['vbm']
     cbm = result.pristine['cbm']
@@ -278,33 +298,33 @@ def webpanel(result, row, key_descriptions):
         state_table_0, state_table_1, transition_table = get_state_table(
             result.symmetries, vbm, cbm, row)
         if len(state_table_0['rows']) > 1 and len(state_table_1['rows']) > 1:
-            panel = WebPanel('One-electron states',
+            panel = WebPanel(description,
                              columns=[[fig('ks_gap.png')], [state_table_0,
                                                             state_table_1,
                                                             transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
-                             sort=3)
+                             sort=30)
         elif len(state_table_0['rows']) == 1 and len(state_table_1['rows']) > 1:
-            panel = WebPanel('One-electron states',
+            panel = WebPanel(description,
                              columns=[[fig('ks_gap.png')], [state_table_1,
                                                             transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
-                             sort=3)
+                             sort=30)
         elif len(state_table_1['rows']) == 1 and len(state_table_0['rows']) > 1:
-            panel = WebPanel('One-electron states',
+            panel = WebPanel(description,
                              columns=[[fig('ks_gap.png')], [state_table_0,
                                                             transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
-                             sort=3)
+                             sort=30)
         else:
-            panel = WebPanel('One-electron states',
+            panel = WebPanel(description,
                              columns=[[fig('ks_gap.png')], [transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
-                             sort=3)
+                             sort=30)
 
     else:
         state_table_0, state_table_1, transition_table = get_state_table(
@@ -312,36 +332,36 @@ def webpanel(result, row, key_descriptions):
         symmetry_table_0, symmetry_table_1 = get_symmetry_table(
             result.symmetries, vbm, cbm, row)
         if len(symmetry_table_0['rows']) > 1 and len(symmetry_table_1['rows']) > 1:
-            panel = WebPanel('One-electron states',
+            panel = WebPanel(description,
                              columns=[[symmetry_table_0, symmetry_table_1,
                                        fig('ks_gap.png')],
                                       [state_table_0, state_table_1,
                                        transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
-                             sort=3)
+                             sort=30)
         elif len(symmetry_table_0['rows']) == 1 and len(symmetry_table_1['rows']) > 1:
-            panel = WebPanel('One-electron states',
+            panel = WebPanel(description,
                              columns=[[symmetry_table_1,
                                        fig('ks_gap.png')],
                                       [state_table_1, transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
-                             sort=3)
+                             sort=30)
         elif len(symmetry_table_1['rows']) == 1 and len(symmetry_table_0['rows']) > 1:
-            panel = WebPanel('One-electron states',
+            panel = WebPanel(description,
                              columns=[[symmetry_table_0,
                                        fig('ks_gap.png')],
                                       [state_table_0, transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
-                             sort=3)
+                             sort=30)
         else:
-            panel = WebPanel('One-electron states',
+            panel = WebPanel(description,
                              columns=[[fig('ks_gap.png')], [transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
-                             sort=3)
+                             sort=30)
 
 
     summary = {'title': 'Summary',
@@ -861,7 +881,8 @@ def draw_band_edge(energy, edge, color, offset=2, ax=None):
 
     ax.plot([0, 1], [energy] * 2, color='black', zorder=1)
     ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color='grey', alpha=0.5)
-    ax.text(0.5, elabel, edge.upper(), color='w', ha='center', va='center')
+    ax.text(0.5, elabel, edge.upper(), color='w', weight='bold', ha='center',
+            va='center')
 
 
 def split(word):

@@ -1,8 +1,22 @@
 from asr.core import command, ASRResult, prepare_result  # , option
+from asr.database.browser import make_panel_description, href
 from pathlib import Path
 from ase.io import Trajectory
 from gpaw import restart
 import typing
+
+
+panel_description = make_panel_description(
+    """
+Analysis of the thermodynamic stability of the defect using Slater-Janak
+ transition state theory.
+""",
+    articles=[
+        href("""M. Pandey et al. Defect-tolerant monolayer transition metal
+dichalcogenides, Nano Letters, 16 (4) 2234 (2016)""",
+             'https://doi.org/10.1021/acs.nanolett.5b04513'),
+    ],
+)
 
 
 def webpanel(result, row, key_descriptions):
@@ -23,14 +37,15 @@ def webpanel(result, row, key_descriptions):
     formation_table_sum = table(result, 'Defect properties', [])
     formation_table_sum['rows'].extend(
         [[describe_entry('Formation energy',
-                         description=result.key_descriptions['eform']),
+                         description='Neutral formation energy [eV].'),
           f'{result.eform[0][0]:.2f} eV']])
 
     formation_table = table(result, 'Defect formation', [])
     for element in result.eform:
         formation_table['rows'].extend(
             [[describe_entry(f'Formation energy (q={element[1]:1d} @ VBM)',
-                             description=result.key_descriptions['eform']),
+                             description='Formation energy for charge state q '
+                                         'at the valence band maximum [eV].'),
               f'{element[0]:.2f} eV']])
     # pristine_table_sum = table(result, 'Pristine crystal', [])
     # # pristine_table_sum['rows'].extend(
@@ -64,21 +79,19 @@ def webpanel(result, row, key_descriptions):
         rowlabels=transition_labels)
 
     panel = WebPanel(
-        describe_entry('Charge Transition Levels (Slater-Janak)',
-                       description='Defect stability analyzis using Slater-Janak theory'
-                                   'to calculate charge transition levels and formation'
-                                   'energies.'),
+        describe_entry('Formation energies and charge transition levels (Slater-Janak)',
+                       panel_description),
         columns=[[describe_entry(fig('sj_transitions.png'),
                                  'Slater-Janak calculated charge transition levels.'),
                   transitions_table],
                  [describe_entry(fig('formation.png'),
-                                 'Reconstructed formation energy curve.'),
+                                 'Formation energy diagram.'),
                   formation_table]],
         plot_descriptions=[{'function': plot_charge_transitions,
                             'filenames': ['sj_transitions.png']},
                            {'function': plot_formation_energies,
                             'filenames': ['formation.png']}],
-        sort=50)
+        sort=29)
 
     summary = {'title': 'Summary',
                'columns': [[formation_table_sum],

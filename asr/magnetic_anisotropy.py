@@ -59,7 +59,7 @@ def webpanel(result, row, key_descriptions):
                  'Basic magnetic properties (PBE)',
                  panel_description),
              'columns': [[magtable], []],
-             'sort': 11}
+             'sort': 41}
     return [panel]
 
 

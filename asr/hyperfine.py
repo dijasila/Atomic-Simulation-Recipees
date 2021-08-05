@@ -5,10 +5,23 @@ from pathlib import Path
 import ase.units as units
 from asr.core import (command, ASRResult, prepare_result,
                       read_json)
+from asr.database.browser import make_panel_description, href
 from gpaw import restart
 from gpaw.typing import Array1D
 from gpaw.wavefunctions.base import WaveFunctions
 from gpaw.hyperfine import expand
+
+
+panel_description = make_panel_description(
+    """
+Analysis of hyperfine coupling and spin coherence time.
+""",
+    articles=[
+        href("""G. D. Cheng et al. Optical and spin coherence properties of NV
+ center in diamond and 3C-SiC, Comp. Mat. Sc. 154, 60 (2018)""",
+             'https://doi.org/10.1016/j.commatsci.2018.07.039'),
+    ],
+)
 
 
 def get_atoms_close_to_center(center, row):
@@ -97,9 +110,10 @@ def webpanel(result, row, key_description):
                          description=result.key_descriptions['sc_time']),
           f'{result.sc_time:.2e} ms']])
 
-    hyperfine = WebPanel('HF coupling and zero-field-splitting',
+    hyperfine = WebPanel(describe_entry('HF coupling and spin coherence time',
+                                        panel_description),
                          columns=[[hf_table], [gyro_table, sct_table]],
-                         sort=1)
+                         sort=42)
 
     return [hyperfine]
 
