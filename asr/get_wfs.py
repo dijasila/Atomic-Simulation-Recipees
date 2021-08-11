@@ -71,9 +71,9 @@ def main(state: int = 0,
     from asr.core import read_json
 
     # read in converged gs.gpw file and run fixed density calculation
-    print('INFO: run fixed density calculation.')
+    # print('INFO: run fixed density calculation.')
     atoms, calc = restart('gs.gpw', txt='get_wfs.txt')
-    calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
+    # calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
     # evaluate states in the gap (if '--get-gapstates' is active)
     if get_gapstates:
         print('INFO: evaluate gapstates.')
@@ -120,9 +120,158 @@ def main(state: int = 0,
         eref=eref)
 
 
+def return_defect_index():
+    """Return the index of the present defect."""
+    from pathlib import Path
+    from asr.defect_symmetry import (get_defect_info,
+                                     check_and_return_input,
+                                     is_vacancy)
+
+    defectpath = Path('.')
+    structure, _, primitive, _ = check_and_return_input()
+    deftype, defpos = get_defect_info(primitive, defectpath)
+    if not is_vacancy(defectpath):
+        for i in range(len(primitive)):
+            if not (primitive.get_chemical_symbols()[i]
+                    == structure.get_chemical_symbols()[i]):
+                label = i
+                break
+            else:
+                label = 0
+    elif is_vacancy(defectpath):
+        for i in range(len(primitive)):
+            if not (primitive.get_chemical_symbols()[i]
+                    == structure.get_chemical_symbols()[i]):
+                label = i
+                break
+            else:
+                label = 0
+
+    return label, is_vacancy(defectpath)
+
+
+def get_reference_index(def_index, struc_def, struc_pris):
+    """Get index of atom furthest away from the defect."""
+    distances = []
+    for i in range(len(struc_pris)):
+        distances.append(struc_pris.get_distance(def_index, i, mic=True))
+
+    for i, element in enumerate(distances):
+        if element == max(distances):
+            index = i
+            break
+
+    return index
+
+
+def extract_atomic_potentials(calc_def, calc_pris, ref_index, is_vacancy):
+    """
+    Evaluate atomic potentials far away from the defect for pristine and defect.
+    """
+    struc_def = calc_def.atoms
+    struc_pris = calc_pris.atoms
+
+    pot_pris = calc_pris.get_atomic_electrostatic_potentials()[ref_index]
+    if is_vacancy:
+        def_index = ref_index + 1
+    else:
+        def_index = ref_index
+
+    pot_def = calc_def.get_atomic_electrostatic_potentials()[def_index]
+
+    # check whether chemical symbols of both reference atoms are equal
+    assert (struc_def.get_chemical_symbols()[def_index]
+            == struc_pris.get_chemical_symbols()[ref_index])
+
+    return pot_def, pot_pris
+
+
+# def return_gapstates_new(calc_def):
+#     """
+#     Evaluate states within the pristine band gap and return band indices.
+# 
+#     This function compares a defect calculation to a pristine one and
+#     evaluates the gap states by referencing both calculations to the
+#     electrostatic potential of an atom far away from the defect. Next, the
+#     VBM and CBM of the pristine system get projected onto the defect
+#     calculation and all defect states will be saved. Lastly, the absolute
+#     energy scale will be referenced back to the pristine vacuum level.
+# 
+#     Note, that this function only works for defect systems where the folder
+#     structure has been created with asr.setup.defects!
+#     """
+#     from pathlib import Path
+#     from asr.core import read_json
+# 
+#     # return index of the point defect in the defect structure
+#     def_index, is_vacancy = return_defect_index()
+# 
+#     # get calculators and atoms for pristine and defect calculation
+#     try:
+#         p = Path('.')
+#         pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
+#         pris_folder = pristinelist[0]
+#         res_pris = read_json(pris_folder / 'results-asr.gs.json')
+#         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
+#         struc_def, calc_def = restart(p / 'gs.gpw', txt=None)
+#     except FileNotFoundError:
+#         print('ERROR: does not find pristine gs, pristine results, or defect'
+#               ' results. Did you run setup.defects and calculate the ground'
+#               ' state for defect and pristine system?')
+# 
+#     # evaluate which atom possesses maximum distance to the defect site
+#     ref_index = get_reference_index(def_index, struc_def, struc_pris)
+# 
+#     # get atomic electrostatic potentials at the atom far away for both the
+#     # defect and pristine system
+#     pot_def, pot_pris = extract_atomic_potentials(calc_def, calc_pris,
+#                                                   ref_index, is_vacancy)
+# 
+#     # get newly referenced eigenvalues for pristine and defect, as well as
+#     # pristine fermi level for evaluation of the band gap
+#     # vbm = res_pris['vbm'] + pot_pris
+#     # cbm = res_pris['cbm'] + pot_pris
+#     ef_pris = res_pris['efermi'] + pot_pris
+#     ev_pris = calc_pris.get_eigenvalues() + pot_pris
+#     # ef_pris = calc_pris.get_fermi_level() + pot_pris
+#     for element in ev_pris:
+#         if element > ef_pris:
+#             cbm = element
+#             break
+#         vbm = element
+# 
+#     ev_def = calc_def.get_eigenvalues() + pot_def
+#     ef_def = calc_def.get_fermi_level() + pot_def
+#     print(pot_pris, pot_def)
+#     print(f'ef_def: {ef_def:.2f} eV',
+#           f'ev_def: {ev_def}',
+#           f'vbm / cbm: {vbm:.2f} eV / {cbm:.2f} eV.')
+#     print(f'ef_pris: {ef_pris:.2f} eV',
+#           f'ev_pris: {ev_pris}')
+# 
+#     # evaluate whether there are states above or below the fermi level
+#     # and within the bandgap
+#     above = False
+#     below = False
+#     for state in ev_def:
+#         if state < cbm and state > vbm and state > ef_def:
+#             above = True
+#         elif state < cbm and state > vbm and state < ef_def:
+#             below = True
+#     above_below = (above, below)
+#     dif = 0
+# 
+#     # evaluate states within the gap
+#     statelist = []
+#     [statelist.append(i) for i, state in enumerate(ev_def) if (
+#         state < cbm and state > vbm)]
+# 
+#     return statelist, above_below, dif
+
+
 def return_gapstates(calc):
     """
-    Evaluate states within the pristine bandgap and return bandindices.
+    Evaluate states within the pristine bandgap and return band indices.
 
     This function compares a defect calculation to a pristine one and
     evaluates the gap states by aligning semi-core states of pristine and

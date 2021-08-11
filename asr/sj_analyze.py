@@ -543,8 +543,8 @@ def plot_formation_energies(row, fname):
 
     data = row.data.get('results-asr.sj_analyze.json')
 
-    vbm = data['pristine']['vbm']
-    cbm = data['pristine']['cbm']
+    vbm = data['pristine']['vbm'] # - 142.7 - 2.56
+    cbm = data['pristine']['cbm'] # - 142.7 - 2.56
     gap = abs(cbm - vbm)
     eform = data['eform']
     transitions = data['transitions']
@@ -632,8 +632,8 @@ def plot_charge_transitions(row, fname):
 
     data = row.data.get('results-asr.sj_analyze.json')
 
-    vbm = data['pristine']['vbm']
-    cbm = data['pristine']['cbm']
+    vbm = data['pristine']['vbm'] # - 142.7 + 2.56
+    cbm = data['pristine']['cbm'] # - 142.7 + 2.56
 
     gap = abs(cbm - vbm)
 
