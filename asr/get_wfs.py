@@ -73,7 +73,9 @@ def main(state: int = 0,
     # read in converged gs.gpw file and run fixed density calculation
     # print('INFO: run fixed density calculation.')
     atoms, calc = restart('gs.gpw', txt='get_wfs.txt')
-    # calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
+    calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
+    print('INFO: run fixed density calculation starting from gs.gpw.')
+
     # evaluate states in the gap (if '--get-gapstates' is active)
     if get_gapstates:
         print('INFO: evaluate gapstates.')
