@@ -18,6 +18,7 @@ def calculate(atoms, vbm_position, cbm_position):
         vacuumlevel=1.0)
 
 
+@pytest.mark.ci
 def test_def_pots():
     atoms = Atoms(cell=[1, 1, 1], pbc=[1, 1, 0])
     position = None

@@ -1,20 +1,22 @@
 """Deformation potentials."""
-# from typing import Tuple
 from functools import partial
+from typing import Dict, Tuple, Callable, Sequence
 
 import numpy as np
 from ase import Atoms
 
 import asr
 import asr.c2db.gs
+from asr.c2db.gs import calculate as gscalculate
+from asr.c2db.gs import main as groundstate
+from asr.c2db.magnetic_anisotropy import get_spin_axis
+from asr.c2db.relax import Result as RelaxResult
+from asr.c2db.relax import main as relax
 from asr.calculators import get_calculator_class
 from asr.core import ASRResult, prepare_result
-from asr.c2db.magnetic_anisotropy import get_spin_axis
-from asr.c2db.relax import main as relax
 from asr.setup.strains import get_relevant_strains
 from asr.setup.strains import main as make_strained_atoms
 from asr.utils.gpw2eigs import calc2eigs
-from asr.c2db.gs import main as groundstate, calculate as gscalculate
 
 
 def webpanel(result, context):
@@ -40,17 +42,23 @@ class EdgesResult(ASRResult):
     ecbm: float
     vacuumlevel: float
 
+    dey_descriptions = dict(
+        evbm='Energy of VBM',
+        ecbm='Energy of CBM',
+        vacuumlevel='Energy of vacuum level')
 
-@asr.instruction(
-    module='asr.c2db.deformationpotentials',
-)
+
+BandPosition = Dict[str, int]
+
+
+@asr.instruction(module='asr.c2db.deformationpotentials')
 @asr.atomsopt
 @asr.calcopt
 def calculate(atoms: Atoms,
               calculator: dict,
-              vbm_position: dict,
-              cbm_position: dict,
-              angles: dict) -> EdgesResult:
+              vbm_position: BandPosition,
+              cbm_position: BandPosition,
+              angles: Dict[str, float]) -> EdgesResult:
     calculator = calculator.copy()
     atoms = atoms.copy()
 
@@ -85,11 +93,13 @@ class Result(ASRResult):
 
 
 def _main(atoms: Atoms,
-          vbm_position,
-          cbm_position,
-          relax_atoms,
-          calculate_band_edges,
-          strains=[-1.0, 1.0]):
+          vbm_position: BandPosition,
+          cbm_position: BandPosition,
+          relax_atoms: Callable[[Atoms], RelaxResult],
+          calculate_band_edges: Callable[[Atoms, BandPosition, BandPosition],
+                                         EdgesResult],
+          strains: Sequence[float] = [-1.0, 1.0]) -> Tuple[np.ndarray,
+                                                           np.ndarray]:
     """Calculate deformation potentials.
 
     Calculate the deformation potential both with and without spin orbit
