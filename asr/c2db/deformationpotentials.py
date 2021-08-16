@@ -5,12 +5,12 @@ from functools import partial
 import numpy as np
 from ase import Atoms
 
-import asr.gs
+import asr.c2db.gs
 from asr.calculators import get_calculator_class
 from asr.core import (ASRResult, atomsopt, calcopt, command, option,
                       prepare_result)
-from asr.magnetic_anisotropy import get_spin_axis
-from asr.relax import main as relax
+from asr.c2db.magnetic_anisotropy import get_spin_axis
+from asr.c2db.relax import main as relax
 from asr.setup.strains import get_relevant_strains
 from asr.setup.strains import main as make_strained_atoms
 from asr.utils.gpw2eigs import calc2eigs
@@ -132,7 +132,7 @@ def _main(atoms: Atoms,
 
 
 def main(atoms: Atoms,
-         calculator: dict = asr.gs.main.defaults.calculator,
+         calculator: dict = asr.c2db.gs.main.defaults.calculator,
          strain_percent: float = 1.0) -> Result:
     """Calculate deformation potentials.
 

@@ -1,6 +1,8 @@
+import pytest
 from ase import Atoms
-from asr.deformationpotentials import _main, EdgesResult
-from asr.relax import Result as RelaxResult
+
+from asr.c2db.deformationpotentials import EdgesResult, _main
+from asr.c2db.relax import Result as RelaxResult
 
 
 def relax(atoms):
@@ -25,3 +27,6 @@ def test_def_pots():
         calculate_band_edges=calculate,
         vbm_position=position,
         cbm_position=position)
+    print(edges)
+    assert defpots[:, 0] == pytest.approx(0.0)
+    assert defpots[:, 1] == pytest.approx([1.0, 2.0, 0.0, 0.0, 0.0, 0.0])
