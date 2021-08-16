@@ -91,9 +91,6 @@ def _main(atoms: Atoms,
     coupling, for both the conduction band and the valence band, and return as
     a dictionary.
     """
-    from asr.gs import calculate as gscalculate
-    from asr.gs import main as groundstate
-
     ij = get_relevant_strains(atoms.pbc)
 
     ij_to_voigt = [[0, 5, 4],
