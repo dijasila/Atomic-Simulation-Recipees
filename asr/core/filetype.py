@@ -1,117 +1,37 @@
+from os import PathLike
 import typing
-import pathlib
+from pathlib import Path
 from asr.core.utils import sha256sum
 from .utils import only_master, link_file
-from .root import find_root, ASR_DIR
-
-
-class RootPath:
-    """Pathlike object that measure paths relative to ASR root."""
-
-    def __init__(self, path: typing.Union[str, pathlib.Path]):
-        if isinstance(path, str):
-            path = pathlib.Path(path)
-        assert not path.is_absolute()
-        self.path = path
-
-    def __fspath__(self):
-        return str(find_root() / self.path)
-
-    def unlink(self):
-        """Delete path."""
-        return pathlib.Path(self).unlink()
-
-    def is_dir(self):
-        """Is path directory."""
-        return pathlib.Path(self).is_dir()
-
-    def is_file(self):
-        """Is file."""
-        return pathlib.Path(self).is_file()
-
-    def __str__(self):
-        return self.__fspath__()
-
-    def __eq__(self, other):
-        if not isinstance(other, RootPath):
-            return False
-        return self.path == other.path
-
-    def __truediv__(self, other):
-        """Compose paths."""
-        cls = type(self)
-        if isinstance(other, (str, pathlib.Path)):
-            return cls(self.path / other)
-        elif isinstance(other, cls):
-            return cls(self.path / other.path)
-        else:
-            return NotImplemented
-
-    def __rtruediv__(self, other):
-        """Compose paths."""
-        cls = type(self)
-        if isinstance(other, (str, pathlib.Path)):
-            return (other / self.path)
-        elif isinstance(other, cls):
-            return cls(other.path / self.path)
-        else:
-            return NotImplemented
-
-        return self.__truediv__(other)
-
-    def __repr__(self):
-        return str(self)
-
-
-class ASRPath(RootPath):
-
-    def __fspath__(self):
-        return str(find_root() / ASR_DIR / self.path)
-
-
-PathLike = typing.Union[pathlib.Path, ASRPath, RootPath]
 
 
 class ExternalFile:
-
-    def __init__(
-            self,
-            path: PathLike,
-            name: str,
-    ):
-        self.path = path
-        self.name = name
+    def __init__(self, path: PathLike):
+        self.path = Path(path).absolute()
         self.hashes = {'sha256': sha256sum(path)}
+
+    @property
+    def name(self):
+        return self.path.name
 
     @classmethod
     def fromstr(cls, string):
-        path = pathlib.Path(string).absolute()
-        return cls(path, path.name)
+        path = Path(string).absolute()
+        return cls(path)
 
     @property
     def sha256(self):
         return self.hashes['sha256']
 
-    @property
-    def path(self):
-        return self._path
-
-    @path.setter
-    def path(self, value):
-        self._path = value
-
-    def __str__(self):
-        return f'ExternalFile(path={self.path}, sha256={self.sha256[:10]}...)'
-
     def __repr__(self):
-        return str(self)
+        return f'ExternalFile(path={self.path}, sha256={self.sha256[:10]}...)'
 
     def __fspath__(self):
         return str(self.path)
 
     def restore(self):
         path = self.path
-        tofile = pathlib.Path(self.name)
+        tofile = Path(path.name)
         assert not tofile.is_file()
         only_master(link_file)(path, tofile)
 
@@ -125,25 +45,22 @@ class File:
 
     def __init__(
             self,
-            path: pathlib.Path,
+            path: Path,
     ):
         self.path = path
         self.hashes = {'sha256': sha256sum(path)}
 
     @classmethod
     def fromstr(cls, string):
-        path = pathlib.Path(string).absolute()
+        path = Path(string).absolute()
         return cls(path)
 
     @property
     def sha256(self):
         return self.hashes['sha256']
 
-    def __str__(self):
-        return f'File(path={self.path}, sha256={self.sha256[:10]}...)'
-
     def __repr__(self):
-        return str(self)
+        return f'File(path={self.path}, sha256={self.sha256[:10]}...)'
 
     def __fspath__(self):
         return str(self.path)

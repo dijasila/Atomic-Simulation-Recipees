@@ -6,7 +6,7 @@ import pytest
 @pytest.mark.acceptance_test
 def test_piezo_BN(asr_tmpdir_w_params):
     from ..materials import BN
-    from asr.piezoelectrictensor import main
+    from asr.c2db.piezoelectrictensor import main
     from asr.setup.params import main as setupparams
 
     formal_calculator = {
@@ -19,7 +19,8 @@ def test_piezo_BN(asr_tmpdir_w_params):
         'txt': 'formalpol.txt',
         'charge': 0
     }
-    setupparams(params={'asr.formalpolarization': {'calculator': formal_calculator}})
+    setupparams(params={'asr.c2db.formalpolarization':
+                        {'calculator': formal_calculator}})
     BN.write('structure.json')
     results = main()
 

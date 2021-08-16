@@ -1,4 +1,5 @@
 """Generate defective atomic structures."""
+import numpy as np
 from typing import List
 from pathlib import Path
 from asr.core import command, option, ASRResult, atomsopt
@@ -88,8 +89,6 @@ def main(
       'params.json' file which contains specific parameters as well as the charge states
       of the different defect structures.
     """
-    import numpy as np
-
     # only run SJ setup if halfinteger is True
     if halfinteger:
         setup_halfinteger()
@@ -193,7 +192,6 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
     :return supercell_final: supercell structure with suitable vacuum size
                              applied
     """
-    import numpy as np
     if is_2D:
         cell = structure_sc.get_cell()
         oldvac = cell[2][2]
@@ -308,9 +306,9 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                      'nbands': '200%',
                      'txt': 'gs.txt',
                      'spinpol': True}
-    parameters['asr.gs@calculate'] = {
+    parameters['asr.c2db.gs@calculate'] = {
         'calculator': calculator_gs}
-    parameters['asr.relax'] = {'calculator': calculator_relax}
+    parameters['asr.c2db.relax'] = {'calculator': calculator_relax}
     structure_dict[string] = {'structure': pristine, 'parameters': parameters}
 
     # incorporate the possible vacancies
@@ -360,11 +358,11 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                      'nbands': '200%',
                                      'txt': 'gs.txt',
                                      'spinpol': True}
-                    parameters['asr.gs@calculate'] = {
+                    parameters['asr.c2db.gs@calculate'] = {
                         'calculator': calculator_gs}
-                    parameters['asr.gs@calculate']['calculator']['charge'] = q
-                    parameters['asr.relax'] = {'calculator': calculator_relax}
-                    parameters['asr.relax']['calculator']['charge'] = q
+                    parameters['asr.c2db.gs@calculate']['calculator']['charge'] = q
+                    parameters['asr.c2db.relax'] = {'calculator': calculator_relax}
+                    parameters['asr.c2db.relax']['calculator']['charge'] = q
                     charge_string = 'charge_{}'.format(q)
                     charge_dict[charge_string] = {
                         'structure': vacancy, 'parameters': parameters}
@@ -431,13 +429,15 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, sc,
                                 'nbands': '200%',
                                 'txt': 'gs.txt',
                                 'spinpol': True}
-                            parameters['asr.gs@calculate'] = {
+                            parameters['asr.c2db.gs@calculate'] = {
                                 'calculator': calculator_gs}
-                            parameters['asr.gs@calculate']['calculator'
-                                                           ]['charge'] = q
-                            parameters['asr.relax'] = {
+                            parameters[
+                                'asr.c2db.gs@calculate'][
+                                    'calculator']['charge'] = q
+                            parameters['asr.c2db.relax'] = {
                                 'calculator': calculator_relax}
-                            parameters['asr.relax']['calculator']['charge'] = q
+                            parameters['asr.c2db.relax'][
+                                'calculator']['charge'] = q
                             charge_string = 'charge_{}'.format(q)
                             charge_dict[charge_string] = {
                                 'structure': defect, 'parameters': parameters}
@@ -514,7 +514,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
             sub_dict = structure_dict[element]
             j = 0
             for sub_element in sub_dict:
-                defect_name = [key for key in sub_dict.keys()]
+                defect_name = list(sub_dict)
                 defect_folder_name = defect_name[j]
                 j = j + 1
                 try:
@@ -575,8 +575,8 @@ def setup_halfinteger():
         Path('sj_-0.5').mkdir()
         params = read_json('params.json')
         params_m05 = params.copy()
-        params_m05['asr.gs@calculate']['calculator']['charge'] = charge - 0.5
-        params_m05['asr.relax']['calculator']['charge'] = charge - 0.5
+        params_m05['asr.c2db.gs@calculate']['calculator']['charge'] = charge - 0.5
+        params_m05['asr.c2db.relax']['calculator']['charge'] = charge - 0.5
         write_json('sj_-0.5/params.json', params_m05)
         print('INFO: changed parameters m: {}'.format(params_m05))
         shutil.copyfile(foldername + '/structure.json',
@@ -587,10 +587,11 @@ def setup_halfinteger():
         Path('sj_+0.5').mkdir()
         params = read_json('params.json')
         params_p05 = params.copy()
-        charge = params.get('asr.gs@calculate').get('calculator').get('charge')
+        charge = params.get('asr.c2db.gs@calculate').get('calculator').get('charge')
         print('INFO: initial charge {}'.format(charge))
-        params_p05['asr.gs@calculate']['calculator']['charge'] = charge + 0.5
-        params_p05['asr.relax']['calculator']['charge'] = charge + 0.5
+        params_p05['asr.c2db.gs@calculate']['calculator']['charge'] = \
+            charge + 0.5
+        params_p05['asr.c2db.relax']['calculator']['charge'] = charge + 0.5
         write_json('sj_+0.5/params.json', params_p05)
         print('INFO: changed parameters p: {}'.format(params_p05))
         shutil.copyfile(foldername + '/structure.json',
@@ -608,7 +609,6 @@ def create_general_supercell(structure, size=12.5):
     least number of atoms. Only works in 2D so far!
     """
     from ase.build import make_supercell
-    import numpy as np
     # b1 = n1*a1 + m1*a2
     # b2 = n2*a1 + m2*a2
     # we restrict ourselves such that m1=0

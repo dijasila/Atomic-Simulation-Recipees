@@ -28,10 +28,3 @@ def main(selection: str = ''):
         data = row.data
         newdb.write(atoms, key_value_pairs=kvp, data=data)
     print(f'Created materials.json database containing {nmat} materials')
-
-
-group = 'setup'
-
-
-if __name__ == '__main__':
-    main.cli()

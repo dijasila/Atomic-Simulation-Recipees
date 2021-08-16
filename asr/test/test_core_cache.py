@@ -118,7 +118,7 @@ def test_cache_select(cache, record):
 
 @pytest.mark.ci
 @pytest.mark.parametrize('backend', ['filesystem', 'memory'])
-def test_get_cache(backend):
+def test_get_cache(backend, asr_tmpdir):
     cache = get_cache(backend=backend)
     assert isinstance(cache, Cache)
 

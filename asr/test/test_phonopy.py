@@ -4,7 +4,7 @@ import pytest
 @pytest.mark.ci
 def test_phonopy(asr_tmpdir_w_params, mockgpaw, get_webcontent):
     """Simple test of phononpy recipe."""
-    from asr.phonopy import main
+    from asr.c2db.phonopy import main
     from ase.build import bulk
 
     N = 2

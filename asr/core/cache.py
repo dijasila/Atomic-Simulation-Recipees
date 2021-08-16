@@ -1,13 +1,12 @@
 """Implement cache functionality."""
 import os
-import pathlib
+from pathlib import Path
 import typing
 from .record import Record
 from .utils import write_file, only_master, link_file
 from .serialize import JSONSerializer
 from .selector import Selector
-from .filetype import find_external_files, ASRPath
-from .config import root_is_initialized
+from .filetype import find_external_files
 from .lock import Lock, lock
 
 
@@ -20,19 +19,16 @@ def get_external_file_path(dir, uid, name):
     return newpath
 
 
-class FileCacheBackend():
+class FileCacheBackend:
 
-    def __init__(
-            self,
-            cache_dir: str = 'records',
-            ext_file_dir: str = 'external_files',
-            serializer: JSONSerializer = JSONSerializer(),
-    ):
-        self.serializer = serializer
-        self.cache_dir = ASRPath(cache_dir)
-        self.ext_file_dir = ASRPath(ext_file_dir)
-        self.record_table_path = ASRPath('record-table.json')
-        self.lock = Lock(ASRPath('lock'), timeout=10)
+    def __init__(self, path: Path):
+        assert path.is_absolute()
+        self.path = path
+        self.cache_dir = path / 'records'
+        self.ext_file_dir = path / 'external_files'
+        self.record_table_path = path / 'record-table.json'
+        self.lock = Lock(path / 'lock', timeout=10)
+        self.serializer = JSONSerializer()
 
     def _record_to_path(self, run_record: Record):
         run_specification = run_record.run_specification
@@ -79,7 +75,8 @@ class FileCacheBackend():
 
     @property
     def initialized(self):
-        if not root_is_initialized():
+        from asr.core.root import Repository
+        if not Repository.root_is_initialized():
             return False
         return self.record_table_path.is_file()
 
@@ -97,11 +94,22 @@ class FileCacheBackend():
         serialized_object = self.serializer.serialize({})
         self._write_file(self.record_table_path, serialized_object)
 
+    def asr_path(self, path):
+        path = Path(path)
+        if path.is_absolute():
+            if self.path in path.parents:
+                return path
+            else:
+                raise RuntimeError(f'Path not under cache: {path}')
+
+        return self.path / path
+
     @lock
-    def add_uid_to_table(self, run_uid, path: ASRPath):
+    def add_uid_to_table(self, run_uid, path: Path):
         self.initialize()
-        uid_table = self.uid_table
-        uid_table[run_uid] = path
+        uid_table = self.read_uid_table()
+        uid_table[run_uid] = self.asr_path(path)
+
         self._write_file(
             self.record_table_path,
             self.serializer.serialize(uid_table),
@@ -110,19 +118,21 @@ class FileCacheBackend():
     @lock
     def remove_uid_from_table(self, run_uid):
         assert self.initialized
-        uid_table = self.uid_table
+        uid_table = self.read_uid_table()
         del uid_table[run_uid]
         self._write_file(
             self.record_table_path,
             self.serializer.serialize(uid_table),
         )
 
-    @property
-    def uid_table(self):
+    def read_uid_table(self):
         self.initialize()
         text = self._read_file(self.record_table_path)
         uid_table = self.serializer.deserialize(text)
         return uid_table
+
+    def __contains__(self, record):
+        return record.uid in self.read_uid_table()
 
     def has(self, selector: 'Selector'):
         if not self.initialized:
@@ -133,41 +143,31 @@ class FileCacheBackend():
                 return True
         return False
 
-    def _immediate_dependencies(self, record):
-        # XXX We should probably get a O(1) __contains__ method
-        # XXX record == record2 seems to fail with an error
-        assert record.uid == self.get_record_from_uid(record.uid).uid
-        if not record.dependencies:
-            return
-        for dep in record.dependencies:
-            yield self.get_record_from_uid(dep.uid)
-
-    def _all_dependencies_with_duplicates(self, record):
-        for dep_record in self._immediate_dependencies(record):
-            yield dep_record
-            yield from self._all_dependencies_with_duplicates(dep_record)
-
-    def recurse_dependencies(self, record):
-        found = {record.uid}
-        for dep_record in self._all_dependencies_with_duplicates(record):
-            uid = dep_record.uid
-            if uid not in found:
-                found.add(uid)
-                yield dep_record
-
     def get_record_from_uid(self, run_uid):
-        path = self.uid_table[run_uid]
+        table = self.read_uid_table()
+        path = table[run_uid]
+        return self._read_record(path)
+
+    def _read_record(self, path) -> Record:
         serialized_object = self._read_file(path)
         obj = self.serializer.deserialize(serialized_object)
+        assert isinstance(obj, Record)
         return obj
+
+    def _read_all_records(self):
+        table = self.read_uid_table()
+        all_records = [self._read_record(path) for path in table.values()]
+        return all_records
 
     def select(self, selector: Selector = None):
         if not self.initialized:
             return []
-        all_records = [self.get_record_from_uid(run_uid)
-                       for run_uid in self.uid_table]
+
+        all_records = self._read_all_records()
+
         if selector is None:
             return all_records
+
         selected = []
         for record in all_records:
             if selector.matches(record):
@@ -177,32 +177,28 @@ class FileCacheBackend():
     @lock
     def remove(self, selector: Selector = None):
         assert self.initialized, 'No cache here!'
-        all_records = [self.get_record_from_uid(run_uid)
-                       for run_uid in self.uid_table]
+
         if selector is None:
             return []
 
-        selected = []
-        for record in all_records:
-            if selector.matches(record):
-                selected.append(record)
+        selected = self.select(selector)
 
         for record in selected:
+            # FIXME O(N) work in every step
             self.remove_uid_from_table(record.uid)
             pth = self._record_to_path(record)
             pth.unlink()
         return selected
 
-    def _write_file(self, path: ASRPath, text: str):
-        write_file(path, text)
+    def _write_file(self, path: Path, text: str):
+        write_file(self.asr_path(path), text)
 
-    def _read_file(self, path: ASRPath) -> str:
-        serialized_object = pathlib.Path(path).read_text()
+    def _read_file(self, path: Path) -> str:
+        serialized_object = self.asr_path(path).read_text()
         return serialized_object
 
 
 class Cache:
-
     def __init__(self, backend):
         self.backend = backend
 
@@ -251,7 +247,7 @@ class Cache:
         Selector can be in the style of
 
         cache.select(uid=uid)
-        cache.select(name='asr.gs::main')
+        cache.select(name='asr.c2db.gs')
         """
         selector = self.make_selector(selector=selector, equals=equals)
         return self.backend.select(selector)
@@ -281,8 +277,31 @@ class Cache:
 
         return wrapper
 
+    def _immediate_dependencies(self, record):
+        # XXX We should probably get a O(1) __contains__ method
+        # XXX record == record2 seems to fail with an error
+        backend = self.backend
+        assert record.uid == backend.get_record_from_uid(record.uid).uid
+        if not record.dependencies:
+            return
+        for dep in record.dependencies:
+            yield backend.get_record_from_uid(dep.uid)
+
+    def _all_dependencies_with_duplicates(self, record):
+        for dep_record in self._immediate_dependencies(record):
+            yield dep_record
+            yield from self._all_dependencies_with_duplicates(dep_record)
+
+    def recurse_dependencies(self, record):
+        found = {record.uid}
+        for dep_record in self._all_dependencies_with_duplicates(record):
+            uid = dep_record.uid
+            if uid not in found:
+                found.add(uid)
+                yield dep_record
+
     def __contains__(self, record: Record):
-        return self.has(uid=record.uid)
+        return record in self.backend
 
 
 def default_make_selector(run_specification):
@@ -299,8 +318,14 @@ class MemoryBackend:
     def __init__(self):
         self.records = {}
 
+    def __contains__(self, record):
+        return record.uid in self.records
+
     def add(self, record):
         self.records[record.uid] = record
+
+    def get_record_from_uid(self, uid):
+        return self.records[uid]
 
     def has(self, selector: Selector):
         for value in self.records.values():
@@ -339,6 +364,8 @@ def get_cache(backend: typing.Optional[str] = None) -> Cache:
         backend = config.backend
 
     if backend == 'filesystem':
-        return Cache(backend=FileCacheBackend())
+        from asr.core.root import Repository
+        repo = Repository.find_root()
+        return repo.cache
     elif backend == 'memory':
         return Cache(backend=MemoryBackend())

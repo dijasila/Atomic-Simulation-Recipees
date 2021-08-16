@@ -17,9 +17,10 @@ class DataContext:
     # But not the records themselves -- they're not part of the database
     # and we would like it to be possible to generate the figures
     # from a database without additional info.
-    def __init__(self, row, record):
+    def __init__(self, row, record, cache):
         self.row = row
         self.record = record
+        self.cache = cache
 
     @lazyproperty
     def descriptions(self):
@@ -40,20 +41,15 @@ class DataContext:
 
     @lazymethod
     def _dependencies(self):
-        from asr.core.cache import get_cache
-        cache = get_cache()
         # XXX Avoid depending directly on backend
-        return list(cache.backend.recurse_dependencies(self.record))
+        return list(self.cache.recurse_dependencies(self.record))
 
     def gs_parameters(self):
         # XXX Some records do not depend on main, only calculate.
         # E.g. projected_bandstructure
-        return self.get_record('asr.gs:calculate').parameters
+        return self.get_record('asr.c2db.gs:calculate').parameters
 
     def get_record(self, name):
-        if ':' not in name:
-            name += ':main'  # XXX fixme
-
         records = self._dependencies()
         matches = [record for record in records if record.name == name]
 
@@ -70,16 +66,16 @@ class DataContext:
         return matches[0]
 
     def ground_state(self):
-        return self.get_record('asr.gs')
+        return self.get_record('asr.c2db.gs')
 
     def magstate(self):
-        return self.get_record('asr.magstate')
+        return self.get_record('asr.c2db.magstate')
 
     def magnetic_anisotropy(self):
-        return self.get_record('asr.magnetic_anisotropy')
+        return self.get_record('asr.c2db.magnetic_anisotropy')
 
     def bandstructure(self):
-        return self.get_record('asr.bandstructure')
+        return self.get_record('asr.c2db.bandstructure')
 
     def gs_results(self):
         return self.ground_state().result
@@ -139,6 +135,21 @@ class DataContext:
                   'idiotproof', 'maxiter', 'hund', 'random',
                   'experimental', 'basis', 'setups'}
         return self.parameter_description(recipename, exclude=boring)
+
+    def bs_energy_window(self):
+        gs_result = self.gs_results()
+        gaps = gs_result['gaps_nosoc']
+        efermi = gaps['efermi']
+
+        offsetmin = offsetmax = efermi
+
+        if gaps.get('vbm'):
+            offsetmin = gaps['vbm']
+
+        if gaps.get('cbm'):
+            offsetmax = gaps['cbm']
+
+        return offsetmin - 3, offsetmax + 3
 
 
 @dataclass

@@ -1,15 +1,18 @@
 """Implement ASRCommand class and related decorators."""
-from . import clickify_docstring
 import functools
-import click
 import copy
 import inspect
 import typing
-from .parallel import parprint
+from pathlib import Path
+
+import click
+from ase.parallel import parprint
+
+from . import clickify_docstring
 from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
 from .record import Record
-from .specification import construct_run_spec, obj_to_id
+from .specification import construct_run_spec
 from .runner import runner
 from .dependencies import register_dependencies
 from .resources import register_resources
@@ -49,10 +52,6 @@ class ASRCommand:
         self.package_dependencies = package_dependencies
         self.module = module
         self.version = version
-        if cache is None:
-            cache = get_cache(backend='filesystem')
-        self.cache = cache
-        self.version = version
         self.argument_hooks = argument_hooks or []
         self._wrapped_function = wrapped_function
         self.package_dependencies = self.package_dependencies
@@ -82,6 +81,13 @@ class ASRCommand:
 
         # Setup the CLI
         functools.update_wrapper(self, self._wrapped_function)
+
+    @property
+    def cache(self):
+        # Commands are defined at import time, but (meaningfully)
+        # getting the cache requires that the root is initalized.
+        # Therefore cache is lazy.
+        return get_cache(backend='filesystem')
 
     def new(self, **newkwargs):
         """Make new instance of instruction with new settings."""
@@ -172,8 +178,9 @@ class ASRCommand:
         return parameters
 
     def make_run_specification(self, parameters: Parameters):
+        # func = self.get_wrapped_function()
         run_specification = construct_run_spec(
-            name=obj_to_id(self.get_wrapped_function()),
+            name=self.name,
             parameters=parameters,
             version=self.version,
             codes=self.package_dependencies,
@@ -327,11 +334,11 @@ class ASRCommand:
 
 def get_recipe_module_names():
     # Find all modules containing recipes
-    from pathlib import Path
     asrfolder = Path(__file__).parent.parent
     folders_with_recipes = [asrfolder / '.',
                             asrfolder / 'setup',
-                            asrfolder / 'database']
+                            asrfolder / 'database',
+                            asrfolder / 'c2db']
     files = [filename for folder in folders_with_recipes
              for filename in folder.glob("[a-zA-Z]*.py")]
     modulenames = []

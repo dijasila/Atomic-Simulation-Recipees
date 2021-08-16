@@ -21,18 +21,6 @@ import ase.parallel as parallel
 from ast import literal_eval
 
 
-def make_property(name):  # noqa
-
-    def get_data(self):
-        return self.data[name]
-
-    def set_data(self, value):
-        # assert self.data[name] is None, f'{name} was already set.'
-        self.data[name] = value
-
-    return property(get_data, set_data)
-
-
 def parse_dict_string(string, dct=None):
     """Convert a string-serialized dict, return a real dict."""
     if dct is None:
@@ -277,17 +265,14 @@ def get_recipe_from_name(name):
 
 def parse_mod_func(name):
     # Split a module function reference like
-    # asr.relax@main into asr.relax and main.
-    if '@' in name:
-        split_char = '@'
-    else:
-        split_char = ':'
-    mod, *func = name.split(split_char)
+    # asr.c2db.relax:calculate into asr.c2db.relax and calculate.
+    mod, *func = name.split(':')
     if not func:
         func = ['main']
 
-    assert len(func) == 1, \
-        'You cannot have multiple : in your function description'
+    if len(func) > 1:
+        raise RuntimeError(
+            f'Cannot have multiple : in function description: {func}')
 
     return mod, func[0]
 

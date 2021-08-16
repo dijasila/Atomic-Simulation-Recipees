@@ -1,6 +1,6 @@
 import pytest
-from asr.dimensionality import main as dimensionality
-from asr.dimensionality import get_dimtypes
+from asr.c2db.dimensionality import main as dimensionality
+from asr.c2db.dimensionality import get_dimtypes
 
 
 @pytest.mark.ci

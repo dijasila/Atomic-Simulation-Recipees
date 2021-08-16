@@ -38,7 +38,7 @@ def test_asr_run(asr_tmpdir_w_params):
 
     result = runner.invoke(cli, ['run', '--dry-run', 'structureinfo'])
     assert result.exit_code == 0
-    assert 'Would run asr.structureinfo:main in 1 folders.' in result.output
+    assert 'Would run asr.structureinfo in 1 folders.' in result.output
 
     pathlib.Path("folder1").mkdir()
     pathlib.Path("folder2").mkdir()
@@ -46,7 +46,7 @@ def test_asr_run(asr_tmpdir_w_params):
                                  'structureinfo',
                                  'folder1', 'folder2'])
 
-    assert ('Number of folders: 2\nWould run asr.structureinfo:main'
+    assert ('Number of folders: 2\nWould run asr.structureinfo'
             ' in 2 folders.\n') in result.output
 
     assert result.exit_code == 0
@@ -78,7 +78,7 @@ def test_asr_results_help():
 @pytest.mark.xfail
 @pytest.mark.ci
 def test_asr_results_bandstructure(asr_tmpdir, mockgpaw, mocker):
-    from asr.gs import main as calculate_gs
+    from asr.c2db.gs import main as calculate_gs
     from .materials import BN
     import matplotlib.pyplot as plt
     import gpaw
@@ -91,7 +91,7 @@ def test_asr_results_bandstructure(asr_tmpdir, mockgpaw, mocker):
     BN.write('structure.json')
     calculate_gs()
     runner = CliRunner()
-    result = runner.invoke(cli, ['results', 'asr.gs'])
+    result = runner.invoke(cli, ['results', 'asr.c2db.gs'])
     assert result.exit_code == 0, result
     assert 'Saved figures: bz-with-gaps.png' in result.output
 

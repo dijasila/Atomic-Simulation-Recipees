@@ -44,7 +44,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.doctest',
               'sphinxcontrib.programoutput',
-              'sphinx_autodoc_typehints',
+              # 'sphinx_autodoc_typehints',
               ]
 
 napoleon_numpy_docstring = True

@@ -98,14 +98,13 @@ def set_calculator_hook(parameters):
 class Calculation:
     """Persist calculation state."""
 
-    def __init__(self, id, cls_name, state=None, paths=None):  # noqa
+    def __init__(self, id, cls_name, state=None, *, paths):  # noqa
         from asr.core import ExternalFile
         self.id = id
         self.cls_name = cls_name
         self.paths = []
         for path in paths:
-            path = pathlib.Path(path).absolute()
-            self.paths.append(ExternalFile(path, path.name))
+            self.paths.append(ExternalFile(path))
         self.state = state
 
     def load(self, *args, **kwargs) -> Calculator:

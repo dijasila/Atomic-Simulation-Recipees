@@ -1,4 +1,4 @@
-from asr.relax import BrokenSymmetryError
+from asr.c2db.relax import BrokenSymmetryError
 import pytest
 import numpy as np
 
@@ -6,7 +6,7 @@ import numpy as np
 @pytest.mark.ci
 def test_relax_basic(asr_tmpdir_w_params, mockgpaw, test_material):
     """Test that the relaxation recipe actually produces a structure.json."""
-    from asr.relax import main as relax
+    from asr.c2db.relax import main as relax
     relax(test_material,
           calculator={
               "name": "gpaw",
@@ -21,11 +21,11 @@ def test_relax_basic(asr_tmpdir_w_params, mockgpaw, test_material):
 def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
                        initial_magmoms, set_magmoms, final_magmoms):
     """Test that the initial magnetic moments are correctly set."""
-    import asr.relax
-    from asr.relax import main
+    import asr.c2db.relax
+    from asr.c2db.relax import main
     from gpaw import GPAW
     mocker.patch.object(GPAW, "_get_magmoms")
-    spy = mocker.spy(asr.relax, "set_initial_magnetic_moments")
+    spy = mocker.spy(asr.c2db.relax, "set_initial_magnetic_moments")
     GPAW._get_magmoms.return_value = (np.zeros((len(test_material), ), float)
                                       + final_magmoms)
     if set_magmoms:
@@ -54,7 +54,7 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
 @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
                                   'Pd', 'Pt', 'C'])
 def test_relax_emt(asr_tmpdir_w_params, name):
-    from asr.relax import main as relax
+    from asr.c2db.relax import main as relax
     from ase.build import bulk
 
     unrelaxed = bulk(name)
@@ -67,7 +67,7 @@ def test_relax_emt(asr_tmpdir_w_params, name):
 def test_relax_emt_fail_broken_symmetry(asr_tmpdir_w_params, name,
                                         monkeypatch, capsys):
     """Test that a broken symmetry raises an error."""
-    from asr.relax import main as relax
+    from asr.c2db.relax import main as relax
     from ase.build import bulk
     from ase.calculators.emt import EMT
 
@@ -87,7 +87,7 @@ def test_relax_emt_fail_broken_symmetry(asr_tmpdir_w_params, name,
 def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
     """Test that a structure is allowed to find a higher symmetry without failing."""
     from ase.build import bulk
-    from asr.relax import main, SpgAtoms, myBFGS
+    from asr.c2db.relax import main, SpgAtoms, myBFGS
 
     diamond = bulk('C')
     natoms = len(diamond)
@@ -119,7 +119,7 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
 def test_relax_si_gpaw(asr_tmpdir):
-    from asr.relax import main as relax
+    from asr.c2db.relax import main as relax
     from .materials import Si
     calculator = {}
     calculator.update(relax.defaults.calculator)
@@ -140,7 +140,7 @@ def test_relax_si_gpaw(asr_tmpdir):
 @pytest.mark.integration_test_gpaw
 def test_relax_bn_gpaw(asr_tmpdir):
     from .materials import BN
-    from asr.relax import main as relax
+    from asr.c2db.relax import main as relax
 
     calculator = {}
     calculator.update(relax.defaults.calculator)

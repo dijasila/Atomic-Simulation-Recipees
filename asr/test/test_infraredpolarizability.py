@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import numpy as np
 
-from asr.infraredpolarizability import create_plot_simple
+from asr.c2db.infraredpolarizability import create_plot_simple
 
 
 @pytest.mark.ci

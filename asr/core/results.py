@@ -21,6 +21,7 @@ from ase.io import jsonio
 import copy
 import typing
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from .utils import get_recipe_from_name
 import importlib
 import inspect
@@ -439,17 +440,17 @@ class MetaData:
 
     Examples
     --------
-    >>> metadata = MetaData(asr_name='asr.gs')
+    >>> metadata = MetaData(asr_name='asr.c2db.gs')
     >>> metadata
-    Metadata(asr_name=asr.gs)
+    Metadata(asr_name=asr.c2db.gs)
     >>> metadata.code_versions = {'asr': '0.1.2'}
     >>> metadata
-    Metadata(asr_name=asr.gs,code_versions={'asr': '0.1.2'})
+    Metadata(asr_name=asr.c2db.gs,code_versions={'asr': '0.1.2'})
     >>> metadata.set(resources={'time': 10}, params={'a': 1})
     >>> metadata
-    Metadata(asr_name=asr.gs,code_versions={'asr': '0.1.2'},resources={'time': 10},params={'a': 1})
+    Metadata(asr_name=asr.c2db.gs,code_versions={'asr': '0.1.2'},resources={'time': 10},params={'a': 1})
     >>> metadata.todict()
-    {'asr_name': 'asr.gs', 'code_versions': {'asr': '0.1.2'},\
+    {'asr_name': 'asr.c2db.gs', 'code_versions': {'asr': '0.1.2'},\
  'resources': {'time': 10}, 'params': {'a': 1}}
     """ # noqa
 
@@ -477,8 +478,14 @@ class MetaData:
 
     @property
     def asr_name(self):
-        """For example 'asr.gs'."""
-        return self._get('asr_name')
+        """For example 'asr.c2db.gs'."""
+        # Can this attribute be initialized from outdated files?
+        # I don't know, but let's defend against that:
+        name = self._get('asr_name')
+        name = name.replace('@', ':')
+        if name.endswith(':main'):
+            name = name.rsplit(':', 1)[0]
+        return name
 
     @asr_name.setter
     def asr_name(self, value):
@@ -547,17 +554,13 @@ class MetaData:
         """Format metadata as dict."""
         return copy.deepcopy(self._dct)
 
-    def __str__(self):
+    def __repr__(self):
         """Represent as string."""
         dct = self.todict()
         lst = []
         for key, value in dct.items():
             lst.append(f'{key}={value}')
         return 'Metadata(' + ','.join(lst) + ')'
-
-    def __repr__(self):
-        """Represent object."""
-        return str(self)
 
     def __contains__(self, key):
         """Is metadata key set."""
@@ -659,7 +662,7 @@ def data_to_dict(dct):
     return dct
 
 
-class ASRResult(object):
+class ASRResult(Mapping):
     """Base class for describing results generated with recipes.
 
     A results object is a container for results generated with ASR. It
@@ -729,8 +732,8 @@ class ASRResult(object):
     _known_data_keys = set()
 
     def __init__(self,
-                 data: typing.Dict[str, typing.Any] = {},
-                 metadata: typing.Dict[str, typing.Any] = {},
+                 data: typing.Dict[str, typing.Any] = None,
+                 metadata: typing.Dict[str, typing.Any] = None,
                  strict: typing.Optional[bool] = None):
         """Instantiate result.
 
@@ -746,7 +749,13 @@ class ASRResult(object):
         """
         strict = ((strict is None and self.strict) or strict)
         self.strict = strict
+        if data is None:
+            data = {}
         self._data = data
+
+        if metadata is None:
+            metadata = {}
+
         self._metadata = MetaData()
         self.metadata.set(**metadata)
 
@@ -759,12 +768,12 @@ class ASRResult(object):
             assert not unknown_keys, msg_ukwn
 
     def get_missing_keys(self):
-        data_keys = set(self.data)
+        data_keys = set(self)
         missing_keys = self._known_data_keys - data_keys
         return missing_keys
 
     def get_unknown_keys(self):
-        data_keys = set(self.data)
+        data_keys = set(self)
         unknown_keys = data_keys - self._known_data_keys
         return unknown_keys
 
@@ -841,36 +850,13 @@ class ASRResult(object):
 
     # ---- Magic methods ----
 
-    def copy(self):
-        return self.data.copy()
-
     def __getitem__(self, item):
         """Get item from self.data."""
-        return self.data[item]
-
-    def __contains__(self, item):
-        """Determine if item in self.data."""
-        return item in self.data
+        return self._data[item]
 
     def __iter__(self):
         """Iterate over keys."""
-        return self.data.__iter__()
-
-    def get(self, key, *args):
-        """Wrap self.data.get."""
-        return self.data.get(key, *args)
-
-    def values(self):
-        """Wrap self.data.values."""
-        return self.data.values()
-
-    def items(self):
-        """Wrap self.data.items."""
-        return self.data.items()
-
-    def keys(self):
-        """Wrap self.data.keys."""
-        return self.data.keys()
+        return iter(self._data)
 
     def __format__(self, fmt: str) -> str:
         """Encode result as string."""
@@ -886,11 +872,8 @@ class ASRResult(object):
             string_parts.append(f'{key}=' + str(value))
         return 'Result(' + ",".join(string_parts) + ')'
 
-    def __eq__(self, other):
-        """Compare two result objects."""
-        if not isinstance(other, type(self)):
-            return False
-        return self.data == other.data
+    def __len__(self):
+        return len(self.data)
 
 
 class HackedASRResult(ASRResult):

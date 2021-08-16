@@ -99,11 +99,11 @@ def init(directories):
     directory is supplied.
 
     """
-    from .root import initialize_root
+    from .root import Repository
     if not directories:
         directories = [Path('.')]
     for directory in directories:
-        initialize_root(directory)
+        Repository.initialize(directory)
 
 
 @cli.command()
@@ -220,11 +220,13 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
 
     if isinstance(func, ASRCommand):
         is_asr_command = True
+        name = func.name
     else:
         is_asr_command = False
+        name = f'{module}:{function}'
 
     if dry_run:
-        prt(append_job(f'Would run {module}:{function} '
+        prt(append_job(f'Would run {name} '
                        f'in {nfolders} folders.', job_num=job_num))
         return
 
@@ -310,8 +312,8 @@ def recipes_as_dict():
 def params(recipe, params: Union[str, None] = None):
     """Compile a params.json file with all options and defaults.
 
-    This recipe compiles a list of all options and their default
-    values for all recipes to be used for manually changing values
+    This tool compiles a list of all options and their default
+    values for all instructions to be used for manually changing values
     for specific options.
     """
     return _params(recipe, params)
@@ -783,24 +785,17 @@ def graph(draw=False, labels=False, saveto=None):
             print(node, '<-', graph[node])
 
 
-def make_panels(record):
-    from asr.core.material import (get_row_from_folder,
-                                   new_make_panel_figures,
-                                   make_panel_figures)
+def make_panels(record, cache):
+    from asr.core.material import make_panel_figures
     from asr.core.datacontext import DataContext
     result = record.result
     formats = result.get_formats()
 
     if 'webpanel2' in formats:
-        row = get_row_from_folder('.')  # XXX remove
-        context = DataContext(row, record)
+        # XXX should not have row at all
+        context = DataContext(None, record, cache)
         panels = result.format_as('webpanel2', context)
-        new_make_panel_figures(context, panels, uid=record.uid[:10])
-    elif 'ase_webpanel' in formats:
-        row = get_row_from_folder('.')
-        panels = result.format_as('ase_webpanel', row,
-                                  DataContext.descriptions)
-        make_panel_figures(row, panels, uid=record.uid[:10])
+        make_panel_figures(context, panels, uid=record.uid[:10])
     else:
         panels = []
 
@@ -819,7 +814,7 @@ def results(selection, show):
     """Show results from records.
 
     Generate and save figures relating to recipe with NAME. Examples
-    of valid names are asr.bandstructure, asr.gs etc.
+    of valid names are asr.bandstructure, asr.c2db.gs etc.
 
     """
     from matplotlib import pyplot as plt
@@ -835,7 +830,7 @@ def results(selection, show):
             continue
 
         try:
-            panels = make_panels(record)
+            panels = make_panels(record, cache)
         except Exception as ex:
             raise BadResults(record) from ex
 

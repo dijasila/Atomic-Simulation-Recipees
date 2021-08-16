@@ -6,12 +6,15 @@ from asr.core import (  # noqa
     migration,
     Selector,
     comparators,
-    initialize_root,
-    find_root,
     atomsopt,
     calcopt,
     instruction,
     Record,
+    RunSpecification,
+    Resources,
+    Dependencies,
+    RevisionHistory,
+    Metadata,
 )
 
 matchers = comparators
@@ -27,8 +30,6 @@ __all__ = [
     'migration',
     'Selector',
     'matchers',
-    'initialize_root',
-    'find_root',
     'atomsopt',
     'calcopt',
     'instruction',

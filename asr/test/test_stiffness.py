@@ -7,7 +7,7 @@ import numpy as np
 def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
                         fast_calc,
                         get_webcontent):
-    from asr.stiffness import main as stiffness
+    from asr.c2db.stiffness import main as stiffness
 
     strain_percent = 1
     results = stiffness(
@@ -17,7 +17,7 @@ def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
     )
     nd = np.sum(test_material.pbc)
 
-    # check that all keys are in results-asr.stiffness.json:
+    # check that all keys are in results-asr.c2db.stiffness.json:
     keys = ['stiffness_tensor', 'eigenvalues']
     if nd == 2:
         keys.extend(['speed_of_sound_x', 'speed_of_sound_y',
@@ -50,7 +50,7 @@ def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
 def test_stiffness_emt(asr_tmpdir_w_params, name, mockgpaw, get_webcontent):
     # from pathlib import Path
     from ase.build import bulk
-    from asr.stiffness import main as stiffness
+    from asr.c2db.stiffness import main as stiffness
 
     atoms = bulk(name)
     atoms.write('structure.json')

@@ -3,13 +3,13 @@ import numpy as np
 from ase.parallel import world, broadcast
 from asr.core import write_json
 from .materials import std_test_materials, BN
-import os
 import pytest
 import datetime
 from _pytest.tmpdir import _mk_tmp
 from pathlib import Path
-from asr.core import get_cache, initialize_root
+from asr.core import get_cache
 from asr.core.specification import construct_run_spec
+from asr.core.root import Repository
 from asr.core.record import Record
 from asr.core.dependencies import Dependencies
 
@@ -77,41 +77,39 @@ def asr_tmpdir(request, tmp_path_factory):
     A context manager that creates a temporary folder and changes
     the current working directory to it for isolated filesystem tests.
     """
+    from ase.utils import workdir
     if world.rank == 0:
         path = _mk_tmp(request, tmp_path_factory)
     else:
         path = None
     path = broadcast(path)
-    cwd = os.getcwd()
-    os.chdir(path)
-    if world.rank == 0:
-        initialize_root()
-    try:
+
+    with workdir(path):
+        if world.rank == 0:
+            Repository.initialize(path)
+
         yield path
-    finally:
-        os.chdir(cwd)
 
 
-def _get_webcontent(name='database.db'):
+def _get_webcontent(dbname='database.db'):
     from asr.database.fromtree import main as fromtree
     # from asr.database.material_fingerprint import main as mf
 
     # mf()
     fromtree(recursive=True)
     content = ""
-    from asr.database import app as appmodule
+    from asr.database.app import ASRDBApp
 
     if world.rank == 0:
-        from asr.database.app import app, initialize_project, projects
-
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
-        appmodule.tmpdir = tmpdir
-        initialize_project(name)
+        dbapp = ASRDBApp(tmpdir)
+        dbapp.initialize_project(dbname)
+        flask = dbapp.flask
 
-        app.testing = True
-        with app.test_client() as c:
-            project = projects["database.db"]
+        flask.testing = True
+        with flask.test_client() as c:
+            project = dbapp.projects["database.db"]
             db = project["database"]
             uid_key = project["uid_key"]
             row = db.get(id=1)
@@ -159,35 +157,35 @@ def asr_tmpdir_w_params(asr_tmpdir):
         "xc": "PBE",
     }
     params = {
-        'asr.gs@calculate': {
+        'asr.c2db.gs:calculate': {
             'calculator': fast_calc,
         },
-        'asr.gs@main': {
+        'asr.c2db.gs': {
             'calculator': fast_calc,
         },
-        'asr.bandstructure@main': {
+        'asr.c2db.bandstructure': {
             'npoints': 10,
             'calculator': fast_calc,
         },
-        'asr.hse@main': {
+        'asr.hse': {
             'calculator': fast_calc,
             'kptdensity': 2,
         },
-        'asr.gw@gs': {
+        'asr.c2db.gw:gs': {
             'kptdensity': 2,
         },
-        'asr.bse@calculate': {
+        'asr.bse:calculate': {
             'kptdensity': 2,
         },
-        'asr.pdos@calculate': {
+        'asr.c2db.pdos:calculate': {
             'kptdensity': 2,
             'emptybands': 5,
         },
-        'asr.piezoelectrictensor@main': {
+        'asr.c2db.piezoelectrictensor': {
             'calculator': fast_calc,
             'relaxcalculator': fast_calc
         },
-        'asr.formalpolarization@main': {
+        'asr.c2db.formalpolarization': {
             'calculator': {
                 "name": "gpaw",
                 "kpts": {"density": 2},

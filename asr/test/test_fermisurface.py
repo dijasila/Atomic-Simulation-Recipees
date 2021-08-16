@@ -8,7 +8,7 @@ from .materials import BN
 def test_fermisurface(
         asr_tmpdir, mockgpaw, mocker, get_webcontent, fast_calc,
 ):
-    from asr.fermisurface import main
+    from asr.c2db.fermisurface import main
     import gpaw
     fermi_level = 0.5
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
