@@ -5,10 +5,10 @@ from functools import partial
 import numpy as np
 from ase import Atoms
 
+import asr
 import asr.c2db.gs
 from asr.calculators import get_calculator_class
-from asr.core import (ASRResult, atomsopt, calcopt, command, option,
-                      prepare_result)
+from asr.core import ASRResult, prepare_result
 from asr.c2db.magnetic_anisotropy import get_spin_axis
 from asr.c2db.relax import main as relax
 from asr.setup.strains import get_relevant_strains
@@ -41,7 +41,11 @@ class EdgesResult(ASRResult):
     vacuumlevel: float
 
 
-@command('asr.deformationpotentials@calculate')
+@asr.instruction(
+    module='asr.c2db.deformationpotentials',
+)
+@asr.atomsopt
+@asr.calcopt
 def calculate(atoms: Atoms,
               calculator: dict,
               vbm_position: dict,
@@ -131,6 +135,9 @@ def _main(atoms: Atoms,
     return edges_pin, deformation_potentials
 
 
+@asr.instruction(module='asr.c2db.deformationpotentials')
+@asr.atomsopt
+@asr.calcopt
 def main(atoms: Atoms,
          calculator: dict = asr.c2db.gs.main.defaults.calculator,
          strain_percent: float = 1.0) -> Result:
