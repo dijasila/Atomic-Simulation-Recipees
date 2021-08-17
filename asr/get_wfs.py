@@ -71,10 +71,10 @@ def main(state: int = 0,
     from asr.core import read_json
 
     # read in converged gs.gpw file and run fixed density calculation
-    # print('INFO: run fixed density calculation.')
+    print('INFO: run fixed density calculation.')
     atoms, calc = restart('gs.gpw', txt='get_wfs.txt')
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
-    print('INFO: run fixed density calculation starting from gs.gpw.')
+    print('INFO: ran fixed density calculation starting from gs.gpw.')
 
     # evaluate states in the gap (if '--get-gapstates' is active)
     if get_gapstates:
@@ -275,8 +275,6 @@ def return_gapstates_new(calc_def):
     statelist = []
     [statelist.append(i) for i, state in enumerate(ev_def) if (
         state < cbm and state > vbm)]
-
-    print(statelist, above_below, dif)
 
     return statelist, above_below, dif
 
