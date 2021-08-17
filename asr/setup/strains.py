@@ -21,7 +21,7 @@ def get_relevant_strains(pbc):
 # @option('-j', '--j', type=int, help='Strain component=j of cell.')
 def main(
         atoms: Atoms,
-        strain_percent: float = 1,
+        strain_percent: float = 1.0,
         i: int = 0,
         j: int = 0,
 ) -> Atoms:
