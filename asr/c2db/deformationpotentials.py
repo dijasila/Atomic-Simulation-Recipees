@@ -56,8 +56,8 @@ BandPosition = Dict[str, int]
 @asr.calcopt
 def calculate(atoms: Atoms,
               calculator: dict,
-              vbm_position: BandPosition,
-              cbm_position: BandPosition,
+              vbm_position: dict,
+              cbm_position: dict,
               angles: Dict[str, float]) -> EdgesResult:
     calculator = calculator.copy()
     atoms = atoms.copy()
