@@ -13,7 +13,7 @@ from asr.c2db.magnetic_anisotropy import get_spin_axis
 from asr.c2db.relax import Result as RelaxResult
 from asr.c2db.relax import main as relax
 from asr.calculators import get_calculator_class
-from asr.core import ASRResult, prepare_result
+from asr.core import ASRResult, prepare_result, option, DictStr
 from asr.setup.strains import get_relevant_strains
 from asr.setup.strains import main as make_strained_atoms
 from asr.utils.gpw2eigs import calc2eigs
@@ -54,6 +54,9 @@ BandPosition = Dict[str, int]
 @asr.instruction(module='asr.c2db.deformationpotentials')
 @asr.atomsopt
 @asr.calcopt
+@option('--vbm', help='VBM ...', type=DictStr())
+@option('--cbm', help='CBM ...', type=DictStr())
+@option('--angles', help='Angles ...', type=DictStr())
 def calculate(atoms: Atoms,
               calculator: dict,
               vbm_position: dict,
@@ -148,6 +151,7 @@ def _main(atoms: Atoms,
 @asr.instruction(module='asr.c2db.deformationpotentials')
 @asr.atomsopt
 @asr.calcopt
+@option('--strain', help='Maximum force allowed.', type=float)
 def main(atoms: Atoms,
          calculator: dict = asr.c2db.gs.main.defaults.calculator,
          strain_percent: float = 1.0) -> Result:
