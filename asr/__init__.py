@@ -2,6 +2,7 @@
 from asr.core import (  # noqa
     command,
     option,
+    DictStr,
     argument,
     migration,
     Selector,

@@ -54,6 +54,9 @@ BandPosition = Dict[str, int]
 @asr.instruction(module='asr.c2db.deformationpotentials')
 @asr.atomsopt
 @asr.calcopt
+@asr.argument('vbm_position', type=asr.DictStr())
+@asr.argument('cbm_position', type=asr.DictStr())
+@asr.argument('angles', type=asr.DictStr())
 def calculate(atoms: Atoms,
               calculator: dict,
               vbm_position: dict,
@@ -148,6 +151,7 @@ def _main(atoms: Atoms,
 @asr.instruction(module='asr.c2db.deformationpotentials')
 @asr.atomsopt
 @asr.calcopt
+@asr.option('--strain_percent', type=float, help='Strain percentage.')
 def main(atoms: Atoms,
          calculator: dict = asr.c2db.gs.main.defaults.calculator,
          strain_percent: float = 1.0) -> Result:
