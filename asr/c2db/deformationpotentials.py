@@ -131,9 +131,9 @@ def _main(atoms: Atoms,
             relaxresults = relax_atoms(strained_atoms)
 
             edges = calculate_band_edges(
-                relaxresults.atoms,
-                vbm_position,
-                cbm_position)
+                atoms=relaxresults.atoms,
+                vbm_position=vbm_position,
+                cbm_position=cbm_position)
 
             evac = edges['vacuumlevel']
 
@@ -193,7 +193,7 @@ def main(atoms: Atoms,
         partial(relax, calculator=calculator, fixcell=True),
         partial(calculate,
                 calculator=calculator,
-                theta=theta, phi=phi),
+                angles=dict(theta=theta, phi=phi)),
         strains)
 
     return Result.fromdata(
