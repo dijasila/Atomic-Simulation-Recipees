@@ -56,11 +56,11 @@ BandPosition = Dict[str, int]
 @asr.calcopt
 @asr.argument('vbm_position', type=DictStr())
 @asr.argument('cbm_position', type=DictStr())
-@asr.option('--angles', help='Angles ...', type=DictStr())
+@asr.option('--angles', help='Angles of spin axis', type=DictStr())
 def calculate(atoms: Atoms,
               calculator: dict,
-              vbm_position: dict,
-              cbm_position: dict,
+              vbm_position: BandPosition,
+              cbm_position: BandPosition,
               angles: Dict[str, float] = {'theta': 0.0, 'phi': 0.0}
               ) -> EdgesResult:
     calculator = calculator.copy()
@@ -72,8 +72,8 @@ def calculate(atoms: Atoms,
     atoms.get_potential_energy()
 
     e_km, efermi = calc2eigs(calc, soc=True, **angles)
-    evbm = e_km[vbm_position['k'], vbm_position['n']]
-    ecbm = e_km[cbm_position['k'], cbm_position['n']]
+    evbm = e_km[vbm_position['bz_index'], vbm_position['band_index']]
+    ecbm = e_km[cbm_position['bz_index'], cbm_position['band_index']]
 
     assert (atoms.pbc == [1, 1, 0]).all()
     vacuumlevel = calc.get_electrostatic_potential()[:, :, 5].mean()
@@ -106,9 +106,8 @@ def _main(atoms: Atoms,
                                                            np.ndarray]:
     """Calculate deformation potentials.
 
-    Calculate the deformation potential both with and without spin orbit
-    coupling, for both the conduction band and the valence band, and return as
-    a dictionary.
+    Calculate the deformation potential with spin orbit
+    coupling, for both the conduction band and the valence band.
     """
     ij = get_relevant_strains(atoms.pbc)
 
@@ -158,9 +157,8 @@ def main(atoms: Atoms,
          strain_percent: float = 1.0) -> Result:
     """Calculate deformation potentials.
 
-    Calculate the deformation potential both with and without spin orbit
-    coupling, for both the conduction band and the valence band, and return as
-    a dictionary.
+    Calculate the deformation potential with spin orbit
+    coupling, for both the conduction band and the valence band.
     """
     strains = [-strain_percent, strain_percent]
 
@@ -178,8 +176,8 @@ def main(atoms: Atoms,
     # K1 and K2 are indices of the unreduced BZ
     _, K1, n1 = gsresults['skn1']
     _, K2, n2 = gsresults['skn2']
-    vbm_position = dict(K=K1, n=n1)
-    cbm_position = dict(K=K2, n=n2)
+    vbm_position = dict(bz_index=K1, band_index=n1)
+    cbm_position = dict(bz_index=K2, band_index=n2)
 
     theta, phi = get_spin_axis(atoms, calculator=calculator)
 
