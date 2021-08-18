@@ -50,7 +50,7 @@ def main() -> Result:
     from gpaw.zero_field_splitting import convert_tensor, zfs
     from ase.units import _e, _hplanck
 
-    atoms, calc = restart('gs.gpw', txt=None)
+    calc = GPAW('gs.gpw').fixed_density()
     D_vv = zfs(calc)
     unit = 'MHz'
     scale = _e / _hplanck * 1e-6

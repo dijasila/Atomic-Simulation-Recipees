@@ -289,9 +289,9 @@ def webpanel(result, row, key_descriptions):
 
     vbm = result.pristine['vbm']
     cbm = result.pristine['cbm']
-    adjust = compute_offset(result.symmetries, vbm, cbm, ef)
-    vbm = vbm + adjust
-    cbm = cbm + adjust
+    # adjust = compute_offset(result.symmetries, vbm, cbm, ef)
+    # vbm = vbm + adjust
+    # cbm = cbm + adjust
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
               'gapstates!')
@@ -696,6 +696,8 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
                 indexlist = indexlist_cut_atoms(ref_struc, threshold)
                 ref_struc = remove_atoms(ref_struc, indexlist)
                 rel_struc = remove_atoms(rel_struc, indexlist)
+            if conserved_atoms(ref_struc, primitive, N, defect):
+                break
         if conserved_atoms(ref_struc, primitive, N, defect):
             break
     if not conserved_atoms(ref_struc, primitive, N, defect):
