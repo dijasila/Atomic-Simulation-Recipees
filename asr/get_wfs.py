@@ -175,7 +175,7 @@ def extract_atomic_potentials(calc_def, calc_pris, ref_index, is_vacancy):
 
     pot_pris = calc_pris.get_atomic_electrostatic_potentials()[ref_index]
     if is_vacancy:
-        def_index = ref_index + 1
+        def_index = ref_index - 1
     else:
         def_index = ref_index
 
