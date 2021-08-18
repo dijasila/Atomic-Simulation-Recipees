@@ -269,7 +269,7 @@ def return_gapstates_new(calc_def):
 
     # check whether difference in atomic electrostatic potentials is
     # not too large
-    assert abs(pot_def - pot_pris) < 0.3
+    assert abs(pot_def - pot_pris) < 0.4
 
     # evaluate states within the gap
     statelist = []

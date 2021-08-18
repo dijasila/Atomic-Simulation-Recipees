@@ -205,6 +205,8 @@ def handle_query(args):
         parts.append(args['query'])
     if args['defect_name']:
         parts.append('defect_name=' + args['defect_name'])
+    if args['host_name']:
+        parts.append('host_name=' + args['host_name'])
     if args['charge_state']:
         parts.append('charge_state=(charge ' + args['charge_state'] + ')')
     if args['dopability']:
