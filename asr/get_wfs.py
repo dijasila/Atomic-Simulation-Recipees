@@ -182,8 +182,10 @@ def extract_atomic_potentials(calc_def, calc_pris, ref_index, is_vacancy):
     pot_def = calc_def.get_atomic_electrostatic_potentials()[def_index]
 
     # check whether chemical symbols of both reference atoms are equal
-    assert (struc_def.get_chemical_symbols()[def_index]
-            == struc_pris.get_chemical_symbols()[ref_index])
+    if not (struc_def.get_chemical_symbols()[def_index]
+            == struc_pris.get_chemical_symbols()[ref_index]):
+        raise AssertionError('chemical symbols of reference atoms '
+                             'are not the same.')
 
     return pot_def, pot_pris
 
@@ -269,7 +271,7 @@ def return_gapstates_new(calc_def):
 
     # check whether difference in atomic electrostatic potentials is
     # not too large
-    assert abs(pot_def - pot_pris) < 0.4
+    # assert abs(pot_def - pot_pris) < 0.4
 
     # evaluate states within the gap
     statelist = []
