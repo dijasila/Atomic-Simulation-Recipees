@@ -1,7 +1,7 @@
 from ase import Atoms
 from ase.dft.kpoints import BandPath
 from asr.core import (
-    instruction, atomsopt, calcopt, option, 
+    instruction, atomsopt, option,
     argument, ASRResult, prepare_result
 )
 
@@ -26,7 +26,6 @@ def calculate(atoms: Atoms, q_c: str = "[0 0 0]", ecut: float = 600,
     magmoms = np.zeros((len(atoms), 3))
     magmoms[:, 0] = magmomx
     q_c = [eval(x) for x in filter(None, q_c.strip("[").strip("]").split(" "))]
-    
     calc = GPAW(mode=PW(ecut, qspiral=q_c),
                 xc='LDA',
                 symmetry='off',
@@ -61,7 +60,7 @@ def webpanel(result, context):
 
 @prepare_result
 class Result(ASRResult):
-    path: np.ndarray
+    path: BandPath
     energies: np.ndarray
     qmin: np.ndarray
     local_magmoms: np.ndarray
@@ -76,6 +75,7 @@ class Result(ASRResult):
                         "bandwidth" : "Energy difference [meV]",
                         "minima" : "ndarray of indices of energy minima"}
     formats = {"ase_webpanel": webpanel}
+
 
 @instruction(module='asr.c2db.spinspiral')
 @atomsopt
@@ -108,10 +108,11 @@ def main(atoms: Atoms, q_path: str = None, n: int = 11) -> Result:
 
     bandwidth = (np.max(energies) - np.min(energies)) * 1000
     minima = calc_minima(energies=energies)
-    qmin=Q[minima]
+    qmin = Q[minima]
     return Result.fromdata(path=path, energies=energies, qmin=qmin,
                            local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
                            bandwidth=bandwidth, minima=minima)
+
 
 def calc_minima(energies):
     emin = energies[np.argmin(energies)]
@@ -133,19 +134,19 @@ def calc_minima(energies):
         if len(run) % 2 == 1:
             minRuns[i] = run[::2]
         else:
-            # If even occurs 
             if max(run) == (len(energies) - 1):
                 minRuns[i] = run[0::2]
             elif min(run) == 0:
                 minRuns[i] = run[1::2]
             elif energies[run[-1] + 1] <= energies[run[0] - 1]:
-                minRuns[i] = run[0::2] + [run[-1]+1]
+                minRuns[i] = run[0::2] + [run[-1] + 1]
             else:
-                minRuns[i] = [run[0]-1] + run[1::2]
+                minRuns[i] = [run[0] - 1] + run[1::2]
 
     # Flatten list of lists
     minima = [item for sublist in minRuns for item in sublist]
     return minima
+
 
 def streak(minima):
     # Tail recursive function
@@ -166,6 +167,7 @@ def streak(minima):
             return streak_rec(minima, rest[0], rest[1:])
     return streak_rec([], -2, minima)
 
+
 def streak2(minima):
     # Essentially the same for sorted arrays, positive integers
     # Not as crashes for decrementing-by-1 and negative numbers
@@ -179,11 +181,12 @@ def streak2(minima):
             minRuns.append([minima[i]])
     return minRuns
 
+
 @instruction(module='asr.c2db.spinspiral')
 @atomsopt
 @option('--path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
 @option('--e_min', type=int)
-def interpol_min(atoms: Atoms, path: BandPath, e_min: int = None) -> Result:
+def interpol_min(atoms: Atoms, path, e_min: int = None) -> Result:
     energies = []
     lmagmom_av = []
     Tmagmom_v = []
@@ -196,13 +199,13 @@ def interpol_min(atoms: Atoms, path: BandPath, e_min: int = None) -> Result:
         energies.append(result['en'])
         lmagmom_av.append(result['ml'])
         Tmagmom_v.append(result['mT'])
-            
+
     energies = np.asarray(energies)
     lmagmom_av = np.asarray(lmagmom_av)
     Tmagmom_v = np.asarray(Tmagmom_v)
 
     bandwidth = (np.max(energies) - np.min(energies)) * 1000
-    minidx = [e_min, np.argmin(energies)] # [old min, new min]
+    minidx = [e_min, np.argmin(energies)]  # [old min, new min]
     return Result.fromdata(path=[Q, Qv], energies=energies,
                            local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
                            bandwidth=bandwidth, minima=minidx)
@@ -213,16 +216,12 @@ def enhance(path, e_min, enh=11):
     Q = path.kpts
     Q_v = path.cartesian_kpts()
 
-    if e_min is None:
-        e_min = np.argmin(data['energies'])
-    
     def interpolate(Q):
         if e_min > 0 and e_min < (len(Q) - 1):
-            qs = np.take(Q, [e_min-1, e_min, e_min+1], axis=0)
+            qs = np.take(Q, [e_min - 1, e_min, e_min + 1], axis=0)
             return interpolate_min(qs, enh)
         else:
             return interpolate_edge(Q, e_min, enh)
-
 
     qL, qR = interpolate(Q)
     qvL, qvR = interpolate(Q_v)
@@ -242,7 +241,7 @@ def interpolate_min(qs, enh):
             nL += res
         else:
             nR += res
-    
+
     qL = np.linspace(qs[0], qs[1], nL + 2)
     qR = np.linspace(qs[1], qs[2], nR + 2)[1:]
     return qL, qR
@@ -252,7 +251,7 @@ def interpolate_edge(Q, e_min, enh):
     # Case: Both edges are equivalent, we interpolate both edges
     if (Q[0] == Q[-1]).all():
         Q = np.delete(Q, -1, axis=0)
-        qs = np.take(Q, [e_min-1, e_min, e_min+1], axis=0, mode='wrap')
+        qs = np.take(Q, [e_min - 1, e_min, e_min + 1], axis=0, mode='wrap')
         qL, qR = interpolate_min(qs, enh)
         return qL, qR
 
@@ -269,22 +268,23 @@ def interpolate_edge(Q, e_min, enh):
 
 def plot_bandstructure(context, fname, data=None):
     from matplotlib import pyplot as plt
-    if data==None:
+    if data is None:
         data = context.get_record('results-asr.spinspiral.json').result
     path = data['path']
     energies = data['energies']
-        
-    #local_magmoms =  data['local_magmoms'][0]
-    #ml = np.linalg.norm(local_magmoms, axis=1)
-    #nmagatoms = np.sum(ml > 0.2)
-    energies = ((energies - energies[0]) * 1000)# / nmagatoms
+
+    # If we want to normalize by number of magnetic atoms
+    # local_magmoms =  data['local_magmoms'][0]
+    # ml = np.linalg.norm(local_magmoms, axis=1)
+    # nmagatoms = np.sum(ml > 0.2)
+    energies = ((energies - energies[0]) * 1000)  # / nmagatoms
     q, x, X = path.get_linear_kpoint_axis()
 
-    total_magmoms =  data['total_magmoms']
+    total_magmoms = data['total_magmoms']
 
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
-    
+
     # Setup main energy plot
     ax1.plot(q, energies, c='C1', marker='.', label='Energy')
     ax1.set_ylim([np.min(energies * 1.1), np.max(energies * 1.15)])
@@ -308,14 +308,15 @@ def plot_bandstructure(context, fname, data=None):
     ax2 = ax1.twiny()
     ax2.set_xlim(ax1.get_xlim())
     idx = round(len(Q) / 5)
-    
+
     ax2.set_xticks(q[::idx])
     ax2.set_xticklabels(tick_function(Q[::idx]))
     ax2.set_xlabel('Wave length $\lambda$ [Å]')
-    
+
     # Add the magnetic moment plot
     ax3 = ax1.twinx()
-    mT = abs(total_magmoms[:, 0]) #mT = np.linalg.norm(total_magmoms, axis=-1)#mT[:, 1]#
+    mT = abs(total_magmoms[:, 0])
+    # mT = np.linalg.norm(total_magmoms, axis=-1)#mT[:, 1]#
     mT2 = abs(total_magmoms[:, 1])
     mT3 = abs(total_magmoms[:, 2])
     ax3.plot(q, mT, c='r', marker='.', label='$m_x$')
@@ -327,12 +328,12 @@ def plot_bandstructure(context, fname, data=None):
     mommax = np.max(mT * 1.15)
     ax3.set_ylim([mommin, mommax])
 
-    fig.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax1.transAxes)
-    #fig.suptitle('')
+    fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
+    # fig.suptitle('')
     plt.tight_layout()
-    #plt.savefig(fname)
+    # plt.savefig(fname)
     return fig
-    
+
 
 if __name__ == '__main__':
     main.cli()
