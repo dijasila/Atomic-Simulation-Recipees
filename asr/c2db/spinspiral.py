@@ -181,11 +181,30 @@ def streak2(minima):
     return minRuns
 
 
+@prepare_result
+class InterpolResult(ASRResult):
+    path: BandPath
+    energies: np.ndarray
+    qmin: np.ndarray
+    local_magmoms: np.ndarray
+    total_magmoms: np.ndarray
+    bandwidth: float
+    minima: np.ndarray
+    key_descriptions = {"path" : "List of Spin spiral vectors",
+                        "energies" : "Potential energy [eV]",
+                        "qmin" : "The q-vector with lowest energy",
+                        "local_magmoms" : "List of estimated local moments [mu_B]",
+                        "total_magmoms" : "Estimated total moment [mu_B]",
+                        "bandwidth" : "Energy difference [meV]",
+                        "minima" : "ndarray of indices of energy minima"}
+    formats = {"ase_webpanel": webpanel}
+
+
 @instruction(module='asr.c2db.spinspiral')
 @atomsopt
 @option('--path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
 @option('--e_min', type=int)
-def interpol_min(atoms: Atoms, path, e_min: int = None) -> Result:
+def interpol_min(atoms: Atoms, path, e_min: int = None) -> InterpolResult:
     energies = []
     lmagmom_av = []
     Tmagmom_v = []
@@ -205,7 +224,7 @@ def interpol_min(atoms: Atoms, path, e_min: int = None) -> Result:
 
     bandwidth = (np.max(energies) - np.min(energies)) * 1000
     minidx = [e_min, np.argmin(energies)]  # [old min, new min]
-    return Result.fromdata(path=[Q, Qv], energies=energies,
+    return InterpolResult.fromdata(path=[Q, Qv], energies=energies,
                            local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
                            bandwidth=bandwidth, minima=minidx)
 
