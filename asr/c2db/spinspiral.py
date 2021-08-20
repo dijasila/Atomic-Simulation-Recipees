@@ -15,8 +15,7 @@ import numpy as np
 @option('--ecut', help='Energy cutoff', type=float)
 def calculate(atoms: Atoms, q_c: str = "[0 0 0]", ecut: float = 600,
               kptdensity: float = 4.0) -> ASRResult:
-    """Calculate the groundstate of a given spin spiral vector q_c"""
-
+    """Calculate the groundstate of a given spin spiral vector q_c."""
     from gpaw import GPAW, PW
 
     if atoms.has('initial_magmoms'):
@@ -292,7 +291,7 @@ def plot_bandstructure(context, fname, data=None):
 
     ax1.set_xlabel('q vector [Å$^{-1}$]')
     ax1.set_xticks(x)
-    ax1.set_xticklabels([i.replace('G', '$\Gamma$') for i in X])
+    ax1.set_xticklabels([i.replace('G', r"$\Gamma$") for i in X])
     for xc in x:
         if xc != min(q) and xc != max(q):
             ax1.axvline(xc, c='gray', linestyle='--')
@@ -311,7 +310,7 @@ def plot_bandstructure(context, fname, data=None):
 
     ax2.set_xticks(q[::idx])
     ax2.set_xticklabels(tick_function(Q[::idx]))
-    ax2.set_xlabel('Wave length $\lambda$ [Å]')
+    ax2.set_xlabel(r"Wave length $\lambda$ [Å]")
 
     # Add the magnetic moment plot
     ax3 = ax1.twinx()
@@ -323,7 +322,7 @@ def plot_bandstructure(context, fname, data=None):
     ax3.plot(q, mT2, c='g', marker='.', label='$m_y$')
     ax3.plot(q, mT3, c='b', marker='.', label='$m_z$')
 
-    ax3.set_ylabel('Total norm magnetic moment ($\mu_B$)')
+    ax3.set_ylabel(r"Total norm magnetic moment ($\mu_B$)")
     mommin = np.min(mT * 0.9)
     mommax = np.max(mT * 1.15)
     ax3.set_ylim([mommin, mommax])
