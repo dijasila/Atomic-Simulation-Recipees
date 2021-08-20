@@ -225,8 +225,8 @@ def interpol_min(atoms: Atoms, path, e_min: int = None) -> InterpolResult:
     bandwidth = (np.max(energies) - np.min(energies)) * 1000
     minidx = [e_min, np.argmin(energies)]  # [old min, new min]
     return InterpolResult.fromdata(path=[Q, Qv], energies=energies,
-                           local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
-                           bandwidth=bandwidth, minima=minidx)
+                                   local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
+                                   bandwidth=bandwidth, minima=minidx)
 
 
 def enhance(path, e_min, enh=11):
