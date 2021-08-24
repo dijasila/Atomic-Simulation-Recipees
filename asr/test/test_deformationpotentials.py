@@ -32,6 +32,8 @@ def test_def_pots():
     assert defpots[:, 1] == pytest.approx([1.0, 2.0, 0.0, 0.0, 0.0, 0.0])
 
 
+@pytest.mark.integration_test
+@pytest.mark.integration_test_gpaw
 def test_def_pots_gpaw_h2(asr_tmpdir):
     d = 2.0
     atoms = Atoms('HH',
