@@ -170,9 +170,6 @@ def main(atoms: Atoms,
         atoms=atoms,
         calculator=calculator)
 
-    calc = gscalc.calculation.load()
-    size = calc.wfs.kd.N_c
-
     # K1 and K2 are indices of the unreduced BZ
     _, K1, n1 = gsresults['skn1']
     _, K2, n2 = gsresults['skn2']
@@ -181,8 +178,13 @@ def main(atoms: Atoms,
 
     theta, phi = get_spin_axis(atoms, calculator=calculator)
 
+    # Use fixed-size Monkhors-Pack grid:
+    calc = gscalc.calculation.load()
+    size = calc.wfs.kd.N_c
     calculator = calculator.copy()
-    calculator['kpts'] = {'size': size, 'gamma': True}
+    if 'density' in calculator['kpts']:
+        del calculator['kpts']['density']
+        calculator['kpts']['size'] = size
 
     edges_pin, deformation_potentials = _main(
         atoms,
