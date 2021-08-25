@@ -49,4 +49,4 @@ def test_def_pots_gpaw_h2(asr_tmpdir):
     assert defpots[:, 0] == pytest.approx(
         [-6.3, -6.3, 0.0, 0.0, 0.0, -2.8], abs=0.1)
     assert defpots[:, 1] == pytest.approx(
-        [1.7, 1.7, 0.0, 0.0, 0.0, 1.1], abs=0.1)
+        [1.7, 1.7, 0.0, 0.0, 0.0, -1.1], abs=0.1)
