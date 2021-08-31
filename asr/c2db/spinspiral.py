@@ -204,7 +204,7 @@ class InterpolResult(ASRResult):
 @atomsopt
 @option('--path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
 @option('--e_min', type=int)
-def interpol_min(atoms: Atoms, path, e_min: int = None) -> InterpolResult:
+def interpol_min(atoms: Atoms, path: BandPath, e_min: int = None) -> InterpolResult:
     energies = []
     lmagmom_av = []
     Tmagmom_v = []
@@ -232,7 +232,7 @@ def interpol_min(atoms: Atoms, path, e_min: int = None) -> InterpolResult:
 def enhance(path, e_min, enh=11):
     # Should only be called if bandwidth > noise level and/or if minimum is magnetic
     Q = path.kpts
-    Q_v = path.cartesian_kpts()
+    cell_cv = path.cell
 
     def interpolate(Q):
         if e_min > 0 and e_min < (len(Q) - 1):
@@ -242,7 +242,9 @@ def enhance(path, e_min, enh=11):
             return interpolate_edge(Q, e_min, enh)
 
     qL, qR = interpolate(Q)
-    qvL, qvR = interpolate(Q_v)
+    from ase.dft.kpoints import kpoint_convert
+    qvL = kpoint_convert(cell_cv, skpts_kc=qL) / (2 * np.pi)
+    qvR = kpoint_convert(cell_cv, skpts_kc=qR) / (2 * np.pi)
     return qL, qR, qvL, qvR
 
 
