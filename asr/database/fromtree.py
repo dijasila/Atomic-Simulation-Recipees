@@ -262,9 +262,12 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str],
                 children = collect_links_to_child_folders(name, atomsname)
                 data['__children__'].update(children)
             elif name.is_file() and any(fnmatch(name, pattern) for pattern in patterns):
-                tmpkvp, tmpdata = collect_file(name)
-                kvp.update(tmpkvp)
-                data.update(tmpdata)
+                try:
+                    tmpkvp, tmpdata = collect_file(name)
+                    kvp.update(tmpkvp)
+                    data.update(tmpdata)
+                except:
+                    print(f'Corrupted datafile: {folder}/{name}.')
 
         if not data['__children__']:
             del data['__children__']
@@ -330,6 +333,8 @@ def _collect_folders(folders: List[str],
                 atomsname,
                 patterns,
                 children_patterns=children_patterns)
+            # except:
+            #     print(f'Decoding error in folder {folder}!')
 
             if atoms is None:
                 continue

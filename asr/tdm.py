@@ -39,12 +39,23 @@ def main() -> Result:
 
     d_snnv = dipole_matrix_elements_from_calc(calc, n1, n2, center)
 
-    if calc.wfs.world.rank > 0:
-        return
-
-    # for spin, d_nnv in enumerate(d_snnv):
-    # spin = 0
+    if calc.wfs.world.rank == 0:
+        d_nnv_0 = d_snnv[0]
+        d_nnv_1 = d_snnv[1]
+    else:
+        d_nnv_0 = np.empty((1, 1, 3))
+        d_nnv_1 = np.empty((1, 1, 3))
+    calc.wfs.world.broadcast(d_nnv_0, 0)
+    calc.wfs.world.broadcast(d_nnv_1, 0)
+    d_snnv = [d_nnv_0, d_nnv_1]
     d_nnv = d_snnv[0]
+    element = [d_nnv[0, 0, 0], d_nnv[0, 0, 1], d_nnv[0, 0, 2]]
+    DipMom = (element[0] + element[1]) / 2
+
+    return Result.fromdata(
+        d_i=element,
+        tdm=DipMom)
+
     # print(f'Spin={spin}')
     # for direction, d_nn in zip('xyz', d_nnv.T):
     #     print(f' <{direction}>',
@@ -52,12 +63,6 @@ def main() -> Result:
     #     for n in range(n1, n2):
     #         print(f'{n:4}', ''.join(f'{d:8.3f}' for d in d_nn[n - n1]))
 
-    element = [d_nnv[0, 0, 0], d_nnv[0, 0, 1], d_nnv[0, 0, 2]]
-    DipMom = (element[0] + element[1]) / 2
-
-    return Result.fromdata(
-        d_i=element,
-        tdm=DipMom)
 
 
 if __name__ == '__main__':
