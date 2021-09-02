@@ -1,6 +1,9 @@
 from gpaw.utilities.dipole import dipole_matrix_elements_from_calc
 from asr.core import command, ASRResult, prepare_result
+from asr.defect_symmetry import (return_defect_coordinates,
+                                 check_and_return_input)
 from gpaw import restart
+from pathlib import Path
 import numpy as np
 
 
@@ -35,7 +38,12 @@ def main() -> Result:
 
     n1 = len(occ_spin0)
     n2 = n1 + 1
-    center = atoms.cell.sum(axis=0) / 2  # center of cell
+
+    structure, unrelaxed, primitive, pristine = check_and_return_input()
+    defectpath = Path('.')
+    center = return_defect_coordinates(structure, unrelaxed, primitive, pristine,
+                                       defectpath)
+    # center = atoms.cell.sum(axis=0) / 2  # center of cell
 
     d_snnv = dipole_matrix_elements_from_calc(calc, n1, n2, center)
 
