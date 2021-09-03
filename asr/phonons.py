@@ -31,41 +31,9 @@ indicates a dynamical instability.
 )
 
 
-def creates():
-    atoms = read('structure.json')
-    natoms = len(atoms)
-    filenames = ['phonon.eq.pckl']
-    for a in range(natoms):
-        for v in 'xyz':
-            for pm in '+-':
-                # Atomic forces for a displacement of atom a in direction v
-                filenames.append(f'phonon.{a}{v}{pm}.pckl')
-    return filenames
-
-
-def todict(filename):
-    from ase.utils import pickleload
-    with open(filename, 'rb') as fd:
-        content = pickleload(fd)
-    return {'content': content}
-
-
-def topckl(filename, dct):
-    from ase.utils import opencew
-    import pickle
-    if Path(filename).is_file():
-        return
-    contents = dct['content']
-    fd = opencew(filename)
-    if world.rank == 0:
-        pickle.dump(contents, fd, protocol=2)
-        fd.close()
-
-
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         creates=creates)
+         dependencies=['asr.gs@calculate'])
 @option('-n', help='Supercell size', type=int)
 @option('--ecut', help='Energy cutoff', type=float)
 @option('--kptdensity', help='Kpoint density', type=float)
@@ -74,12 +42,6 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
               fconverge: float = 1e-4) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
-    # Remove empty files:
-    if world.rank == 0:
-        for f in Path().glob('phonon.*.pckl'):
-            if f.stat().st_size == 0:
-                f.unlink()
-    world.barrier()
 
     atoms = read('structure.json')
     gsold = get_calculator()('gs.gpw', txt=None)
@@ -121,18 +83,9 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
         p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
         p.run()
 
-        # Read creates files
-        files = {}
-        for filename in creates():
-            dct = todict(filename)
-            dct['__tofile__'] = 'asr.phonons@topckl'
-            files[filename] = dct
-        data = {'__files__': files}
-    return data
-
 
 def requires():
-    return creates() + ['results-asr.phonons@calculate.json']
+    return ['results-asr.phonons@calculate.json']
 
 
 def webpanel(result, row, key_descriptions):
@@ -232,11 +185,12 @@ def main(mingo: bool = True) -> Result:
             p.D_N = D_N
 
     # First calculate the exactly known q-points
-    q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
+    N_c = p.supercell
+    q_qc = np.indices(N_c).reshape(3, -1).T / N_c
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
 
-    R_cN = p.lattice_vectors()
+    R_cN = p.compute_lattice_vectors()
     eigs = []
     for q_c in q_qc:
         phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))
