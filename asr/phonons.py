@@ -4,12 +4,10 @@ Deprecated: Please use the more efficient and optimized asr.phonopy
 recipe for calculating phonon properties instead.
 
 """
-from pathlib import Path
 import typing
 
 import numpy as np
 
-from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
