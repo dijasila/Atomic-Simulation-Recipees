@@ -43,6 +43,7 @@ def main() -> Result:
     defectpath = Path('.')
     center = return_defect_coordinates(structure, unrelaxed, primitive, pristine,
                                        defectpath)
+    print(f'INFO: defect cewter at {center}.')
     # center = atoms.cell.sum(axis=0) / 2  # center of cell
 
     d_snnv = dipole_matrix_elements_from_calc(calc, n1, n2, center)
