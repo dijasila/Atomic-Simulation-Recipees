@@ -32,18 +32,21 @@ def main() -> Result:
     calc = calc.fixed_density(kpts={'size': (1, 1, 1), 'gamma': True})
     ef = calc.get_fermi_level()
 
-    occ_spin0 = []
-    ev_spin0 = calc.get_eigenvalues()
-    [occ_spin0.append(en) for en in ev_spin0 if en < ef]
+    n1, n2 = get_defect_state_limits()
+    if n1 is None and n2 is None:
+        occ_spin0 = []
+        ev_spin0 = calc.get_eigenvalues()
+        [occ_spin0.append(en) for en in ev_spin0 if en < ef]
+        n1 = len(occ_spin0)
+        n2 = n1 + 1
 
-    n1 = len(occ_spin0)
-    n2 = n1 + 1
+    print(f'INFO: max. and minimum state index: {n1}, {n2}.')
 
     structure, unrelaxed, primitive, pristine = check_and_return_input()
     defectpath = Path('.')
     center = return_defect_coordinates(structure, unrelaxed, primitive, pristine,
                                        defectpath)
-    print(f'INFO: defect cewter at {center}.')
+    print(f'INFO: defect center at {center}.')
     # center = atoms.cell.sum(axis=0) / 2  # center of cell
 
     d_snnv = dipole_matrix_elements_from_calc(calc, n1, n2, center)
@@ -58,6 +61,7 @@ def main() -> Result:
     calc.wfs.world.broadcast(d_nnv_1, 0)
     d_snnv = [d_nnv_0, d_nnv_1]
     d_nnv = d_snnv[0]
+    print(d_snnv)
     element = [d_nnv[0, 0, 0], d_nnv[0, 0, 1], d_nnv[0, 0, 2]]
     DipMom = (element[0] + element[1]) / 2
 
@@ -72,6 +76,25 @@ def main() -> Result:
     #     for n in range(n1, n2):
     #         print(f'{n:4}', ''.join(f'{d:8.3f}' for d in d_nn[n - n1]))
 
+
+def get_defect_state_limits():
+    p = Path('.')
+    pathlist = list(p.glob('wf*.cube'))
+    if len(pathlist) == 0:
+        return None, None
+
+    numlist = []
+    for path in pathlist:
+        num = int(str(path.absolute()).split('/')[-1].split('.')[1].split('_')[0])
+        numlist.append(num)
+
+    n1 = min(numlist)
+    n2 = max(numlist)
+
+    if n1 == n2:
+        n2 = n1 + 1
+
+    return n1, n2
 
 
 if __name__ == '__main__':
