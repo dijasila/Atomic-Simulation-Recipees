@@ -55,7 +55,6 @@ def main() -> Result:
     # center = atoms.cell.sum(axis=0) / 2  # center of cell
 
     d_snnv = dipole_matrix_elements_from_calc(calc, n1, n2, center)
-    print(d_snnv)
 
     if calc.wfs.world.rank == 0:
         d_nnv_0 = d_snnv[0]
@@ -66,6 +65,7 @@ def main() -> Result:
     calc.wfs.world.broadcast(d_nnv_0, 0)
     calc.wfs.world.broadcast(d_nnv_1, 0)
     d_snnv = [d_nnv_0, d_nnv_1]
+    print(d_snnv)
     # d_nnv = d_snnv[0]
     # print(d_snnv)
     # element = [d_nnv[0, 0, 0], d_nnv[0, 0, 1], d_nnv[0, 0, 2]]
