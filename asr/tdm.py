@@ -55,6 +55,7 @@ def main() -> Result:
     # center = atoms.cell.sum(axis=0) / 2  # center of cell
 
     d_snnv = dipole_matrix_elements_from_calc(calc, n1, n2, center)
+    print(d_snnv)
 
     if calc.wfs.world.rank == 0:
         d_nnv_0 = d_snnv[0]
@@ -69,6 +70,7 @@ def main() -> Result:
     # print(d_snnv)
     # element = [d_nnv[0, 0, 0], d_nnv[0, 0, 1], d_nnv[0, 0, 2]]
     # DipMom = (element[0] + element[1]) / 2
+    print('INFO: save results.')
 
     return Result.fromdata(
         d_snnv=d_snnv,
