@@ -5,18 +5,21 @@ from asr.defect_symmetry import (return_defect_coordinates,
 from gpaw import restart
 from pathlib import Path
 import numpy as np
+import typing
 
 
 @prepare_result
 class Result(ASRResult):
     """Container for transition dipole moment results."""
 
-    d_i: np.ndarray
-    tdm: float
+    d_snnv: typing.List[np.ndarray]
+    n1: int
+    n2: int
 
     key_descriptions = dict(
-        d_i='x-, y-, and z-component of the transition dipole moment [Å].',
-        tdm='Planar average of the transition dipole element [Å].')
+        d_snnv='transition dipole matrix elements for both spin channels.',
+        n1='staterange minimum.',
+        n2='staterange maximum.')
 
     # formats = {'ase_webpanel': webpanel}
 
@@ -33,12 +36,14 @@ def main() -> Result:
     ef = calc.get_fermi_level()
 
     n1, n2 = get_defect_state_limits()
+    n1 = None
+    n2 = None
     if n1 is None and n2 is None:
         occ_spin0 = []
         ev_spin0 = calc.get_eigenvalues()
         [occ_spin0.append(en) for en in ev_spin0 if en < ef]
         n1 = len(occ_spin0)
-        n2 = n1 + 1
+        n2 = n1 + 2
 
     print(f'INFO: max. and minimum state index: {n1}, {n2}.')
 
@@ -60,14 +65,15 @@ def main() -> Result:
     calc.wfs.world.broadcast(d_nnv_0, 0)
     calc.wfs.world.broadcast(d_nnv_1, 0)
     d_snnv = [d_nnv_0, d_nnv_1]
-    d_nnv = d_snnv[0]
-    print(d_snnv)
-    element = [d_nnv[0, 0, 0], d_nnv[0, 0, 1], d_nnv[0, 0, 2]]
-    DipMom = (element[0] + element[1]) / 2
+    # d_nnv = d_snnv[0]
+    # print(d_snnv)
+    # element = [d_nnv[0, 0, 0], d_nnv[0, 0, 1], d_nnv[0, 0, 2]]
+    # DipMom = (element[0] + element[1]) / 2
 
     return Result.fromdata(
-        d_i=element,
-        tdm=DipMom)
+        d_snnv=d_snnv,
+        n1=n1,
+        n2=n2)
 
     # print(f'Spin={spin}')
     # for direction, d_nn in zip('xyz', d_nnv.T):
@@ -92,7 +98,7 @@ def get_defect_state_limits():
     n2 = max(numlist)
 
     if n1 == n2:
-        n2 = n1 + 1
+        n2 = n1 + 2
 
     return n1, n2
 
