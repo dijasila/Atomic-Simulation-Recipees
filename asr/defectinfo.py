@@ -39,11 +39,11 @@ def webpanel(result, row, key_descriptions):
         'Host heat of formation',
         result.key_descriptions['host_hof'])
     host_gap_pbe = describe_entry(
-        'Host PBE bandgap',
-        result.key_descriptions['host_gap_pbe'])
+        'Host PBE band gap',
+        'PBE band gap of the host crystal [eV].')
     host_gap_hse = describe_entry(
-        'Host HSE bandgap',
-        result.key_descriptions['host_gap_hse'])
+        'Host HSE band gap',
+        'HSE band gap of the host crystal [eV].')
     R_nn = describe_entry(
         'Defect nearest neighbor distance',
         result.key_descriptions['R_nn'])

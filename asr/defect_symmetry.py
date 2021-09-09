@@ -105,7 +105,7 @@ def get_symmetry_table(state_results, vbm, cbm, row):
             if N_homo == 0:
                 state_rowlabels_0[i] = 'HOMO'
             N_homo = N_homo + 1
-    state_array_0 = np.delete(state_array_0, -1, 1)
+    state_array_0 = np.delete(state_array_0, 2, 1)
 
     N_homo = 0
     N_lumo = 0
@@ -124,22 +124,24 @@ def get_symmetry_table(state_results, vbm, cbm, row):
                 state_rowlabels_1[i] = 'HOMO'
             N_homo = N_homo + 1
 
-    state_array_1 = np.delete(state_array_1, -1, 1)
+    state_array_1 = np.delete(state_array_1, 2, 1)
     state_table_0 = matrixtable(state_array_0,
                                 digits=None,
                                 title='Orbital',
                                 columnlabels=['Symmetry',
                                               'Spin',
-                                              'Accuracy',
-                                              'Localization ratio'],
+                                              # 'Accuracy',
+                                              'Localization ratio',
+                                              'Energy [eV]'],
                                 rowlabels=state_rowlabels_0)
     state_table_1 = matrixtable(state_array_1,
                                 digits=None,
                                 title='Orbital',
                                 columnlabels=['Symmetry',
                                               'Spin',
-                                              'Accuracy',
-                                              'Localization ratio'],
+                                              # 'Accuracy',
+                                              'Localization ratio',
+                                              'Energy [eV]'],
                                 rowlabels=state_rowlabels_1)
 
     return state_table_0, state_table_1
@@ -299,8 +301,7 @@ def webpanel(result, row, key_descriptions):
             result.symmetries, vbm, cbm, row)
         if len(state_table_0['rows']) > 1 and len(state_table_1['rows']) > 1:
             panel = WebPanel(description,
-                             columns=[[fig('ks_gap.png')], [state_table_0,
-                                                            state_table_1,
+                             columns=[[state_table_0, fig('ks_gap.png')], [state_table_1,
                                                             transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
@@ -314,8 +315,7 @@ def webpanel(result, row, key_descriptions):
                              sort=30)
         elif len(state_table_1['rows']) == 1 and len(state_table_0['rows']) > 1:
             panel = WebPanel(description,
-                             columns=[[fig('ks_gap.png')], [state_table_0,
-                                                            transition_table]],
+                             columns=[[state_table_0, fig('ks_gap.png')], [transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
                              sort=30)
@@ -333,18 +333,17 @@ def webpanel(result, row, key_descriptions):
             result.symmetries, vbm, cbm, row)
         if len(symmetry_table_0['rows']) > 1 and len(symmetry_table_1['rows']) > 1:
             panel = WebPanel(description,
-                             columns=[[symmetry_table_0, symmetry_table_1,
+                             columns=[[symmetry_table_0,
                                        fig('ks_gap.png')],
-                                      [state_table_0, state_table_1,
+                                      [symmetry_table_1,
                                        transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
                              sort=30)
         elif len(symmetry_table_0['rows']) == 1 and len(symmetry_table_1['rows']) > 1:
             panel = WebPanel(description,
-                             columns=[[symmetry_table_1,
-                                       fig('ks_gap.png')],
-                                      [state_table_1, transition_table]],
+                             columns=[[fig('ks_gap.png')],
+                                      [symmetry_table_1, transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
                              sort=30)
@@ -352,7 +351,7 @@ def webpanel(result, row, key_descriptions):
             panel = WebPanel(description,
                              columns=[[symmetry_table_0,
                                        fig('ks_gap.png')],
-                                      [state_table_0, transition_table]],
+                                      [transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
                              sort=30)
@@ -932,11 +931,12 @@ class Level:
                       0,
                       updown * length,
                       head_width=0.01,
-                      head_length=length / 5, fc='k', ec='k')
+                      head_length=length / 5, fc='C3', ec='C3')
 
     def add_label(self, label, static=None):
         """Add symmetry label of the irrep of the point group."""
         shift = self.size / 5
+        labelcolor ='C3'
         if static is None:
             labelstr = label.lower()
             splitstr = split(labelstr)
@@ -949,25 +949,29 @@ class Level:
                          self.energy,
                          labelstr,
                          va='center',
-                         ha='right')
+                         ha='right',
+                         color=labelcolor)
         if (self.off == 0 and self.spin == 1):
             self.ax.text(self.relpos + self.size + shift,
                          self.energy,
                          labelstr,
                          va='center',
-                         ha='left')
+                         ha='left',
+                         color=labelcolor)
         if (self.off == 1 and self.spin == 0):
             self.ax.text(self.relpos - self.size - shift,
                          self.energy,
                          labelstr,
                          va='center',
-                         ha='right')
+                         ha='right',
+                         color=labelcolor)
         if (self.off == 1 and self.spin == 1):
             self.ax.text(self.relpos + self.size + shift,
                          self.energy,
                          labelstr,
                          va='center',
-                         ha='left')
+                         ha='left',
+                         color=labelcolor)
 
 
 def compute_offset(symmetrydata, evbm, ecbm, ef):
@@ -1115,7 +1119,7 @@ def plot_gapstates(row, fname):
     ax1.set_yticks([ef])
     ax1.set_yticklabels([r'E$_\mathrm{F}$'])
     ax.set_xticks([])
-    ax.set_ylabel('Energy [eV]')
+    ax.set_ylabel(r'$E-E\mathrm{vac}$ [eV]')
 
     plt.tight_layout()
     plt.savefig(fname)

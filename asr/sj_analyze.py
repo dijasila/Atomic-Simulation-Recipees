@@ -3,6 +3,7 @@ from asr.database.browser import make_panel_description, href
 from pathlib import Path
 from ase.io import Trajectory
 from gpaw import restart
+import numpy as np
 import typing
 
 
@@ -36,14 +37,14 @@ def webpanel(result, row, key_descriptions):
 
     formation_table_sum = table(result, 'Defect properties', [])
     formation_table_sum['rows'].extend(
-        [[describe_entry('Formation energy',
+        [[describe_entry('Neutral formation energy',
                          description='Neutral formation energy [eV].'),
           f'{result.eform[0][0]:.2f} eV']])
 
     formation_table = table(result, 'Defect formation', [])
     for element in result.eform:
         formation_table['rows'].extend(
-            [[describe_entry(f'Formation energy (q={element[1]:1d} @ VBM)',
+            [[describe_entry(f'Formation energy (q = {element[1]:1d} @ VBM)',
                              description='Formation energy for charge state q '
                                          'at the valence band maximum [eV].'),
               f'{element[0]:.2f} eV']])
@@ -67,7 +68,13 @@ def webpanel(result, row, key_descriptions):
         transition_array[i, 0] = (element['transition_values']['transition']
                                   - element['transition_values']['evac']
                                   - vbm)
-        transition_array[i, 1] = element['transition_values']['erelax']
+        q = int(element['transition_name'].split('/')[-1])
+        if q > 0:
+            transition_array[i, 1] = element['transition_values']['erelax']
+        elif q < 0:
+            transition_array[i, 1] = -1 * element['transition_values']['erelax']
+
+    transition_array = transition_array[transition_array[:, 0].argsort()]
 
     transitions_table = matrixtable(
         transition_array,
@@ -541,6 +548,16 @@ def plot_formation_energies(row, fname):
     """Plot formation energies and transition levels within the gap."""
     import matplotlib.pyplot as plt
 
+    colors = {'0': 'C0',
+              '1': 'C1',
+              '2': 'C2',
+              '3': 'C3',
+              '-1': 'C4',
+              '-2': 'C5',
+              '-3': 'C6',
+              '-4': 'C7',
+              '4': 'C8'}
+
     data = row.data.get('results-asr.sj_analyze.json')
 
     vbm = data['pristine']['vbm'] # - 142.7 - 2.56
@@ -559,7 +576,8 @@ def plot_formation_energies(row, fname):
     for element in eform:
         ax1.plot([0, gap], [f(0, element[1], element[0]),
                             f(gap, element[1], element[0])],
-                 #color='C0', 
+                 #color='C0',
+                 color=colors[str(element[1])],
                  label=element[1])
                  #linestyle='dotted')
 
@@ -630,6 +648,16 @@ def plot_charge_transitions(row, fname):
     """Plot calculated CTL along with the pristine bandgap."""
     import matplotlib.pyplot as plt
 
+    colors = {'0': 'C0',
+              '1': 'C1',
+              '2': 'C2',
+              '3': 'C3',
+              '-1': 'C4',
+              '-2': 'C5',
+              '-3': 'C6',
+              '-4': 'C7',
+              '4': 'C8'}
+
     data = row.data.get('results-asr.sj_analyze.json')
 
     vbm = data['pristine']['vbm'] # - 142.7 + 2.56
@@ -659,11 +687,24 @@ def plot_charge_transitions(row, fname):
 
     i = 1
     for trans in transitions:
-        y = (trans['transition_values']['transition']
-             - trans['transition_values']['erelax']
-             - trans['transition_values']['evac'])
+        name = trans['transition_name']
+        q = int(name.split('/')[-1])
+        q_new = int(name.split('/')[0])
+        if q > 0:
+            y = (trans['transition_values']['transition']
+                 + trans['transition_values']['erelax']
+                 - trans['transition_values']['evac'])
+            color1 = colors[str(q)]
+            color2 = colors[str(q_new)]
+        elif q < 0:
+            y = (trans['transition_values']['transition']
+                 - trans['transition_values']['erelax']
+                 - trans['transition_values']['evac'])
+            color1 = colors[str(q)]
+            color2 = colors[str(q_new)]
         if y <= (cbm + 0.2 * gap) and y >= (vbm - 0.2 * gap):
-            plt.plot([-0.9, 0.5], [y - vbm, y - vbm], label=trans['transition_name'])
+            plt.plot(np.linspace(-0.9, 0.5, 20), 20 * [y - vbm], label=trans['transition_name'],
+                     color=color1, mec=color2, mfc=color2, marker='s', markersize=3)
             # if i % 2 == 0:
             #     plt.text(0.6, y - vbm, trans['transition_name'], ha='left', va='center')
             # else:

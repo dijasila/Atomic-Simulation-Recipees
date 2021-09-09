@@ -30,26 +30,8 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import describe_entry, dl, code, WebPanel
 
     is_def_magnetic = describe_entry(
-        'Magnetic',
-        'Is defect magnetic?'
-        + dl(
-            [
-                [
-                    'Magnetic',
-                    code('if max(abs(atomic_magnetic_moments)) > '
-                         f'{atomic_mom_threshold}')
-                ],
-                [
-                    'Not magnetic',
-                    code('otherwise'),
-                ],
-            ]
-        )
-    )
-
-    is_host_magnetic = describe_entry(
-        'Magnetic',
-        'Is host material magnetic?'
+        'Magnetic moment',
+        'Is the defect system magnetic?'
         + dl(
             [
                 [
@@ -66,13 +48,7 @@ def webpanel(result, row, key_descriptions):
     )
 
     # rows = [[is_magnetic, row.is_magnetic]]
-    rows_host = [[is_host_magnetic, False]]
     rows_def = [[is_def_magnetic, row.is_magnetic]]
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Pristine crystal', ''],
-                             'rows': rows_host}]],
-               'sort': 0}
 
     summary_def = {'title': 'Summary',
                'columns': [[{'type': 'table',
