@@ -37,7 +37,7 @@ class Result(ASRResult):
 
 @command(module='asr.get_wfs',
          requires=['gs.gpw', 'structure.json'],
-         dependencies=['asr.gs'],
+         dependencies=['asr.gs@calculate'],
          resources='1:10m',
          returns=Result)
 @option('--state', help='Specify state index that you want to '
