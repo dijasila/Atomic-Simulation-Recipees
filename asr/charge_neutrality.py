@@ -40,7 +40,7 @@ def webpanel(result, row, key_descriptions):
             def_type = 'V'
         def_name = name.split('_')[1]
         scf_table = table(result, f'Eq. concentrations of {def_type}<sub>{def_name}</sub> [{unitstring}]', [])
-        for alpel in element['concentrations']:
+        for altel in element['concentrations']:
             if altel[0] > 1e1:
                 scf_table['rows'].extend(
                     [[describe_entry(f'<b>Charge {altel[1]:1d}</b>',

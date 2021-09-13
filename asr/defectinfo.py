@@ -49,23 +49,23 @@ def webpanel(result, row, key_descriptions):
         result.key_descriptions['R_nn'])
 
     show_conc = False
-    # try:
-    defect_name = row.defect_name
-    charge_state = row.charge_state
-    q = charge_state.split()[-1].split(')')[0]
-    conc_res = row.data['results-asr.charge_neutrality.json']
-    for i, element in enumerate(conc_res['defect_concentrations']):
-        if element['defect_name'] == defect_name:
-            for altel in element['concentrations']:
-                if altel[1] == int(q):
-                    concentration = altel[0]
-    defect_name = f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}</sub>'
-    conc_row = describe_entry(
-        'Eq. concentration',
-        'Equilibrium concentration at self-consistent Fermi level.')
-    show_conc = True
-    # except:
-    #     pass
+    try:
+        defect_name = row.defect_name
+        charge_state = row.charge_state
+        q = charge_state.split()[-1].split(')')[0]
+        conc_res = row.data['results-asr.charge_neutrality.json']
+        for i, element in enumerate(conc_res['defect_concentrations']):
+            if element['defect_name'] == defect_name:
+                for altel in element['concentrations']:
+                    if altel[1] == int(q):
+                        concentration = altel[0]
+        defect_name = f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}</sub>'
+        conc_row = describe_entry(
+            'Eq. concentration',
+            'Equilibrium concentration at self-consistent Fermi level.')
+        show_conc = True
+    except:
+        pass
 
     uid = result.host_uid
     uidstring = describe_entry(
