@@ -40,7 +40,7 @@ def webpanel(result, row, key_descriptions):
             def_type = 'V'
         def_name = name.split('_')[1]
         scf_table = table(result, f'Eq. concentrations of {def_type}<sub>{def_name}</sub> [{unitstring}]', [])
-        for altel in element['concentrations']:
+        for alpel in element['concentrations']:
             if altel[0] > 1e1:
                 scf_table['rows'].extend(
                     [[describe_entry(f'<b>Charge {altel[1]:1d}</b>',
@@ -68,11 +68,11 @@ def webpanel(result, row, key_descriptions):
 
     # get strength of p-/n-type dopability
     if ef < 0:
-        ptype_val = '1+'
+        ptype_val = '100+'
         ntype_val = '0'
     elif ef > gap:
         ptype_val = '0'
-        ntype_val = '1+'
+        ntype_val = '100+'
     else:
         ptype_val = int((1 - ef / gap) * 100)
         ntype_val = int((100 - ptype_val))

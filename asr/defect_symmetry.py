@@ -165,6 +165,7 @@ def get_state_table(state_results, vbm, cbm, row):
     state_energies_0 = []
     state_spins_1 = []
     state_energies_1 = []
+    print(vbm, cbm)
     for i, row in enumerate(state_array):
         rowname = f"{int(state_results[i]['state']):.0f}"
         if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
@@ -283,7 +284,7 @@ def webpanel(result, row, key_descriptions):
     sub = ''.join(pg_strlist[1:])
     pg_string = f'{pg_strlist[0]}<sub>{sub}</sub>'
     basictable['rows'].extend(
-        [[describe_entry('Defect point group',
+        [[describe_entry('Point group',
                          f'The defect point group is calculated with {spglib}.'),
           pg_string]])
 
@@ -1040,9 +1041,9 @@ def plot_gapstates(row, fname):
     gap = data.pristine.gap
     eref = row.data.get('results-asr.get_wfs.json')['eref']
     ef = gsdata['efermi'] - eref
-    adjust = compute_offset(data.data['symmetries'], evbm, ecbm, ef)
-    evbm = evbm + adjust
-    ecbm = ecbm + adjust
+    # adjust = compute_offset(data.data['symmetries'], evbm, ecbm, ef)
+    # evbm = evbm + adjust
+    # ecbm = ecbm + adjust
 
     # Draw band edges
     draw_band_edge(evbm, 'vbm', 'C0', offset=gap / 5, ax=ax)

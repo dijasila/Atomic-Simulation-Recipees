@@ -85,8 +85,9 @@ class Summary:
             defect_string = f"{defect_type}<sub>{defect_name}</sub>"
         ase_formula = Formula(row.host_name)
         host_latex = f'{ase_formula:html}'
+        q = '(q = ' + row.charge_state.split()[-1].split(')')[0] + ')'
         self.formula = (defect_string + ' in ' + host_latex + ' '
-                        + row.charge_state)  # .format('html')
+                        + q)  # .format('html')
         # self.formula = Formula(
         #     Formula(row.formula).format('metal')).format('html')
 

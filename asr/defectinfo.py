@@ -9,7 +9,7 @@ def webpanel(result, row, key_descriptions):
 
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
     crystal_type = describe_entry(
-        'Host crystal type',
+        'Crystal type',
         "The crystal type is defined as "
         + br
         + div(bold('-'.join([code('stoi'),
@@ -30,23 +30,42 @@ def webpanel(result, row, key_descriptions):
     spg_list_link = href(
         'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups')
     spacegroup = describe_entry(
-        'Host space group',
+        'Space group',
         f"The {spg_list_link} is determined with {spglib}.")
     pointgroup = describe_entry(
-        'Host point group',
+        'Point group',
         f"The point group is determined with {spglib}.")
     host_hof = describe_entry(
-        'Host heat of formation',
+        'Heat of formation',
         result.key_descriptions['host_hof'])
     host_gap_pbe = describe_entry(
-        'Host PBE band gap',
+        'PBE band gap',
         'PBE band gap of the host crystal [eV].')
     host_gap_hse = describe_entry(
-        'Host HSE band gap',
+        'HSE band gap',
         'HSE band gap of the host crystal [eV].')
     R_nn = describe_entry(
-        'Defect nearest neighbor distance',
+        'Defect-defect distance',
         result.key_descriptions['R_nn'])
+
+    show_conc = False
+    # try:
+    defect_name = row.defect_name
+    charge_state = row.charge_state
+    q = charge_state.split()[-1].split(')')[0]
+    conc_res = row.data['results-asr.charge_neutrality.json']
+    for i, element in enumerate(conc_res['defect_concentrations']):
+        if element['defect_name'] == defect_name:
+            for altel in element['concentrations']:
+                if altel[1] == int(q):
+                    concentration = altel[0]
+    defect_name = f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}</sub>'
+    conc_row = describe_entry(
+        'Eq. concentration',
+        'Equilibrium concentration at self-consistent Fermi level.')
+    show_conc = True
+    # except:
+    #     pass
 
     uid = result.host_uid
     uidstring = describe_entry(
@@ -67,9 +86,13 @@ def webpanel(result, row, key_descriptions):
     if result.host_gap_hse is not None:
         basictable['rows'].extend(
             [[host_gap_hse, f'{result.host_gap_hse:.2f} eV']])
+    defecttable = table(result, 'Defect properties', [])
     if result.R_nn is not None:
-        basictable['rows'].extend(
+        defecttable['rows'].extend(
             [[R_nn, f'{result.R_nn:.2f} Å']])
+    if show_conc:
+        defecttable['rows'].extend(
+            [[conc_row, f'{concentration:.1e} cm<sup>-2</sup>']])
 
     if uid:
         basictable['rows'].extend(
@@ -78,7 +101,7 @@ def webpanel(result, row, key_descriptions):
               '>{uid}</a>'.format(uid=uid)]])
 
     panel = {'title': 'Summary',
-             'columns': [[basictable], []],
+             'columns': [[basictable, defecttable], []],
              'sort': -1}
 
     return [panel]
