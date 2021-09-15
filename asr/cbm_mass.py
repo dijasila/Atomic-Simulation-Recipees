@@ -20,23 +20,23 @@ from asr.database.browser import fig, make_panel_description, describe_entry
 
 
 panel_description = make_panel_description(
-   """vbm effektive mass plot""")
+   """cbm effektive mass plot""")
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import WebPanel
 
     
-    panel = WebPanel(describe_entry(f'vbm_mass', panel_description),
-             columns=[[fig('vbm_mass.png')], []],
-             plot_descriptions=[{'function': plot_vbm,
-                                    'filenames': ['vbm_mass.png']}],
+    panel = WebPanel(describe_entry(f'cbm_mass', panel_description),
+             columns=[[fig('cbm_mass.png')], []],
+             plot_descriptions=[{'function': plot_cbm,
+                                    'filenames': ['cbm_mass.png']}],
              sort=3)
 
     return [panel]
 
 
 from asr.core import command, option, ASRResult
-@command('asr.vbm_mass')
+@command('asr.cbm_mass')
 @option('--name', type=str)
 def main(name: str = 'dos.gpw'):
     name=Path(name) 
@@ -49,7 +49,7 @@ def main(name: str = 'dos.gpw'):
                   eigenvalues,
                   fingerprints, 
                   spinprojections,
-                  kind='vbm') 
+                  kind='cbm') 
  
     
    
@@ -60,29 +60,33 @@ def main(name: str = 'dos.gpw'):
 
 class Result(ASRResult):
     extrema:dict
-    key_descriptions = {"vbm_mass" : "vbm effective mass"} 
+    key_descriptions = {"cbm_mass" : "cbm effective mass"} 
     formats = {"ase_webpanel": webpanel}
 
 
-def plot_vbm(row, fname):
+
+
+
+
+def plot_cbm(row, fname):
     import json
-    import numpy as np
     import matplotlib.pyplot as plt
+    import numpy as np
 
-    data= row.data.get('results-asr.vbm_mass.json') 
-    #print('data', len(data))
+    data= row.data.get('results-asr.cbm_mass.json') 
+    #print('data', data)
 
-    color = 0
-    for xfit, yfit,  k, energy, m, spin  in data['extrema']: 
-        plt.plot(xfit, yfit, '-', color=f'C{color}')
-    color += 1     
-    #xfit = np.arange(0,4*np.pi,0.1)   # start,stop,step
-    #yfit = np.sin(xfit) 
+    #array_length = len(extrema)
+    #for i in range(array_length): 
+    xfit=data['extrema'][0][0]
+    yfit=data['extrema'][0][1]      
+    
 
     #ax = plt.gca()
     plt.xlabel('k [Ang$^{-1}$]')
     plt.ylabel('e - e$_F$ [eV]')
     #ax.axis(ymin=0.0, ymax=1.3)
+    plt.plot(xfit,yfit)
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()

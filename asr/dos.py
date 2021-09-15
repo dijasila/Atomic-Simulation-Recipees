@@ -28,7 +28,7 @@ def main(name: str = 'dos.gpw', filename: str = 'dos.json',
     energies_e = dos.get_energies()
     natoms = len(calc.atoms)
     volume = calc.atoms.get_volume()
-    data = {'dosspin0_e': dosspin0_e.tolist(),
+    results= {'dosspin0_e': dosspin0_e.tolist(),
             'energies_e': energies_e.tolist(),
             'natoms': natoms,
             'volume': volume}
@@ -36,27 +36,11 @@ def main(name: str = 'dos.gpw', filename: str = 'dos.json',
         dosspin1_e = dos.get_dos(spin=1)
         data['dosspin1_e'] = dosspin1_e.tolist()
 
-    import json
 
-    from ase.parallel import paropen
-    with paropen(filename, 'w') as fd:
-        json.dump(data, fd)
+    return results
 
 
-def collect_data(atoms):
-    """Band structure SCF and GW +- SOC."""
-    from ase.io.jsonio import read_json
-    from pathlib import Path
-
-    if not Path('dos.json').is_file():
-        return {}, {}, {}
-
-    dos = read_json('dos.json')
-
-    return {}, {}, {'dos': dos}
-
-
-def plot(row=None, filename='dos.png', file=None, show=False):
+def plot(row,filename):
     """Plot DOS.
 
     Defaults to dos.json.
@@ -65,18 +49,10 @@ def plot(row=None, filename='dos.png', file=None, show=False):
     import matplotlib.pyplot as plt
     import numpy as np
 
-    dos = None
 
-    # Get data from row
-    if row is not None:
-        if 'dos' not in row.data:
-            return
-        dos = row.data['dos']
+    print('heeeeeej')
+    dos= row.data.get('results-asr.dos.json')
 
-    # Otherwise from from file
-    file = file or 'dos.json'
-    if not dos:
-        dos = json.load(open(file, 'r'))
     plt.figure()
     plt.plot(dos['energies_e'],
              np.array(dos['dosspin0_e']) / dos['volume'])
@@ -92,14 +68,16 @@ def plot(row=None, filename='dos.png', file=None, show=False):
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
     from asr.utils.hacks import gs_xcname_from_row
+    from asr.database.browser import WebPanel
     xcname = gs_xcname_from_row(row)
+    print('heeeej')
+    panel = WebPanel(title=f'Density of states ({xcname})',
+            columns=[[fig('dos.png')], []],
+            plot_descriptions=[{'function': plot,
+                                'filenames': ['dos.png']}],
+            sort=3)
 
-    panel = (f'Density of states ({xcname})',
-             [[fig('dos.png')], []])
-
-    things = [(plot, ['dos.png'])]
-
-    return panel, things
+    return [panel]
 
 
 if __name__ == '__main__':
