@@ -4,19 +4,19 @@ from asr.dimensionality import get_dimtypes
 # Style: "KVP: Long description !short description! [unit]
 
 key_descriptions = {
-    "berry": {
-        "Topology": "KVP: Band topology !Topology!",
-        "phi0_km": "Berry phase spectrum localized in k0",
-        "s0_km": "Spin of berry phases localized in k0",
-        "phi1_km": "Berry phase spectrum localized in k1",
-        "s1_km": "Spin of berry phases localized in k1",
-        "phi2_km": "Berry phase spectrum localized in k2",
-        "s2_km": "Spin of berry phases localized in k3",
-        "phi0_pi_km": "Berry phase spectrum at k2=pi localized in k0",
-        "s0_pi_km": "Spin of berry at phases at k2=pi localized in k0",
-    },
-    "bse": {"E_B": "KVP: Exciton binding energy from BSE "
-            "!Exc. bind. energy! [eV]"},
+    #"berry": {
+    #    "Topology": "KVP: Band topology !Topology!",
+    #    "phi0_km": "Berry phase spectrum localized in k0",
+    #    "s0_km": "Spin of berry phases localized in k0",
+    #    "phi1_km": "Berry phase spectrum localized in k1",
+    #    "s1_km": "Spin of berry phases localized in k1",
+    #    "phi2_km": "Berry phase spectrum localized in k2",
+    #    "s2_km": "Spin of berry phases localized in k3",
+    #    "phi0_pi_km": "Berry phase spectrum at k2=pi localized in k0",
+    #    "s0_pi_km": "Spin of berry at phases at k2=pi localized in k0",
+    #},
+    #"bse": {"E_B": "KVP: Exciton binding energy from BSE "
+    #        "!Exc. bind. energy! [eV]"},
     "convex_hull": {
         "ehull": "KVP: Energy above convex hull [eV/atom]",
         "hform": "KVP: Heat of formation [eV/atom]",
@@ -46,22 +46,22 @@ key_descriptions = {
         "KVP: Gap w/o soc. !Gap wo. soc.! [eV]",
         "workfunction": "KVP: Work function (avg. if finite dipole) [eV]",
     },
-    "gw": {
-        "vbm_gw_nosoc": "Valence band maximum w/o soc. (G₀W₀) [eV]",
-        "cbm_gw_nosoc": "Conduction band minimum w/o soc. (G₀W₀) [eV]",
-        "gap_dir_gw_nosoc": "Direct gap w/o soc. (G₀W₀) [eV]",
-        "gap_gw_nosoc": "Gap w/o soc. (G₀W₀) [eV]",
-        "kvbm_nosoc": "k-point of G₀W₀ valence band maximum w/o soc",
-        "kcbm_nosoc": "k-point of G₀W₀ conduction band minimum w/o soc",
-        "vbm_gw": "KVP: Valence band maximum (G₀W₀) [eV]",
-        "cbm_gw": "KVP: Conduction band minimum (G₀W₀) [eV]",
-        "gap_dir_gw": "KVP: Direct band gap (G₀W₀) [eV]",
-        "gap_gw": "KVP: Band gap (G₀W₀) [eV]",
-        "kvbm": "k-point of G₀W₀ valence band maximum",
-        "kcbm": "k-point of G₀W₀ conduction band minimum",
-        "efermi_gw_nosoc": "Fermi level w/o soc. (G₀W₀) [eV]",
-        "efermi_gw_soc": "Fermi level (G₀W₀) [eV]",
-    },
+    #"gw": {
+    #    "vbm_gw_nosoc": "Valence band maximum w/o soc. (G₀W₀) [eV]",
+    #    "cbm_gw_nosoc": "Conduction band minimum w/o soc. (G₀W₀) [eV]",
+    #    "gap_dir_gw_nosoc": "Direct gap w/o soc. (G₀W₀) [eV]",
+    #    "gap_gw_nosoc": "Gap w/o soc. (G₀W₀) [eV]",
+    #    "kvbm_nosoc": "k-point of G₀W₀ valence band maximum w/o soc",
+    #    "kcbm_nosoc": "k-point of G₀W₀ conduction band minimum w/o soc",
+    #    "vbm_gw": "KVP: Valence band maximum (G₀W₀) [eV]",
+    #    "cbm_gw": "KVP: Conduction band minimum (G₀W₀) [eV]",
+    #    "gap_dir_gw": "KVP: Direct band gap (G₀W₀) [eV]",
+    #    "gap_gw": "KVP: Band gap (G₀W₀) [eV]",
+    #    "kvbm": "k-point of G₀W₀ valence band maximum",
+    #    "kcbm": "k-point of G₀W₀ conduction band minimum",
+    #    "efermi_gw_nosoc": "Fermi level w/o soc. (G₀W₀) [eV]",
+    #    "efermi_gw_soc": "Fermi level (G₀W₀) [eV]",
+    #},
     "hse": {
         "vbm_hse_nosoc": "Valence band maximum w/o soc. (HSE06) [eV]",
         "cbm_hse_nosoc": "Conduction band minimum w/o soc. (HSE06) [eV]",
@@ -78,26 +78,26 @@ key_descriptions = {
         "efermi_hse_nosoc": "Fermi level w/o soc. (HSE06) [eV]",
         "efermi_hse_soc": "Fermi level (HSE06) [eV]",
     },
-    "infraredpolarizability": {
-        "alphax_lat": "KVP: Static lattice polarizability (x) [Å]",
-        "alphay_lat": "KVP: Static lattice polarizability (y) [Å]",
-        "alphaz_lat": "KVP: Static lattice polarizability (z) [Å]",
-        "alphax": "KVP: Static total polarizability (x) [Å]",
-        "alphay": "KVP: Static total polarizability (y) [Å]",
-        "alphaz": "KVP: Static total polarizability (z) [Å]",
-    },
-    "magnetic_anisotropy": {
-        "spin_axis": "KVP: Magnetic easy axis",
-        "E_x": "KVP: Soc. total energy, x-direction [eV/unit cell]",
-        "E_y": "KVP: Soc. total energy, y-direction [eV/unit cell]",
-        "E_z": "KVP: Soc. total energy, z-direction [eV/unit cell]",
-        "theta": "Easy axis, polar coordinates, theta [radians]",
-        "phi": "Easy axis, polar coordinates, phi [radians]",
-        "dE_zx":
-        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
-        "dE_zy":
-        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>y</sub>) [meV/unit cell]",
-    },
+    #"infraredpolarizability": {
+    #    "alphax_lat": "KVP: Static lattice polarizability (x) [Å]",
+    #    "alphay_lat": "KVP: Static lattice polarizability (y) [Å]",
+    #    "alphaz_lat": "KVP: Static lattice polarizability (z) [Å]",
+    #    "alphax": "KVP: Static total polarizability (x) [Å]",
+    #    "alphay": "KVP: Static total polarizability (y) [Å]",
+    #    "alphaz": "KVP: Static total polarizability (z) [Å]",
+    #},
+    #"magnetic_anisotropy": {
+    #    "spin_axis": "KVP: Magnetic easy axis",
+    #    "E_x": "KVP: Soc. total energy, x-direction [eV/unit cell]",
+    #    "E_y": "KVP: Soc. total energy, y-direction [eV/unit cell]",
+    #    "E_z": "KVP: Soc. total energy, z-direction [eV/unit cell]",
+    #    "theta": "Easy axis, polar coordinates, theta [radians]",
+    #    "phi": "Easy axis, polar coordinates, phi [radians]",
+    #    "dE_zx":
+    #    "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
+    #    "dE_zy":
+    #    "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>y</sub>) [meV/unit cell]",
+    #},
     "exchange": {
         "J": "KVP: Nearest neighbor exchange coupling [meV]",
         "A": "KVP: Single-ion anisotropy (out-of-plane) [meV]",
@@ -105,34 +105,34 @@ key_descriptions = {
         "spin": "KVP: Maximum value of S_z at magnetic sites",
         "N_nn": "KVP: Number of nearest neighbors",
     },
-    "pdos": {
-        "pdos_nosoc":
-        "Projected density of states w/o soc. !PDOS no soc!",
-        "pdos_soc":
-        "Projected density of states !PDOS!",
-        "dos_at_ef_nosoc":
-        "KVP: Density of states at the Fermi level w/o soc."
-        "!DOS at ef no soc.! [states/(eV * unit cell)]",
-        "dos_at_ef_soc":
-        "KVP: Density of states at the Fermi level"
-        " !DOS at ef! [states/(eV * unit cell)]",
-    },
+    #"pdos": {
+    #    "pdos_nosoc":
+    #    "Projected density of states w/o soc. !PDOS no soc!",
+    #    "pdos_soc":
+    #    "Projected density of states !PDOS!",
+    #    "dos_at_ef_nosoc":
+    #    "KVP: Density of states at the Fermi level w/o soc."
+    #    "!DOS at ef no soc.! [states/(eV * unit cell)]",
+    #    "dos_at_ef_soc":
+    #    "KVP: Density of states at the Fermi level"
+    #    " !DOS at ef! [states/(eV * unit cell)]",
+    #},
     "phonons": {
         "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
         "dynamic_stability_phonons": "KVP: Phonon dynamic stability (low/high)",
     },
-    "plasmafrequency": {
-        "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
-        "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
-        "[`eV/Å^0.5`]",
-        "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
-        "[`eV/Å^0.5`]",
-    },
-    "polarizability": {
-        "alphax_el": "KVP: Static interband polarizability (x) [Å]",
-        "alphay_el": "KVP: Static interband polarizability (y) [Å]",
-        "alphaz_el": "KVP: Static interband polarizability (z) [Å]",
-    },
+    #"plasmafrequency": {
+    #    "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
+    #    "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
+    #    "[`eV/Å^0.5`]",
+    #    "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
+    #    "[`eV/Å^0.5`]",
+    #},
+    #"polarizability": {
+    #    "alphax_el": "KVP: Static interband polarizability (x) [Å]",
+    #    "alphay_el": "KVP: Static interband polarizability (y) [Å]",
+    #    "alphaz_el": "KVP: Static interband polarizability (z) [Å]",
+    #},
     "relax": {
         "edft": "DFT total enrgy [eV]",
         "spos": "Array: Scaled positions",
@@ -207,6 +207,7 @@ key_descriptions = {
     }
 }
 
+"""
 # Dimensionality key descrioptions:
 for dimtype in get_dimtypes():
     key_descriptions['dimensionality'][f'dim_score_{dimtype}'] = \
@@ -227,7 +228,7 @@ for i in range(1, 4):
         piezokd[key] = description
 
 key_descriptions['piezoelectrictensor'] = piezokd
-
+"""
 # Key descriptions like has_asr_gs_calculate
 extras = {}
 for recipe in get_recipes():
