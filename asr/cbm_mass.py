@@ -64,32 +64,30 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-
-
-
-
 def plot_cbm(row, fname):
     import json
-    import matplotlib.pyplot as plt
     import numpy as np
+    import matplotlib.pyplot as plt
 
     data= row.data.get('results-asr.cbm_mass.json') 
-    #print('data', data)
-
-    #array_length = len(extrema)
-    #for i in range(array_length): 
-    xfit=data['extrema'][0][0]
-    yfit=data['extrema'][0][1]      
+    #print('data', len(data))
     
+    for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']: 
+        color = 0    
+        for n in indices:
+            plt.plot(x, eigs[:, n], 'o', color=f'C{color}')
+            plt.plot(xfit, yfit, '-', color=f'C{color}')
+        color += 1     
+        #xfit = np.arange(0,4*np.pi,0.1)   # start,stop,step
+        #yfit = np.sin(xfit) 
 
-    #ax = plt.gca()
-    plt.xlabel('k [Ang$^{-1}$]')
-    plt.ylabel('e - e$_F$ [eV]')
-    #ax.axis(ymin=0.0, ymax=1.3)
-    plt.plot(xfit,yfit)
-    plt.tight_layout()
-    plt.savefig(fname)
-    plt.close()
+        #ax = plt.gca()
+        plt.xlabel('k [Ang$^{-1}$]')
+        plt.ylabel('e - e$_F$ [eV]')
+        #ax.axis(ymin=0.0, ymax=1.3)
+        plt.tight_layout()
+        plt.savefig(fname)
+        plt.close()
 
 
 if __name__ == '__main__':
