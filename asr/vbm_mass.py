@@ -71,21 +71,23 @@ def plot_vbm(row, fname):
 
     data= row.data.get('results-asr.vbm_mass.json') 
     #print('data', len(data))
+    
+    for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']: 
+        color = 0    
+        for n in indices:
+            plt.plot(x, eigs[:, n], 'o', color=f'C{color}')
+            plt.plot(xfit, yfit, '-', color=f'C{color}')
+        color += 1     
+        #xfit = np.arange(0,4*np.pi,0.1)   # start,stop,step
+        #yfit = np.sin(xfit) 
 
-    color = 0
-    for xfit, yfit,  k, energy, m, spin  in data['extrema']: 
-        plt.plot(xfit, yfit, '-', color=f'C{color}')
-    color += 1     
-    #xfit = np.arange(0,4*np.pi,0.1)   # start,stop,step
-    #yfit = np.sin(xfit) 
-
-    #ax = plt.gca()
-    plt.xlabel('k [Ang$^{-1}$]')
-    plt.ylabel('e - e$_F$ [eV]')
-    #ax.axis(ymin=0.0, ymax=1.3)
-    plt.tight_layout()
-    plt.savefig(fname)
-    plt.close()
+        #ax = plt.gca()
+        plt.xlabel('k [Ang$^{-1}$]')
+        plt.ylabel('e - e$_F$ [eV]')
+        #ax.axis(ymin=0.0, ymax=1.3)
+        plt.tight_layout()
+        plt.savefig(fname)
+        plt.close()
 
 
 if __name__ == '__main__':
