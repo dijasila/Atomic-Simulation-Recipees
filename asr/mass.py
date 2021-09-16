@@ -210,8 +210,8 @@ def fit(kpoints,
         plt.ylabel('e - e$_F$ [eV]')
         #plt.show()
 
-    return [(xfit,yfit, k, energy,mass, spin)
-            for (xfit,yfit, k, energy, mass, spin) in extrema.values()]
+    return [(x, eigs[:, n],xfit,yfit, k, energy,mass, spin)
+            for (x, eigs[:, n],xfit,yfit, k, energy, mass, spin) in extrema.values()]
 
 
 def a_test():
