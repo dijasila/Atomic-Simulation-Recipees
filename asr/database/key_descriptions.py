@@ -86,18 +86,18 @@ key_descriptions = {
     #    "alphay": "KVP: Static total polarizability (y) [Å]",
     #    "alphaz": "KVP: Static total polarizability (z) [Å]",
     #},
-    #"magnetic_anisotropy": {
-    #    "spin_axis": "KVP: Magnetic easy axis",
-    #    "E_x": "KVP: Soc. total energy, x-direction [eV/unit cell]",
-    #    "E_y": "KVP: Soc. total energy, y-direction [eV/unit cell]",
-    #    "E_z": "KVP: Soc. total energy, z-direction [eV/unit cell]",
-    #    "theta": "Easy axis, polar coordinates, theta [radians]",
-    #    "phi": "Easy axis, polar coordinates, phi [radians]",
-    #    "dE_zx":
-    #    "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
-    #    "dE_zy":
-    #    "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>y</sub>) [meV/unit cell]",
-    #},
+    "magnetic_anisotropy": {
+        "spin_axis": "KVP: Magnetic easy axis",
+        "E_x": "KVP: Soc. total energy, x-direction [eV/unit cell]",
+        "E_y": "KVP: Soc. total energy, y-direction [eV/unit cell]",
+        "E_z": "KVP: Soc. total energy, z-direction [eV/unit cell]",
+        "theta": "Easy axis, polar coordinates, theta [radians]",
+        "phi": "Easy axis, polar coordinates, phi [radians]",
+        "dE_zx":
+        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
+        "dE_zy":
+        "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>y</sub>) [meV/unit cell]",
+    },
     "exchange": {
         "J": "KVP: Nearest neighbor exchange coupling [meV]",
         "A": "KVP: Single-ion anisotropy (out-of-plane) [meV]",
@@ -183,10 +183,15 @@ key_descriptions = {
             '!First class material! [bool]'),
     },
     "info.json": {
-        'class': 'KVP: Material class',
-        'doi': 'KVP: Monolayer reported DOI',
-        'icsd_id': 'KVP: Related ICSD id',
-        'cod_id': 'KVP: Related COD id'
+        'PBE_1D':"KVP:uid for 1D materials calculated using PBE",
+        'PBED3_1D': "KVP:uid for 1D materials calculated using PBE-D3",
+        'PBED3_3D': "KVP:uid for bulk materials calculated using PBE-D3",
+        'Source': "KVP: source",
+        'derived_from': "KVP: derived from",
+        #'class': 'KVP: Material class',
+        #'doi': 'KVP: Monolayer reported DOI',
+        #'icsd_id': 'KVP: Related ICSD id',
+        #'cod_id': 'KVP: Related COD id'
     },
     "emasses": {
         'emass_vb_dir1':
