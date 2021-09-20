@@ -41,6 +41,12 @@ def webpanel(result, row, key_descriptions):
              sort=3)
 
 
+    table = {'type': 'table',
+             'header': ['Kpoint', 'Energy','Mass','Spin'],
+             'rows': extrematable}
+
+
+
     panel2 = WebPanel(title= 'cbm_mass',
               columns= [[table]],
               sort=3)
