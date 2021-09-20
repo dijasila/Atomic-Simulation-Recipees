@@ -25,6 +25,14 @@ panel_description = make_panel_description(
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import WebPanel
 
+    data= row.data.get('results-asr.vbm_mass.json')
+
+    extrematable = []
+    for xfit, yfit, indices,x, eigs, k, energy, mass, spin  in data['extrema']:
+        extrematable.append([f'{k:.3f}', f'{energy:.3f}', f'{mass:.3f}',f'{spin[0]:.1f},{spin[1]:.1f},{spin[2]:.1f}'])
+
+
+
     
     panel = WebPanel(describe_entry(f'cbm_mass', panel_description),
              columns=[[fig('cbm_mass.png')], []],
@@ -32,8 +40,13 @@ def webpanel(result, row, key_descriptions):
                                     'filenames': ['cbm_mass.png']}],
              sort=3)
 
-    return [panel]
 
+    panel2 = WebPanel(title= 'cbm_mass',
+              columns= [[table]],
+              sort=3)
+
+
+    return [panel,panel2]
 
 from asr.core import command, option, ASRResult
 @command('asr.cbm_mass')
@@ -77,7 +90,7 @@ def plot_cbm(row, fname):
         for n in indices:
             plt.plot(x, eigs[:, n], 'o', color=f'C{color}')
             plt.plot(xfit, yfit, '-', color=f'C{color}')
-        color += 1     
+            color += 1     
         #xfit = np.arange(0,4*np.pi,0.1)   # start,stop,step
         #yfit = np.sin(xfit) 
 
