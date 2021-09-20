@@ -192,7 +192,7 @@ def fit(kpoints,
             spin = sps[i, n]
             #print(f'{k:10.3f} {energy:11.3f} {mass:10.3f}',
             #      '  (' + ', '.join(f'{s:+.2f}' for s in spin) + ')')
-            extrema[n] = (xfit, yfit, k, energy, mass, spin)
+            extrema[n] = (xfit, yfit, indices,x, eigs, k, energy, mass, spin)
 
     if kind == 'vbm':
         eigs *= -1
@@ -210,8 +210,8 @@ def fit(kpoints,
         plt.ylabel('e - e$_F$ [eV]')
         #plt.show()
 
-    return [(x, eigs[:, n],xfit,yfit, k, energy,mass, spin)
-            for (x, eigs[:, n],xfit,yfit, k, energy, mass, spin) in extrema.values()]
+    return [(xfit,yfit, indices,x, eigs,k, energy,mass, spin)
+            for (xfit,yfit, indices,x, eigs,k, energy, mass, spin) in extrema.values()]
 
 
 def a_test():
