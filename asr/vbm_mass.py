@@ -15,7 +15,7 @@ from asr.core import chdir
 from .mass import extract_stuff_from_gpw_file, fit
 from math import pi
 from asr.core import write_json, read_json
-from asr.database.browser import fig, make_panel_description, describe_entry
+from asr.database.browser import matrixtable, table, fig, make_panel_description, describe_entry
 
 
 
@@ -24,15 +24,32 @@ panel_description = make_panel_description(
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import WebPanel
-
     
+    data= row.data.get('results-asr.vbm_mass.json')
+
+    extrematable = []
+    for xfit, yfit, indices,x, eigs, k, energy, mass, spin  in data['extrema']:
+        extrematable.append([f'{k:.3f}', f'{energy:.3f}', f'{mass:.3f}',f'{spin[0]:.1f},{spin[1]:.1f},{spin[2]:.1f}'])     
+
+    #print(extrematable)
     panel = WebPanel(describe_entry(f'vbm_mass', panel_description),
-             columns=[[fig('vbm_mass.png')], []],
+             columns=[[fig('vbm_mass.png')]],
              plot_descriptions=[{'function': plot_vbm,
                                     'filenames': ['vbm_mass.png']}],
              sort=3)
 
-    return [panel]
+    table = {'type': 'table',
+             'header': ['Kpoint', 'Energy','Mass','Spin'],
+             'rows': extrematable}
+
+
+
+    panel2 = WebPanel(title= 'vbm_mass',
+              columns= [[table]],
+              sort=3)
+
+
+    return [panel,panel2]
 
 
 from asr.core import command, option, ASRResult
@@ -60,6 +77,7 @@ def main(name: str = 'dos.gpw'):
 
 class Result(ASRResult):
     extrema:dict
+    
     key_descriptions = {"vbm_mass" : "vbm effective mass"} 
     formats = {"ase_webpanel": webpanel}
 
@@ -71,13 +89,17 @@ def plot_vbm(row, fname):
 
     data= row.data.get('results-asr.vbm_mass.json') 
     #print('data', len(data))
-    
+
+
+
+ 
+    color=0 
     for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']: 
-        color = 0    
         for n in indices:
             plt.plot(x, eigs[:, n], 'o', color=f'C{color}')
+            #if n in data['extrema']:
             plt.plot(xfit, yfit, '-', color=f'C{color}')
-        color += 1     
+            color += 1     
         #xfit = np.arange(0,4*np.pi,0.1)   # start,stop,step
         #yfit = np.sin(xfit) 
 
@@ -90,12 +112,9 @@ def plot_vbm(row, fname):
         plt.close()
 
 
+
+
+
 if __name__ == '__main__':
     main.cli()
-
-
-
-
-
-
 
