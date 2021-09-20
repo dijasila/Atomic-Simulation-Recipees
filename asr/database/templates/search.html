@@ -37,8 +37,74 @@ document.addEventListener('DOMContentLoaded',
           <i class="fa fa-search fa-1x" aria-hidden="true"></i>
         </button>
       </div><br/>
-      {% block search %}
-      {% endblock search %}
+      <table class="search">
+	<tr>
+	  <td>Dynamically stable (phonons)</td><td>:</td>
+	  <td>
+	    <select name="dyn_phonons" class="ase-input ase-button">
+              <option value="low">No</option>
+              <option value="high" {% if not q %}selected{% endif %}>Yes</option>
+              <option value="all">All</option>
+	    </select>
+	  </td>
+	  <td>
+	</tr>
+	<tr>
+	  <td>Dynamically stable (stiffness)</td><td>:</td>
+	  <td>
+	    <select name="dyn_stiffness" class="ase-input ase-button">
+              <option value="low">No</option>
+              <option value="high" {% if not q %}selected{% endif %}>Yes</option>
+              <option value="all">All</option>
+	    </select>
+	  </td>
+	  <td>
+	</tr>
+	<tr>
+	  <td>Thermodynamic stability</td><td>:</td>
+	  <td>
+	    <select name="from_tdyn" class="ase-input">
+              <option value="1">Low</option>
+              <option value="2" {% if not q %}selected{% endif %}>Medium</option>
+              <option value="3">High</option>
+	    </select>
+	  </td>
+	  <td>-</td>
+	  <td>
+	    <select name="to_tdyn" class="ase-input">
+              <option value="1">Low</option>
+              <option value="2">Medium</option>
+              <option value="3" selected>High</option>
+	    </select>
+	  </td>
+	</tr>
+	<tr>
+	  <td>Magnetic</td><td>:</td>
+	  <td>
+	    <select name="is_magnetic" class="ase-input">
+              <option value="">All</option>
+              <option value="True">Yes</option>
+              <option value="False">No</option>
+	    </select>
+	  </td>
+	</tr>
+	<tr>
+	  <td>Band gap range [eV]</td><td>:</td>
+	  <td>
+	    <input type="text" name="from_gap" value="" size="6" class="ase-input">
+	  </td>
+	  <td>-</td>
+	  <td>
+	    <input type="text" name="to_gap" value="" size="6" class="ase-input">
+	  </td>
+	  <td>
+	    <select name="xc" class="ase-input">
+              <option value="gap">PBE</option>
+	    </select>
+	  </td>
+	</tr>
+      </table>
+
       <div class="form-group" style="margin-bottom:0px;">
         <small class="form-text text-muted">
           <a href="https://wiki.fysik.dtu.dk/ase/ase/db/db.html#querying"
