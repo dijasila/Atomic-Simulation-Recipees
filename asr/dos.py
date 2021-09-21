@@ -1,5 +1,23 @@
 """Density of states."""
 from asr.core import command, option, ASRResult
+from asr.database.browser import fig, make_panel_description, describe_entry
+from asr.utils.hacks import gs_xcname_from_row
+
+panel_description = make_panel_description(
+   """DOS""")
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import WebPanel
+
+    xcname = gs_xcname_from_row(row)
+    print('heeeej')
+    panel = WebPanel(describe_entry(f'Density of states ({xcname})', panel_description),
+            columns=[[fig('dos.png')], []],
+            plot_descriptions=[{'function': plot,
+                                'filenames': ['dos.png']}],
+            sort=3)
+
+    return [panel]
 
 
 @command('asr.dos')
@@ -7,7 +25,7 @@ from asr.core import command, option, ASRResult
 @option('--filename', type=str)
 @option('--kptdensity', help='K point kptdensity', type=float)
 def main(name: str = 'dos.gpw', filename: str = 'dos.json',
-         kptdensity: float = 12.0) -> ASRResult:
+         kptdensity: float = 50.0):# -> ASRResult:
     """Calculate DOS."""
     from pathlib import Path
     from gpaw import GPAW
@@ -34,13 +52,20 @@ def main(name: str = 'dos.gpw', filename: str = 'dos.json',
             'volume': volume}
     if nspins == 2:
         dosspin1_e = dos.get_dos(spin=1)
-        data['dosspin1_e'] = dosspin1_e.tolist()
+        results['dosspin1_e'] = dosspin1_e.tolist()
+
+    return Result(data=results)
+    
 
 
-    return results
+class Result(ASRResult):
+    results:dict
+
+    key_descriptions = {"Density of states" : "Density of states"}
+    formats = {"ase_webpanel": webpanel}
 
 
-def plot(row,filename):
+def plot(row,fname):
     """Plot DOS.
 
     Defaults to dos.json.
@@ -59,25 +84,8 @@ def plot(row,filename):
     plt.xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
     plt.ylabel(r'DOS (states / (eV Å$^3$)')
     plt.tight_layout()
-    plt.savefig(filename)
-    if show:
-        plt.show()
-    return plt.gca()
-
-
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
-    from asr.utils.hacks import gs_xcname_from_row
-    from asr.database.browser import WebPanel
-    xcname = gs_xcname_from_row(row)
-    print('heeeej')
-    panel = WebPanel(title=f'Density of states ({xcname})',
-            columns=[[fig('dos.png')], []],
-            plot_descriptions=[{'function': plot,
-                                'filenames': ['dos.png']}],
-            sort=3)
-
-    return [panel]
+    plt.savefig(fname)
+    plt.close()
 
 
 if __name__ == '__main__':
