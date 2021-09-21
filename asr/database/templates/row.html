@@ -136,10 +136,11 @@ jmol_isReady = function(applet)
 {% block content %}
 
 <div class="container">
-
-<h1>
-    {{ d.formula|safe }}
-  <a href="/{{ p.name }}/row/{{ uid }}/all_data">
+{% block contenttitle %}
+<div class="row" style="padding-bottom:15px;padding-right:50px">
+  <div class="col-lg-11">
+    <div class="col-lg-9"><h1>{{ d.formula|safe }}</h1>
+      <a href="/{{ p.name }}/row/{{ uid }}/all_data">
     <button type="button" class="btn btn-outline-primary">
       Download raw data
       <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-download" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -154,8 +155,13 @@ jmol_isReady = function(applet)
         <path fill-rule="evenodd" d="M13.81 4H2.19a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4zM2.19 3A2 2 0 0 0 .198 5.181l.637 7A2 2 0 0 0 2.826 14h10.348a2 2 0 0 0 1.991-1.819l.637-7A2 2 0 0 0 13.81 3H2.19z"/>
       </svg>
     </button></a>
-</h1>
-
+    </div>
+    <div class="col-lg-2" style="float:right">
+      <img alt="C2DB logo" width=300 src="https://cmr.fysik.dtu.dk/_images/c2db.png">
+    </div>
+  </div>
+</div>
+{% endblock %}
 <div class="panel-group">
 
 {% for title, things in d.layout %}
