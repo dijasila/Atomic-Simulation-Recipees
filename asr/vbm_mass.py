@@ -36,7 +36,7 @@ def webpanel(result, row, key_descriptions):
              columns=[[fig('vbm_mass.png')]],
              plot_descriptions=[{'function': plot_vbm,
                                     'filenames': ['vbm_mass.png']}],
-             sort=3)
+             sort=14)
 
     table = {'type': 'table',
              'header': ['Kpoint', 'Energy','Mass','Spin'],
@@ -46,7 +46,7 @@ def webpanel(result, row, key_descriptions):
 
     panel2 = WebPanel(title= 'vbm_mass',
               columns= [[table]],
-              sort=3)
+              sort=14)
 
 
     return [panel,panel2]
