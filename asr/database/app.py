@@ -1,22 +1,23 @@
 """Database web application."""
 from typing import List
-import multiprocessing
+from asr.core import (command, option, argument, ASRResult,
+                      decode_object, UnknownDataFormat)
+
 import tempfile
 from pathlib import Path
-import warnings
 
+from ase.db import connect
+from ase.db.app import app, projects
 from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json
-from jinja2 import UndefinedError
-from ase.db import connect
+import asr
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
+import warnings
+from jinja2 import UndefinedError
 
-import asr
-from asr.core import (command, option, argument, ASRResult,
-                      decode_object, UnknownDataFormat)
 
 
 def import_dbapp_from_ase():
@@ -34,26 +35,25 @@ def import_dbapp_from_ase():
 # XXX Should not be using global variables!
 app, projects = import_dbapp_from_ase()
 
-
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
 
 path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
 
 
-def create_key_descriptions(db=None, extra_kvp_descriptions=None):
+def create_key_descriptions(db=None):
     from asr.database.key_descriptions import key_descriptions
     from asr.database.fromtree import parse_key_descriptions
-    from asr.core import read_json
     from ase.db.web import create_key_descriptions
-
+    #from asr.core import read_json
+ 
     flatten = {key: value
                for recipe, dct in key_descriptions.items()
                for key, value in dct.items()}
 
-    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
-        extras = read_json(extra_kvp_descriptions)
-        flatten.update(extras)
+    #if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
+    #    extras = read_json(extra_kvp_descriptions)
+    #    flatten.update(extras)
 
     if db is not None:
         metadata = db.metadata
@@ -97,6 +97,10 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
+        #ase_formula = Formula(row.host_name)
+        #host_latex = f'{ase_formula:html}'
+        #q = '(q = ' + row.charge_state.split()[-1].split(')')[0] + ')'
+        
         self.formula = Formula(
             Formula(row.formula).format('metal')).format('html')
 
@@ -210,7 +214,25 @@ def asr_sort_key_descriptions(value):
 
 
 def handle_query(args):
-    return args["query"]
+    parts = []
+    if args['query']:
+        parts.append(args['query'])
+    if args['dyn_phonons'] != 'all':
+        parts.append('dynamic_stability_phonons=' + args['dyn_phonons'])
+    if args['dyn_stiffness'] != 'all':
+        parts.append('dynamic_stability_stiffness=' + args['dyn_stiffness'])    
+    if args['from_tdyn'] > '1':
+        parts.append('thermodynamic_stability_level>=' + args['from_tdyn'])
+    if args['to_tdyn'] < '3':
+        parts.append('thermodynamic_stability_level<=' + args['to_tdyn'])
+    if args['from_gap']:
+        parts.append(args['xc'] + '>=' + args['from_gap'])
+    if args['to_gap']:
+        parts.append(args['xc'] + '<=' + args['to_gap'])
+    if args['is_magnetic']:
+        parts.append('is_magnetic=' + args['is_magnetic'])
+    # We only want to present the first class materials to users
+    return ','.join(parts)
 
 
 def row_to_dict(row, project, layout_function, tmpdir):
@@ -223,7 +245,7 @@ def row_to_dict(row, project, layout_function, tmpdir):
     return s
 
 
-def initialize_project(database, extra_kvp_descriptions=None, pool=None):
+def initialize_project(database):
     from asr.database import browser
     from functools import partial
 
@@ -240,16 +262,16 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
     metadata = db.metadata
     projects[name] = {
         "name": name,
-        "title": metadata.get("title", name),
-        "key_descriptions": create_key_descriptions(db,
-                                                    extra_kvp_descriptions),
+        "title": "Computational 2D materials database",
+        # "title": metadata.get("title", name),
+        "key_descriptions": create_key_descriptions(db),
         "uid_key": metadata.get("uid", "uid"),
         "database": db,
         "handle_query_function": handle_query,
         "row_to_dict_function": partial(
-            row_to_dict, layout_function=layout, tmpdir=tmpdir,
+            row_to_dict, layout_function=browser.layout, tmpdir=tmpdir
         ),
-        "default_columns": metadata.get("default_columns", ["formula", "uid"]),
+        "default_columns": metadata.get("default_columns", ["formula", "uid", "is_magnetic", "hform", "gap"]),
         "table_template": str(
             metadata.get(
                 "table_template", f"asr/database/templates/table.html",
@@ -270,27 +292,10 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
 @argument("databases", nargs=-1, type=str)
 @option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-@option("--extra_kvp_descriptions", type=str,
-        help='File containing extra kvp descriptions for info.json')
 def main(databases: List[str], host: str = "0.0.0.0",
-         test: bool = False,
-         extra_kvp_descriptions: str = 'key_descriptions.json') -> ASRResult:
-
-    # The app uses threads, and we cannot call matplotlib multithreadedly.
-    # Therefore we use a multiprocessing pool for the plotting.
-    # We could use more cores, but they tend to fail to close
-    # correctly on KeyboardInterrupt.
-    pool = multiprocessing.Pool(1)
-    try:
-        _main(databases, host, test, extra_kvp_descriptions, pool)
-    finally:
-        pool.close()
-        pool.join()
-
-
-def _main(databases, host, test, extra_kvp_descriptions, pool):
+         test: bool = False) -> ASRResult:
     for database in databases:
-        initialize_project(database, extra_kvp_descriptions, pool)
+        initialize_project(database)
 
     setup_app()
 
@@ -337,3 +342,4 @@ def _main(databases, host, test, extra_kvp_descriptions, pool):
 
 if __name__ == "__main__":
     main.cli()
+
