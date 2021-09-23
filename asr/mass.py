@@ -86,11 +86,14 @@ def connect(eigenvalues,
     for k in range(1, K - 1):
         eigs = eigenvalues[k]
         for bands in clusters(eigs, eps):
-            overlap = abs(fingerprints[k - 1, bands] @
-                          fingerprints[k + 1, bands].conj().T)
-            indices = overlap.argmax(axis=1)
-            # print(k, bands, overlap, indices)
-            assert indices.sum() == len(bands) * (len(bands) - 1) // 2
+            try:
+                overlap = abs(fingerprints[k - 1, bands] @
+                              fingerprints[k + 1, bands].conj().T)
+                indices = overlap.argmax(axis=1)
+                # print(k, bands, overlap, indices)
+                assert indices.sum() == len(bands) * (len(bands) - 1) // 2
+            except AssertionError:
+                continue
             bands2 = [bands[i] for i in indices]
             eigenvalues[k + 1:, bands] = eigenvalues[k + 1:, bands2]
             fingerprints[k + 1:, bands] = fingerprints[k + 1:, bands2]
