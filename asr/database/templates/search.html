@@ -53,13 +53,35 @@ table.search {
         </button>
 
       <table class="search">
+        <tr>
+          <td>Materials type</td><td>:</td>
+          <td>
+            <select name="pbc" class="ase-input ase-button">
+              <option value="all">All</option>
+              <option value="FFT">1D</option>
+              <option value="TTT">3D</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td>Source</td><td>:</td>
+          <td>
+            <select name="Source" class="ase-input ase-button">
+              <option value="all">All</option>
+              <option value="Drived by element substitution">Element substitution</option>
+              <option value="ICSD">ICSD</option>
+              <option value="COD">COD</option>
+            </select>
+          </td>
+          <td>
+        </tr>
 	<tr>
 	  <td>Dynamically stable (phonons)</td><td>:</td>
 	  <td>
 	    <select name="dyn_phonons" class="ase-input ase-button">
+              <option value="all">All</option>
               <option value="low">No</option>
               <option value="high">Yes</option>
-              <option value="all">All</option>
 	    </select>
 	  </td>
 	</tr>
@@ -67,9 +89,9 @@ table.search {
 	  <td>Dynamically stable (stiffness)</td><td>:</td>
 	  <td>
 	    <select name="dyn_stiffness" class="ase-input ase-button">
+              <option value="all">All</option>
               <option value="low">No</option>
               <option value="high" {% if not q %}selected{% endif %}>Yes</option>
-              <option value="all">All</option>
 	    </select>
 	  </td>
 	  <td>
