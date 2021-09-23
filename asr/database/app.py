@@ -217,6 +217,10 @@ def handle_query(args):
     parts = []
     if args['query']:
         parts.append(args['query'])
+    if args['pbc'] != 'all':
+        parts.append('pbc=' + args['pbc'])
+    if args['Source'] != 'all':
+        parts.append('Source=' + args['Source'])
     if args['dyn_phonons'] != 'all':
         parts.append('dynamic_stability_phonons=' + args['dyn_phonons'])
     if args['dyn_stiffness'] != 'all':
@@ -262,7 +266,7 @@ def initialize_project(database):
     metadata = db.metadata
     projects[name] = {
         "name": name,
-        "title": "Computational 2D materials database",
+        "title": "Computational 1D materials database",
         # "title": metadata.get("title", name),
         "key_descriptions": create_key_descriptions(db),
         "uid_key": metadata.get("uid", "uid"),
