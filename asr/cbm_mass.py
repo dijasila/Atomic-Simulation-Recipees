@@ -88,25 +88,28 @@ def plot_cbm(row, fname):
     import numpy as np
     import matplotlib.pyplot as plt
 
-    data= row.data.get('results-asr.cbm_mass.json') 
-    #print('data', len(data))
-    
-    for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']: 
-        color = 0    
-        for n in indices:
-            plt.plot(x, eigs[:, n], 'o', color=f'C{color}')
-            plt.plot(xfit, yfit, '-', color=f'C{color}')
-            color += 1     
-        #xfit = np.arange(0,4*np.pi,0.1)   # start,stop,step
-        #yfit = np.sin(xfit) 
 
-        #ax = plt.gca()
-        plt.xlabel('k [Ang$^{-1}$]')
-        plt.ylabel('e - e$_F$ [eV]')
-        #ax.axis(ymin=0.0, ymax=1.3)
-        plt.tight_layout()
-        plt.savefig(fname)
-        plt.close()
+    figsize = (5.5, 5)
+    fontsize = 10
+    data= row.data.get('results-asr.cbm_mass.json')
+    fig, ax = plt.figure(figsize=figsize)#.add_subplot(111)
+
+
+    color=0
+    for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']:
+        for n in indices:
+            ax.plot(x, eigs[:, n], 'o', color=f'C{color}')
+            ax.plot(xfit, yfit, '-', color=f'C{color}')
+            color += 1
+
+
+        ax.set_xlabel('k [Ang$^{-1}$]')
+        ax.set_ylabel('k [Ang$^{-1}$]')
+        fig.tight_layout()
+        fig.savefig(fname)
+        fig.close()
+
+
 
 
 if __name__ == '__main__':
