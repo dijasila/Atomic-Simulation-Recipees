@@ -10,7 +10,6 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import WebPanel
 
     xcname = gs_xcname_from_row(row)
-    print('heeeej')
     panel = WebPanel(describe_entry(f'Density of states ({xcname})', panel_description),
             columns=[[fig('dos.png')], []],
             plot_descriptions=[{'function': plot,
@@ -75,7 +74,6 @@ def plot(row,fname):
     import numpy as np
 
 
-    print('heeeeeej')
     dos= row.data.get('results-asr.dos.json')
 
     plt.figure()
