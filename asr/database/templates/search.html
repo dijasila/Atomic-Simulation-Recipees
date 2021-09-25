@@ -91,7 +91,7 @@ table.search {
 	    <select name="dyn_stiffness" class="ase-input ase-button">
               <option value="all">All</option>
               <option value="low">No</option>
-              <option value="high" {% if not q %}selected{% endif %}>Yes</option>
+              <option value="high">Yes</option>
 	    </select>
 	  </td>
 	  <td>
@@ -100,8 +100,8 @@ table.search {
 	  <td>Thermodynamic stability</td><td>:</td>
 	  <td>
 	    <select name="from_tdyn" class="ase-input">
-              <option value="1">Low</option>
-              <option value="2" {% if not q %}selected{% endif %}>Medium</option>
+              <option value="1"{% if not q %}selected{% endif %}>Low</option>
+              <option value="2">Medium</option>
               <option value="3">High</option>
 	    </select>
 	  </td>
