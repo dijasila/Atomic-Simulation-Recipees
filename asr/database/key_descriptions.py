@@ -188,10 +188,8 @@ key_descriptions = {
         'PBED3_3D': "KVP:uid for bulk materials calculated using PBE-D3",
         'Source': "KVP: source",
         'derived_from': "KVP: derived from",
-        #'class': 'KVP: Material class',
-        #'doi': 'KVP: Monolayer reported DOI',
-        #'icsd_id': 'KVP: Related ICSD id',
-        #'cod_id': 'KVP: Related COD id'
+        "vbm_rashba_splitting": "KVP:vbm rashba splitting energy",
+        "cbm_rashba_splitting": "KVP:cbm rashba splitting energy",
     },
     "emasses": {
         'emass_vb_dir1':
@@ -271,3 +269,4 @@ def main(database: str) -> ASRResult:
 
 if __name__ == '__main__':
     main.cli()
+
