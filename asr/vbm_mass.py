@@ -31,7 +31,6 @@ def webpanel(result, row, key_descriptions):
     for xfit, yfit, indices,x, eigs, k, energy, mass, spin  in data['extrema']:
         extrematable.append([f'{k:.3f}', f'{energy:.3f}', f'{mass:.3f}',f'{spin[0]:.1f},{spin[1]:.1f},{spin[2]:.1f}'])     
 
-    #print(extrematable)
     panel = WebPanel(describe_entry(f'vbm_mass', panel_description),
              columns=[[fig('vbm_mass.png')]],
              plot_descriptions=[{'function': plot_vbm,
@@ -88,10 +87,12 @@ def plot_vbm(row, fname):
     import matplotlib.pyplot as plt
 
 
-    figsize = (5.5, 5)
-    fontsize = 10
-    data= row.data.get('results-asr.vbm_mass.json')
-    fig, ax = plt.figure(figsize=figsize)#.add_subplot(111)
+
+    data= row.data.get('results-asr.vbm_mass.json') 
+
+
+    fig = plt.figure(figsize=(6.4, 3.9))
+    ax = fig.gca()
 
 
     color=0
@@ -107,6 +108,20 @@ def plot_vbm(row, fname):
         fig.tight_layout()
         fig.savefig(fname)
         fig.close()
+
+
+    #color = 0
+    #for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']: 
+        #for n in indices:
+            #plt.plot(x, eigs[:, n], 'o', color=f'C{color}')
+            #plt.plot(xfit, yfit, '-', color=f'C{color}')
+            #color += 1     
+
+        #plt.xlabel('k [Ang$^{-1}$]')
+        #plt.ylabel('e - e$_F$ [eV]')
+        #plt.tight_layout()
+        #plt.savefig(fname)
+        #plt.close()
 
 if __name__ == '__main__':
     main.cli()

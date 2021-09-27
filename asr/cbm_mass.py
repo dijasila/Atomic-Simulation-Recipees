@@ -89,10 +89,10 @@ def plot_cbm(row, fname):
     import matplotlib.pyplot as plt
 
 
-    figsize = (5.5, 5)
-    fontsize = 10
     data= row.data.get('results-asr.cbm_mass.json')
-    fig, ax = plt.figure(figsize=figsize)#.add_subplot(111)
+
+    fig = plt.figure(figsize=(6.4, 3.9))
+    ax = fig.gca()
 
 
     color=0
@@ -108,6 +108,8 @@ def plot_cbm(row, fname):
         fig.tight_layout()
         fig.savefig(fname)
         fig.close()
+
+
 
 
 
