@@ -65,7 +65,7 @@ def webpanel(result, row, key_descriptions):
 
     panel = {'title': describe_entry('Stiffness tensor', description=panel_description),
              'columns': [[ctable], [eigtable]],
-             'sort': 2}
+             'sort': 3}
 
     dynstab = row.dynamic_stability_stiffness
     high = 'Minimum stiffness tensor eigenvalue > 0'
@@ -92,7 +92,7 @@ def webpanel(result, row, key_descriptions):
                              }]],
                'sort': 3}
 
-    return [panel, summary]
+    #return [panel, summary]
 
 
 @prepare_result

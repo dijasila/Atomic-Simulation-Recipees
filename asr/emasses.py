@@ -666,7 +666,7 @@ def webpanel(result, row, key_descriptions):
                'filenames': fnames
                }],
              'sort': 14}
-    return [panel]
+    #return [panel]
 
 
 def create_columns_fnames(row):
