@@ -190,6 +190,7 @@ key_descriptions = {
         'derived_from': "KVP: derived from",
         "vbm_rashba_splitting": "KVP:vbm rashba splitting energy",
         "cbm_rashba_splitting": "KVP:cbm rashba splitting energy",
+        "energy_differnece": "KVP: energy difference between bulk and 1D",
     },
     "emasses": {
         'emass_vb_dir1':
