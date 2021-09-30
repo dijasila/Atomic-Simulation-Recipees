@@ -54,6 +54,16 @@ table.search {
 
       <table class="search">
         <tr>
+          <td>Calculations type</td><td>:</td>
+          <td>
+            <select name="calculator" class="ase-input ase-button">
+              <option value="all">All</option>
+              <option value="gpaw">PBE</option>
+              <option value="dftd3">PBED3</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
           <td>Materials type</td><td>:</td>
           <td>
             <select name="pbc" class="ase-input ase-button">
@@ -68,7 +78,7 @@ table.search {
           <td>
             <select name="Source" class="ase-input ase-button">
               <option value="all">All</option>
-              <option value="Drived by element substitution">Element substitution</option>
+              <option value="Derived by element substitution">Derived by element substitution</option>
               <option value="ICSD">ICSD</option>
               <option value="COD">COD</option>
             </select>
