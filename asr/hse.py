@@ -23,7 +23,7 @@ in post-process.""",
     )
 
     band_gap_adjectives = 'electronic single-particle'
-    summary_sort = 11
+    summary_sort = 9
 
     @staticmethod
     def plot_bs(row, filename):
@@ -225,7 +225,7 @@ def plot_bs(row,
 def webpanel(result, row, key_descriptions):
     from asr.utils.gw_hse import gw_hse_webpanel
     return gw_hse_webpanel(result, row, key_descriptions, HSEInfo(row),
-                           sort=15)
+                           sort=9)
 
 
 @prepare_result

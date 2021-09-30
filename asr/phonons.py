@@ -142,7 +142,7 @@ def webpanel(result, row, key_descriptions):
              'columns': [[fig('phonon_bs.png')], [phonontable]],
              'plot_descriptions': [{'function': plot_bandstructure,
                                     'filenames': ['phonon_bs.png']}],
-             'sort': 3}
+             'sort': 2}
 
     dynstab = row.get('dynamic_stability_phonons')
 
@@ -161,7 +161,7 @@ def webpanel(result, row, key_descriptions):
                 ]
             )
         ),
-        dynstab.upper()
+        #dynstab.upper()
     ]
 
     summary = {'title': 'Summary',

@@ -421,7 +421,7 @@ def webpanel(result, row, key_descriptions):
                                     'filenames': [bs_png]},
                                    {'function': plot_bs_html,
                                     'filenames': [bs_html]}],
-             'sort': 12}
+             'sort': 6}
 
     return [panel]
 

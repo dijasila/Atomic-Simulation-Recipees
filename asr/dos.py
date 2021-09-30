@@ -14,7 +14,7 @@ def webpanel(result, row, key_descriptions):
             columns=[[fig('dos.png')], []],
             plot_descriptions=[{'function': plot,
                                 'filenames': ['dos.png']}],
-            sort=3)
+            sort=4)
 
     return [panel]
 

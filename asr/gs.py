@@ -153,7 +153,7 @@ def webpanel(result, row, key_descriptions):
     panel = WebPanel(
         title=describe_entry(title, panel_description),
         columns=[[t], [fig('bz-with-gaps.png')]],
-        sort=10)
+        sort=5)
 
     description = _explain_bandgap(row, 'gap')
     datarow = [description, f'{result.gap:0.2f} eV']
@@ -171,7 +171,7 @@ def webpanel(result, row, key_descriptions):
         }]],
         plot_descriptions=[{'function': bz_with_band_extremums,
                             'filenames': ['bz-with-gaps.png']}],
-        sort=10)
+        sort=5)
 
     return [panel, summary]
 
