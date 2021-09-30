@@ -217,6 +217,8 @@ def handle_query(args):
     parts = []
     if args['query']:
         parts.append(args['query'])
+    if args['calculator'] != 'all':
+        parts.append('calculator=' + args['calculator'])
     if args['pbc'] != 'all':
         parts.append('pbc=' + args['pbc'])
     if args['Source'] != 'all':
