@@ -8,7 +8,8 @@ from ase.io import read
 from ase.db import connect
 from asr.core import chdir, read_json, ASRResult
 from asr.database.key_descriptions import key_descriptions as asr_kd
-from asr.database.material_fingerprint import get_uid_of_atoms, get_hash_of_atoms
+from asr.database.material_fingerprint import get_uid_of_atoms, \
+    get_hash_of_atoms
 from asr.database.check import main as check_database
 import multiprocessing
 from pathlib import Path
@@ -46,56 +47,56 @@ def parse_key_descriptions(key_descriptions):
     tmpkd = {}
 
     for key, desc in key_descriptions.items():
-        descdict = {
-            "type": None,
-            "iskvp": False,
-            "shortdesc": "",
-            "longdesc": "",
-            "units": "",
-        }
+        descdict = {'type': None,
+                    'iskvp': False,
+                    'shortdesc': '',
+                    'longdesc': '',
+                    'units': ''}
         if isinstance(desc, dict):
             descdict.update(desc)
             tmpkd[key] = desc
             continue
 
-        assert isinstance(desc, str), f"Key description has to be dict or str. ({desc})"
+        assert isinstance(desc, str), \
+            f'Key description has to be dict or str. ({desc})'
         # Get key type
-        desc, *keytype = desc.split("->")
+        desc, *keytype = desc.split('->')
         if keytype:
-            descdict["type"] = keytype
+            descdict['type'] = keytype
 
         # Is this a kvp?
-        iskvp = desc.startswith("KVP:")
-        descdict["iskvp"] = iskvp
-        desc = desc.replace("KVP:", "").strip()
+        iskvp = desc.startswith('KVP:')
+        descdict['iskvp'] = iskvp
+        desc = desc.replace('KVP:', '').strip()
 
         # Find units
         m = re.search(r"\[(.*)\]", desc)
-        unit = m.group(1) if m else ""
+        unit = m.group(1) if m else ''
         if unit:
-            descdict["units"] = unit
-        desc = desc.replace(f"[{unit}]", "").strip()
+            descdict['units'] = unit
+        desc = desc.replace(f'[{unit}]', '').strip()
 
         # Find short description
         m = re.search(r"\!(.*)\!", desc)
-        shortdesc = m.group(1) if m else ""
+        shortdesc = m.group(1) if m else ''
         if shortdesc:
-            descdict["shortdesc"] = shortdesc
+            descdict['shortdesc'] = shortdesc
 
         # Everything remaining is the long description
-        longdesc = desc.replace(f"!{shortdesc}!", "").strip()
+        longdesc = desc.replace(f'!{shortdesc}!', '').strip()
         if longdesc:
-            descdict["longdesc"] = longdesc
+            descdict['longdesc'] = longdesc
             if not shortdesc:
-                descdict["shortdesc"] = descdict["longdesc"]
+                descdict['shortdesc'] = descdict['longdesc']
         tmpkd[key] = descdict
 
     return tmpkd
 
 
 tmpkd = parse_key_descriptions(
-    {key: value for dct in asr_kd.values() for key, value in dct.items()}
-)
+    {key: value
+     for dct in asr_kd.values()
+     for key, value in dct.items()})
 
 
 def remove_bad_keys(kvp):
@@ -131,7 +132,10 @@ def get_key_value_pairs(resultsdct: dict):
     kvp = {}
     for key, desc in tmpkd.items():
         try:
-            if key in resultsdct and desc["iskvp"] and resultsdct[key] is not None:
+            if (
+                    key in resultsdct and desc['iskvp']
+                    and resultsdct[key] is not None
+            ):
                 kvp[key] = resultsdct[key]
         except TypeError:
             # Not iterable
@@ -160,40 +164,40 @@ def collect_file(filename: Path):
 
     """
     from asr.core import read_json
-
     data = {}
     results = read_json(filename)
     if isinstance(results, ASRResult):
-        dct = results.format_as("dict")
+        dct = results.format_as('dict')
     else:
         dct = results
 
     data[str(filename)] = dct
 
     # Find and try to collect related files for this resultsfile
-    files = results.get("__files__", {})
-    extra_files = results.get("__requires__", {}).copy()
-    extra_files.update(results.get("__creates__", {}))
+    files = results.get('__files__', {})
+    extra_files = results.get('__requires__', {}).copy()
+    extra_files.update(results.get('__creates__', {}))
 
     for extrafile, checksum in extra_files.items():
-        assert extrafile not in data, f"{extrafile} already collected!"
+        assert extrafile not in data, f'{extrafile} already collected!'
 
         if extrafile in files:
             continue
         file = Path(extrafile)
 
         if not file.is_file():
-            print(f"Warning: Required file {file.absolute()}" " doesn't exist.")
+            print(f'Warning: Required file {file.absolute()}'
+                  ' doesn\'t exist.')
             continue
 
-        if file.suffix == ".json":
+        if file.suffix == '.json':
             extra = read_json(extrafile)
             if isinstance(extra, ASRResult):
-                dct = extra.format_as("dict")
+                dct = extra.format_as('dict')
             else:
                 dct = extra
         else:
-            dct = {"pointer": str(file.absolute())}
+            dct = {'pointer': str(file.absolute())}
 
         data[extrafile] = dct
 
@@ -204,7 +208,6 @@ def collect_file(filename: Path):
 def collect_info(filename: Path):
     """Collect info.json."""
     from asr.core import read_json
-
     kvp = read_json(filename)
     kvp = remove_bad_keys(kvp)
     data = {str(filename): kvp}
@@ -253,9 +256,8 @@ def get_material_uid(atoms: Atoms):
     return get_uid_of_atoms(atoms, hash)
 
 
-def collect_folder(
-    folder: Path, atomsname: str, patterns: List[str] = [""], children_patterns=[]
-):
+def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
+                   children_patterns=[]):
     """Collect data from a material folder.
 
     Parameters
@@ -286,11 +288,11 @@ def collect_folder(
         atoms = read(atomsname, parallel=False)
 
         uid = get_material_uid(atoms)
-        kvp = {"folder": str(folder), "uid": uid}
-        data = {"__children__": {}}
+        kvp = {'folder': str(folder),
+               'uid': uid}
+        data = {'__children__': {}}
         data[atomsname] = read_json(atomsname)
         from asr.core.cache import get_cache
-
         cache = get_cache()
         if cache:
             sel = cache.make_selector()
@@ -299,45 +301,42 @@ def collect_folder(
             for record in records:
                 kvp.update(get_key_value_pairs(record.result))
             if records:
-                data["records"] = serializer.serialize(records)
+                data['records'] = serializer.serialize(records)
 
-        for name in Path().glob("*"):
-            if name.is_dir() and any(
-                fnmatch(name, pattern) for pattern in children_patterns
-            ):
+        for name in Path().glob('*'):
+            if name.is_dir() and any(fnmatch(name, pattern)
+                                     for pattern in children_patterns):
                 children = collect_links_to_child_folders(name, atomsname)
-                data["__children__"].update(children)
+                data['__children__'].update(children)
             else:
-                if name.is_file() and name.name == "info.json":
+                if name.is_file() and name.name == 'info.json':
                     tmpkvp, tmpdata = collect_info(name)
-                elif name.is_file() and any(
-                    fnmatch(name, pattern) for pattern in patterns
-                ):
+                elif name.is_file() and any(fnmatch(name, pattern)
+                                            for pattern in patterns):
                     tmpkvp, tmpdata = collect_file(name)
                 else:
                     continue
 
                 for key, value in tmpkvp.items():
                     # Skip values not suitable for a database column:
-                    if key == "folder":
+                    if key == 'folder':
                         continue
-                    if key == "etot":
+                    if key == 'etot':
                         # Clash between etot from relax and gs!
                         # What do we do about this?
                         continue
                     if isinstance(value, (bool, int, float, str)):
                         if key in kvp and kvp[key] != value:
                             raise ValueError(
-                                f"Found {key}={value} in {name}: "
-                                f"{key} already read once: "
-                                f"{key}={kvp[key]}"
-                            )
+                                f'Found {key}={value} in {name}: '
+                                f'{key} already read once: '
+                                f'{key}={kvp[key]}')
                         kvp[key] = value
 
                 data.update(tmpdata)
 
-        if not data["__children__"]:
-            del data["__children__"]
+        if not data['__children__']:
+            del data['__children__']
 
     return atoms, kvp, data
 
@@ -363,9 +362,9 @@ def make_data_identifiers(filenames: List[str]):
         i.e. {'has_asr_c2db_gs_calculate': True}.
     """
     kvp = {}
-    for key in filter(lambda x: x.startswith("results-"), filenames):
-        recipe = key[8:-5].replace(".", "_").replace("@", "_")
-        name = f"has_{recipe}"
+    for key in filter(lambda x: x.startswith('results-'), filenames):
+        recipe = key[8:-5].replace('.', '_').replace('@', '_')
+        name = f'has_{recipe}'
         kvp[name] = True
     return kvp
 
@@ -379,27 +378,27 @@ def recurse_through_folders(folder, atomsname):
     return folders
 
 
-def _collect_folders(
-    folders: List[str],
-    atomsname: str = None,
-    patterns: List[str] = None,
-    children_patterns: List[str] = None,
-    dbname: str = None,
-    jobid: int = None,
-):
+def _collect_folders(folders: List[str],
+                     atomsname: str = None,
+                     patterns: List[str] = None,
+                     children_patterns: List[str] = None,
+                     dbname: str = None,
+                     jobid: int = None):
     """Collect `myfolders` to `mydbname`."""
     nfolders = len(folders)
     with connect(dbname, serial=True) as db:
         for ifol, folder in enumerate(folders):
-            string = f"Collecting folder {folder} ({ifol + 1}/{nfolders})"
+            string = f'Collecting folder {folder} ({ifol + 1}/{nfolders})'
             if jobid is not None:
-                print(f"Subprocess #{jobid} {string}", flush=True)
+                print(f'Subprocess #{jobid} {string}', flush=True)
             else:
                 print(string)
 
             atoms, key_value_pairs, data = collect_folder(
-                Path(folder), atomsname, patterns, children_patterns=children_patterns
-            )
+                Path(folder),
+                atomsname,
+                patterns,
+                children_patterns=children_patterns)
 
             if atoms is None:
                 continue
@@ -409,21 +408,19 @@ def _collect_folders(
             try:
                 db.write(atoms, data=data, **key_value_pairs)
             except Exception:
-                print(f"folder={folder}")
-                print(f"atoms={atoms}")
-                print(f"data={data}")
-                print(f"kvp={key_value_pairs}")
+                print(f'folder={folder}')
+                print(f'atoms={atoms}')
+                print(f'data={data}')
+                print(f'kvp={key_value_pairs}')
                 raise
 
 
-def collect_folders(
-    folders: List[str],
-    atomsname: str = None,
-    patterns: List[str] = None,
-    children_patterns: List[str] = None,
-    dbname: str = None,
-    jobid: int = None,
-):
+def collect_folders(folders: List[str],
+                    atomsname: str = None,
+                    patterns: List[str] = None,
+                    children_patterns: List[str] = None,
+                    dbname: str = None,
+                    jobid: int = None):
     """Collect `myfolders` to `mydbname`.
 
     This wraps _collect_folders and handles printing exception traceback, which
@@ -431,87 +428,80 @@ def collect_folders(
 
     """
     try:
-        return _collect_folders(
-            folders=folders,
-            atomsname=atomsname,
-            patterns=patterns,
-            children_patterns=children_patterns,
-            dbname=dbname,
-            jobid=jobid,
-        )
+        return _collect_folders(folders=folders, atomsname=atomsname,
+                                patterns=patterns,
+                                children_patterns=children_patterns,
+                                dbname=dbname,
+                                jobid=jobid)
     except Exception:
         # Put all exception text into an exception and raise that
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
 
 
-def delegate_to_njobs(
-    njobs, dbpath, name, folders, atomsname, patterns, children_patterns, dbname
-):
-    print(f"Delegating database collection to {njobs} subprocesses.")
+def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
+                      patterns, children_patterns, dbname):
+    print(f'Delegating database collection to {njobs} subprocesses.')
     processes = []
     for jobid in range(njobs):
-        jobdbname = dbpath.parent / f"{name}.{jobid}.db"
+        jobdbname = dbpath.parent / f'{name}.{jobid}.db'
         proc = multiprocessing.Process(
             target=collect_folders,
-            args=(folders[jobid::njobs],),
+            args=(folders[jobid::njobs], ),
             kwargs={
-                "jobid": jobid,
-                "dbname": jobdbname,
-                "atomsname": atomsname,
-                "patterns": patterns,
-                "children_patterns": children_patterns,
-            },
-        )
+                'jobid': jobid,
+                'dbname': jobdbname,
+                'atomsname': atomsname,
+                'patterns': patterns,
+                'children_patterns': children_patterns
+            })
         processes.append(proc)
         proc.start()
 
     for jobid, proc in enumerate(processes):
         proc.join()
-        assert proc.exitcode == 0, f"Error in Job #{jobid}."
+        assert proc.exitcode == 0, f'Error in Job #{jobid}.'
 
     # Then we have to collect the separately collected databases
     # to a single final database file.
-    print(f"Merging separate database files to {dbname}", flush=True)
+    print(f'Merging separate database files to {dbname}',
+          flush=True)
     nmat = 0
     with connect(dbname, serial=True) as db2:
         for jobid in range(njobs):
-            jobdbname = f"{dbname}.{jobid}.db"
+            jobdbname = f'{dbname}.{jobid}.db'
             assert Path(jobdbname).is_file()
-            print(f"Merging {jobdbname} into {dbname}", flush=True)
-            with connect(f"{jobdbname}", serial=True) as db:
+            print(f'Merging {jobdbname} into {dbname}', flush=True)
+            with connect(f'{jobdbname}', serial=True) as db:
                 for row in db.select():
-                    kvp = row.get("key_value_pairs", {})
-                    data = row.get("data")
+                    kvp = row.get('key_value_pairs', {})
+                    data = row.get('data')
                     db2.write(row.toatoms(), data=data, **kvp)
                     nmat += 1
-    print("Done.", flush=True)
+    print('Done.', flush=True)
     nmatdb = len(db2)
-    assert nmatdb == nmat, (
-        "Merging of databases went wrong, "
-        f"number of materials changed: {nmatdb} != {nmat}"
-    )
+    assert nmatdb == nmat, \
+        ('Merging of databases went wrong, '
+         f'number of materials changed: {nmatdb} != {nmat}')
 
-    for name in Path().glob(f"{dbname}.*.db"):
+    for name in Path().glob(f'{dbname}.*.db'):
         name.unlink()
 
 
-def main(
-    folders: Union[str, None] = None,
-    recursive: bool = False,
-    children_patterns: str = "*",
-    patterns: str = "info.json,links.json,params.json",
-    dbname: str = "database.db",
-    njobs: int = 1,
-):
+def main(folders: Union[str, None] = None,
+         recursive: bool = False,
+         children_patterns: str = '*',
+         patterns: str = 'info.json,links.json,params.json',
+         dbname: str = 'database.db',
+         njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""
     from asr.database.key_descriptions import main as set_key_descriptions
 
     def item_show_func(item):
         return str(item)
 
-    atomsname = "structure.json"
+    atomsname = 'structure.json'
     if not folders:
-        folders = ["."]
+        folders = ['.']
     else:
         tmpfolders = []
         for folder in folders:
@@ -519,16 +509,16 @@ def main(
         folders = tmpfolders
 
     if recursive:
-        print("Recursing through folder tree...")
+        print('Recursing through folder tree...')
         newfolders = []
         for folder in folders:
             newfolders += recurse_through_folders(folder, atomsname)
         folders = newfolders
-        print("Done.")
+        print('Done.')
 
     folders.sort()
-    patterns = patterns.split(",")
-    children_patterns = children_patterns.split(",")
+    patterns = patterns.split(',')
+    children_patterns = children_patterns.split(',')
 
     # We use absolute path because of chdir in collect_folder()!
     dbpath = Path(dbname).absolute()
@@ -536,29 +526,26 @@ def main(
 
     # Delegate collection of database to subprocesses to reduce I/O time.
     if njobs > 1:
-        delegate_to_njobs(
-            njobs, dbpath, name, folders, atomsname, patterns, children_patterns, dbname
-        )
+        delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
+                          patterns, children_patterns, dbname)
     else:
-        _collect_folders(
-            folders,
-            jobid=None,
-            dbname=dbname,
-            atomsname=atomsname,
-            patterns=patterns,
-            children_patterns=children_patterns,
-        )
+        _collect_folders(folders,
+                         jobid=None,
+                         dbname=dbname,
+                         atomsname=atomsname,
+                         patterns=patterns,
+                         children_patterns=children_patterns)
 
     set_key_descriptions(dbname)
     results = check_database(dbname)
-    missing_child_uids = results["missing_child_uids"]
-    duplicate_uids = results["duplicate_uids"]
+    missing_child_uids = results['missing_child_uids']
+    duplicate_uids = results['duplicate_uids']
 
     if missing_child_uids:
         raise MissingUIDS(
-            "Missing child uids in collected database. "
-            "Did you collect all subfolders?"
-        )
+            'Missing child uids in collected database. '
+            'Did you collect all subfolders?')
 
     if duplicate_uids:
-        raise MissingUIDS("Duplicate uids in database.")
+        raise MissingUIDS(
+            'Duplicate uids in database.')
