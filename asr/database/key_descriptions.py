@@ -90,8 +90,10 @@ key_descriptions = {
         "E_z": "KVP: Soc. total energy, z-direction [eV/unit cell]",
         "theta": "Easy axis, polar coordinates, theta [radians]",
         "phi": "Easy axis, polar coordinates, phi [radians]",
-        "dE_zx": "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>) [meV/unit cell]",
-        "dE_zy": "KVP: Magnetic anisotropy (E<sub>z</sub> - E<sub>y</sub>) [meV/unit cell]",
+        "dE_zx": "KVP: Magnetic anisotropy (E<sub>z</sub> - "
+        "E<sub>x</sub>) [meV/unit cell]",
+        "dE_zy": "KVP: Magnetic anisotropy (E<sub>z</sub> - "
+        "E<sub>y</sub>) [meV/unit cell]",
     },
     "exchange": {
         "J": "KVP: Nearest neighbor exchange coupling [meV]",
@@ -223,17 +225,19 @@ for recipe in get_recipes():
 key_descriptions["extra"] = extras
 
 
-class KeyDescriptions:
-    def __init__(self, *key_descriptions: list[KeyDescription]):
-        self.key_descriptions = key_descriptions
-
-
 @dataclass
 class KeyDescription:
 
-    long: str
     short: str
+    long: str
     unit: str
+
+    def __getitem__(self, index):
+        return (self.short, self.long, self.unit)[index]
+
+
+class KeyDescriptions(dict):
+    ...
 
 
 def main(database: str) -> ASRResult:

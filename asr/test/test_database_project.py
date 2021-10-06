@@ -1,24 +1,16 @@
-from asr.database.project import make_project_from_config
-from asr.test.materials import BN, Si
+from asr.database.project import DatabaseProject
+from asr.database.key_descriptions import KeyDescription, KeyDescriptions
 
 
-def test_database_project():
-
-    no_grouping = lambda x, y: False
-
-    row_generator = [BN, Si]
-    make_key_value_pairs = lambda data: dict(natoms=len(data))
-    key_descriptions = {
-        "natoms": KeyDescription(long="Number of atoms", short="natoms", unit="Number")
-    }
-    project = make_project_from_config(
-        grouping=no_grouping,
-        get_rows=row_generator,
-        make_kvp=make_key_value_pairs,
+def test_simple_project():
+    key_descriptions = KeyDescriptions(
+        natoms=KeyDescription(long="Number of atoms", short="natoms", unit="Number")
     )
 
-    assert project.grouping == no_grouping
+    project = DatabaseProject(
+        name="Test database",
+        title="Title of test database",
+        key_descriptions=key_descriptions,
+    )
 
-    db = project.collect_database()
-
-    assert len(db) == 2
+    assert project.name == "Test database"

@@ -1,23 +1,25 @@
 """Database web application."""
-from typing import List
+import functools
 import multiprocessing
 import tempfile
-from pathlib import Path
 import warnings
 from contextlib import contextmanager
+from pathlib import Path
+from typing import List, Optional, TYPE_CHECKING
 
-from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json as flask_json
-from jinja2 import UndefinedError
 from ase.db import connect
-from ase import Atoms
-from ase.calculators.calculator import kptdensity2monkhorstpack
-from ase.geometry import cell_to_cellpar
-from ase.formula import Formula
 from ase.db.app import DBApp
+from flask import Response, jsonify, redirect, render_template, send_file
+from jinja2 import UndefinedError
 
 import asr
-from asr.core import ASRResult, decode_object, UnknownDataFormat
+import asr.database.browser as browser
+from asr.core import ASRResult, UnknownDataFormat, decode_object
+
+if TYPE_CHECKING:
+    from asr.database.project import DatabaseProject
+    from asr.database.key_descriptions import KeyDescriptions
 
 
 class ASRDBApp(DBApp):
@@ -26,25 +28,11 @@ class ASRDBApp(DBApp):
         super().__init__()
 
         self.flask.jinja_loader.searchpath.append(str(template_path))
-
         self.setup_app()
         self.setup_data_endpoints()
 
-    def initialize_project(self, project: DatabaseProject, pool=None):
-        from asr.database import browser
-        from functools import partial
-
-        db = connect(database, serial=True)
-        metadata = db.metadata
-        name = metadata.get("name", Path(database).name)
-
-        (self.tmpdir / name).mkdir()
-
-        def layout(*args, **kwargs):
-            return browser.layout(*args, pool=pool, **kwargs)
-
-        metadata = db.metadata
-        self.projects[name] = DatabaseProject.todict()
+    def initialize_project(self, database, project: "DatabaseProject"):
+        self.projects[project.name] = project.tospec(database)
 
     def setup_app(self):
         route = self.flask.route
@@ -159,10 +147,11 @@ def new_dbapp():
 
 
 def create_key_descriptions(db=None, extra_kvp_descriptions=None):
-    from asr.database.key_descriptions import key_descriptions
-    from asr.database.fromtree import parse_key_descriptions
-    from asr.core import read_json
     from ase.db.web import create_key_descriptions
+
+    from asr.core import read_json
+    from asr.database.fromtree import parse_key_descriptions
+    from asr.database.key_descriptions import key_descriptions
 
     flatten = {
         key: value
@@ -198,53 +187,29 @@ def create_key_descriptions(db=None, extra_kvp_descriptions=None):
         key: (desc["shortdesc"], desc["longdesc"], desc["units"])
         for key, desc in parse_key_descriptions(kd).items()
     }
+    key_descriptions = make_key_descriptions_from_old_format(
+        create_key_descriptions(kd)
+    )
+    return key_descriptions
 
-    return create_key_descriptions(kd)
 
+def make_key_descriptions_from_old_format(
+    key_descriptions: dict[str, tuple[str, str, str]]
+) -> "KeyDescriptions":
+    from asr.database.key_descriptions import KeyDescription, KeyDescriptions
 
-class Summary:
-    def __init__(self, row, key_descriptions, create_layout, prefix=""):
-        self.row = row
-
-        atoms = Atoms(cell=row.cell, pbc=row.pbc)
-        self.size = kptdensity2monkhorstpack(atoms, kptdensity=1.8, even=False)
-
-        self.cell = [["{:.3f}".format(a) for a in axis] for axis in row.cell]
-        par = ["{:.3f}".format(x) for x in cell_to_cellpar(row.cell)]
-        self.lengths = par[:3]
-        self.angles = par[3:]
-
-        stress = row.get("stress")
-        if stress is not None:
-            stress = ", ".join("{0:.3f}".format(s) for s in stress)
-        self.stress = stress
-
-        self.formula = Formula(row.formula).convert("metal").format("html")
-
-        kd = key_descriptions
-        self.layout = create_layout(row, kd, prefix)
-
-        dipole = row.get("dipole")
-        if dipole is not None:
-            dipole = ", ".join("{0:.3f}".format(d) for d in dipole)
-        self.dipole = dipole
-
-        data = row.get("data")
-        if data:
-            data = ", ".join(data)
-        self.data = data
-
-        constraints = row.get("constraints")
-        if constraints:
-            constraints = ", ".join(c.__class__.__name__ for c in self.constraints)
-        self.constraints = constraints
+    kd = {
+        key: KeyDescription(short=value[0], long=value[1], unit=value[2])
+        for key, value in key_descriptions.items()
+    }
+    return KeyDescriptions(kd)
 
 
 def main(
-    databases: List[DatabaseProject],
+    databases: List[str],
     host: str = "0.0.0.0",
     test: bool = False,
-    template_path: typing.Optional[Path] = None,
+    extra_kvp_descriptions: Optional[str] = None,
 ) -> ASRResult:
 
     # The app uses threads, and we cannot call matplotlib multithreadedly.
@@ -252,22 +217,28 @@ def main(
     # We could use more cores, but they tend to fail to close
     # correctly on KeyboardInterrupt.
     pool = multiprocessing.Pool(1)
-    with new_dbapp(template_path=template_path) as dbapp:
+    with new_dbapp() as dbapp:
         try:
-            _main(dbapp, databases, host, test, pool)
+            _main(dbapp, databases, host, test, extra_kvp_descriptions, pool)
         finally:
             pool.close()
             pool.join()
 
 
-def _main(dbapp, databases, host, test, pool):
-    projects = dbapp.projects
+def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
+
     for database in databases:
-        dbapp.initialize_project(database, pool)
+        add_database_to_app(
+            app=dbapp,
+            dbfile=database,
+            pool=pool,
+            extra_kvp_descriptions=extra_kvp_descriptions,
+        )
 
     flask = dbapp.flask
 
     if test:
+        projects = dbapp.projects
         import traceback
 
         flask.testing = True
@@ -307,3 +278,70 @@ def _main(dbapp, databases, host, test, pool):
                             print(exc)
     else:
         flask.run(host=host, debug=True)
+
+
+def add_database_to_app(
+    app: ASRDBApp,
+    dbfile: str,
+    pool: Optional[multiprocessing.Pool] = None,
+    extra_kvp_descriptions: str = None,
+):
+    tmpdir = get_app_tmpdir(app)
+    make_project_tempdir(dbfile, tmpdir)
+    name = get_project_name(dbfile)
+    database = connect_to_database(dbfile)
+    project = make_database_project(
+        name, pool, tmpdir, database, extra_kvp_descriptions
+    )
+    app.initialize_project(database, project)
+
+
+def get_app_tmpdir(app):
+    tmpdir = app.tmpdir
+    return tmpdir
+
+
+def make_database_project(name, pool, tmpdir, db, extra_kvp_descriptions):
+    from asr.database.project import make_project_from_database_metadata
+
+    row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
+    key_descriptions = create_key_descriptions(db, extra_kvp_descriptions)
+    project = make_project_from_database_metadata(
+        db.metadata,
+        key_descriptions=key_descriptions,
+        name=name,
+        row_to_dict_function=row_to_dict_function,
+    )
+    return project
+
+
+def connect_to_database(dbfile):
+    db = connect(dbfile, serial=True)
+    return db
+
+
+def make_project_tempdir(dbfile, tmpdir):
+    name = get_project_name(dbfile)
+    (tmpdir / name).mkdir()
+
+
+def get_project_name(dbfile):
+    name = Path(dbfile).name
+    return name
+
+
+def make_row_to_dict_function(pool, tmpdir):
+    """Make a special row_to_dict function.
+
+    Udd´ses a pool for figure creation and places figures in tmpdir.
+    """
+
+    def layout(*args, **kwargs):
+        return browser.layout(*args, pool=pool, **kwargs)
+
+    row_to_dict_function = functools.partial(
+        browser.row_to_dict,
+        layout_function=layout,
+        tmpdir=tmpdir,
+    )
+    return row_to_dict_function
