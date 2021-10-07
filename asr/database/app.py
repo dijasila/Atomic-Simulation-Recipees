@@ -21,11 +21,12 @@ from asr.core import ASRResult, decode_object, UnknownDataFormat
 
 
 class ASRDBApp(DBApp):
-    def __init__(self, tmpdir, template_):
+    def __init__(self, tmpdir, template_path=None):
         self.tmpdir = tmpdir  # used to cache png-files
         super().__init__()
 
-        template_path = Path(asr.__file__).parent.parent
+        if template_path is None:
+            template_path = Path(asr.__file__).parent.parent
         self.flask.jinja_loader.searchpath.append(  # pylint: disable=no-member
             str(template_path)
         )
