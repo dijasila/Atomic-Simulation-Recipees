@@ -38,20 +38,7 @@ class ASRDBApp(DBApp):
         db = connect(database, serial=True)
         metadata = db.metadata
         name = metadata.get("name", Path(database).name)
-
-        (self.tmpdir / name).mkdir()
-
-        def layout(*args, **kwargs):
-            return browser.layout(*args, pool=pool, **kwargs)
-
-        metadata = db.metadata
-        row_to_dict_function = (
-            partial(
-                row_to_dict,
-                layout_function=layout,
-                tmpdir=self.tmpdir,
-            ),
-        )
+        row_to_dict_function = self.make_row_to_dict_function(pool)
         key_descriptions = create_key_descriptions(db, extra_kvp_descriptions)
         title = metadata.get("title", name)
         uid_key = metadata.get("uid", "uid")
@@ -81,6 +68,20 @@ class ASRDBApp(DBApp):
             "search_template": search_template,
             "row_template": row_template,
         }
+        (self.tmpdir / name).mkdir()
+
+    def make_row_to_dict_function(self, pool):
+        def layout(*args, **kwargs):
+            return browser.layout(*args, pool=pool, **kwargs)
+
+        row_to_dict_function = (
+            partial(
+                row_to_dict,
+                layout_function=layout,
+                tmpdir=self.tmpdir,
+            ),
+        )
+        return row_to_dict_function
 
     def setup_app(self):
         route = self.flask.route
