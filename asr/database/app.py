@@ -26,20 +26,30 @@ class ASRDBApp(DBApp):
         super().__init__()
 
         template_path = Path(asr.__file__).parent.parent
-        self.flask.jinja_loader.searchpath.append(str(template_path))
+        self.flask.jinja_loader.searchpath.append(  # pylint: disable=no-member
+            str(template_path)
+        )
 
         self.setup_app()
         self.setup_data_endpoints()
 
     def initialize_project(self, database, extra_kvp_descriptions=None, pool=None):
-        from asr.database import browser
-        from functools import partial
+        from asr.core import read_json
+
+        if (
+            extra_kvp_descriptions is not None
+            and Path(extra_kvp_descriptions).is_file()
+        ):
+            extras = read_json(extra_kvp_descriptions)
+        else:
+            extras = None
 
         db = connect(database, serial=True)
         metadata = db.metadata
         name = metadata.get("name", Path(database).name)
         row_to_dict_function = self.make_row_to_dict_function(pool)
-        key_descriptions = create_key_descriptions(db, extra_kvp_descriptions)
+
+        key_descriptions = create_key_descriptions(db, extras)
         title = metadata.get("title", name)
         uid_key = metadata.get("uid", "uid")
         default_columns = metadata.get("default_columns", ["formula", "uid"])
@@ -71,15 +81,16 @@ class ASRDBApp(DBApp):
         (self.tmpdir / name).mkdir()
 
     def make_row_to_dict_function(self, pool):
+        from asr.database import browser
+        from functools import partial
+
         def layout(*args, **kwargs):
             return browser.layout(*args, pool=pool, **kwargs)
 
-        row_to_dict_function = (
-            partial(
-                row_to_dict,
-                layout_function=layout,
-                tmpdir=self.tmpdir,
-            ),
+        row_to_dict_function = partial(
+            row_to_dict,
+            layout_function=layout,
+            tmpdir=self.tmpdir,
         )
         return row_to_dict_function
 
@@ -198,7 +209,6 @@ def new_dbapp():
 def create_key_descriptions(db=None, extra_kvp_descriptions=None):
     from asr.database.key_descriptions import key_descriptions
     from asr.database.fromtree import parse_key_descriptions
-    from asr.core import read_json
     from ase.db.web import create_key_descriptions
 
     flatten = {
@@ -207,9 +217,8 @@ def create_key_descriptions(db=None, extra_kvp_descriptions=None):
         for key, value in dct.items()
     }
 
-    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
-        extras = read_json(extra_kvp_descriptions)
-        flatten.update(extras)
+    if extra_kvp_descriptions is not None:
+        flatten.update(extra_kvp_descriptions)
 
     if db is not None:
         metadata = db.metadata
