@@ -45,31 +45,41 @@ class ASRDBApp(DBApp):
             return browser.layout(*args, pool=pool, **kwargs)
 
         metadata = db.metadata
-        self.projects[name] = {
-            "name": name,
-            "title": metadata.get("title", name),
-            "key_descriptions": create_key_descriptions(db, extra_kvp_descriptions),
-            "uid_key": metadata.get("uid", "uid"),
-            "database": db,
-            "handle_query_function": args2query,
-            "row_to_dict_function": partial(
+        row_to_dict_function = (
+            partial(
                 row_to_dict,
                 layout_function=layout,
                 tmpdir=self.tmpdir,
             ),
-            "default_columns": metadata.get("default_columns", ["formula", "uid"]),
-            "table_template": str(
-                metadata.get(
-                    "table_template",
-                    "asr/database/templates/table.html",
-                )
-            ),
-            "search_template": str(
-                metadata.get("search_template", "asr/database/templates/search.html")
-            ),
-            "row_template": str(
-                metadata.get("row_template", "asr/database/templates/row.html")
-            ),
+        )
+        key_descriptions = create_key_descriptions(db, extra_kvp_descriptions)
+        title = metadata.get("title", name)
+        uid_key = metadata.get("uid", "uid")
+        default_columns = metadata.get("default_columns", ["formula", "uid"])
+        table_template = str(
+            metadata.get(
+                "table_template",
+                "asr/database/templates/table.html",
+            )
+        )
+        search_template = str(
+            metadata.get("search_template", "asr/database/templates/search.html")
+        )
+        row_template = str(
+            metadata.get("row_template", "asr/database/templates/row.html")
+        )
+        self.projects[name] = {
+            "name": name,
+            "title": title,
+            "key_descriptions": key_descriptions,
+            "uid_key": uid_key,
+            "database": db,
+            "handle_query_function": args2query,
+            "row_to_dict_function": row_to_dict_function,
+            "default_columns": default_columns,
+            "table_template": table_template,
+            "search_template": search_template,
+            "row_template": row_template,
         }
 
     def setup_app(self):
