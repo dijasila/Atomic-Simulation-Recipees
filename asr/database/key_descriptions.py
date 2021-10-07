@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-from asr.core import get_recipes, ASRResult
+from typing import Dict, Tuple, Union
+
 from asr.c2db.dimensionality import get_dimtypes
+from asr.core import ASRResult, get_recipes
 
 # Style: "KVP: Long description !short description! [unit]
 
@@ -238,6 +240,34 @@ class KeyDescription:
 
 class KeyDescriptions(dict):
     ...
+
+
+def make_key_descriptions(
+    kd: Union[KeyDescriptions, Dict[str, Tuple[str, str, str]]]
+) -> KeyDescriptions:
+    """Make key descriptions.
+
+    Parameters
+    ----------
+    kd : Union[KeyDescriptions, Dict[str, Tuple[str, str, str]]]
+        Either a KeyDescriptions object (in which case nothing is done) or an
+        "old-style" key descriptions format which will then be converted to a
+        KeyDescriptions object.
+
+    Returns
+    -------
+    KeyDescriptions
+        The key descriptions
+    """
+    if isinstance(kd, KeyDescriptions):
+        return kd
+
+    return KeyDescriptions(
+        **{
+            key: KeyDescription(short=value[0], long=value[1], unit=value[2])
+            for key, value in kd.items()
+        }
+    )
 
 
 def main(database: str) -> ASRResult:

@@ -23,6 +23,11 @@ if TYPE_CHECKING:
 
 
 class ASRDBApp(DBApp):
+    """The ASR database app.
+
+    An app that can be used to inspect multiple database projects.
+    """
+
     def __init__(self, tmpdir, template_path: Path = Path(asr.__file__).parent.parent):
         self.tmpdir = tmpdir  # used to cache png-files
         super().__init__()
@@ -31,7 +36,19 @@ class ASRDBApp(DBApp):
         self.setup_app()
         self.setup_data_endpoints()
 
-    def initialize_project(self, database, project: "DatabaseProject"):
+    def run(self, host, debug):
+        """Start the app.
+
+        Parameters
+        ----------
+        host : int.int.int.int
+            The host adress, eg. 0.0.0.0
+        debug : bool
+            Start in debug mode
+        """
+        self.flask.run(host=host, debug=debug)
+
+    def add_project(self, database, project: "DatabaseProject"):
         self.projects[project.name] = project.tospec(database)
 
     def setup_app(self):
@@ -290,10 +307,10 @@ def add_database_to_app(
     make_project_tempdir(dbfile, tmpdir)
     name = get_project_name(dbfile)
     database = connect_to_database(dbfile)
-    project = make_database_project(
+    project = make_asr_project_description_with_special_row_to_dict_function(
         name, pool, tmpdir, database, extra_kvp_descriptions
     )
-    app.initialize_project(database, project)
+    app.add_project(database, project)
 
 
 def get_app_tmpdir(app):
@@ -301,7 +318,9 @@ def get_app_tmpdir(app):
     return tmpdir
 
 
-def make_database_project(name, pool, tmpdir, db, extra_kvp_descriptions):
+def make_asr_project_description_with_special_row_to_dict_function(
+    name, pool, tmpdir, db, extra_kvp_descriptions
+):
     from asr.database.project import make_project_from_database_metadata
 
     row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
@@ -345,3 +364,7 @@ def make_row_to_dict_function(pool, tmpdir):
         tmpdir=tmpdir,
     )
     return row_to_dict_function
+
+
+# XXX: Templates probably cannot be found when they don't exist within ASE and ASR
+#  so the path of the current directory should probably be added to the template paths.
