@@ -44,7 +44,8 @@ class DatabaseProject:
 
     def tospec(self) -> dict:
         """Compile dict spec for "database" useful for ASE web application."""
-        return self.__dict__
+        spec = {**self.__dict__}
+        return spec
 
 
 def make_project_from_database_metadata(

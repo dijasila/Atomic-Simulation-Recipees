@@ -35,11 +35,14 @@ class ASRDBApp(DBApp):
         self.setup_data_endpoints()
 
     def initialize_project(self, database, extra_kvp_descriptions=None, pool=None):
-        project = self.get_project_from_database(extra_kvp_descriptions, database, pool)
-        self.projects[project.name] = project.tospec()
+        row_to_dict_function = self.make_row_to_dict_function(pool)
+        project = self.get_project_from_database(extra_kvp_descriptions, database)
+        spec = project.tospec()
+        spec["row_to_dict_function"] = row_to_dict_function
+        self.projects[project.name] = spec
         (self.tmpdir / project.name).mkdir()
 
-    def get_project_from_database(self, extra_kvp_descriptions, database, pool):
+    def get_project_from_database(self, extra_kvp_descriptions, database):
         from asr.core import read_json
 
         if (
@@ -53,7 +56,6 @@ class ASRDBApp(DBApp):
         db = connect(database, serial=True)
         metadata = db.metadata
         name = metadata.get("name", Path(database).name)
-        row_to_dict_function = self.make_row_to_dict_function(pool)
 
         key_descriptions = create_key_descriptions(db, extras)
         title = metadata.get("title", name)
@@ -80,7 +82,6 @@ class ASRDBApp(DBApp):
             key_descriptions=key_descriptions,
             uid_key=uid_key,
             database=db,
-            row_to_dict_function=row_to_dict_function,
             default_columns=default_columns,
             table_template=table_template,
             search_template=search_template,
