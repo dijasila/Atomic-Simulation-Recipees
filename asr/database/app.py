@@ -65,24 +65,29 @@ class ASRDBApp(DBApp):
         row_template = str(
             metadata.get("row_template", "asr/database/templates/row.html")
         )
-        self.projects[name] = {
-            "name": name,
-            "title": title,
-            "key_descriptions": key_descriptions,
-            "uid_key": uid_key,
-            "database": db,
-            "handle_query_function": args2query,
-            "row_to_dict_function": row_to_dict_function,
-            "default_columns": default_columns,
-            "table_template": table_template,
-            "search_template": search_template,
-            "row_template": row_template,
-        }
+
+        from asr.database.project import DatabaseProject
+
+        project = DatabaseProject(
+            name=name,
+            title=title,
+            key_descriptions=key_descriptions,
+            uid_key=uid_key,
+            database=db,
+            row_to_dict_function=row_to_dict_function,
+            default_columns=default_columns,
+            table_template=table_template,
+            search_template=search_template,
+            row_template=row_template,
+        )
+
+        self.projects[project.name] = project.tospec()
         (self.tmpdir / name).mkdir()
 
     def make_row_to_dict_function(self, pool):
         from asr.database import browser
         from functools import partial
+        from asr.database.project import row_to_dict
 
         def layout(*args, **kwargs):
             return browser.layout(*args, pool=pool, **kwargs)
@@ -283,22 +288,6 @@ class Summary:
         if constraints:
             constraints = ", ".join(c.__class__.__name__ for c in self.constraints)
         self.constraints = constraints
-
-
-def args2query(args):
-    return args["query"]
-
-
-def row_to_dict(row, project, layout_function, tmpdir):
-    project_name = project["name"]
-    uid = row.get(project["uid_key"])
-    s = Summary(
-        row,
-        create_layout=layout_function,
-        key_descriptions=project["key_descriptions"],
-        prefix=str(tmpdir / f"{project_name}/{uid}-"),
-    )
-    return s
 
 
 def main(
