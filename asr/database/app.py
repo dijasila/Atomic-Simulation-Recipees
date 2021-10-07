@@ -21,7 +21,7 @@ from asr.core import ASRResult, decode_object, UnknownDataFormat
 
 
 class ASRDBApp(DBApp):
-    def __init__(self, tmpdir):
+    def __init__(self, tmpdir, template_):
         self.tmpdir = tmpdir  # used to cache png-files
         super().__init__()
 
@@ -34,6 +34,11 @@ class ASRDBApp(DBApp):
         self.setup_data_endpoints()
 
     def initialize_project(self, database, extra_kvp_descriptions=None, pool=None):
+        project = self.get_project_from_database(extra_kvp_descriptions, database, pool)
+        self.projects[project.name] = project.tospec()
+        (self.tmpdir / project.name).mkdir()
+
+    def get_project_from_database(self, extra_kvp_descriptions, database, pool):
         from asr.core import read_json
 
         if (
@@ -80,9 +85,7 @@ class ASRDBApp(DBApp):
             search_template=search_template,
             row_template=row_template,
         )
-
-        self.projects[project.name] = project.tospec()
-        (self.tmpdir / name).mkdir()
+        return project
 
     def make_row_to_dict_function(self, pool):
         from asr.database import browser
