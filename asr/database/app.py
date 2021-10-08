@@ -35,27 +35,12 @@ class ASRDBApp(DBApp):
         self.setup_data_endpoints()
 
     def initialize_project(self, database, extra_kvp_descriptions=None, pool=None):
-        row_to_dict_function = self.make_row_to_dict_function(pool)
+        row_to_dict_function = make_row_to_dict_function(pool, self.tmpdir)
         project = get_project_from_database(extra_kvp_descriptions, database)
+        project.row_to_dict_function = row_to_dict_function
         spec = project.tospec()
-        spec["row_to_dict_function"] = row_to_dict_function
         self.projects[project.name] = spec
         (self.tmpdir / project.name).mkdir()
-
-    def make_row_to_dict_function(self, pool):
-        from asr.database import browser
-        from functools import partial
-        from asr.database.project import row_to_dict
-
-        def layout(*args, **kwargs):
-            return browser.layout(*args, pool=pool, **kwargs)
-
-        row_to_dict_function = partial(
-            row_to_dict,
-            layout_function=layout,
-            tmpdir=self.tmpdir,
-        )
-        return row_to_dict_function
 
     def setup_app(self):
         route = self.flask.route
@@ -209,6 +194,22 @@ def create_key_descriptions(db=None, extra_kvp_descriptions=None):
     }
 
     return create_key_descriptions(kd)
+
+
+def make_row_to_dict_function(pool, tmpdir):
+    from asr.database import browser
+    from functools import partial
+    from asr.database.project import row_to_dict
+
+    def layout(*args, **kwargs):
+        return browser.layout(*args, pool=pool, **kwargs)
+
+    row_to_dict_function = partial(
+        row_to_dict,
+        layout_function=layout,
+        tmpdir=tmpdir,
+    )
+    return row_to_dict_function
 
 
 def get_project_from_database(extra_kvp_descriptions, database):
