@@ -18,6 +18,7 @@ from asr.core.dependencies import Dependencies
 def mockgpaw(monkeypatch):
     """Fixture that mocks up GPAW."""
     import sys
+
     monkeypatch.syspath_prepend(Path(__file__).parent.resolve() / "mocks")
     for module in list(sys.modules):
         if "gpaw" in module:
@@ -43,14 +44,14 @@ VARIOUS_OBJECT_TYPES = [
     1 + 1j,
     1e20,
     1e-17,
-    'a',
-    (1, 'a'),
-    [1, 'a'],
-    [1, (1, 'abc', [1.0, ('a', )])],
+    "a",
+    (1, "a"),
+    [1, "a"],
+    [1, (1, "abc", [1.0, ("a",)])],
     np.array([1.1, 2.0], float),
     BN,
-    set(['a', 1, '2']),
-    Path('directory1/directory2/file.txt'),
+    set(["a", 1, "2"]),
+    Path("directory1/directory2/file.txt"),
     datetime.datetime.now(),
     Dependencies([]),
 ]
@@ -59,8 +60,9 @@ VARIOUS_OBJECT_TYPES = [
 @pytest.fixture
 def external_file(asr_tmpdir):
     from asr.core import ExternalFile
-    filename = 'somefile.txt'
-    Path(filename).write_text('sometext')
+
+    filename = "somefile.txt"
+    Path(filename).write_text("sometext")
     return ExternalFile.fromstr(filename)
 
 
@@ -78,6 +80,7 @@ def asr_tmpdir(request, tmp_path_factory):
     the current working directory to it for isolated filesystem tests.
     """
     from ase.utils import workdir
+
     if world.rank == 0:
         path = _mk_tmp(request, tmp_path_factory)
     else:
@@ -91,20 +94,24 @@ def asr_tmpdir(request, tmp_path_factory):
         yield path
 
 
-def _get_webcontent(dbname='database.db'):
+def _get_webcontent(dbname="database.db"):
     from asr.database.fromtree import main as fromtree
+
     # from asr.database.material_fingerprint import main as mf
 
     # mf()
     fromtree(recursive=True)
     content = ""
-    from asr.database.app import ASRDBApp
+    from asr.database.app import ASRDBApp, make_project
 
     if world.rank == 0:
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
         dbapp = ASRDBApp(tmpdir)
-        dbapp.initialize_project(dbname)
+        project = make_project(
+            dbname, dbapp.tmpdir, extra_kvp_descriptions=None, pool=None
+        )
+        dbapp.initialize_project(project)
         flask = dbapp.flask
 
         flask.testing = True
@@ -116,11 +123,7 @@ def _get_webcontent(dbname='database.db'):
             uid = row.get(uid_key)
             url = f"/database.db/row/{uid}"
             content = c.get(url).data.decode()
-            content = (
-                content
-                .replace("\n", "")
-                .replace(" ", "")
-            )
+            content = content.replace("\n", "").replace(" ", "")
     else:
         content = None
     content = broadcast(content)
@@ -157,43 +160,43 @@ def asr_tmpdir_w_params(asr_tmpdir):
         "xc": "PBE",
     }
     params = {
-        'asr.c2db.gs:calculate': {
-            'calculator': fast_calc,
+        "asr.c2db.gs:calculate": {
+            "calculator": fast_calc,
         },
-        'asr.c2db.gs': {
-            'calculator': fast_calc,
+        "asr.c2db.gs": {
+            "calculator": fast_calc,
         },
-        'asr.c2db.bandstructure': {
-            'npoints': 10,
-            'calculator': fast_calc,
+        "asr.c2db.bandstructure": {
+            "npoints": 10,
+            "calculator": fast_calc,
         },
-        'asr.hse': {
-            'calculator': fast_calc,
-            'kptdensity': 2,
+        "asr.hse": {
+            "calculator": fast_calc,
+            "kptdensity": 2,
         },
-        'asr.c2db.gw:gs': {
-            'kptdensity': 2,
+        "asr.c2db.gw:gs": {
+            "kptdensity": 2,
         },
-        'asr.bse:calculate': {
-            'kptdensity': 2,
+        "asr.bse:calculate": {
+            "kptdensity": 2,
         },
-        'asr.c2db.pdos:calculate': {
-            'kptdensity': 2,
-            'emptybands': 5,
+        "asr.c2db.pdos:calculate": {
+            "kptdensity": 2,
+            "emptybands": 5,
         },
-        'asr.c2db.piezoelectrictensor': {
-            'calculator': fast_calc,
-            'relaxcalculator': fast_calc
+        "asr.c2db.piezoelectrictensor": {
+            "calculator": fast_calc,
+            "relaxcalculator": fast_calc,
         },
-        'asr.c2db.formalpolarization': {
-            'calculator': {
+        "asr.c2db.formalpolarization": {
+            "calculator": {
                 "name": "gpaw",
                 "kpts": {"density": 2},
             },
         },
     }
 
-    write_json('params.json', params)
+    write_json("params.json", params)
 
 
 @pytest.fixture(params=std_test_materials)
@@ -207,8 +210,8 @@ def duplicates_test_db(request, asr_tmpdir):
     db.write(atoms=atoms)
 
     rotated_atoms = atoms.copy()
-    rotated_atoms.rotate(23, v='z', rotate_cell=True)
-    db.write(atoms=rotated_atoms, magstate='FM')
+    rotated_atoms.rotate(23, v="z", rotate_cell=True)
+    db.write(atoms=rotated_atoms, magstate="FM")
 
     pbc_c = atoms.get_pbc()
     repeat = np.array([2, 2, 2], int)
@@ -237,8 +240,8 @@ def duplicates_test_db(request, asr_tmpdir):
 @pytest.fixture
 def record(various_object_types):
     run_spec = construct_run_spec(
-        name='asr.test',
-        parameters={'a': 1},
+        name="asr.test",
+        parameters={"a": 1},
         version=0,
     )
     run_record = Record(
@@ -250,7 +253,7 @@ def record(various_object_types):
 
 @pytest.fixture
 def fscache(asr_tmpdir):
-    cache = get_cache('filesystem')
+    cache = get_cache("filesystem")
     return cache
 
 
@@ -264,38 +267,42 @@ def crosslinks_test_dbs(asr_tmpdir):
     from asr.database.treelinks import main as treelinks
     from asr.database.fromtree import main as fromtree
 
-    write('structure.json', std_test_materials[0])
-    p = Path('.')
+    write("structure.json", std_test_materials[0])
+    p = Path(".")
 
     for i in range(1, len(std_test_materials)):
-        dirpath = Path(p / f'folder_{i - 1}')
+        dirpath = Path(p / f"folder_{i - 1}")
         dirpath.mkdir()
-        write(dirpath / 'structure.json', std_test_materials[i])
+        write(dirpath / "structure.json", std_test_materials[i])
 
-    pathlist = list(p.glob('folder_*'))
+    pathlist = list(p.glob("folder_*"))
     for path in pathlist:
         with chdir(path):
-            material_fingerprint(atoms=read('structure.json'))
-    material_fingerprint(atoms=read('structure.json'))
+            material_fingerprint(atoms=read("structure.json"))
+    material_fingerprint(atoms=read("structure.json"))
 
     # run asr.database.treelinks to create results and links.json files
-    treelinks(include=['folder_*'], exclude=[''])
+    treelinks(include=["folder_*"], exclude=[""])
 
     # first, create one database based on the tree structure
-    fromtree(recursive=True, dbname='db.db')
+    fromtree(recursive=True, dbname="db.db")
     # second, create one database with only the parent structure present
-    fromtree(recursive=True, dbname='dbref.db')
+    fromtree(recursive=True, dbname="dbref.db")
 
     # set metadata in such a way that asr.database.crosslinks can work correctly
-    db = connect('db.db')
+    db = connect("db.db")
     db.delete([1])
-    dbref = connect('dbref.db')
+    dbref = connect("dbref.db")
     dbref.delete([2, 3, 4])
-    db.metadata = {'title': 'Example DB',
-                   'link_name': '{row.formula}-{row.uid}',
-                   'link_url': 'test/test/{row.uid}'}
-    dbref.metadata = {'title': 'Example Reference DB',
-                      'link_name': '{row.uid}-{row.formula}',
-                      'link_url': 'testref/testref/{row.uid}'}
+    db.metadata = {
+        "title": "Example DB",
+        "link_name": "{row.formula}-{row.uid}",
+        "link_url": "test/test/{row.uid}",
+    }
+    dbref.metadata = {
+        "title": "Example Reference DB",
+        "link_name": "{row.uid}-{row.formula}",
+        "link_url": "testref/testref/{row.uid}",
+    }
 
     return None

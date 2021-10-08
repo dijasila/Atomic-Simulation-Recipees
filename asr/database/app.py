@@ -34,10 +34,7 @@ class ASRDBApp(DBApp):
         self.setup_app()
         self.setup_data_endpoints()
 
-    def initialize_project(self, database, extra_kvp_descriptions=None, pool=None):
-        row_to_dict_function = make_row_to_dict_function(pool, self.tmpdir)
-        project = get_project_from_database(extra_kvp_descriptions, database)
-        project.row_to_dict_function = row_to_dict_function
+    def initialize_project(self, project):
         spec = project.tospec()
         self.projects[project.name] = spec
         (self.tmpdir / project.name).mkdir()
@@ -312,15 +309,23 @@ def main(
             pool.join()
 
 
-def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
-    projects = dbapp.projects
-    for database in databases:
-        dbapp.initialize_project(database, extra_kvp_descriptions, pool)
+def make_project(database, tmpdir, extra_kvp_descriptions=None, pool=None):
+    row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
+    project = get_project_from_database(extra_kvp_descriptions, database)
+    project.row_to_dict_function = row_to_dict_function
+    return project
 
+
+def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
+    for database in databases:
+        project = make_project(database, dbapp.tmpdir, extra_kvp_descriptions, pool)
+        dbapp.initialize_project(project)
     flask = dbapp.flask
 
     if test:
         import traceback
+
+        projects = dbapp.projects
 
         flask.testing = True
         with flask.test_client() as c:
