@@ -1,4 +1,5 @@
 """Define an object that represents a database project."""
+import runpy
 import typing
 from dataclasses import dataclass, field
 
@@ -150,3 +151,31 @@ def make_project_description(
         search_template=search_template,
         row_template=row_template,
     )
+
+
+def get_project_from_path(path: str) -> DatabaseProject:
+    module = runpy.run_path(str(path))
+    return get_project_from_namespace(module)
+
+
+def get_project_from_namespace(namespace):
+    values = {}
+    keys = set(
+        "name",
+        "title",
+        "database",
+        "key_descriptions",
+        "uid_key",
+        "handle_query_function",
+        "row_to_dict_function",
+        "default_columns",
+        "table_template",
+        "search_template",
+        "row_template",
+    )
+
+    for key in keys:
+        if hasattr(namespace, key):
+            value = getattr(namespace, key)
+            values[key] = value
+    return make_project_description(**values)

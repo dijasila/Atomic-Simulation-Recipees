@@ -1,5 +1,5 @@
 """Database web application."""
-from typing import List
+from typing import List, TYPE_CHECKING
 import multiprocessing
 import tempfile
 from pathlib import Path
@@ -18,6 +18,10 @@ from ase.db.app import DBApp
 
 import asr
 from asr.core import ASRResult, decode_object, UnknownDataFormat
+
+
+if TYPE_CHECKING:
+    from asr.database.project import DatabaseProject
 
 
 class ASRDBApp(DBApp):
@@ -48,9 +52,27 @@ class ASRDBApp(DBApp):
         self.flask.run(host=host, debug=debug)
 
     def initialize_project(self, project):
+        """Initialize a single project.
+
+        Parameters
+        ----------
+        project : DatabaseProject
+            The project to be initialized.
+        """
         spec = project.tospec()
         self.projects[project.name] = spec
         (self.tmpdir / project.name).mkdir()
+
+    def initialize_projects(self, projects: List["DatabaseProject"]):
+        """Initialize multiple projects.
+
+        Parameters
+        ----------
+        projects : List["DatabaseProject"]
+            Databases to be initializd
+        """
+        for project in projects:
+            self.initialize_project(project)
 
     def setup_app(self):
         route = self.flask.route
@@ -330,41 +352,58 @@ def main(
             pool.join()
 
 
-def make_project(
-    database, tmpdir, key_descriptions=None, extra_kvp_descriptions_file=None, pool=None
-):
-
-    key_descriptions = {**key_descriptions, **extras}
+def make_project(database, tmpdir, key_descriptions=None, pool=None):
     project = get_project_from_database(database, key_descriptions=key_descriptions)
     row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
     project.row_to_dict_function = row_to_dict_function
     return project
 
 
-def _main(dbapp, databases, host, test, extra_kvp_descriptions_file, pool):
-    from asr.core import read_json
-    for database in databases:
-        key_descriptions = None
+def _main(dbapp, filenames, host, test, extra_kvp_descriptions_file, pool):
 
-        if key_descriptions is None:
-            key_descriptions = {}
+    projects = convert_files_to_projects(
+        filenames, extra_kvp_descriptions_file, dbapp, pool
+    )
 
-        if (
-            extra_kvp_descriptions_file is not None
-            and Path(extra_kvp_descriptions_file).is_file()
-        ):
-            extras = read_json(extra_kvp_descriptions_file)
-        else:
-            extras = {}
-        project = make_project(
-            database, dbapp.tmpdir, key_descriptions, extra_kvp_descriptions_file, pool
-        )
+    for project in projects:
         dbapp.initialize_project(project)
 
     if test:
         check_rows_of_all_projects(dbapp)
     else:
         dbapp.run(host=host, debug=True)
+
+
+def convert_files_to_projects(filenames, extra_kvp_descriptions_file, dbapp, pool):
+    from asr.database.project import get_project_from_path
+
+    projects = []
+    for filename in filenames:
+        if filename.endswith("py"):
+            project = get_project_from_path(filename)
+        elif filename.endswith("db"):
+            key_descriptions = get_key_descriptions_from_file(
+                extra_kvp_descriptions_file
+            )
+
+            project = make_project(filename, dbapp.tmpdir, key_descriptions, pool)
+        else:
+            raise ValueError
+    projects.append(project)
+    return projects
+
+
+def get_key_descriptions_from_file(extra_kvp_descriptions_file):
+    from asr.core import read_json
+
+    if (
+        extra_kvp_descriptions_file is not None
+        and Path(extra_kvp_descriptions_file).is_file()
+    ):
+        extras = read_json(extra_kvp_descriptions_file)
+    else:
+        extras = {}
+    return extras
 
 
 def check_rows_of_all_projects(dbapp):
