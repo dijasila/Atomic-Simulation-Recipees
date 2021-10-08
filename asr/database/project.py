@@ -87,7 +87,7 @@ def make_project_from_database_metadata(
     )
 
 
-def make_project_description(
+def make_project(
     name: str,
     database: Database,
     title: typing.Optional[str] = None,
@@ -178,4 +178,4 @@ def get_project_from_namespace(namespace):
         if hasattr(namespace, key):
             value = getattr(namespace, key)
             values[key] = value
-    return make_project_description(**values)
+    return make_project(**values)

@@ -102,13 +102,13 @@ def _get_webcontent(dbname="database.db"):
     # mf()
     fromtree(recursive=True)
     content = ""
-    from asr.database.app import ASRDBApp, make_project
+    from asr.database.app import ASRDBApp, make_project_from_database
 
     if world.rank == 0:
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
         dbapp = ASRDBApp(tmpdir)
-        project = make_project(
+        project = make_project_from_database(
             dbname, dbapp.tmpdir, pool=None
         )
         dbapp.initialize_project(project)

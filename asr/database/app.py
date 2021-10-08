@@ -337,7 +337,7 @@ def main(
     host: str = "0.0.0.0",
     test: bool = False,
     extra_kvp_descriptions: str = "key_descriptions.json",
-) -> ASRResult:
+):
 
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
@@ -352,7 +352,7 @@ def main(
             pool.join()
 
 
-def make_project(database, tmpdir, key_descriptions=None, pool=None):
+def make_project_from_database(database, tmpdir, key_descriptions=None, pool=None):
     project = get_project_from_database(database, key_descriptions=key_descriptions)
     row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
     project.row_to_dict_function = row_to_dict_function
@@ -386,7 +386,7 @@ def convert_files_to_projects(filenames, extra_kvp_descriptions_file, dbapp, poo
                 extra_kvp_descriptions_file
             )
 
-            project = make_project(filename, dbapp.tmpdir, key_descriptions, pool)
+            project = make_project_from_database(filename, dbapp.tmpdir, key_descriptions, pool)
         else:
             raise ValueError
     projects.append(project)
