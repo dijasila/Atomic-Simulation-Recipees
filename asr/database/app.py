@@ -164,10 +164,8 @@ def new_dbapp():
         yield dbapp
 
 
-def create_key_descriptions(db=None, extra_kvp_descriptions=None):
+def create_default_key_descriptions(db=None):
     from asr.database.key_descriptions import key_descriptions
-    from asr.database.fromtree import parse_key_descriptions
-    from ase.db.web import create_key_descriptions
 
     flatten = {
         key: value
@@ -175,35 +173,46 @@ def create_key_descriptions(db=None, extra_kvp_descriptions=None):
         for key, value in dct.items()
     }
 
-    if extra_kvp_descriptions is not None:
-        flatten.update(extra_kvp_descriptions)
-
     if db is not None:
-        metadata = db.metadata
-        if "keys" not in metadata:
-            raise KeyError(
-                "Missing list of keys for database. "
-                "To fix this either: run database.fromtree again. "
-                "or python -m asr.database.set_metadata DATABASEFILE."
-            )
-        keys = metadata.get("keys")
-    else:
-        keys = list(flatten)
+        keys = get_db_keys(db)
+        flatten = pick_subset_of_keys(keys, flatten)
 
+    return convert_to_ase_compatible_key_descriptions(flatten)
+
+
+def get_db_keys(db):
+    metadata = db.metadata
+    if "keys" not in metadata:
+        raise KeyError(
+            "Missing list of keys for database. "
+            "To fix this either: run database.fromtree again. "
+            "or python -m asr.database.set_metadata DATABASEFILE."
+        )
+    keys = metadata.get("keys")
+    return keys
+
+
+def convert_to_ase_compatible_key_descriptions(key_descriptions):
+    from asr.database.fromtree import parse_key_descriptions
+    from ase.db.web import create_key_descriptions
+
+    kd = {
+        key: (desc["shortdesc"], desc["longdesc"], desc["units"])
+        for key, desc in parse_key_descriptions(key_descriptions).items()
+    }
+
+    return create_key_descriptions(kd)
+
+
+def pick_subset_of_keys(keys, key_descriptions):
     kd = {}
     for key in keys:
-        description = flatten.get(key)
+        description = key_descriptions.get(key)
         if description is None:
             warnings.warn(f"Missing key description for {key}")
             continue
         kd[key] = description
-
-    kd = {
-        key: (desc["shortdesc"], desc["longdesc"], desc["units"])
-        for key, desc in parse_key_descriptions(kd).items()
-    }
-
-    return create_key_descriptions(kd)
+    return kd
 
 
 def make_row_to_dict_function(pool, tmpdir):
@@ -222,19 +231,26 @@ def make_row_to_dict_function(pool, tmpdir):
     return row_to_dict_function
 
 
-def get_project_from_database(extra_kvp_descriptions, database):
+def get_project_from_database(extra_kvp_descriptions, database, key_descriptions=None):
     from asr.core import read_json
 
     if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
         extras = read_json(extra_kvp_descriptions)
     else:
-        extras = None
+        extras = {}
+
+    if key_descriptions is None:
+        key_descriptions = {}
+    extras.update(key_descriptions)
 
     db = connect(database, serial=True)
     metadata = db.metadata
     name = metadata.get("name", Path(database).name)
 
-    key_descriptions = create_key_descriptions(db, extras)
+    if key_descriptions:
+        key_descriptions = convert_to_ase_compatible_key_descriptions(key_descriptions)
+    else:
+        key_descriptions = create_default_key_descriptions(db)
     title = metadata.get("title", name)
     uid_key = metadata.get("uid", "uid")
     default_columns = metadata.get("default_columns", ["formula", "uid"])

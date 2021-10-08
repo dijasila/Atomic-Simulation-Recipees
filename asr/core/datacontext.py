@@ -24,8 +24,8 @@ class DataContext:
 
     @lazyproperty
     def descriptions(self):
-        from asr.database.app import create_key_descriptions
-        return create_key_descriptions()
+        from asr.database.app import create_default_key_descriptions
+        return create_default_key_descriptions()
 
     @property
     def parameters(self):
