@@ -36,58 +36,11 @@ class ASRDBApp(DBApp):
 
     def initialize_project(self, database, extra_kvp_descriptions=None, pool=None):
         row_to_dict_function = self.make_row_to_dict_function(pool)
-        project = self.get_project_from_database(extra_kvp_descriptions, database)
+        project = get_project_from_database(extra_kvp_descriptions, database)
         spec = project.tospec()
         spec["row_to_dict_function"] = row_to_dict_function
         self.projects[project.name] = spec
         (self.tmpdir / project.name).mkdir()
-
-    def get_project_from_database(self, extra_kvp_descriptions, database):
-        from asr.core import read_json
-
-        if (
-            extra_kvp_descriptions is not None
-            and Path(extra_kvp_descriptions).is_file()
-        ):
-            extras = read_json(extra_kvp_descriptions)
-        else:
-            extras = None
-
-        db = connect(database, serial=True)
-        metadata = db.metadata
-        name = metadata.get("name", Path(database).name)
-
-        key_descriptions = create_key_descriptions(db, extras)
-        title = metadata.get("title", name)
-        uid_key = metadata.get("uid", "uid")
-        default_columns = metadata.get("default_columns", ["formula", "uid"])
-        table_template = str(
-            metadata.get(
-                "table_template",
-                "asr/database/templates/table.html",
-            )
-        )
-        search_template = str(
-            metadata.get("search_template", "asr/database/templates/search.html")
-        )
-        row_template = str(
-            metadata.get("row_template", "asr/database/templates/row.html")
-        )
-
-        from asr.database.project import DatabaseProject
-
-        project = DatabaseProject(
-            name=name,
-            title=title,
-            key_descriptions=key_descriptions,
-            uid_key=uid_key,
-            database=db,
-            default_columns=default_columns,
-            table_template=table_template,
-            search_template=search_template,
-            row_template=row_template,
-        )
-        return project
 
     def make_row_to_dict_function(self, pool):
         from asr.database import browser
@@ -256,6 +209,49 @@ def create_key_descriptions(db=None, extra_kvp_descriptions=None):
     }
 
     return create_key_descriptions(kd)
+
+
+def get_project_from_database(extra_kvp_descriptions, database):
+    from asr.core import read_json
+
+    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
+        extras = read_json(extra_kvp_descriptions)
+    else:
+        extras = None
+
+    db = connect(database, serial=True)
+    metadata = db.metadata
+    name = metadata.get("name", Path(database).name)
+
+    key_descriptions = create_key_descriptions(db, extras)
+    title = metadata.get("title", name)
+    uid_key = metadata.get("uid", "uid")
+    default_columns = metadata.get("default_columns", ["formula", "uid"])
+    table_template = str(
+        metadata.get(
+            "table_template",
+            "asr/database/templates/table.html",
+        )
+    )
+    search_template = str(
+        metadata.get("search_template", "asr/database/templates/search.html")
+    )
+    row_template = str(metadata.get("row_template", "asr/database/templates/row.html"))
+
+    from asr.database.project import DatabaseProject
+
+    project = DatabaseProject(
+        name=name,
+        title=title,
+        key_descriptions=key_descriptions,
+        uid_key=uid_key,
+        database=db,
+        default_columns=default_columns,
+        table_template=table_template,
+        search_template=search_template,
+        row_template=row_template,
+    )
+    return project
 
 
 class Summary:
