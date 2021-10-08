@@ -9,10 +9,17 @@ from asr.test.materials import Ag
 
 
 @pytest.fixture
-def project(asr_tmpdir):
+def database_with_one_row(asr_tmpdir):
     database = connect("test_database.db")
     database.write(Ag)
-    project = make_project(name="database.db", database=database, key_descriptions={})
+    return database
+
+
+@pytest.fixture
+def project(database_with_one_row):
+    project = make_project(
+        name="database.db", database=database_with_one_row, key_descriptions={}
+    )
     return project
 
 

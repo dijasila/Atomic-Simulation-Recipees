@@ -108,9 +108,7 @@ def _get_webcontent(dbname="database.db"):
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
         dbapp = ASRDBApp(tmpdir)
-        project = make_project_from_database(
-            dbname, dbapp.tmpdir, pool=None
-        )
+        project = make_project_from_database(dbname, dbapp.tmpdir, pool=None)
         dbapp.initialize_project(project)
         flask = dbapp.flask
 
@@ -306,3 +304,12 @@ def crosslinks_test_dbs(asr_tmpdir):
     }
 
     return None
+
+
+@pytest.fixture
+def database_with_one_row(asr_tmpdir):
+    from ase.db import connect
+    from asr.test.materials import Ag
+    database = connect("test_database.db")
+    database.write(Ag)
+    return database

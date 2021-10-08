@@ -161,17 +161,19 @@ def get_project_from_path(path: str) -> DatabaseProject:
 def get_project_from_namespace(namespace):
     values = {}
     keys = set(
-        "name",
-        "title",
-        "database",
-        "key_descriptions",
-        "uid_key",
-        "handle_query_function",
-        "row_to_dict_function",
-        "default_columns",
-        "table_template",
-        "search_template",
-        "row_template",
+        (
+            "name",
+            "title",
+            "database",
+            "key_descriptions",
+            "uid_key",
+            "handle_query_function",
+            "row_to_dict_function",
+            "default_columns",
+            "table_template",
+            "search_template",
+            "row_template",
+        )
     )
 
     for key in keys:
