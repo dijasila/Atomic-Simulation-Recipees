@@ -34,6 +34,19 @@ class ASRDBApp(DBApp):
         self.setup_app()
         self.setup_data_endpoints()
 
+    def run(self, host, debug=False):
+        """Run app.
+
+        Parameters
+        ----------
+        host : int.int.int.int
+            The host address
+        debug : bool, optional
+            Run server in debug mode, by default False
+
+        """
+        self.flask.run(host=host, debug=debug)
+
     def initialize_project(self, project):
         spec = project.tospec()
         self.projects[project.name] = spec
@@ -310,8 +323,8 @@ def main(
 
 
 def make_project(database, tmpdir, extra_kvp_descriptions=None, pool=None):
-    row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
     project = get_project_from_database(extra_kvp_descriptions, database)
+    row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
     project.row_to_dict_function = row_to_dict_function
     return project
 
@@ -320,12 +333,11 @@ def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
     for database in databases:
         project = make_project(database, dbapp.tmpdir, extra_kvp_descriptions, pool)
         dbapp.initialize_project(project)
-    flask = dbapp.flask
 
     if test:
         check_rows_of_all_projects(dbapp)
     else:
-        flask.run(host=host, debug=True)
+        dbapp.run(host=host, debug=True)
 
 
 def check_rows_of_all_projects(dbapp):
