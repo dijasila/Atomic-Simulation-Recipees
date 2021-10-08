@@ -28,6 +28,12 @@ def client(project):
 
 
 @pytest.mark.ci
-def test_simple_app(client):
+def test_single_project_home_page(client):
+    response = client.get("/").data
+    assert b"<a href='/database.db/'>database.db</a>" in response
+
+
+@pytest.mark.ci
+def test_single_project_project_home_page(client):
     response = client.get("/database.db/").data.decode()
     assert "<h1>database.db</h1>" in response
