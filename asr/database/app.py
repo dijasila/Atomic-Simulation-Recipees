@@ -17,7 +17,7 @@ from ase.formula import Formula
 from ase.db.app import DBApp
 
 import asr
-from asr.core import ASRResult, decode_object, UnknownDataFormat
+from asr.core import decode_object, UnknownDataFormat
 
 
 if TYPE_CHECKING:
@@ -386,7 +386,9 @@ def convert_files_to_projects(filenames, extra_kvp_descriptions_file, dbapp, poo
                 extra_kvp_descriptions_file
             )
 
-            project = make_project_from_database(filename, dbapp.tmpdir, key_descriptions, pool)
+            project = make_project_from_database(
+                filename, dbapp.tmpdir, key_descriptions, pool
+            )
         else:
             raise ValueError
     projects.append(project)
