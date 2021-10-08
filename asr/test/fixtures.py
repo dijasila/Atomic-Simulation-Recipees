@@ -109,7 +109,7 @@ def _get_webcontent(dbname="database.db"):
         tmpdir.mkdir()
         dbapp = ASRDBApp(tmpdir)
         project = make_project(
-            dbname, dbapp.tmpdir, extra_kvp_descriptions=None, pool=None
+            dbname, dbapp.tmpdir, extra_kvp_descriptions_file=None, pool=None
         )
         dbapp.initialize_project(project)
         flask = dbapp.flask

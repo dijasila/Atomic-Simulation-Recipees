@@ -231,17 +231,9 @@ def make_row_to_dict_function(pool, tmpdir):
     return row_to_dict_function
 
 
-def get_project_from_database(extra_kvp_descriptions, database, key_descriptions=None):
-    from asr.core import read_json
-
-    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
-        extras = read_json(extra_kvp_descriptions)
-    else:
-        extras = {}
-
-    if key_descriptions is None:
-        key_descriptions = {}
-    extras.update(key_descriptions)
+def get_project_from_database(
+    database, key_descriptions=None, extra_kvp_descriptions_file=None
+):
 
     db = connect(database, serial=True)
     metadata = db.metadata
@@ -338,16 +330,35 @@ def main(
             pool.join()
 
 
-def make_project(database, tmpdir, extra_kvp_descriptions=None, pool=None):
-    project = get_project_from_database(extra_kvp_descriptions, database)
+def make_project(
+    database, tmpdir, key_descriptions=None, extra_kvp_descriptions_file=None, pool=None
+):
+
+    key_descriptions = {**key_descriptions, **extras}
+    project = get_project_from_database(database, key_descriptions=key_descriptions)
     row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
     project.row_to_dict_function = row_to_dict_function
     return project
 
 
-def _main(dbapp, databases, host, test, extra_kvp_descriptions, pool):
+def _main(dbapp, databases, host, test, extra_kvp_descriptions_file, pool):
+    from asr.core import read_json
     for database in databases:
-        project = make_project(database, dbapp.tmpdir, extra_kvp_descriptions, pool)
+        key_descriptions = None
+
+        if key_descriptions is None:
+            key_descriptions = {}
+
+        if (
+            extra_kvp_descriptions_file is not None
+            and Path(extra_kvp_descriptions_file).is_file()
+        ):
+            extras = read_json(extra_kvp_descriptions_file)
+        else:
+            extras = {}
+        project = make_project(
+            database, dbapp.tmpdir, key_descriptions, extra_kvp_descriptions_file, pool
+        )
         dbapp.initialize_project(project)
 
     if test:
