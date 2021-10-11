@@ -144,13 +144,13 @@ key_descriptions = {
         "beta": "Cell parameter beta [deg]",
         "gamma": "Cell parameter gamma [deg]",
     },
-    "stiffness": {
-        "speed_of_sound_x": "KVP: Speed of sound (x) [m/s]",
-        "speed_of_sound_y": "KVP: Speed of sound (y) [m/s]",
-        "stiffness_tensor": "Stiffness tensor [`N/m^{dim-1}`]",
-        "dynamic_stability_stiffness":
-        "KVP: Stiffness dynamic stability (low/high)",
-    },
+    #"stiffness": {
+    #    "speed_of_sound_x": "KVP: Speed of sound (x) [m/s]",
+    #    "speed_of_sound_y": "KVP: Speed of sound (y) [m/s]",
+    #    "stiffness_tensor": "Stiffness tensor [`N/m^{dim-1}`]",
+    #    "dynamic_stability_stiffness":
+    #    "KVP: Stiffness dynamic stability (low/high)",
+    #},
     "structureinfo": {
         "cell_area": "KVP: Area of unit-cell [`Å²`]",
         "has_inversion_symmetry": "KVP: Material has inversion symmetry",

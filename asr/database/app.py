@@ -225,8 +225,6 @@ def handle_query(args):
         parts.append('Source=' + args['Source'])
     if args['dyn_phonons'] != 'all':
         parts.append('dynamic_stability_phonons=' + args['dyn_phonons'])
-    if args['dyn_stiffness'] != 'all':
-        parts.append('dynamic_stability_stiffness=' + args['dyn_stiffness'])    
     if args['from_tdyn'] > '1':
         parts.append('thermodynamic_stability_level>=' + args['from_tdyn'])
     if args['to_tdyn'] < '3':
