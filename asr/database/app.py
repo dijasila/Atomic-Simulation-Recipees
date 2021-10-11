@@ -266,7 +266,8 @@ def make_row_to_dict_function(pool, tmpdir):
 
 
 def get_project_from_database(
-    database, key_descriptions=None, extra_kvp_descriptions_file=None
+    database,
+    key_descriptions=None,
 ):
 
     db = connect(database, serial=True)
@@ -345,10 +346,10 @@ class Summary:
 
 
 def main(
-    databases: List[str],
+    filenames: List[str],
     host: str = "0.0.0.0",
     test: bool = False,
-    extra_kvp_descriptions: str = "key_descriptions.json",
+    extra_kvp_descriptions_file: str = "key_descriptions.json",
 ):
 
     # The app uses threads, and we cannot call matplotlib multithreadedly.
@@ -358,7 +359,15 @@ def main(
     pool = multiprocessing.Pool(1)
     with make_db_app() as dbapp:
         try:
-            _main(dbapp, databases, host, test, extra_kvp_descriptions, pool)
+            projects = convert_files_to_projects(
+                filenames, extra_kvp_descriptions_file, dbapp, pool
+            )
+            dbapp.initialize_projects(projects)
+
+            if test:
+                check_rows_of_all_projects(dbapp)
+            else:
+                dbapp.run(host=host, debug=True)
         finally:
             pool.close()
             pool.join()
@@ -369,21 +378,6 @@ def make_project_from_database(database, tmpdir, key_descriptions=None, pool=Non
     row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
     project.row_to_dict_function = row_to_dict_function
     return project
-
-
-def _main(dbapp, filenames, host, test, extra_kvp_descriptions_file, pool):
-
-    projects = convert_files_to_projects(
-        filenames, extra_kvp_descriptions_file, dbapp, pool
-    )
-
-    for project in projects:
-        dbapp.initialize_project(project)
-
-    if test:
-        check_rows_of_all_projects(dbapp)
-    else:
-        dbapp.run(host=host, debug=True)
 
 
 def convert_files_to_projects(filenames, extra_kvp_descriptions_file, dbapp, pool):
