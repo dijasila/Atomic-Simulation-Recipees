@@ -1,5 +1,5 @@
 """Database web application."""
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Optional
 import multiprocessing
 import tempfile
 from pathlib import Path
@@ -35,8 +35,8 @@ class ASRDBApp(DBApp):
             str(template_path)
         )
 
-        self.setup_app()
-        self.setup_data_endpoints()
+        self._setup_app()
+        self._setup_data_endpoints()
 
     def run(self, host, debug=False):
         """Run app.
@@ -74,7 +74,7 @@ class ASRDBApp(DBApp):
         for project in projects:
             self.initialize_project(project)
 
-    def setup_app(self):
+    def _setup_app(self):
         route = self.flask.route
 
         @route("/")
@@ -95,7 +95,16 @@ class ASRDBApp(DBApp):
             path = self.tmpdir / f"{project}/{uid}-{name}"
             return send_file(str(path))
 
-    def setup_data_endpoints(self):
+        @self.flask.template_filter()
+        def asr_sort_key_descriptions(value):
+            """Sort column drop down menu."""
+
+            def sort_func(item):
+                return item[1][1]
+
+            return sorted(value.items(), key=sort_func)
+
+    def _setup_data_endpoints(self):
         """Set endpoints for downloading data."""
         from ase.io.jsonio import MyEncoder
 
@@ -170,18 +179,21 @@ class ASRDBApp(DBApp):
 
 
 @contextmanager
-def new_dbapp():
+def make_db_app(template_path: Optional[Path] = None):
+    """Context manager for creating a database application
+
+    Parameters
+    ----------
+    template_path : Optional[Path], optional
+        Path where jinja templates can be found, by default None
+
+    Yields
+    -------
+    ASRDBApp
+        A database application
+    """
     with tempfile.TemporaryDirectory(prefix="asr-app-") as tmpdir:
-        dbapp = ASRDBApp(Path(tmpdir))
-
-        @dbapp.flask.template_filter()
-        def asr_sort_key_descriptions(value):
-            """Sort column drop down menu."""
-
-            def sort_func(item):
-                return item[1][1]
-
-            return sorted(value.items(), key=sort_func)
+        dbapp = ASRDBApp(Path(tmpdir), template_path=template_path)
 
         yield dbapp
 
@@ -344,7 +356,7 @@ def main(
     # We could use more cores, but they tend to fail to close
     # correctly on KeyboardInterrupt.
     pool = multiprocessing.Pool(1)
-    with new_dbapp() as dbapp:
+    with make_db_app() as dbapp:
         try:
             _main(dbapp, databases, host, test, extra_kvp_descriptions, pool)
         finally:
