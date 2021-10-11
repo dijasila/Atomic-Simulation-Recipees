@@ -349,6 +349,7 @@ def main(
 
     run_app(host, test, projects, extras)
 
+
 def run_app(host, test, projects, extras):
     add_extra_kvp_descriptions(projects, extras)
     # The app uses threads, and we cannot call matplotlib multithreadedly.
