@@ -254,17 +254,15 @@ def make_row_to_dict_function(pool, tmpdir):
 
 
 def get_project_from_database(
-    database, key_descriptions=None, extra_kvp_descriptions_file=None
+    database,
 ):
 
     db = connect(database, serial=True)
     metadata = db.metadata
     name = metadata.get("name", Path(database).name)
 
-    if key_descriptions:
-        key_descriptions = convert_to_ase_compatible_key_descriptions(key_descriptions)
-    else:
-        key_descriptions = create_default_key_descriptions(db)
+    key_descriptions = create_default_key_descriptions(db)
+    key_descriptions = convert_to_ase_compatible_key_descriptions(key_descriptions)
     title = metadata.get("title", name)
     uid_key = metadata.get("uid", "uid")
     default_columns = metadata.get("default_columns", ["formula", "uid"])
@@ -332,13 +330,27 @@ class Summary:
         self.constraints = constraints
 
 
+def add_extra_kvp_descriptions(projects, extras):
+    for project in projects:
+        project.key_descriptions.update(extras)
+
+
 def main(
-    databases: List[str],
+    filenames: List[str],
     host: str = "0.0.0.0",
     test: bool = False,
-    extra_kvp_descriptions: str = "key_descriptions.json",
+    extra_kvp_descriptions_file: str = "key_descriptions.json",
 ):
 
+    projects = convert_files_to_projects(filenames)
+
+    if Path(extra_kvp_descriptions_file).is_file():
+        extras = get_key_descriptions_from_file(extra_kvp_descriptions_file)
+
+    run_app(host, test, projects, extras)
+
+def run_app(host, test, projects, extras):
+    add_extra_kvp_descriptions(projects, extras)
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
     # We could use more cores, but they tend to fail to close
@@ -346,35 +358,25 @@ def main(
     pool = multiprocessing.Pool(1)
     with new_dbapp() as dbapp:
         try:
-            _main(dbapp, databases, host, test, extra_kvp_descriptions, pool)
+            for project in projects:
+                set_custom_row_to_dict_function(project, dbapp.tmpdir, pool)
+                dbapp.initialize_project(project)
+
+            if test:
+                check_rows_of_all_projects(dbapp)
+            else:
+                dbapp.run(host=host, debug=True)
         finally:
             pool.close()
             pool.join()
 
 
-def make_project_from_database(database, tmpdir, key_descriptions=None, pool=None):
-    project = get_project_from_database(database, key_descriptions=key_descriptions)
+def set_custom_row_to_dict_function(project, tmpdir, pool=None):
     row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
     project.row_to_dict_function = row_to_dict_function
-    return project
 
 
-def _main(dbapp, filenames, host, test, extra_kvp_descriptions_file, pool):
-
-    projects = convert_files_to_projects(
-        filenames, extra_kvp_descriptions_file, dbapp, pool
-    )
-
-    for project in projects:
-        dbapp.initialize_project(project)
-
-    if test:
-        check_rows_of_all_projects(dbapp)
-    else:
-        dbapp.run(host=host, debug=True)
-
-
-def convert_files_to_projects(filenames, extra_kvp_descriptions_file, dbapp, pool):
+def convert_files_to_projects(filenames):
     from asr.database.project import get_project_from_path
 
     projects = []
@@ -382,12 +384,8 @@ def convert_files_to_projects(filenames, extra_kvp_descriptions_file, dbapp, poo
         if filename.endswith("py"):
             project = get_project_from_path(filename)
         elif filename.endswith("db"):
-            key_descriptions = get_key_descriptions_from_file(
-                extra_kvp_descriptions_file
-            )
-
-            project = make_project_from_database(
-                filename, dbapp.tmpdir, key_descriptions, pool
+            project = get_project_from_database(
+                filename, key_descriptions=key_descriptions
             )
         else:
             raise ValueError

@@ -44,3 +44,24 @@ def test_single_project_home_page(client):
 def test_single_project_project_home_page(client):
     response = client.get("/database.db/").data.decode()
     assert "<h1>database.db</h1>" in response
+
+
+def test_add_extra_kvp_descriptions(project):
+    from asr.database.app import add_extra_kvp_descriptions
+
+    key_name = "some_key_name"
+    description = "Some description."
+    extras = {key_name: description}
+
+    add_extra_kvp_descriptions([project], extras=extras)
+
+    assert key_name in project.key_descriptions
+    assert project.key_descriptions[key_name] == description
+
+
+def test_setting_custom_row_to_dict_function(project):
+    from asr.database.app import set_custom_row_to_dict_function
+    prev = project.row_to_dict_function
+    set_custom_row_to_dict_function(project, Path("tmpdir"), pool=None)
+    new = project.row_to_dict_function
+    assert prev is not new
