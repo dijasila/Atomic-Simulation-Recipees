@@ -25,7 +25,7 @@ panel_description = make_panel_description(
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import WebPanel
 
-    data= row.data.get('results-asr.vbm_mass.json')
+    data= row.data.get('results-asr.cbm_mass.json')
 
     extrematable = []
     for xfit, yfit, indices,x, eigs, k, energy, mass, spin  in data['extrema']:
@@ -34,7 +34,7 @@ def webpanel(result, row, key_descriptions):
 
 
     
-    panel = WebPanel(describe_entry(f'cbm_mass', panel_description),
+    panel = WebPanel(describe_entry(f'Effective masses (cbm)', panel_description),
              columns=[[fig('cbm_mass.png')], []],
              plot_descriptions=[{'function': plot_cbm,
                                     'filenames': ['cbm_mass.png']}],
@@ -47,7 +47,7 @@ def webpanel(result, row, key_descriptions):
 
 
 
-    panel2 = WebPanel(title= 'cbm_mass',
+    panel2 = WebPanel(title= 'Effective masses (cbm)',
               columns= [[table]],
               sort=7)
 
@@ -97,17 +97,16 @@ def plot_cbm(row, fname):
 
     color=0
     for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']:
-        for n in indices:
-            ax.plot(x, eigs[:, n], 'o', color=f'C{color}')
-            ax.plot(xfit, yfit, '-', color=f'C{color}')
-            color += 1
+        #for n in indices:
+        ax.plot(x, eigs[:, indices], 'o', color=f'C{color}')
+        ax.plot(xfit, yfit, '-', color=f'C{color}')
+        color += 1
 
-
-        ax.set_xlabel('k [Ang$^{-1}$]')
-        ax.set_ylabel('k [Ang$^{-1}$]')
-        fig.tight_layout()
-        fig.savefig(fname)
-        fig.close()
+    ax.set_xlabel('k [Ang$^{-1}$]')
+    ax.set_ylabel('e - e$_F$ [eV]')
+    fig.tight_layout()
+    fig.savefig(fname)
+    fig.close()
 
 
 

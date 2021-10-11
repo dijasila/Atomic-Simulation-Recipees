@@ -31,7 +31,7 @@ def webpanel(result, row, key_descriptions):
     for xfit, yfit, indices,x, eigs, k, energy, mass, spin  in data['extrema']:
         extrematable.append([f'{k:.3f}', f'{energy:.3f}', f'{mass:.3f}',f'{spin[0]:.1f},{spin[1]:.1f},{spin[2]:.1f}'])     
 
-    panel = WebPanel(describe_entry(f'vbm_mass', panel_description),
+    panel = WebPanel(describe_entry(f'Effective masses (vbm)', panel_description),
              columns=[[fig('vbm_mass.png')]],
              plot_descriptions=[{'function': plot_vbm,
                                     'filenames': ['vbm_mass.png']}],
@@ -43,7 +43,7 @@ def webpanel(result, row, key_descriptions):
 
 
 
-    panel2 = WebPanel(title= 'vbm_mass',
+    panel2 = WebPanel(title= 'Effective masses (vbm)',
               columns= [[table]],
               sort=8)
 
@@ -95,33 +95,21 @@ def plot_vbm(row, fname):
     ax = fig.gca()
 
 
-    color=0
+    color=0 
     for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']:
-        for n in indices:
-            ax.plot(x, eigs[:, n], 'o', color=f'C{color}')
-            ax.plot(xfit, yfit, '-', color=f'C{color}')
-            color += 1
-
-
-        ax.set_xlabel('k [Ang$^{-1}$]')
-        ax.set_ylabel('k [Ang$^{-1}$]')
-        fig.tight_layout()
-        fig.savefig(fname)
-        fig.close()
-
-
-    #color = 0
-    #for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']: 
         #for n in indices:
-            #plt.plot(x, eigs[:, n], 'o', color=f'C{color}')
-            #plt.plot(xfit, yfit, '-', color=f'C{color}')
-            #color += 1     
+        ax.plot(x, eigs[:, indices], 'o', color=f'C{color}')
+        #ax.plot(x, eigs[:, n], 'o', color=f'C{color}')
+        ax.plot(xfit, yfit, '-', color=f'C{color}')
+        color += 1
 
-        #plt.xlabel('k [Ang$^{-1}$]')
-        #plt.ylabel('e - e$_F$ [eV]')
-        #plt.tight_layout()
-        #plt.savefig(fname)
-        #plt.close()
+
+    ax.set_xlabel('k [Ang$^{-1}$]')
+    ax.set_ylabel('e - e$_F$ [eV]')
+    fig.tight_layout()
+    fig.savefig(fname)
+    fig.close()
+
 
 if __name__ == '__main__':
     main.cli()
