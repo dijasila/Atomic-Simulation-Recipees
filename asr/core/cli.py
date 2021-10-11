@@ -1005,8 +1005,8 @@ def totree(
 def app(databases, host, test, extra_kvp_descriptions):
     """Run the database web app."""
     from asr.database.app import main
-    main(databases=databases, host=host, test=test,
-         extra_kvp_descriptions=extra_kvp_descriptions)
+    main(filenames=databases, host=host, test=test,
+         extra_kvp_descriptions_file=extra_kvp_descriptions)
 
 
 @database.command()
