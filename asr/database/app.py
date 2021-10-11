@@ -199,7 +199,7 @@ def create_default_key_descriptions(db=None):
         keys = get_db_keys(db)
         flatten = pick_subset_of_keys(keys, flatten)
 
-    return convert_to_ase_compatible_key_descriptions(flatten)
+    return flatten
 
 
 def get_db_keys(db):
@@ -385,9 +385,7 @@ def convert_files_to_projects(filenames):
         if filename.endswith("py"):
             project = get_project_from_path(filename)
         elif filename.endswith("db"):
-            project = get_project_from_database(
-                filename, key_descriptions=key_descriptions
-            )
+            project = get_project_from_database(filename)
         else:
             raise ValueError
     projects.append(project)
