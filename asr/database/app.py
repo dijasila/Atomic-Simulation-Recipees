@@ -1,5 +1,5 @@
 """Database web application."""
-from typing import List, TYPE_CHECKING, Optional
+from typing import List, TYPE_CHECKING
 import multiprocessing
 import tempfile
 from pathlib import Path
@@ -14,7 +14,8 @@ from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
-from ase.db.app import DBApp
+from ase.db.app import DBApp, Database
+from ase.io.jsonio import MyEncoder
 
 import asr
 from asr.core import decode_object, UnknownDataFormat
@@ -25,7 +26,19 @@ if TYPE_CHECKING:
 
 
 class ASRDBApp(DBApp):
+    """App that can browse multiple database projects."""
+
     def __init__(self, tmpdir, template_path=None):
+        """Initialize database projects application.
+
+        Parameters
+        ----------
+        tmpdir : pathlib.Path
+            A temporary path that projects can use to store temporary data,
+            like figures.
+        template_path : pathlib.Path, optional
+            Path where the app can find the relevant Jinja templates, by default None
+        """
         self.tmpdir = tmpdir  # used to cache png-files
         super().__init__()
 
@@ -95,18 +108,8 @@ class ASRDBApp(DBApp):
             path = self.tmpdir / f"{project}/{uid}-{name}"
             return send_file(str(path))
 
-        @self.flask.template_filter()
-        def asr_sort_key_descriptions(value):
-            """Sort column drop down menu."""
-
-            def sort_func(item):
-                return item[1][1]
-
-            return sorted(value.items(), key=sort_func)
-
     def _setup_data_endpoints(self):
         """Set endpoints for downloading data."""
-        from ase.io.jsonio import MyEncoder
 
         self.flask.json_encoder = MyEncoder
         projects = self.projects
@@ -118,9 +121,7 @@ class ASRDBApp(DBApp):
             """Show details for one database row."""
             project = projects[project_name]
             uid_key = project["uid_key"]
-            row = project["database"].get(
-                "{uid_key}={uid}".format(uid_key=uid_key, uid=uid)
-            )
+            row = project["database"].get(f"{uid_key}={uid}")
             content = flask_json.dumps(row.data)
             return Response(
                 content,
@@ -133,13 +134,8 @@ class ASRDBApp(DBApp):
             """Show details for one database row."""
             project = projects[project_name]
             uid_key = project["uid_key"]
-            row = project["database"].get(
-                "{uid_key}={uid}".format(uid_key=uid_key, uid=uid)
-            )
-            sorted_data = {
-                key: value
-                for key, value in sorted(row.data.items(), key=lambda x: x[0])
-            }
+            row = project["database"].get(f"{uid_key}={uid}")
+            sorted_data = dict(sorted(row.data.items(), key=lambda x: x[0]))
             return render_template(
                 "asr/database/templates/data.html",
                 data=sorted_data,
@@ -152,9 +148,7 @@ class ASRDBApp(DBApp):
             """Show details for one database row."""
             project = projects[project_name]
             uid_key = project["uid_key"]
-            row = project["database"].get(
-                "{uid_key}={uid}".format(uid_key=uid_key, uid=uid)
-            )
+            row = project["database"].get(f"{uid_key}={uid}")
             try:
                 result = decode_object(row.data[filename])
                 return render_template(
@@ -172,25 +166,18 @@ class ASRDBApp(DBApp):
             """Show details for one database row."""
             project = projects[project_name]
             uid_key = project["uid_key"]
-            row = project["database"].get(
-                "{uid_key}={uid}".format(uid_key=uid_key, uid=uid)
-            )
+            row = project["database"].get(f"{uid_key}={uid}")
             return jsonify(row.data.get(filename))
 
 
 @contextmanager
-def make_db_app(template_path: Optional[Path] = None):
-    """Context manager for creating a database application
-
-    Parameters
-    ----------
-    template_path : Optional[Path], optional
-        Path where jinja templates can be found, by default None
+def new_dbapp(template_path=None):
+    """Context manager for creating ASR App.
 
     Yields
     -------
     ASRDBApp
-        A database application
+        A database connection.
     """
     with tempfile.TemporaryDirectory(prefix="asr-app-") as tmpdir:
         dbapp = ASRDBApp(Path(tmpdir), template_path=template_path)
@@ -198,9 +185,8 @@ def make_db_app(template_path: Optional[Path] = None):
         yield dbapp
 
 
-def create_default_key_descriptions(db=None):
+def create_default_key_descriptions(db: Database = None):
     from asr.database.key_descriptions import key_descriptions
-
     flatten = {
         key: value
         for recipe, dct in key_descriptions.items()
@@ -211,7 +197,7 @@ def create_default_key_descriptions(db=None):
         keys = get_db_keys(db)
         flatten = pick_subset_of_keys(keys, flatten)
 
-    return convert_to_ase_compatible_key_descriptions(flatten)
+    return flatten
 
 
 def get_db_keys(db):
@@ -267,17 +253,14 @@ def make_row_to_dict_function(pool, tmpdir):
 
 def get_project_from_database(
     database,
-    key_descriptions=None,
 ):
 
     db = connect(database, serial=True)
     metadata = db.metadata
     name = metadata.get("name", Path(database).name)
 
-    if key_descriptions:
-        key_descriptions = convert_to_ase_compatible_key_descriptions(key_descriptions)
-    else:
-        key_descriptions = create_default_key_descriptions(db)
+    key_descriptions = create_default_key_descriptions(db)
+    key_descriptions = convert_to_ase_compatible_key_descriptions(key_descriptions)
     title = metadata.get("title", name)
     uid_key = metadata.get("uid", "uid")
     default_columns = metadata.get("default_columns", ["formula", "uid"])
@@ -345,24 +328,53 @@ class Summary:
         self.constraints = constraints
 
 
+def add_extra_kvp_descriptions(projects, extras):
+    """Update existing project key descriptions with extras."""
+    for project in projects:
+        project.key_descriptions.update(extras)
+
+
 def main(
     filenames: List[str],
     host: str = "0.0.0.0",
     test: bool = False,
     extra_kvp_descriptions_file: str = "key_descriptions.json",
 ):
+    """Start database app
 
+    Parameters
+    ----------
+    filenames : List[str]
+        List of databases or project configuration files (.py). A project configuration
+        file is a python file containing some or all of the following keys:
+    host : str, optional
+        Host address, by default "0.0.0.0"
+    test : bool, optional
+        Whether to query all rows of all input projects/databases, by default False
+    extra_kvp_descriptions_file : str, optional
+        File containing extra key descriptions for the database,
+        by default "key_descriptions.json"
+    """
+    projects = convert_files_to_projects(filenames)
+
+    if Path(extra_kvp_descriptions_file).is_file():
+        extras = get_key_descriptions_from_file(extra_kvp_descriptions_file)
+
+    run_app(host, test, projects, extras)
+
+
+def run_app(host, test, projects, extras):
+    add_extra_kvp_descriptions(projects, extras)
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
     # We could use more cores, but they tend to fail to close
     # correctly on KeyboardInterrupt.
     pool = multiprocessing.Pool(1)
-    with make_db_app() as dbapp:
+    with new_dbapp() as dbapp:
         try:
-            projects = convert_files_to_projects(
-                filenames, extra_kvp_descriptions_file, dbapp, pool
-            )
-            dbapp.initialize_projects(projects)
+            for project in projects:
+                set_custom_row_to_dict_function(project, dbapp.tmpdir, pool)
+                dbapp.initialize_project(project)
 
             if test:
                 check_rows_of_all_projects(dbapp)
@@ -373,14 +385,12 @@ def main(
             pool.join()
 
 
-def make_project_from_database(database, tmpdir, key_descriptions=None, pool=None):
-    project = get_project_from_database(database, key_descriptions=key_descriptions)
+def set_custom_row_to_dict_function(project, tmpdir, pool=None):
     row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
     project.row_to_dict_function = row_to_dict_function
-    return project
 
 
-def convert_files_to_projects(filenames, extra_kvp_descriptions_file, dbapp, pool):
+def convert_files_to_projects(filenames):
     from asr.database.project import get_project_from_path
 
     projects = []
@@ -388,13 +398,7 @@ def convert_files_to_projects(filenames, extra_kvp_descriptions_file, dbapp, poo
         if filename.endswith("py"):
             project = get_project_from_path(filename)
         elif filename.endswith("db"):
-            key_descriptions = get_key_descriptions_from_file(
-                extra_kvp_descriptions_file
-            )
-
-            project = make_project_from_database(
-                filename, dbapp.tmpdir, key_descriptions, pool
-            )
+            project = get_project_from_database(filename)
         else:
             raise ValueError
     projects.append(project)

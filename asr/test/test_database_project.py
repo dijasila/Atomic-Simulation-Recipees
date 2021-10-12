@@ -29,3 +29,4 @@ def test_project_from_namespace_has_database(project, database_with_one_row):
 @pytest.mark.ci
 def test_project_from_namespace_has_title(project):
     assert project.title == "project.name"
+    assert project.name == "project.name"
