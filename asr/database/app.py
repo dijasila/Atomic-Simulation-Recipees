@@ -110,7 +110,6 @@ class ASRDBApp(DBApp):
 
     def _setup_data_endpoints(self):
         """Set endpoints for downloading data."""
-
         self.flask.json_encoder = MyEncoder
         projects = self.projects
 
@@ -175,7 +174,7 @@ def new_dbapp(template_path=None):
     """Context manager for creating ASR App.
 
     Yields
-    -------
+    ------
     ASRDBApp
         A database connection.
     """
@@ -341,7 +340,7 @@ def main(
     test: bool = False,
     extra_kvp_descriptions_file: str = "key_descriptions.json",
 ):
-    """Start database app
+    """Start database app.
 
     Parameters
     ----------
