@@ -97,7 +97,7 @@ def make_project(
     uid_key: str = "uid",
     row_to_dict_function: callable = row_to_dict,
     handle_query_function: callable = args2query,
-    default_columns: list[str] = field(
+    default_columns: typing.List[str] = field(
         default_factory=lambda: list(["formula", "uid"])
     ),
     table_template: str = "asr/database/templates/table.html",
