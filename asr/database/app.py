@@ -417,12 +417,12 @@ def set_custom_row_to_dict_function(project, tmpdir, pool=None):
 
 
 def convert_files_to_projects(filenames):
-    from asr.database.project import get_project_from_path
+    from asr.database.project import make_project_from_pyfile
 
     projects = []
     for filename in filenames:
         if filename.endswith("py"):
-            project = get_project_from_path(filename)
+            project = make_project_from_pyfile(filename)
         elif filename.endswith("db"):
             project = get_project_from_database(filename)
         else:

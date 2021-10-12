@@ -1,5 +1,5 @@
 import pytest
-from asr.database.project import get_project_from_namespace
+from asr.database.project import make_project_from_namespace
 from types import SimpleNamespace
 
 
@@ -11,7 +11,7 @@ def project(database_with_one_row):
         database=database_with_one_row,
     )
 
-    project = get_project_from_namespace(namespace)
+    project = make_project_from_namespace(namespace)
 
     return project
 

@@ -138,7 +138,7 @@ def make_project(
     row_template: str = "asr/database/templates/row.html",
     search_template: str = "asr/database/templates/search.html",
 ):
-    """Make project description.
+    """Make database project.
 
     Used as input to the ASR app to give it information about key descriptions etc.
 
@@ -189,12 +189,28 @@ def make_project(
     )
 
 
-def get_project_from_path(path: str) -> DatabaseProject:
+def make_project_from_pyfile(path: str) -> DatabaseProject:
+    """Make a database project from a Python file.
+
+    Parameters
+    ----------
+    path : str
+        Path to a Python file that defines some or all of
+        the attributes that defines a database project, e.g.
+        name=, title=. At a minimum name and database needs
+        to be defined.
+
+    Returns
+    -------
+    DatabaseProject
+        A database project constructed from the attributes defined
+        in the python file.
+    """
     module = runpy.run_path(str(path))
-    return get_project_from_namespace(module)
+    return make_project_from_namespace(module)
 
 
-def get_project_from_namespace(namespace):
+def make_project_from_namespace(namespace):
     values = {}
     keys = set(
         (
