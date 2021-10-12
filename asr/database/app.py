@@ -363,7 +363,26 @@ def main(
     run_app(host, test, projects, extras)
 
 
-def run_app(host, test, projects, extras):
+def run_app(
+    projects: List[DatabaseProject],
+    extras: dict,
+    host: str = "0.0.0.0",
+    test: bool = False,
+):
+    """Run the database application with the given projects.
+
+    Parameters
+    ----------
+    projects : List[DatabaseProject]
+        Add these projects to the application
+    extras : dict
+        Add these key value pair descriptions to the projects before
+        starting the application
+    host : str, optional
+        The host address, by default "0.0.0.0"
+    test : bool, optional
+        Whether to query all rows of all input projects/databases, by default False
+    """
     add_extra_kvp_descriptions(projects, extras)
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
