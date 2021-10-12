@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from ase.db import connect
 
-from asr.database.app import ASRDBApp
+from asr.database.app import App
 from asr.database.project import make_project
 from asr.test.materials import Ag
 
@@ -27,7 +27,7 @@ def project(database_with_one_row):
 def client(project):
     tmpdir = Path("tmp/")
     tmpdir.mkdir()
-    app = ASRDBApp(tmpdir=tmpdir)
+    app = App(tmpdir=tmpdir)
     app.initialize_project(project)
     app.flask.testing = True
     with app.flask.test_client() as client:
@@ -69,8 +69,8 @@ def test_setting_custom_row_to_dict_function(project):
 
 
 def test_app_running(project, mocker):
-    from asr.database.app import run_app, ASRDBApp
+    from asr.database.app import run_app, App
 
     # app.run blocks, so we patch it to check the other logic of the function.
-    mocker.patch.object(ASRDBApp, "run")
+    mocker.patch.object(App, "run")
     run_app(host="0.0.0.0", test=False, projects=[project], extras={})

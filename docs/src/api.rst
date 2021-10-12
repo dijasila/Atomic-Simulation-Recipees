@@ -56,3 +56,17 @@ Metadata
 --------
 .. autoclass:: asr.Metadata
    :members:
+
+
+Database sub-package
+====================
+
+Run Application
+---------------
+.. autofunction:: asr.database.run_app
+
+
+Application object
+------------------
+.. autoclass:: asr.database.App
+   :members:

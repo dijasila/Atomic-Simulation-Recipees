@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from asr.database.project import DatabaseProject
 
 
-class ASRDBApp(DBApp):
+class App(DBApp):
     """App that can browse multiple database projects."""
 
     def __init__(self, tmpdir, template_path=None):
@@ -175,11 +175,11 @@ def new_dbapp(template_path=None):
 
     Yields
     ------
-    ASRDBApp
+    App
         A database connection.
     """
     with tempfile.TemporaryDirectory(prefix="asr-app-") as tmpdir:
-        dbapp = ASRDBApp(Path(tmpdir), template_path=template_path)
+        dbapp = App(Path(tmpdir), template_path=template_path)
 
         yield dbapp
 
@@ -364,12 +364,16 @@ def main(
 
 
 def run_app(
-    projects: List['DatabaseProject'],
+    projects: List["DatabaseProject"],
     extras: dict,
     host: str = "0.0.0.0",
     test: bool = False,
 ):
-    """Run the database application with the given projects.
+    """Start and run a database application.
+
+    Convencience function for creating an Application object,
+    initializing projects and running the application. The
+    application can be viewed in a browser at "host" address.
 
     Parameters
     ----------

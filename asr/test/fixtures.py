@@ -103,13 +103,13 @@ def _get_webcontent(dbname="database.db"):
     fromtree(recursive=True)
     content = ""
     from asr.database.app import (
-        ASRDBApp, get_project_from_database, set_custom_row_to_dict_function
+        App, get_project_from_database, set_custom_row_to_dict_function
     )
 
     if world.rank == 0:
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
-        dbapp = ASRDBApp(tmpdir)
+        dbapp = App(tmpdir)
         project = get_project_from_database(dbname)
         set_custom_row_to_dict_function(project, tmpdir, pool=None)
         dbapp.initialize_project(project)
