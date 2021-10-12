@@ -364,7 +364,7 @@ def main(
 
 
 def run_app(
-    projects: List[DatabaseProject],
+    projects: List['DatabaseProject'],
     extras: dict,
     host: str = "0.0.0.0",
     test: bool = False,
