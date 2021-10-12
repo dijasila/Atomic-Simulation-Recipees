@@ -30,7 +30,7 @@ def row_to_dict(row, project, layout_function, tmpdir):
 @dataclass
 class DatabaseProject:
     """Class that represents a database project.
-    
+
     Parameters
     ----------
     name
@@ -50,7 +50,7 @@ class DatabaseProject:
     handle_query_function
         A function that takes a query tuple and returns a query tuple.
         Useful for doing translations when the query uses aliases
-        for values, for example to convert stability=low to stability=1. 
+        for values, for example to convert stability=low to stability=1.
     default_columns
         Default columns that the application should show on the search page.
     table_template
@@ -62,7 +62,7 @@ class DatabaseProject:
         of a particular row.
     search_template
         Path to the search jinja-template. The search template embeds the table
-        template and is responsible for formatting the search field. 
+        template and is responsible for formatting the search field.
     """
 
     name: str
