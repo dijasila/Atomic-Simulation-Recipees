@@ -29,7 +29,41 @@ def row_to_dict(row, project, layout_function, tmpdir):
 
 @dataclass
 class DatabaseProject:
-    """Class that represents a database project."""
+    """Class that represents a database project.
+    
+    Parameters
+    ----------
+    name
+        The name of the database project.
+    title
+        The title of the database object.
+    database
+        A database connection
+    key_descriptions
+        Key descriptions used by the web application
+    uid_key
+        Key to be used as unique identifier
+    row_to_dict_function
+        A function that takes (row, project) as input and produces an
+        object (normally a dict) that is handed to the row template
+        also specified in this project.
+    handle_query_function
+        A function that takes a query tuple and returns a query tuple.
+        Useful for doing translations when the query uses aliases
+        for values, for example to convert stability=low to stability=1. 
+    default_columns
+        Default columns that the application should show on the search page.
+    table_template
+        Path to the table jinja-template.
+        The table template shows the rows of the database.
+    row_template
+        Path to the row jinja-template.
+        The row template is responsible for showing a detailed description
+        of a particular row.
+    search_template
+        Path to the search jinja-template. The search template embeds the table
+        template and is responsible for formatting the search field. 
+    """
 
     name: str
     title: str

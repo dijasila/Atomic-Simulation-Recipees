@@ -1,5 +1,5 @@
 """Database web application."""
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Optional
 import multiprocessing
 import tempfile
 from pathlib import Path
@@ -64,7 +64,7 @@ class App(DBApp):
         """
         self.flask.run(host=host, debug=debug)
 
-    def initialize_project(self, project):
+    def initialize_project(self, project: "DatabaseProject"):
         """Initialize a single project.
 
         Parameters
@@ -365,7 +365,7 @@ def main(
 
 def run_app(
     projects: List["DatabaseProject"],
-    extras: dict,
+    extra_key_descriptions: Optional[dict] = None,
     host: str = "0.0.0.0",
     test: bool = False,
 ):
@@ -379,15 +379,18 @@ def run_app(
     ----------
     projects : List[DatabaseProject]
         Add these projects to the application
-    extras : dict
+    extra_key_descriptions : Optional[dict]
         Add these key value pair descriptions to the projects before
-        starting the application
+        starting the application, by default None
     host : str, optional
         The host address, by default "0.0.0.0"
     test : bool, optional
         Whether to query all rows of all input projects/databases, by default False
     """
-    add_extra_kvp_descriptions(projects, extras)
+    if extra_key_descriptions:
+        extra_key_descriptions = None
+
+    add_extra_kvp_descriptions(projects, extra_key_descriptions)
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
     # We could use more cores, but they tend to fail to close

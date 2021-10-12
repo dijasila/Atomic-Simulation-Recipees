@@ -70,3 +70,8 @@ Application object
 ------------------
 .. autoclass:: asr.database.App
    :members:
+
+Database project
+----------------
+.. autoclass:: asr.database.DatabaseProject
+   :members:
