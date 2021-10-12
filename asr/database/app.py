@@ -324,7 +324,7 @@ class Summary:
         self.data = data
         constraints = row.get("constraints")
         if constraints:
-            constraints = ", ".join(c.__class__.__name__ for c in self.constraints)
+            constraints = ", ".join(c.__class__.__name__ for c in constraints)
         self.constraints = constraints
 
 
