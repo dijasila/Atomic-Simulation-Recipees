@@ -61,7 +61,16 @@ def test_add_extra_kvp_descriptions(project):
 
 def test_setting_custom_row_to_dict_function(project):
     from asr.database.app import set_custom_row_to_dict_function
+
     prev = project.row_to_dict_function
     set_custom_row_to_dict_function(project, Path("tmpdir"), pool=None)
     new = project.row_to_dict_function
     assert prev is not new
+
+
+def test_app_running(project, mocker):
+    from asr.database.app import run_app, ASRDBApp
+
+    # app.run blocks, so we patch it to check the other logic of the function.
+    mocker.patch.object(ASRDBApp, "run")
+    run_app(host="0.0.0.0", test=False, projects=[project], extras={})

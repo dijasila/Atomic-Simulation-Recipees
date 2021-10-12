@@ -187,6 +187,7 @@ def new_dbapp(template_path=None):
 
 def create_default_key_descriptions(db: Database = None):
     from asr.database.key_descriptions import key_descriptions
+
     flatten = {
         key: value
         for recipe, dct in key_descriptions.items()
