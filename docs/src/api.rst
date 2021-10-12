@@ -61,6 +61,21 @@ Metadata
 Database sub-package
 ====================
 
+The database sub-package contains utilities for creating a web application that
+browse multiple database projects. The basic workflow is to first create an
+`asr.database.DatabaseProject` with `asr.database.make_project`. Then an
+application can be created and started conveniently with `asr.database.run_app`.
+If more flexibility is needed and application object `asr.database.App` can be
+created manually.
+
+Database project
+----------------
+
+.. autofunction:: asr.database.make_project
+
+.. autoclass:: asr.database.DatabaseProject
+   :members:
+
 Run Application
 ---------------
 .. autofunction:: asr.database.run_app
@@ -71,7 +86,8 @@ Application object
 .. autoclass:: asr.database.App
    :members:
 
-Database project
-----------------
-.. autoclass:: asr.database.DatabaseProject
-   :members:
+
+CLI
+===
+
+.. autofunction:: asr.core.cli.app
