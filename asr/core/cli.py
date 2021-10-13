@@ -102,6 +102,8 @@ def init(directories):
     from .root import Repository
     if not directories:
         directories = [Path('.')]
+    else:
+        directories = [Path(drty) for drty in directories]
     for directory in directories:
         Repository.initialize(directory)
 
