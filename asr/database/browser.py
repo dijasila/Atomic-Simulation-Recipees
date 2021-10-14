@@ -513,6 +513,11 @@ def generate_plots(context, prefix, plot_descriptions, pool):
                     if pool is None:
                         runplot_clean(*args)
                     else:
+                        # The app uses threads, and we cannot call matplotlib
+                        # multithreadedly.  Therefore we use a multiprocessing
+                        # pool for the plotting.  We could use more cores, but
+                        # they tend to fail to close correctly on
+                        # KeyboardInterrupt.
                         pool.apply(runplot_clean, args)
                 except Exception:
                     if os.environ.get("ASRTESTENV", False):
