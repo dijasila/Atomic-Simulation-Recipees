@@ -73,7 +73,7 @@ class DatabaseProject:
     row_to_dict_function: callable = row_to_dict
     handle_query_function: callable = args2query
     default_columns: typing.List[str] = field(
-        default_factory=lambda: list(["formula", "uid"])
+        default_factory=lambda: list(["formula", "id"])
     )
     table_template: str = "asr/database/templates/table.html"
     row_template: str = "asr/database/templates/row.html"
@@ -131,9 +131,7 @@ def make_project(
     uid_key: str = "uid",
     row_to_dict_function: callable = row_to_dict,
     handle_query_function: callable = args2query,
-    default_columns: typing.List[str] = field(
-        default_factory=lambda: list(["formula", "uid"])
-    ),
+    default_columns: typing.Optional[typing.List[str]] = None,
     table_template: str = "asr/database/templates/table.html",
     row_template: str = "asr/database/templates/row.html",
     search_template: str = "asr/database/templates/search.html",
@@ -151,7 +149,7 @@ def make_project(
     key_descriptions : KeyDescriptions
         Descriptions for key value pairs.
     uid_key : str, optional
-        The key to use as UID, by default "uid"
+        The key to use as UID, by default "id"
     row_to_dict_function : callable, optional
         A function that takes a row and returns a dict, by default row_to_dict
     tmpdir : typing.Optional[pathlib.Path], optional
@@ -171,8 +169,15 @@ def make_project(
         The search template for the project,
         by default "asr/database/templates/search.html"
     """
-    if not title:
+    if title is None:
         title = name
+    
+    if key_descriptions is None:
+        from asr.database.app import create_default_key_descriptions
+        key_descriptions = create_default_key_descriptions(database)
+
+    if default_columns is None:
+        default_columns = ["formula", "id"]
 
     return DatabaseProject(
         name=name,
@@ -207,10 +212,10 @@ def make_project_from_pyfile(path: str) -> DatabaseProject:
         in the python file.
     """
     module = runpy.run_path(str(path))
-    return make_project_from_namespace(module)
+    return make_project_from_dict(module)
 
 
-def make_project_from_namespace(namespace):
+def make_project_from_dict(dct):
     values = {}
     keys = set(
         (
@@ -229,7 +234,6 @@ def make_project_from_namespace(namespace):
     )
 
     for key in keys:
-        if hasattr(namespace, key):
-            value = getattr(namespace, key)
-            values[key] = value
+        if key in dct:
+            values[key] = dct[key]
     return make_project(**values)

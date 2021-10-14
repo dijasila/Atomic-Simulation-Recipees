@@ -108,6 +108,20 @@ class App(DBApp):
             path = self.tmpdir / f"{project}/{uid}-{name}"
             return send_file(str(path))
 
+        @self.flask.template_filter()
+        def asr_sort_key_descriptions(value):
+            """Sort column drop down menu."""
+
+            def sort_func(item):
+                return item[1][1]
+
+            return sorted(value.items(), key=sort_func)
+
+        @self.flask.template_filter()
+        def debug(text):
+            print(text)
+            return ""
+
     def _setup_data_endpoints(self):
         """Set endpoints for downloading data."""
         self.flask.json_encoder = MyEncoder
@@ -168,15 +182,6 @@ class App(DBApp):
             row = project["database"].get(f"{uid_key}={uid}")
             return jsonify(row.data.get(filename))
 
-        @self.flask.template_filter()
-        def asr_sort_key_descriptions(value):
-            """Sort column drop down menu."""
-
-            def sort_func(item):
-                return item[1][1]
-
-            return sorted(value.items(), key=sort_func)
-
 
 @contextmanager
 def new_dbapp(template_path=None):
@@ -206,7 +211,7 @@ def create_default_key_descriptions(db: Database = None):
         keys = get_db_keys(db)
         flatten = pick_subset_of_keys(keys, flatten)
 
-    return flatten
+    return convert_to_ase_compatible_key_descriptions(flatten)
 
 
 def get_db_keys(db):
@@ -269,7 +274,6 @@ def get_project_from_database(
     name = metadata.get("name", Path(database).name)
 
     key_descriptions = create_default_key_descriptions(db)
-    key_descriptions = convert_to_ase_compatible_key_descriptions(key_descriptions)
     title = metadata.get("title", name)
     uid_key = metadata.get("uid", "uid")
     default_columns = metadata.get("default_columns", ["formula", "uid"])
