@@ -102,17 +102,13 @@ def _get_webcontent(dbname="database.db"):
     # mf()
     fromtree(recursive=True)
     content = ""
-    from asr.database.app import (
-        App, get_project_from_database, set_custom_row_to_dict_function
-    )
+    from asr.database.app import App, get_project_from_database
 
     if world.rank == 0:
-        tmpdir = Path("tmp/")
-        tmpdir.mkdir()
-        dbapp = App(tmpdir)
+        dbapp = App()
         project = get_project_from_database(dbname)
-        set_custom_row_to_dict_function(project, tmpdir, pool=None)
         dbapp.initialize_project(project)
+        dbapp.initialize()
         flask = dbapp.flask
 
         flask.testing = True

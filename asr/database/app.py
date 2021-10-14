@@ -1,10 +1,8 @@
 """Database web application."""
 from typing import List, TYPE_CHECKING, Optional
 import multiprocessing
-import tempfile
 from pathlib import Path
 import warnings
-from contextlib import contextmanager
 
 from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json as flask_json
@@ -28,24 +26,11 @@ if TYPE_CHECKING:
 class App(DBApp):
     """App that can browse multiple database projects."""
 
-    def __init__(self, tmpdir, template_path=None):
-        """Initialize database projects application.
-
-        Parameters
-        ----------
-        tmpdir : pathlib.Path
-            A temporary path that projects can use to store temporary data,
-            like figures.
-        template_path : pathlib.Path, optional
-            Path where the app can find the relevant Jinja templates, by default None
-        """
-        self.tmpdir = tmpdir  # used to cache png-files
+    def __init__(self):
         super().__init__()
 
-        if template_path is None:
-            template_path = Path(asr.__file__).parent.parent
         self.flask.jinja_loader.searchpath.append(  # pylint: disable=no-member
-            str(template_path)
+            Path(asr.__file__).parent.parent
         )
 
         self._setup_app()
@@ -62,7 +47,19 @@ class App(DBApp):
             Run server in debug mode, by default False
 
         """
+        # try:
+        self.initialize()
         self.flask.run(host=host, debug=debug)
+        # finally:
+        # self.cleanup()
+
+    # def cleanup(self):
+    #     """Clean temporary directories."""
+
+    #     for project in self.projects:
+    #         if project.cleanup:
+    #             if project.tmpdir.exists():
+    #                 rmtree(project.tmpdir)
 
     def initialize_project(self, project: "DatabaseProject"):
         """Initialize a single project.
@@ -72,9 +69,7 @@ class App(DBApp):
         project : DatabaseProject
             The project to be initialized.
         """
-        spec = project.tospec()
-        self.projects[project.name] = spec
-        (self.tmpdir / project.name).mkdir()
+        self.projects[project.name] = project
 
     def initialize_projects(self, projects: List["DatabaseProject"]):
         """Initialize multiple projects.
@@ -86,6 +81,23 @@ class App(DBApp):
         """
         for project in projects:
             self.initialize_project(project)
+
+    def initialize(self):
+        for project in self.projects.values():
+            if project.tmpdir is None:
+                continue
+
+            if not project.tmpdir.exists():
+                project.tmpdir.mkdir()
+
+            project_tmpdir = project.tmpdir / project.name
+            if not project_tmpdir.exists():
+                project_tmpdir.mkdir()
+
+            if project.template_search_path is not None:
+                self.flask.jinja_loader.searchpath.append(  # pylint: disable=no-member
+                    project.template_search_path
+                )
 
     def _setup_app(self):
         route = self.flask.route
@@ -105,7 +117,7 @@ class App(DBApp):
         @route("/<project>/file/<uid>/<name>")
         def file(project, uid, name):
             assert project in self.projects
-            path = self.tmpdir / f"{project}/{uid}-{name}"
+            path = project.tmpdir / f"{project}/{uid}-{name}"
             return send_file(str(path))
 
         @self.flask.template_filter()
@@ -183,21 +195,6 @@ class App(DBApp):
             return jsonify(row.data.get(filename))
 
 
-@contextmanager
-def new_dbapp(template_path=None):
-    """Context manager for creating ASR App.
-
-    Yields
-    ------
-    App
-        A database connection.
-    """
-    with tempfile.TemporaryDirectory(prefix="asr-app-") as tmpdir:
-        dbapp = App(Path(tmpdir), template_path=template_path)
-
-        yield dbapp
-
-
 def create_default_key_descriptions(db: Database = None):
     from asr.database.key_descriptions import key_descriptions
 
@@ -249,22 +246,6 @@ def pick_subset_of_keys(keys, key_descriptions):
     return kd
 
 
-def make_row_to_dict_function(pool, tmpdir):
-    from asr.database import browser
-    from functools import partial
-    from asr.database.project import row_to_dict
-
-    def layout(*args, **kwargs):
-        return browser.layout(*args, pool=pool, **kwargs)
-
-    row_to_dict_function = partial(
-        row_to_dict,
-        layout_function=layout,
-        tmpdir=tmpdir,
-    )
-    return row_to_dict_function
-
-
 def get_project_from_database(
     database,
 ):
@@ -290,6 +271,7 @@ def get_project_from_database(
 
     from asr.database.project import DatabaseProject
 
+    pool = multiprocessing.Pool(1)
     project = DatabaseProject(
         name=name,
         title=title,
@@ -300,6 +282,8 @@ def get_project_from_database(
         table_template=table_template,
         search_template=search_template,
         row_template=row_template,
+        pool=pool,
+        cleanup=True,
     )
     return project
 
@@ -405,29 +389,20 @@ def run_app(
     """
     if extra_key_descriptions:
         add_extra_kvp_descriptions(projects, extra_key_descriptions)
-    # The app uses threads, and we cannot call matplotlib multithreadedly.
-    # Therefore we use a multiprocessing pool for the plotting.
-    # We could use more cores, but they tend to fail to close
-    # correctly on KeyboardInterrupt.
-    pool = multiprocessing.Pool(1)
-    with new_dbapp() as dbapp:
-        try:
-            for project in projects:
-                set_custom_row_to_dict_function(project, dbapp.tmpdir, pool)
-                dbapp.initialize_project(project)
 
-            if test:
-                check_rows_of_all_projects(dbapp)
-            else:
-                dbapp.run(host=host, debug=True)
-        finally:
-            pool.close()
-            pool.join()
-
-
-def set_custom_row_to_dict_function(project, tmpdir, pool=None):
-    row_to_dict_function = make_row_to_dict_function(pool, tmpdir)
-    project.row_to_dict_function = row_to_dict_function
+    dbapp = App()
+    try:
+        dbapp.initialize_projects(projects)
+        if test:
+            check_rows_of_all_projects(dbapp)
+        else:
+            dbapp.run(host=host, debug=True)
+    finally:
+        for project in projects:
+            pool = project.pool
+            if pool is not None:
+                pool.close()
+                pool.join()
 
 
 def convert_files_to_projects(filenames):
@@ -441,7 +416,7 @@ def convert_files_to_projects(filenames):
             project = get_project_from_database(filename)
         else:
             raise ValueError
-    projects.append(project)
+        projects.append(project)
     return projects
 
 

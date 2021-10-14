@@ -12,22 +12,24 @@ from asr.test.materials import Ag
 def database_with_one_row(asr_tmpdir):
     database = connect("test_database.db")
     database.write(Ag)
+    database.metadata = dict(keys=[])
     return database
 
 
 @pytest.fixture
 def project(database_with_one_row):
     project = make_project(
-        name="database.db", database=database_with_one_row, key_descriptions={}
+        name="database.db",
+        database=database_with_one_row,
+        uid_key="formula",
     )
+
     return project
 
 
 @pytest.fixture
 def client(project):
-    tmpdir = Path("tmp/")
-    tmpdir.mkdir()
-    app = App(tmpdir=tmpdir)
+    app = App()
     app.initialize_project(project)
     app.flask.testing = True
     with app.flask.test_client() as client:
@@ -41,9 +43,15 @@ def test_single_project_home_page(client):
 
 
 @pytest.mark.ci
-def test_single_project_project_home_page(client):
+def test_single_project_database_home_page(client):
     response = client.get("/database.db/").data.decode()
     assert "<h1>database.db</h1>" in response
+    assert "Displaying rows" in response
+
+
+def test_single_project_material_page(client):
+    response = client.get("/database.db/Ag")
+    assert response.status_code == 0
 
 
 def test_add_extra_kvp_descriptions(project):
@@ -73,4 +81,4 @@ def test_app_running(project, mocker):
 
     # app.run blocks, so we patch it to check the other logic of the function.
     mocker.patch.object(App, "run")
-    run_app(host="0.0.0.0", test=False, projects=[project], extras={})
+    run_app(host="0.0.0.0", test=False, projects=[project])

@@ -1,9 +1,12 @@
 """Define an object that represents a database project."""
+import multiprocessing
+import pathlib
 import runpy
 import typing
 from dataclasses import dataclass, field
 
 from ase.db.core import Database
+from asr.database.browser import layout
 
 if typing.TYPE_CHECKING:
     from asr.database.key_descriptions import KeyDescriptions
@@ -13,16 +16,19 @@ def args2query(args):
     return args["query"]
 
 
-def row_to_dict(row, project, layout_function, tmpdir):
+def row_to_dict(row, project):
     from asr.database.app import Summary
+
+    def layout(*args, **kwargs):
+        return project.layout_function(*args, pool=project.pool, **kwargs)
 
     project_name = project["name"]
     uid = row.get(project["uid_key"])
     s = Summary(
         row,
-        create_layout=layout_function,
+        create_layout=layout,
         key_descriptions=project["key_descriptions"],
-        prefix=str(tmpdir / f"{project_name}/{uid}-"),
+        prefix=str(project.tmpdir / f"{project_name}/{uid}-"),
     )
     return s
 
@@ -78,11 +84,11 @@ class DatabaseProject:
     table_template: str = "asr/database/templates/table.html"
     row_template: str = "asr/database/templates/row.html"
     search_template: str = "asr/database/templates/search.html"
-
-    def tospec(self) -> dict:
-        """Compile dict spec for "database" useful for ASE web application."""
-        spec = {**self.__dict__}
-        return spec
+    layout_function: callable = layout
+    tmpdir: pathlib.Path = pathlib.Path("tmp/")
+    pool: typing.Optional[multiprocessing.Pool] = None
+    cleanup: bool = False
+    template_search_path: typing.Optional[str] = None
 
     def __getitem__(self, item):
         return self.__dict__[item]
@@ -174,9 +180,10 @@ def make_project(
     """
     if title is None:
         title = name
-    
+
     if key_descriptions is None:
         from asr.database.app import create_default_key_descriptions
+
         key_descriptions = create_default_key_descriptions(database)
 
     if default_columns is None:
