@@ -50,8 +50,8 @@ def test_single_project_database_home_page(client):
 
 
 def test_single_project_material_page(client):
-    response = client.get("/database.db/Ag")
-    assert response.status_code == 0
+    response = client.get("/database.db/row/Ag")
+    assert response.status_code == 200
 
 
 def test_add_extra_kvp_descriptions(project):
@@ -65,15 +65,6 @@ def test_add_extra_kvp_descriptions(project):
 
     assert key_name in project.key_descriptions
     assert project.key_descriptions[key_name] == description
-
-
-def test_setting_custom_row_to_dict_function(project):
-    from asr.database.app import set_custom_row_to_dict_function
-
-    prev = project.row_to_dict_function
-    set_custom_row_to_dict_function(project, Path("tmpdir"), pool=None)
-    new = project.row_to_dict_function
-    assert prev is not new
 
 
 def test_app_running(project, mocker):
