@@ -73,7 +73,9 @@ Database project
 
 .. autofunction:: asr.database.make_project_from_pyfile
 
+
 .. autofunction:: asr.database.make_project
+
 
 .. autoclass:: asr.database.DatabaseProject
    :members:
@@ -91,5 +93,7 @@ Application object
 
 CLI
 ===
+
+The 
 
 .. autofunction:: asr.core.cli.app
