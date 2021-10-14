@@ -1000,7 +1000,7 @@ def totree(
 
 @database.command()
 @click.argument("databases", nargs=-1, type=str)
-@click.option("--host", help="Host address.", type=str, default='0.0.0.0')
+@click.option("--host", help="Host address.", type=str, default='localhost')
 @click.option("--test", is_flag=True, help="Test the app.")
 @click.option("--extra_kvp_descriptions", type=str,
               help='File containing extra kvp descriptions for info.json')
