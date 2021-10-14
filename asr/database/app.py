@@ -168,7 +168,6 @@ class App(DBApp):
             row = project["database"].get(f"{uid_key}={uid}")
             return jsonify(row.data.get(filename))
 
-
         @self.flask.template_filter()
         def asr_sort_key_descriptions(value):
             """Sort column drop down menu."""
@@ -355,8 +354,7 @@ def main(
     Parameters
     ----------
     filenames : List[str]
-        List of databases or project configuration files (.py). A project configuration
-        file is a python file containing some or all of the following keys:
+        List of databases (.db) or project configuration files (.py).
     host : str, optional
         Host address, by default "0.0.0.0"
     test : bool, optional
@@ -367,10 +365,14 @@ def main(
     """
     projects = convert_files_to_projects(filenames)
 
-    if Path(extra_kvp_descriptions_file).is_file():
+    if (
+        extra_kvp_descriptions_file is not None
+        and Path(extra_kvp_descriptions_file).is_file()
+    ):
         extras = get_key_descriptions_from_file(extra_kvp_descriptions_file)
-
-    run_app(host, test, projects, extras)
+    else:
+        extras = None
+    run_app(projects, extras, host, test)
 
 
 def run_app(
@@ -398,9 +400,7 @@ def run_app(
         Whether to query all rows of all input projects/databases, by default False
     """
     if extra_key_descriptions:
-        extra_key_descriptions = None
-
-    add_extra_kvp_descriptions(projects, extra_key_descriptions)
+        add_extra_kvp_descriptions(projects, extra_key_descriptions)
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
     # We could use more cores, but they tend to fail to close
