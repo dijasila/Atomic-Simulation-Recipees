@@ -84,6 +84,9 @@ class DatabaseProject:
         spec = {**self.__dict__}
         return spec
 
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
 
 def make_project_from_database_metadata(
     metadata: dict,
