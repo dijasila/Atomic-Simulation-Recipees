@@ -169,6 +169,16 @@ class App(DBApp):
             return jsonify(row.data.get(filename))
 
 
+        @self.flask.template_filter()
+        def asr_sort_key_descriptions(value):
+            """Sort column drop down menu."""
+
+            def sort_func(item):
+                return item[1][1]
+
+            return sorted(value.items(), key=sort_func)
+
+
 @contextmanager
 def new_dbapp(template_path=None):
     """Context manager for creating ASR App.
