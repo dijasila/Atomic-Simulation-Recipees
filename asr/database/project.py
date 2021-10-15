@@ -94,44 +94,6 @@ class DatabaseProject:
         return self.__dict__[item]
 
 
-def make_project_from_database_metadata(
-    metadata: dict,
-    database: Database,
-    key_descriptions: typing.Optional[dict] = None,
-    name: typing.Optional[str] = None,
-    row_to_dict_function: typing.Optional[callable] = None,
-    handle_query_function: typing.Optional[callable] = None,
-) -> DatabaseProject:
-
-    name = name or metadata.get("name")
-    table_template = (
-        str(
-            metadata.get(
-                "table_template",
-                "asr/database/templates/table.html",
-            )
-        ),
-    )
-    search_template = str(
-        metadata.get("search_template", "asr/database/templates/search.html")
-    )
-    row_template = str(metadata.get("row_template", "asr/database/templates/row.html"))
-    default_columns = metadata.get("default_columns", ["formula", "uid"])
-    return DatabaseProject(
-        name=name,
-        title=metadata.get("title", name),
-        database=database,
-        key_descriptions=key_descriptions,
-        uid_key=metadata.get("uid", "uid"),
-        handle_query_function=handle_query_function,
-        row_to_dict_function=row_to_dict_function,
-        default_columns=default_columns,
-        table_template=table_template,
-        search_template=search_template,
-        row_template=row_template,
-    )
-
-
 def make_project(
     name: str,
     database: Database,
@@ -185,6 +147,9 @@ def make_project(
         from asr.database.app import create_default_key_descriptions
 
         key_descriptions = create_default_key_descriptions(database)
+    else:
+        from ase.db.web import create_key_descriptions
+        key_descriptions = create_key_descriptions(key_descriptions)
 
     if default_columns is None:
         default_columns = ["formula", "id"]
