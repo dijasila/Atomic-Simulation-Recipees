@@ -37,9 +37,13 @@ def test_project_from_namespace_has_title(project):
 @pytest.mark.ci
 def test_make_project_from_pyfile(asr_tmpdir):
     txt = """
+from ase.db import connect
 name = "name_of_database"
 title = "Title of database"
-database = "dbname"
+database = connect("dbname.db")
+key_descriptions = dict(
+    key_name=("short", "long", "unit"),
+)
 """
     filename = "project.py"
     pathlib.Path(filename).write_text(txt)

@@ -145,8 +145,7 @@ def make_project(
 
     if key_descriptions is None:
         from asr.database.app import create_default_key_descriptions
-
-        key_descriptions = create_default_key_descriptions(database)
+        key_descriptions = create_default_key_descriptions()
 
     if default_columns is None:
         default_columns = ["formula", "id"]
