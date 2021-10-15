@@ -36,13 +36,13 @@ class App(DBApp):
         self._setup_app()
         self._setup_data_endpoints()
 
-    def run(self, host, debug=False):
+    def run(self, host="localhost", debug=False):
         """Run app.
 
         Parameters
         ----------
-        host : int.int.int.int
-            The host address
+        host : str, optional
+            The host address, for example "0.0.0.0", by default "localhost
         debug : bool, optional
             Run server in debug mode, by default False
 
