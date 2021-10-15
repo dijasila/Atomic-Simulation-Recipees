@@ -61,7 +61,7 @@ class App(DBApp):
     #             if project.tmpdir.exists():
     #                 rmtree(project.tmpdir)
 
-    def initialize_project(self, project: "DatabaseProject"):
+    def add_project(self, project: "DatabaseProject"):
         """Initialize a single project.
 
         Parameters
@@ -71,7 +71,7 @@ class App(DBApp):
         """
         self.projects[project.name] = project
 
-    def initialize_projects(self, projects: List["DatabaseProject"]):
+    def add_projects(self, projects: List["DatabaseProject"]):
         """Initialize multiple projects.
 
         Parameters
@@ -80,7 +80,7 @@ class App(DBApp):
             Databases to be initializd
         """
         for project in projects:
-            self.initialize_project(project)
+            self.add_project(project)
 
     def initialize(self):
         for project in self.projects.values():
@@ -392,7 +392,7 @@ def run_app(
 
     dbapp = App()
     try:
-        dbapp.initialize_projects(projects)
+        dbapp.add_projects(projects)
         if test:
             check_rows_of_all_projects(dbapp)
         else:

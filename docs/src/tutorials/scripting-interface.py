@@ -7,6 +7,6 @@ other_project = make_project(
     database=connect("database.db")
 )
 app = App()
-app.initialize_project(project)
-app.initialize_project(other_project)
+app.add_project(project)
+app.add_project(other_project)
 app.run()

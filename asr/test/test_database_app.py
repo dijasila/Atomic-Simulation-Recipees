@@ -28,7 +28,7 @@ def project(database_with_one_row):
 @pytest.fixture
 def client(project):
     app = App()
-    app.initialize_project(project)
+    app.add_project(project)
     app.flask.testing = True
     with app.flask.test_client() as client:
         yield client

@@ -107,7 +107,7 @@ def _get_webcontent(dbname="database.db"):
     if world.rank == 0:
         dbapp = App()
         project = get_project_from_database(dbname)
-        dbapp.initialize_project(project)
+        dbapp.add_project(project)
         dbapp.initialize()
         flask = dbapp.flask
 
