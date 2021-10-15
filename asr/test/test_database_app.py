@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 from ase.db import connect
 
@@ -49,7 +47,6 @@ def test_single_project_database_home_page(client, project):
     # XXX We cannot test the table view because the DOMContentLoaded
     # XXX event doesn't fire for some reason.
     # assert "Displaying rows" in response
-
 
 
 def test_single_project_material_page(client):
