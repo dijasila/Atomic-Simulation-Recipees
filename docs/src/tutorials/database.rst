@@ -1,16 +1,17 @@
-.. _database tutorial:
+.. _Database tutorial:
+
+======================
+Creating ASR databases
+======================
 
 .. contents::
    :local:
 
-================================
-Making and browsing ASR database
-================================
 
-In this tutorial we will walk through how to collect results together in a
-ASR database and how to use the ASR web application to browse the database
-in a web-browser. Furthermore, we will see how to customize the layout of
-web application using database project configuration files.
+In this tutorial we will walk through how to collect results together in an ASR
+database and how to use the ASR web application to browse the database in a
+web-browser. Furthermore, we will see how to customize the layout of web
+application using database project configuration files.
 
 First we need some records in a cache in order to make a database, so let's
 first make those.
@@ -72,8 +73,8 @@ again to use the CLI:
 Now open your favourite browser and head to `http://localhost:5000/` to browse
 the web application.
 
-Project configuration files
----------------------------
+Project configuration file
+--------------------------
 
 It is possible to customize the looks of the database app by creating a project
 configuration see :py:func:`asr.database.DatabaseProject`. Such a configuration
@@ -101,5 +102,4 @@ projects and run the web application as shown below
    :caption: Example of using the scripting interface to the database web application.
 
 
-
-Which would spin up the server
+Which would spin up the server like before.
