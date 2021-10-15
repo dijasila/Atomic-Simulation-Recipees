@@ -295,12 +295,3 @@ def crosslinks_test_dbs(asr_tmpdir):
                       'link_url': 'testref/testref/{row.uid}'}
 
     return None
-
-
-@pytest.fixture
-def database_with_one_row(asr_tmpdir):
-    from ase.db import connect
-    from asr.test.materials import Ag
-    database = connect("test_database.db")
-    database.write(Ag)
-    return database
