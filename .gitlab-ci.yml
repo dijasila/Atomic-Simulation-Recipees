@@ -41,7 +41,7 @@ docs:
 
 # -------------- Unit tests --------------
 doctest:
-  image: python:3.7
+  image: python:3.9
   stage: test
   script: tox -e doctest
 
@@ -101,7 +101,7 @@ python39-gpaw:
 
 # -------------- Coverage --------------
 coverage:
-  image: python:3.7
+  image: python:3.9
   stage: coverage
   script:
     - tox -e coverage-report
