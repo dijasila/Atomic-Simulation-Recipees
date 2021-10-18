@@ -45,15 +45,6 @@ doctest:
   stage: test
   script: tox -e doctest
 
-python37:
-  image: python:3.7
-  stage: test
-  script: tox -e py37
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
-
 python38:
   image: python:3.8
   stage: test
@@ -73,28 +64,16 @@ python39:
     expire_in: 3 weeks
 # -------------- Parallel tests --------------
 
-python37-mpi:
-  image: python:3.7
+python39-mpi:
+  image: python:3.9
   stage: test
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
     - useradd -m user
-    - su user -c 'tox -e py37-mpi'
+    - su user -c 'tox -e py39-mpi'
 
 # -------------- Integration tests --------------
-
-python37-gpaw:
-  image: python:3.7
-  stage: integrationtest
-  script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py37-gpaw
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
 
 python38-gpaw:
   image: python:3.8
