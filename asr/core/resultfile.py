@@ -6,7 +6,8 @@ import pathlib
 from asr.core import ASRResult
 from dataclasses import dataclass
 from ase import Atoms
-from .dependencies import Dependency
+from ase.db.core import AtomsRow
+from .dependencies import Dependency, Dependencies
 from .metadata import construct_metadata
 from .parameters import Parameters
 from .specification import RunSpecification, get_new_uuid
@@ -85,7 +86,7 @@ def construct_record_from_context(
     else:
         assert isinstance(result, dict)
         data = result
-        params = {}
+        params: typing.Dict[str, typing.Any] = {}
         metadata = {
             'asr_name': recipename,
             'params': params,
@@ -141,11 +142,9 @@ def construct_record_from_context(
     except MetaDataNotSetError:
         resources = Resources()
 
-    name = result.metadata.asr_name
-
     record = Record(
         run_specification=RunSpecification(
-            name=name,
+            name=recipename,
             parameters=parameters,
             version=-1,
             codes=codes,
@@ -202,19 +201,31 @@ def get_relevant_resultfile_parameters(path):
     return folder, result, recipename, atomic_structures, vague_dependencies, directory
 
 
-def make_concrete_dependencies(dependencies, uids):
+def make_concrete_dependencies(
+    dependencies,
+    uids
+) -> typing.Optional[Dependencies]:
     if dependencies:
         dep_list = []
         for dependency in dependencies:
             if dependency in uids:
-                dep_list.append(Dependency(uid=uids[dependency], revision=None))
-        return dep_list
+                dep_list.append(
+                    Dependency(
+                        uid=uids[dependency], revision=None
+                    )
+                )
+        return Dependencies(dep_list)
     return None
 
 
 def get_recipe_name_from_filename(filename):
     from os.path import splitext
     name = splitext(filename.split('-')[1])[0]
+    count = name.count(".") 
+    if count == 1 and name != "asr.structureinfo":
+        segments = name.split(".")
+        name = ".".join([segments[0], "c2db", segments[1]])
+    name = name.replace("@", ":")
     return name
 
 
@@ -315,12 +326,18 @@ class RecordContext:
     recipename: str
     atomic_structures: typing.Dict[str, Atoms]
     uid: str
-    dependencies: typing.List[Dependency]
+    dependencies: typing.Optional[Dependencies]
     directory: str
 
 
 def get_resultsfile_records() -> typing.List[Record]:
     contexts = get_contexts_in_current_directory()
+    records = make_records_from_contexts(contexts)
+    return records
+
+
+def get_resultfile_records_from_database_row(row: AtomsRow):
+    contexts = convert_row_data_to_contexts(row.data, row.folder)
     records = make_records_from_contexts(contexts)
     return records
 

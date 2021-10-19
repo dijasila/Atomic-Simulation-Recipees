@@ -850,6 +850,25 @@ def database():
 
 
 @database.command()
+@click.argument("databasein", type=str)
+@click.argument("databaseout", type=str)
+def convert(databasein: str, databaseout: str) -> None:
+    """Convert data representation in database file."""
+    from asr.core.serialize import JSONSerializer
+    from ase.db import connect
+    from .resultfile import get_resultfile_records_from_database_row
+    serializer = JSONSerializer()
+    dbin = connect(databasein)
+    assert not Path(databaseout).exists()
+    with connect(databaseout) as dbout:
+        for row in dbin.select():
+            records = get_resultfile_records_from_database_row(row)
+            data = serializer.serialize(dict(records=records))
+            dbout.write(atoms=row.atoms, key_value_pairs=row.key_value_pairs, data=data)
+    dbout.metadata = database.metadata
+
+
+@database.command()
 @click.argument('folders', nargs=-1, type=str)
 @click.option('-r', '--recursive', is_flag=True,
               help='Recurse and collect subdirectories.')

@@ -133,7 +133,7 @@ def dct_to_object(dct):
         return dct
 
 
-def read_file(filename: str) -> str:
+def read_file(filename: typing.Union[Path, str]) -> str:
     return Path(filename).read_text()
 
 

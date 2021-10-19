@@ -340,7 +340,7 @@ class Migration:
 
     function: typing.Callable
     description: str
-    uid: typing.Optional[None] = None
+    uid: typing.Optional[UID] = None
     eagerness: int = 0
 
     def apply(self, record: Record) -> Revision:
