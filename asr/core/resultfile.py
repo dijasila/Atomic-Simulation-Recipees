@@ -3,6 +3,9 @@
 import typing
 import fnmatch
 import pathlib
+from asr.core import ASRResult
+from dataclasses import dataclass
+from ase import Atoms
 from .dependencies import Dependency
 from .metadata import construct_metadata
 from .parameters import Parameters
@@ -62,44 +65,27 @@ ATOMSFILES = [
     'structure.json', 'original.json', 'start.json', 'unrelaxed.json']
 
 
-def construct_record_from_resultsfile(
-        path: pathlib.Path,
-        uids: typing.Dict[pathlib.Path, str],
+def construct_record_from_context(
+        record_context: "RecordContext",
 ):
     from .record import Record
     from asr.core.results import MetaDataNotSetError
-    from asr.core import read_json, get_recipe_from_name, ASRResult
-    from ase.io import read
     from asr.core.codes import Codes, Code
-    folder = path.parent
 
-    result = read_json(path)
-    recipename = path.with_suffix('').name.split('-')[1]
+    result = record_context.result
+    recipename = record_context.recipename
+    atomic_structures = record_context.atomic_structures
+    uid = record_context.uid
+    dependencies = record_context.dependencies
+    directory = record_context.directory
 
     if isinstance(result, ASRResult):
         data = result.data
         metadata = result.metadata.todict()
     else:
         assert isinstance(result, dict)
-        if recipename == 'asr.c2db.gs@calculate':
-            from asr.c2db.gs import GroundStateCalculationResult
-            from asr.calculators import Calculation
-            calculation = Calculation(
-                id='gs',
-                cls_name='gpaw',
-                paths=[folder / 'gs.gpw'],
-            )
-            result = GroundStateCalculationResult.fromdata(
-                calculation=calculation)
-            data = result.data
-            calc = calculation.load()
-            calculator = calc.parameters
-            calculator['name'] = 'gpaw'
-            params = {'calculator': calculator}
-        else:
-            data = result
-            params = {}
-
+        data = result
+        params = {}
         metadata = {
             'asr_name': recipename,
             'params': params,
@@ -113,7 +99,8 @@ def construct_record_from_resultsfile(
     result = returns(
         data=data,
         metadata=metadata,
-        strict=False)
+        strict=False,
+    )
 
     try:
         parameters = result.metadata.params
@@ -123,13 +110,6 @@ def construct_record_from_resultsfile(
         parameters = {}
 
     parameters = Parameters(parameters)
-
-    atomic_structures = {
-        atomsfilename: read(folder / atomsfilename).copy()
-        for atomsfilename in ATOMSFILES
-        if pathlib.Path(folder / atomsfilename).is_file()
-    }
-
     params = recipe.get_argument_descriptors()
     atomsparam = [param for name, param in params.items()
                   if name == 'atoms'][0]
@@ -163,8 +143,6 @@ def construct_record_from_resultsfile(
 
     name = result.metadata.asr_name
 
-    uid = uids[path]
-    dependencies = get_dependencies(path, uids)
     record = Record(
         run_specification=RunSpecification(
             name=name,
@@ -174,7 +152,7 @@ def construct_record_from_resultsfile(
             uid=uid,
         ),
         metadata=construct_metadata(
-            directory=str(folder.absolute().relative_to(find_root()))
+            directory=directory,
         ),
         resources=resources,
         result=result,
@@ -185,9 +163,91 @@ def construct_record_from_resultsfile(
     return record
 
 
-def get_dependencies(path, uids):
-    folder = path.parent
+def fix_asr_gs_record(folder, result, recipename):
+    if isinstance(result, dict) and recipename == 'asr.c2db.gs@calculate':
+        from asr.c2db.gs import GroundStateCalculationResult
+        from asr.calculators import Calculation
+        calculation = Calculation(
+            id='gs',
+            cls_name='gpaw',
+            paths=[folder / 'gs.gpw'],
+        )
+        result = GroundStateCalculationResult.fromdata(
+            calculation=calculation)
+        calc = calculation.load()
+        calculator = calc.parameters
+        calculator['name'] = 'gpaw'
+        params = {'calculator': calculator}
+        metadata = {
+            'asr_name': recipename,
+            'params': params,
+        }
+        result.metadata = metadata
+    return result
 
+
+def get_relevant_resultfile_parameters(path):
+    from asr.core import read_json
+    from ase.io import read
+    folder = path.parent
+    result = read_json(path)
+    recipename = path.with_suffix('').name.split('-')[1]
+    atomic_structures = {
+        atomsfilename: read(folder / atomsfilename).copy()
+        for atomsfilename in ATOMSFILES
+        if pathlib.Path(folder / atomsfilename).is_file()
+    }
+    vague_dependencies = get_vague_dependencies_from_path(path)
+    directory = str(folder.absolute().relative_to(find_root()))
+    return folder, result, recipename, atomic_structures, vague_dependencies, directory
+
+
+def make_concrete_dependencies(dependencies, uids):
+    if dependencies:
+        dep_list = []
+        for dependency in dependencies:
+            if dependency in uids:
+                dep_list.append(Dependency(uid=uids[dependency], revision=None))
+        return dep_list
+    return None
+
+
+def get_recipe_name_from_filename(filename):
+    from os.path import splitext
+    name = splitext(filename.split('-')[1])[0]
+    return name
+
+
+def get_vague_dependencies_from_path(path):
+    folder = path.parent
+    name = get_recipe_name_from_filename(path.name)
+
+    # Some manually implemented dependencies
+    if name == 'asr.c2db.piezoelectrictensor':
+        dependencies = []
+        dependencies += list(folder.rglob(
+            'strains*/results-asr.c2db.relax.json'))
+        dependencies += list(
+            folder.rglob('strains*/results-asr.c2db.formalpolarization.json')
+        )
+    elif name == 'asr.c2db.stiffness':
+        dependencies = []
+        dependencies += list(folder.rglob(
+            'strains*/results-asr.c2db.relax.json'))
+    else:
+        depnames = get_default_dependencies_from_name(name)
+        dependencies = []
+        for depname in depnames:
+            deppath = folder / f'results-{depname}.json'
+            dependencies.append(deppath)
+
+    if dependencies:
+        return dependencies
+
+    return None
+
+
+def get_default_dependencies_from_name(name):
     deps = {
         'asr.c2db.infraredpolarizability': [
             'asr.c2db.phonons', 'asr.c2db.borncharges',
@@ -245,48 +305,95 @@ def get_dependencies(path, uids):
         'asr.c2db.polarizability': ['asr.structureinfo',
                                     'asr.c2db.gs@calculate'],
     }
+    return deps.get(name, [])
 
-    name = path.with_suffix('').name.split('-')[1]
 
-    # Some manually implemented dependencies
-    if name == 'asr.c2db.piezoelectrictensor':
-        dependencies = []
-        dependencies += list(folder.rglob(
-            'strains*/results-asr.c2db.relax.json'))
-        dependencies += list(
-            folder.rglob('strains*/results-asr.c2db.formalpolarization.json')
-        )
-    elif name == 'asr.c2db.stiffness':
-        dependencies = []
-        dependencies += list(folder.rglob(
-            'strains*/results-asr.c2db.relax.json'))
-    else:
-        depnames = deps.get(name, [])
-        dependencies = []
-        for depname in depnames:
-            deppath = folder / f'results-{depname}.json'
-            dependencies.append(deppath)
+@dataclass
+class RecordContext:
 
-    if dependencies:
-        dep_list = []
-        for dependency in dependencies:
-            if dependency in uids:
-                dep_list.append(Dependency(uid=uids[dependency], revision=None))
-        return dep_list
-
-    return None
+    result: typing.Any
+    recipename: str
+    atomic_structures: typing.Dict[str, Atoms]
+    uid: str
+    dependencies: typing.List[Dependency]
+    directory: str
 
 
 def get_resultsfile_records() -> typing.List[Record]:
-    records = []
+    contexts = get_contexts_in_current_directory()
+    records = make_records_from_contexts(contexts)
+    return records
+
+
+def get_contexts_in_current_directory() -> typing.List[RecordContext]:
     resultsfiles = find_results_files(directory=pathlib.Path('.'))
     uids = generate_uids(resultsfiles)
+    contexts = []
     for path in resultsfiles:
         try:
-            record = construct_record_from_resultsfile(path, uids)
-        except AssertionError as e:
-            print(e)
+            (
+                folder,
+                result,
+                recipename,
+                atomic_structures,
+                vague_dependencies,
+                directory,
+            ) = get_relevant_resultfile_parameters(path)
+            uid = uids[path]
+            dependencies = make_concrete_dependencies(vague_dependencies, uids)
+            result = fix_asr_gs_record(folder, result, recipename)
+            context = RecordContext(
+                result=result,
+                recipename=recipename,
+                atomic_structures=atomic_structures,
+                uid=uid,
+                dependencies=dependencies,
+                directory=directory,
+            )
+            contexts.append(context)
+        except AssertionError as error:
+            print(error)
             continue
+    return contexts
+
+
+def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
+    filenames = []
+    for filename in data:
+        is_results_file = filename.startswith('results-') and filename.endswith('.json')
+        if not is_results_file:
+            continue
+        filenames.append(filename)
+
+    uids = generate_uids(filenames)
+    contexts = []
+    for filename in filenames:
+        result = data[filename]
+        recipename = get_recipe_name_from_filename(filename)
+        atomic_structures = {
+            name: value for name, value in data.items()
+            if name in ATOMSFILES
+        }
+        uid = uids[filename]
+        vague_dependency_names = get_default_dependencies_from_name(recipename)
+        vague_dependencies = [f"results-{dep}.json" for dep in vague_dependency_names]
+        dependencies = make_concrete_dependencies(vague_dependencies, uids)
+        context = RecordContext(
+            result=result,
+            recipename=recipename,
+            atomic_structures=atomic_structures,
+            uid=uid,
+            dependencies=dependencies,
+            directory=directory,
+        )
+        contexts.append(context)
+    return contexts
+
+
+def make_records_from_contexts(contexts):
+    records = []
+    for context in contexts:
+        record = construct_record_from_context(context)
         records.append(record)
     records = inherit_dependency_parameters(records)
     return records
