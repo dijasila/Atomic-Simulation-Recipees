@@ -862,10 +862,15 @@ def convert(databasein: str, databaseout: str) -> None:
     assert not Path(databaseout).exists()
     with connect(databaseout) as dbout:
         for row in dbin.select():
+            print(row.id)
             records = get_resultfile_records_from_database_row(row)
             data = serializer.serialize(dict(records=records))
-            dbout.write(atoms=row.atoms, key_value_pairs=row.key_value_pairs, data=data)
-    dbout.metadata = database.metadata
+            dbout.write(
+                atoms=row.toatoms(),
+                key_value_pairs=row.key_value_pairs,
+                data=data,
+            )
+    dbout.metadata = dbin.metadata
 
 
 @database.command()

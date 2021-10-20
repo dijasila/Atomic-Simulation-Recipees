@@ -38,6 +38,17 @@ def generate_uids(resultfiles) -> typing.Dict[pathlib.Path, str]:
 
 
 def find_results_files(directory: pathlib.Path) -> typing.List[pathlib.Path]:
+    filenames = [
+        str(filename)
+        for filename in pathlib.Path(directory).rglob('results-asr.*.json')
+    ]
+    filenames = filter_filenames_for_unused_recipe_results(filenames)
+    return [pathlib.Path(filename) for filename in filenames]
+
+
+def filter_filenames_for_unused_recipe_results(
+    filenames
+) -> typing.List[str]:
     skip_patterns = [
         '*results-asr.database.fromtree.json',
         '*results-asr.database.app.json',
@@ -47,19 +58,41 @@ def find_results_files(directory: pathlib.Path) -> typing.List[pathlib.Path]:
         '*strains*/results-asr.database.material_fingerprint.json',
         '*asr.setinfo*',
         '*asr.setup.params.json',
-        '*asr.setup.params.json',
-        '*asr.c2db.exchange@calculate.json',
+        '*asr.c2db.exchange@calculate*',
+        '*asr.c2db.exchange:calculate*',
     ]
 
     paths = []
-    for path in pathlib.Path(directory).rglob('results-asr.*.json'):
-        filepath = str(path)
-        if any(fnmatch.fnmatch(filepath, skip_pattern)
+    for path in filenames:
+        if any(fnmatch.fnmatch(path, skip_pattern)
                for skip_pattern in skip_patterns):
             continue
         paths.append(path)
 
     return paths
+
+
+def filter_contexts_for_unused_recipe_results(
+    contexts: typing.List["RecordContext"]
+) -> typing.List["RecordContext"]:
+    skip_patterns = [
+        '*asr.database.fromtree',
+        '*asr.database.app',
+        '*asr.database.key_descriptions',
+        '*asr.setup.strains*',
+        '*asr.database.material_fingerprint',
+        '*asr.setinfo*',
+        '*asr.setup.params',
+        '*asr.c2db.exchange:calculate*',
+        '*asr.c2db.plasmafrequency:calculate*'
+    ]
+    filtered = []
+    for context in contexts:
+        if any(fnmatch.fnmatch(context.recipename, skip_pattern)
+               for skip_pattern in skip_patterns):
+            continue
+        filtered.append(context)
+    return filtered
 
 
 ATOMSFILES = [
@@ -115,7 +148,8 @@ def construct_record_from_context(
     atomsparam = [param for name, param in params.items()
                   if name == 'atoms'][0]
     atomsfilename = atomsparam['default']
-    assert atomsfilename in atomic_structures
+    if atomsfilename not in atomic_structures:
+        atomic_structures[atomsfilename] = "Unknown atoms file"
 
     parameters.atomic_structures = atomic_structures
 
@@ -190,7 +224,7 @@ def get_relevant_resultfile_parameters(path):
     from ase.io import read
     folder = path.parent
     result = read_json(path)
-    recipename = path.with_suffix('').name.split('-')[1]
+    recipename = get_recipe_name_from_filename(path.name)
     atomic_structures = {
         atomsfilename: read(folder / atomsfilename).copy()
         for atomsfilename in ATOMSFILES
@@ -222,7 +256,8 @@ def get_recipe_name_from_filename(filename):
     from os.path import splitext
     name = splitext(filename.split('-')[1])[0]
     count = name.count(".") 
-    if count == 1 and name != "asr.structureinfo":
+    RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY = ["asr.structureinfo", "asr.setinfo"]
+    if count == 1 and name not in RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY:
         segments = name.split(".")
         name = ".".join([segments[0], "c2db", segments[1]])
     name = name.replace("@", ":")
@@ -338,6 +373,7 @@ def get_resultsfile_records() -> typing.List[Record]:
 
 def get_resultfile_records_from_database_row(row: AtomsRow):
     contexts = convert_row_data_to_contexts(row.data, row.folder)
+    contexts = filter_contexts_for_unused_recipe_results(contexts)
     records = make_records_from_contexts(contexts)
     return records
 
@@ -404,6 +440,7 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
             directory=directory,
         )
         contexts.append(context)
+    
     return contexts
 
 
@@ -434,7 +471,10 @@ def get_dependency_parameters(dependencies, records):
         return params
 
     for dependency in dependencies:
-        dep = [other for other in records if other.uid == dependency.uid][0]
+        deps = [other for other in records if other.uid == dependency.uid]
+        if not deps:
+            continue
+        dep = deps[0]
         depparams = Parameters(
             {
                 dep.name: {
