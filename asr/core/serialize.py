@@ -5,6 +5,7 @@ import typing
 import pathlib
 from .results import obj_to_id
 import datetime
+import numpy as np
 
 
 class ASRJSONEncoder(json.JSONEncoder):
@@ -22,6 +23,16 @@ class ASRJSONEncoder(json.JSONEncoder):
                 '__asr_type__': 'set',
                 'value': list(obj),
             }
+        elif isinstance(obj, np.ndarray):
+            # Out tuple serialization causes trouble with
+            # ASE's numpy serialization so here we implement our
+            # own to avoid conflict with ASE.
+            flatobj = obj.ravel()
+            if np.iscomplexobj(obj):
+                flatobj.dtype = obj.real.dtype
+            return {'__ndarray__': [list(obj.shape),
+                                    obj.dtype.name,
+                                    flatobj.tolist()]}
         elif isinstance(obj, datetime.datetime):
             return {
                 '__asr_type__': 'datetime.datetime',
