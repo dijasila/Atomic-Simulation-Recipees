@@ -16,7 +16,7 @@ from .record import Record
 from .migrate import Migration, SelectorMigrationGenerator
 from .selector import Selector
 from .command import get_recipes
-from .utils import write_file, read_file, get_recipe_from_name
+from .utils import parse_mod_func, write_file, read_file, get_recipe_from_name
 from .root import find_root
 
 
@@ -113,6 +113,8 @@ def construct_record_from_context(
     dependencies = record_context.dependencies
     directory = record_context.directory
 
+    mod, func = parse_mod_func(recipename)
+    recipename = ':'.join([mod, func])
     if isinstance(result, ASRResult):
         data = result.data
         metadata = result.metadata.todict()
@@ -556,7 +558,10 @@ def get_resultfile_migration_generator() -> SelectorMigrationGenerator:
 
 
 PATH = pathlib.Path(__file__).parent / 'old_resultfile_defaults.json'
-DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
+OLD_DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
+DEFAULTS: typing.Dict[str, typing.List[str]] = {}
+for key, value in OLD_DEFAULTS.items():
+    DEFAULTS[fix_recipe_name_if_recipe_has_been_moved(key)] = value
 
 
 def update_resultfile_record_to_version_0(record):
