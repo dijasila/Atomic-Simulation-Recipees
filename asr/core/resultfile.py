@@ -230,9 +230,24 @@ def get_relevant_resultfile_parameters(path):
         for atomsfilename in ATOMSFILES
         if pathlib.Path(folder / atomsfilename).is_file()
     }
-    vague_dependencies = get_vague_dependencies_from_path(path)
+    matcher = get_dependency_matcher_from_name(recipename)
     directory = str(folder.absolute().relative_to(find_root()))
-    return folder, result, recipename, atomic_structures, vague_dependencies, directory
+    return folder, result, recipename, atomic_structures, matcher, directory
+
+
+def set_contexts_dependencies(
+    contexts: typing.List["RecordContext"],
+) -> typing.List["RecordContext"]:
+    for context in contexts:
+        deps = []
+        for context2 in contexts:
+            if context.dependency_matcher(context2):
+                dep = Dependency(
+                    uid=context2.uid, revision=None,
+                )
+                deps.append(dep)
+        context.dependencies = Dependencies(deps)
+    return contexts
 
 
 def make_concrete_dependencies(
@@ -255,7 +270,7 @@ def make_concrete_dependencies(
 def get_recipe_name_from_filename(filename):
     from os.path import splitext
     name = splitext(filename.split('-')[1])[0]
-    count = name.count(".") 
+    count = name.count(".")
     RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY = ["asr.structureinfo", "asr.setinfo"]
     if count == 1 and name not in RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY:
         segments = name.split(".")
@@ -264,115 +279,125 @@ def get_recipe_name_from_filename(filename):
     return name
 
 
-def get_vague_dependencies_from_path(path):
-    folder = path.parent
-    name = get_recipe_name_from_filename(path.name)
+def make_dependency_matcher(
+    patterns: typing.List[str],
+    attribute: str = "recipename",
+) -> typing.Callable[["RecordContext"], bool]:
+
+    def dependency_matcher(context: "RecordContext") -> bool:
+        return any(
+            fnmatch.fnmatch(
+                str(getattr(context, attribute)),
+                pattern
+            )
+            for pattern in patterns
+        )
+
+    return dependency_matcher
+
+
+def get_dependency_matcher_from_name(
+    name: str,
+) -> typing.Callable[["RecordContext"], bool]:
 
     # Some manually implemented dependencies
     if name == 'asr.c2db.piezoelectrictensor':
-        dependencies = []
-        dependencies += list(folder.rglob(
-            'strains*/results-asr.c2db.relax.json'))
-        dependencies += list(
-            folder.rglob('strains*/results-asr.c2db.formalpolarization.json')
-        )
+        patterns = [
+            'strains*/results-asr.c2db.relax.json',
+            'strains*/results-asr.c2db.formalpolarization.json'
+        ]
+        return make_dependency_matcher(patterns, "path")
     elif name == 'asr.c2db.stiffness':
-        dependencies = []
-        dependencies += list(folder.rglob(
-            'strains*/results-asr.c2db.relax.json'))
-    else:
-        depnames = get_default_dependencies_from_name(name)
-        dependencies = []
-        for depname in depnames:
-            deppath = folder / f'results-{depname}.json'
-            dependencies.append(deppath)
+        patterns = [
+            'strains*/results-asr.c2db.relax.json',
+        ]
+        return make_dependency_matcher(patterns, "path")
 
-    if dependencies:
-        return dependencies
-
-    return None
-
-
-def get_default_dependencies_from_name(name):
-    deps = {
+    deps : typing.Dict[str, typing.List[str]] = {
         'asr.c2db.infraredpolarizability': [
             'asr.c2db.phonons', 'asr.c2db.borncharges',
             'asr.c2db.polarizability'],
-        'asr.c2db.emasses@refine': [
+        'asr.c2db.emasses:refine': [
             'asr.structureinfo', 'asr.c2db.magnetic_anisotropy', 'asr.c2db.gs'],
         'asr.c2db.emasses': [
-            'asr.c2db.emasses@refine', 'asr.c2db.gs@calculate',
+            'asr.c2db.emasses:refine', 'asr.c2db.gs:calculate',
             'asr.c2db.gs', 'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
-        'asr.c2db.emasses@validate': ['asr.c2db.emasses'],
-        'asr.berry@calculate': ['asr.c2db.gs'],
-        'asr.berry': ['asr.berry@calculate'],
-        'asr.c2db.gw@gs': ['asr.c2db.gs@calculate'],
-        'asr.c2db.gw@gw': ['asr.c2db.gw@gs'],
-        'asr.c2db.gw@empirical_mean_z': ['asr.c2db.gw@gw'],
+        'asr.c2db.emasses:validate': ['asr.c2db.emasses'],
+        'asr.berry:calculate': ['asr.c2db.gs'],
+        'asr.berry': ['asr.berry:calculate'],
+        'asr.c2db.gw:gs': ['asr.c2db.gs:calculate'],
+        'asr.c2db.gw:gw': ['asr.c2db.gw:gs'],
+        'asr.c2db.gw:empirical_mean_z': ['asr.c2db.gw:gw'],
         'asr.c2db.gw': ['asr.c2db.bandstructure',
-                        'asr.c2db.gw@empirical_mean_z'],
-        'asr.c2db.pdos@calculate': ['asr.c2db.gs'],
-        'asr.c2db.pdos': ['asr.c2db.gs', 'asr.c2db.pdos@calculate'],
-        'asr.c2db.phonons@calculate': [],
-        'asr.c2db.phonons': ['asr.c2db.phonons@calculate'],
+                        'asr.c2db.gw:empirical_mean_z'],
+        'asr.c2db.pdos:calculate': ['asr.c2db.gs'],
+        'asr.c2db.pdos': ['asr.c2db.gs', 'asr.c2db.pdos:calculate'],
+        'asr.c2db.phonons:calculate': [],
+        'asr.c2db.phonons': ['asr.c2db.phonons:calculate'],
         'asr.c2db.push': ['asr.structureinfo', 'asr.c2db.phonons'],
-        'asr.c2db.phonopy@calculate': ['asr.c2db.gs@calculate'],
-        'asr.c2db.phonopy': ['asr.c2db.phonopy@calculate'],
-        'asr.c2db.hse@calculate': [
-            'asr.structureinfo', 'asr.c2db.gs@calculate', 'asr.c2db.gs'],
-        'asr.c2db.hse': ['asr.c2db.hse@calculate', 'asr.c2db.bandstructure'],
-        'asr.c2db.exchange@calculate': ['asr.c2db.gs@calculate'],
-        'asr.c2db.exchange': ['asr.c2db.exchange@calculate'],
-        'asr.c2db.plasmafrequency@calculate': ['asr.c2db.gs@calculate'],
-        'asr.c2db.plasmafrequency': ['asr.c2db.plasmafrequency@calculate'],
-        'asr.c2db.shg': ['asr.c2db.gs@calculate'],
-        'asr.c2db.magstate': ['asr.c2db.gs@calculate'],
+        'asr.c2db.phonopy:calculate': ['asr.c2db.gs:calculate'],
+        'asr.c2db.phonopy': ['asr.c2db.phonopy:calculate'],
+        'asr.c2db.hse:calculate': [
+            'asr.structureinfo', 'asr.c2db.gs:calculate', 'asr.c2db.gs'],
+        'asr.c2db.hse': ['asr.c2db.hse:calculate', 'asr.c2db.bandstructure'],
+        'asr.c2db.exchange:calculate': ['asr.c2db.gs:calculate'],
+        'asr.c2db.exchange': ['asr.c2db.exchange:calculate'],
+        'asr.c2db.plasmafrequency:calculate': ['asr.c2db.gs:calculate'],
+        'asr.c2db.plasmafrequency': ['asr.c2db.plasmafrequency:calculate'],
+        'asr.c2db.shg': ['asr.c2db.gs:calculate'],
+        'asr.c2db.magstate': ['asr.c2db.gs:calculate'],
         'asr.c2db.fermisurface': ['asr.c2db.gs', 'asr.structureinfo'],
-        'asr.c2db.magnetic_anisotropy': ['asr.c2db.gs@calculate',
+        'asr.c2db.magnetic_anisotropy': ['asr.c2db.gs:calculate',
                                          'asr.c2db.magstate'],
         'asr.c2db.convex_hull': [
             'asr.structureinfo', 'asr.database.material_fingerprint'],
-        'asr.c2db.borncharges': ['asr.c2db.gs@calculate'],
+        'asr.c2db.borncharges': ['asr.c2db.gs:calculate'],
         'asr.c2db.gs': [
-            'asr.c2db.gs@calculate',
+            'asr.c2db.gs:calculate',
             'asr.c2db.magnetic_anisotropy', 'asr.structureinfo'],
-        'asr.c2db.bandstructure@calculate': ['asr.c2db.gs@calculate'],
+        'asr.c2db.bandstructure:calculate': ['asr.c2db.gs:calculate'],
         'asr.c2db.bandstructure': [
-            'asr.c2db.bandstructure@calculate', 'asr.c2db.gs',
+            'asr.c2db.bandstructure:calculate', 'asr.c2db.gs',
             'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
         'asr.defectformation': ['asr.setup.defects', 'asr.c2db.gs'],
         'asr.c2db.deformationpotentials': ['asr.c2db.gs'],
         'asr.c2db.bader': ['asr.c2db.gs'],
-        'asr.bse@calculate': ['asr.c2db.gs@calculate'],
-        'asr.bse': ['asr.bse@calculate', 'asr.c2db.gs'],
+        'asr.bse:calculate': ['asr.c2db.gs:calculate'],
+        'asr.bse': ['asr.bse:calculate', 'asr.c2db.gs'],
         'asr.c2db.projected_bandstructure': ['asr.c2db.gs',
                                              'asr.c2db.bandstructure'],
-        'asr.c2db.shift': ['asr.c2db.gs@calculate'],
+        'asr.c2db.shift': ['asr.c2db.gs:calculate'],
         'asr.c2db.polarizability': ['asr.structureinfo',
-                                    'asr.c2db.gs@calculate'],
+                                    'asr.c2db.gs:calculate'],
     }
-    return deps.get(name, [])
+    return make_dependency_matcher(deps.get(name, []), "recipename")
 
 
 @dataclass
 class RecordContext:
+    """Class that contain the contextual data to create a record."""
 
     result: typing.Any
     recipename: str
     atomic_structures: typing.Dict[str, Atoms]
     uid: str
+    dependency_matcher: typing.Callable[["RecordContext"], bool]
     dependencies: typing.Optional[Dependencies]
     directory: str
+    path: typing.Optional[pathlib.Path] = None
 
 
 def get_resultsfile_records() -> typing.List[Record]:
     contexts = get_contexts_in_current_directory()
+    contexts = set_contexts_dependencies(contexts)
+    contexts = filter_contexts_for_unused_recipe_results(contexts)
     records = make_records_from_contexts(contexts)
     return records
 
 
 def get_resultfile_records_from_database_row(row: AtomsRow):
     contexts = convert_row_data_to_contexts(row.data, row.folder)
+    contexts = set_contexts_dependencies(contexts)
     contexts = filter_contexts_for_unused_recipe_results(contexts)
     records = make_records_from_contexts(contexts)
     return records
@@ -389,19 +414,20 @@ def get_contexts_in_current_directory() -> typing.List[RecordContext]:
                 result,
                 recipename,
                 atomic_structures,
-                vague_dependencies,
+                matcher,
                 directory,
             ) = get_relevant_resultfile_parameters(path)
             uid = uids[path]
-            dependencies = make_concrete_dependencies(vague_dependencies, uids)
             result = fix_asr_gs_record(folder, result, recipename)
             context = RecordContext(
                 result=result,
                 recipename=recipename,
                 atomic_structures=atomic_structures,
                 uid=uid,
-                dependencies=dependencies,
+                dependency_matcher=matcher,
+                dependencies=None,
                 directory=directory,
+                path=path,
             )
             contexts.append(context)
         except AssertionError as error:
@@ -428,19 +454,18 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
             if name in ATOMSFILES
         }
         uid = uids[filename]
-        vague_dependency_names = get_default_dependencies_from_name(recipename)
-        vague_dependencies = [f"results-{dep}.json" for dep in vague_dependency_names]
-        dependencies = make_concrete_dependencies(vague_dependencies, uids)
+        matcher = get_dependency_matcher_from_name(recipename)
         context = RecordContext(
             result=result,
             recipename=recipename,
             atomic_structures=atomic_structures,
             uid=uid,
-            dependencies=dependencies,
+            dependency_matcher=matcher,
+            dependencies=None,
             directory=directory,
         )
         contexts.append(context)
-    
+
     return contexts
 
 
