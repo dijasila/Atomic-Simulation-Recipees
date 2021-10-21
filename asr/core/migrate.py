@@ -3,6 +3,7 @@ import textwrap
 import abc
 import copy
 import typing
+import traceback
 from dataclasses import dataclass, field
 from .command import get_recipes
 from .selector import Selector
@@ -631,3 +632,85 @@ def register_migration(migration) -> None:
 
 def get_migrations() -> set:
     return MIGRATIONS
+
+
+def records_to_migration_report(records):
+    record_migrations = make_record_migrations(records)
+    report = make_migration_report(record_migrations)
+    return report
+
+
+def make_record_migrations(records, make_migrations=None):
+    from asr.core.migrate import get_migration_generator, migrate_record
+    if make_migrations is None:
+        make_migrations = get_migration_generator()
+    record_migrations = []
+    for record in records:
+        record_migration = migrate_record(record, make_migrations)
+        record_migrations.append(record_migration)
+    return record_migrations
+
+
+def make_migration_report(record_migrations):
+    erroneous_migrations = []
+    n_up_to_date = 0
+    n_applicable_migrations = 0
+    n_errors = 0
+    applicable_migrations = []
+    for record_migration in record_migrations:
+        if record_migration:
+            n_applicable_migrations += 1
+            applicable_migrations.append(record_migration)
+
+        if record_migration.has_errors():
+            n_errors += 1
+            erroneous_migrations.append(record_migration)
+
+        if not (record_migration
+                or record_migration.has_errors()):
+            n_up_to_date += 1
+
+    return MigrationReport(
+        applicable_migrations=applicable_migrations,
+        erroneous_migrations=erroneous_migrations,
+        n_up_to_date=n_up_to_date,
+        n_applicable_migrations=n_applicable_migrations,
+        n_errors=n_errors,
+    )
+
+
+@dataclass
+class MigrationReport:
+    applicable_migrations: typing.List[RecordMigration]
+    erroneous_migrations: typing.List[RecordMigration]
+    n_up_to_date: int
+    n_applicable_migrations: int
+    n_errors: int
+
+    @property
+    def summary(self):
+        return '\n'.join(
+            [
+                f'There are {self.n_applicable_migrations} unapplied migrations, '
+                f'{self.n_errors} erroneous migrations and '
+                f'{self.n_up_to_date} records are up to date.',
+                '',
+            ]
+        )
+
+    def print_errors(self):
+        for record_migration in self.erroneous_migrations:
+            print(f'Error for: {record_migration}')
+            for migration, error in record_migration.errors:
+                print(f'Error in: {migration}')
+                traceback.print_exception(
+                    type(error), error, error.__traceback__,
+                )
+                print()
+
+    @property
+    def verbose(self):
+        strs = []
+        for i, migration in enumerate(self.applicable_migrations):
+            strs.append(f'#{i} {migration}')
+        return '\n\n'.join(strs)
