@@ -10,7 +10,7 @@ Creating ASR databases
 
 In this tutorial we will walk through how to collect results together in an ASR
 database and how to use the ASR web application to browse the database in a
-web-browser. Furthermore, we will see how to customize the layout of web
+web-browser. Furthermore, we will see how to customize the layout of a web
 application using database project configuration files.
 
 First we need some records in a cache in order to make a database, so let's
@@ -35,7 +35,7 @@ first make those.
 
 The easiest way to create an ASR database is to use the CLI command database
 fromtree. This command reads structures from set a directories and creates
-one row per structures. To associate the structures with a particular record
+one row per structure. To associate the structures with a particular record
 the fromtree command compares with the `atoms` parameter of each record. Go ahead
 and create a database:
 
@@ -83,7 +83,7 @@ can be specified in a python file that contains at least the required arguments:
 .. literalinclude:: project.py
    :caption: Example of project configuration file
 
-We can then run the CLI again with the project configration as input:
+We can then run the CLI again with the project configuration as input:
 
 .. code-block:: console
 

@@ -61,13 +61,13 @@ Metadata
 Database sub-package
 ====================
 
-For a tutorial on how to use the database subpackage see :ref:Database
+For a tutorial on how to use the database subpackage see :ref:`Database
 tutorial`. The database sub-package contains utilities for creating a web
-application that browse multiple database projects. The basic workflow is to
+application that browses multiple database projects. The basic workflow is to
 first create an :class:`asr.database.DatabaseProject` with
 :func:`asr.database.make_project`. Then an application can be created and
 started conveniently with :func:`asr.database.run_app`.  If more flexibility is
-needed and application object :func:`asr.database.App` can be created manually.
+needed an application object :func:`asr.database.App` can be created manually.
 
 Database project
 ----------------
