@@ -235,7 +235,7 @@ def get_relevant_resultfile_parameters(path):
     return folder, result, recipename, atomic_structures, matcher, directory
 
 
-def set_contexts_dependencies(
+def set_context_dependencies(
     contexts: typing.List["RecordContext"],
 ) -> typing.List["RecordContext"]:
     for context in contexts:
@@ -270,12 +270,32 @@ def make_concrete_dependencies(
 def get_recipe_name_from_filename(filename):
     from os.path import splitext
     name = splitext(filename.split('-')[1])[0]
+    name = fix_recipe_name_if_recipe_has_been_moved(name)
+    name = name.replace("@", ":")
+    return name
+
+
+def fix_recipe_name_if_recipe_has_been_moved(name):
+    if is_recipe_that_was_moved_to_c2db_subpackage(name):
+        name = extend_name_with_c2db_subpackage(name)
+    return name
+
+
+def is_recipe_that_was_moved_to_c2db_subpackage(name: str) -> bool:
     count = name.count(".")
     RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY = ["asr.structureinfo", "asr.setinfo"]
-    if count == 1 and name not in RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY:
-        segments = name.split(".")
-        name = ".".join([segments[0], "c2db", segments[1]])
-    name = name.replace("@", ":")
+    if (
+        name.startswith("asr")
+        and count == 1
+        and name not in RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY
+    ):
+        return True
+    return False
+
+
+def extend_name_with_c2db_subpackage(name: str) -> str:
+    first, *rest = name.split(".")
+    name = ".".join([first, "c2db", *rest])
     return name
 
 
@@ -389,7 +409,7 @@ class RecordContext:
 
 def get_resultsfile_records() -> typing.List[Record]:
     contexts = get_contexts_in_current_directory()
-    contexts = set_contexts_dependencies(contexts)
+    contexts = set_context_dependencies(contexts)
     contexts = filter_contexts_for_unused_recipe_results(contexts)
     records = make_records_from_contexts(contexts)
     return records
@@ -397,7 +417,7 @@ def get_resultsfile_records() -> typing.List[Record]:
 
 def get_resultfile_records_from_database_row(row: AtomsRow):
     contexts = convert_row_data_to_contexts(row.data, row.folder)
-    contexts = set_contexts_dependencies(contexts)
+    contexts = set_context_dependencies(contexts)
     contexts = filter_contexts_for_unused_recipe_results(contexts)
     records = make_records_from_contexts(contexts)
     return records
@@ -447,7 +467,9 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
     uids = generate_uids(filenames)
     contexts = []
     for filename in filenames:
+        from .results import decode_object
         result = data[filename]
+        result = decode_object(result)
         recipename = get_recipe_name_from_filename(filename)
         atomic_structures = {
             name: value for name, value in data.items()
