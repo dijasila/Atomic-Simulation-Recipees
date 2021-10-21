@@ -254,7 +254,7 @@ def singleprec_dict(dct):
 
 
 def get_recipe_from_name(name):
-    # Get a recipe from a name like asr.gs@postprocessing
+    # Get a recipe from a name like asr.gs:postprocessing
     import importlib
     assert name.startswith('asr.'), \
         'Not allowed to load recipe from outside of ASR.'
