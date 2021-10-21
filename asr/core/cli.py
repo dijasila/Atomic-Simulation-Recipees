@@ -441,69 +441,27 @@ def add_resultfile_records(directories):
               help='Show tracebacks for migration errors.')
 def migrate(selection, apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
-    from asr.core.migrate import (
-        migrate_record,
-        get_migration_generator,
-    )
-
     cache = get_cache()
     sel = make_selector_from_selection(cache, selection)
-    make_migrations = get_migration_generator()
-    record_migrations = []
-    erroneous_migrations = []
-    nup_to_date = 0
-    nmigrations = 0
-    nerrors = 0
 
-    for record in cache.select(selector=sel):
-        record_migration = migrate_record(record, make_migrations)
-        if record_migration:
-            nmigrations += 1
-            record_migrations.append(record_migration)
+    records = cache.select(selector=sel)
+    report = records_to_migration_report(records)
 
-        if record_migration.has_errors():
-            nerrors += 1
-            erroneous_migrations.append(record_migration)
-
-        if not (record_migration
-                or record_migration.has_errors()):
-            nup_to_date += 1
-
-    if nmigrations == 0 and nerrors == 0:
+    if report.n_applicable_migrations == 0 and report.n_errors == 0:
         print('All records up to date. No migrations to apply.')
         return
 
     if verbose:
-        nmigrations = len(record_migrations)
-        strs = []
-        for i, migration in enumerate(record_migrations):
-            strs.append(f'#{i} {migration}')
-        print('\n\n'.join(strs))
+        print(report.verbose)
         print()
 
     if show_errors:
         print('Showing errors for migrations:')
-        for record_migration in erroneous_migrations:
-            print(f'Error for: {record_migration}')
-            for migration, error in record_migration.errors:
-                print(f'Error in: {migration}')
-                traceback.print_exception(
-                    type(error), error, error.__traceback__,
-                )
-                print()
+        print(report.print_errors())
 
-    print(
-        '\n'.join(
-            [
-                f'There are {nmigrations} unapplied migrations, '
-                f'{nerrors} erroneous migrations and '
-                f'{nup_to_date} records are up to date.',
-                '',
-            ]
-        )
-    )
+    print(report.summary)
 
-    if not apply and nmigrations > 0:
+    if not apply and report.n_applicable_migrations > 0:
         print(
             '\n'.join(
                 [
@@ -515,10 +473,95 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
         )
 
     if apply:
-        for record_migration in record_migrations:
+        for record_migration in report.applicable_migrations:
             print(record_migration)
             print()
             record_migration.apply(cache)
+
+
+def records_to_migration_report(records):
+    record_migrations = make_record_migrations(records)
+    report = make_migration_report(record_migrations)
+    return report
+
+
+def make_record_migrations(records, make_migrations=None):
+    from asr.core.migrate import get_migration_generator, migrate_record
+    if make_migrations is None:
+        make_migrations = get_migration_generator()
+    record_migrations = []
+    for record in records:
+        record_migration = migrate_record(record, make_migrations)
+        record_migrations.append(record_migration)
+    return record_migrations
+
+
+def make_migration_report(record_migrations):
+    erroneous_migrations = []
+    n_up_to_date = 0
+    n_applicable_migrations = 0
+    n_errors = 0
+    applicable_migrations = []
+    for record_migration in record_migrations:
+        if record_migration:
+            n_applicable_migrations += 1
+            applicable_migrations.append(record_migration)
+
+        if record_migration.has_errors():
+            n_errors += 1
+            erroneous_migrations.append(record_migration)
+
+        if not (record_migration
+                or record_migration.has_errors()):
+            n_up_to_date += 1
+
+    return MigrationReport(
+        applicable_migrations=applicable_migrations,
+        erroneous_migrations=erroneous_migrations,
+        n_up_to_date=n_up_to_date,
+        n_applicable_migrations=n_applicable_migrations,
+        n_errors=n_errors,
+    )
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class MigrationReport:
+    applicable_migrations: List[RecordMigration]
+    erroneous_migrations: List[RecordMigration]
+    n_up_to_date: int
+    n_applicable_migrations: int
+    n_errors: int
+
+    @property
+    def summary(self):
+        return '\n'.join(
+            [
+                f'There are {self.n_applicable_migrations} unapplied migrations, '
+                f'{self.n_errors} erroneous migrations and '
+                f'{self.n_up_to_date} records are up to date.',
+                '',
+            ]
+        )
+
+    def print_errors(self):
+        for record_migration in self.erroneous_migrations:
+            print(f'Error for: {record_migration}')
+            for migration, error in record_migration.errors:
+                print(f'Error in: {migration}')
+                traceback.print_exception(
+                    type(error), error, error.__traceback__,
+                )
+                print()
+
+    @property
+    def verbose(self):
+        strs = []
+        for i, migration in enumerate(self.applicable_migrations):
+            strs.append(f'#{i} {migration}')
+        return '\n\n'.join(strs)
 
 
 @cache.command()
@@ -858,6 +901,7 @@ def convert(databasein: str, databaseout: str) -> None:
     from ase.db import connect
     from .resultfile import get_resultfile_records_from_database_row
     serializer = JSONSerializer()
+    assert not databasein == databaseout, "Input and output databases cannot be identical."
     dbin = connect(databasein)
     assert not Path(databaseout).exists()
     with connect(databaseout) as dbout:
@@ -871,6 +915,17 @@ def convert(databasein: str, databaseout: str) -> None:
                 data=data,
             )
     dbout.metadata = dbin.metadata
+
+
+@database.command()
+@click.argument("databasein", type=str)
+@click.argument("databaseout", type=str)
+def migrate(databasein: str, databaseout: str) -> None:
+    dbin = connect(databasein)
+    with connect(databaseout) as dbout:
+        for row in db.select():
+            migration = get_migrations()
+
 
 
 @database.command()
