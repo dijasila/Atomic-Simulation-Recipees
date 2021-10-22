@@ -360,7 +360,7 @@ class Migration:
 
         return revision
 
-    def __call__(self, record: Record) -> Record:
+    def __call__(self, record: Record) -> Revision:
         return self.apply(record)
 
     def __str__(self):
@@ -497,13 +497,13 @@ def migrate_record(
             break
 
         migration = max(candidate_migrations, key=lambda mig: mig.eagerness)
-        try:
-            revision = migration(migrated_record)
-            migrated_record = revision.apply(migrated_record)
-        except Exception as err:
-            problematic_migrations.append(migration)
-            errors.append((migration, err))
-            continue
+        # try:
+        revision = migration(migrated_record)
+        migrated_record = revision.apply(migrated_record)
+        # except Exception as err:
+        #    problematic_migrations.append(migration)
+        #    errors.append((migration, err))
+        #    continue
         applied_migrations.append(migration)
         revisions.append(revision)
     return RecordMigration(

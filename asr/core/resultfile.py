@@ -392,7 +392,14 @@ def get_dependency_matcher_from_name(
         'asr.c2db.polarizability': ['asr.structureinfo',
                                     'asr.c2db.gs:calculate'],
     }
-    return make_dependency_matcher(deps.get(name, []), "recipename")
+    dependencies = []
+    
+    for dep in deps.get(name, []):
+        if ':' not in dep:
+            dep = dep + ':main'
+        dependencies.append(dep)
+    
+    return make_dependency_matcher(depedencies, "recipename")
 
 
 @dataclass
@@ -415,6 +422,15 @@ def get_resultsfile_records() -> typing.List[Record]:
     contexts = filter_contexts_for_unused_recipe_results(contexts)
     records = make_records_from_contexts(contexts)
     return records
+
+
+def deserialize_data(
+    data: typing.Dict[typing.Any, typing.Any]
+) -> typing.Dict[typing.Any, typing.Any]:
+    from .serialize import JSONSerializer
+    ser = JSONSerializer()
+    data = ser.deserialize(ser.serialize(data))
+    return data
 
 
 def get_resultfile_records_from_database_row(row: AtomsRow):
@@ -473,10 +489,24 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
         result = data[filename]
         result = decode_object(result)
         recipename = get_recipe_name_from_filename(filename)
-        atomic_structures = {
-            name: value for name, value in data.items()
-            if name in ATOMSFILES
-        }
+        atomic_structures = {}
+        for name, value in data.items():
+            if name in ATOMSFILES:
+                dct = value['1']
+                atoms = Atoms(
+                    numbers=dct.get("numbers"),
+                    positions=dct.get("positions"),
+                    cell=dct.get("cell"),
+                    pbc=dct.get("pbc"),
+                    magmoms=dct.get('initial_magmoms'),
+                    charges=dct.get('initial_charges'),
+                    tags=dct.get('tags'),
+                    masses=dct.get('masses'),
+                    momenta=dct.get('momenta'),
+                    constraint=dct.get("constraints"),
+                )
+                atomic_structures[name] = atoms
+
         uid = uids[filename]
         matcher = get_dependency_matcher_from_name(recipename)
         context = RecordContext(

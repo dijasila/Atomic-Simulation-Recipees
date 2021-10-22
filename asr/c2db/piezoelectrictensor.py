@@ -133,18 +133,18 @@ def add_relaxcalculator_parameter(record):
     """Add relaxcalculator parameter and delete unused dependency parameters."""
     dep_params = record.parameters.dependency_parameters
     record.parameters.relaxcalculator = \
-        dep_params['asr.c2db.relax']['calculator']
+        dep_params['asr.c2db.relax:main']['calculator']
     del_par = {'calculator', 'd3',
                'allow_symmetry_breaking', 'fixcell'}
     for par in del_par:
-        del dep_params['asr.c2db.relax'][par]
+        del dep_params['asr.c2db.relax:main'][par]
 
     del_par = {'gpwname'}
     for par in del_par:
-        del dep_params['asr.c2db.formalpolarization'][par]
+        del dep_params['asr.c2db.formalpolarization:main'][par]
 
     if 'calculator' in record.parameters:
-        del dep_params['asr.c2db.formalpolarization']['calculator']
+        del dep_params['asr.c2db.formalpolarization:main']['calculator']
     return record
 
 

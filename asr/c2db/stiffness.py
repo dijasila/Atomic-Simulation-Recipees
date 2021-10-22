@@ -198,13 +198,14 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
+sel.parameters.dependency_parameters = sel.CONTAINS("ase.c2db.relax:main")
 
 
 @asr.migration(selector=sel)
 def transform_stiffness_resultfile_record(record):
     """Remove fixcell and allow_symmetry_breaking from dependency_parameters."""
     dep_params = record.parameters['dependency_parameters']
-    relax_dep_params = dep_params['asr.c2db.relax']
+    relax_dep_params = dep_params['asr.c2db.relax:main']
     delparams = {'fixcell', 'allow_symmetry_breaking'}
     for param in delparams:
         del relax_dep_params[param]
