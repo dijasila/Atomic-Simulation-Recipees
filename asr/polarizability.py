@@ -1,5 +1,6 @@
 """Optical polarizability."""
 import typing
+import sys
 from pathlib import Path
 
 from click import Choice
@@ -146,50 +147,53 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             'Polarizability not implemented for 1D and 2D structures')
 
     try:
-        if not Path('es.gpw').is_file():
-            calc_old = GPAW(gs, txt=None)
-            nval = calc_old.wfs.nvalence
+        from ase.utils import IOContext
+        with IOContext() as io:
+            fd = io.openfile(sys.stdout, comm=world)
+            if not Path('es.gpw').is_file():
+                calc_old = GPAW(gs, txt=None)
+                nval = calc_old.wfs.nvalence
 
-            calc = GPAW(
-                gs,
-                txt='es.txt',
-                fixdensity=True,
-                nbands=(bandfactor + 1) * nval,
-                convergence={'bands': bandfactor * nval},
-                occupations={'name': 'fermi-dirac',
-                             'width': 1e-4},
-                kpts=kpts)
-            calc.get_potential_energy()
-            calc.write('es.gpw', mode='all')
+                calc = GPAW(
+                    gs,
+                    txt='es.txt',
+                    fixdensity=True,
+                    nbands=(bandfactor + 1) * nval,
+                    convergence={'bands': bandfactor * nval},
+                    occupations={'name': 'fermi-dirac',
+                                 'width': 1e-4},
+                    kpts=kpts)
+                calc.get_potential_energy()
+                calc.write('es.gpw', mode='all')
 
-        df = DielectricFunction('es.gpw', **dfkwargs)
-        alpha0x, alphax = df.get_polarizability(
-            q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None,
-            xc=xc)
-        alpha0y, alphay = df.get_polarizability(
-            q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None,
-            xc=xc)
-        alpha0z, alphaz = df.get_polarizability(
-            q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None,
-            xc=xc)
+            df = DielectricFunction('es.gpw', **dfkwargs)
+            alpha0x, alphax = df.get_polarizability(
+                q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None,
+                xc=xc)
+            alpha0y, alphay = df.get_polarizability(
+                q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None,
+                xc=xc)
+            alpha0z, alphaz = df.get_polarizability(
+                q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None,
+                xc=xc)
 
-        plasmafreq_vv = df.chi0.plasmafreq_vv
+            plasmafreq_vv = df.chi0.plasmafreq_vv
 
-        frequencies = df.get_frequencies()
-        data = {
-            'alpha0x_w': np.array(alpha0x),
-            'alphax_w': np.array(alphax),
-            'alpha0y_w': np.array(alpha0y),
-            'alphay_w': np.array(alphay),
-            'alpha0z_w': np.array(alpha0z),
-            'alphaz_w': np.array(alphaz),
-            'plasmafreq_vv': plasmafreq_vv,
-            'frequencies': frequencies
-        }
+            frequencies = df.get_frequencies()
+            data = {
+                'alpha0x_w': np.array(alpha0x),
+                'alphax_w': np.array(alphax),
+                'alpha0y_w': np.array(alpha0y),
+                'alphay_w': np.array(alphay),
+                'alpha0z_w': np.array(alpha0z),
+                'alphaz_w': np.array(alphaz),
+                'plasmafreq_vv': plasmafreq_vv,
+                'frequencies': frequencies
+            }
 
-        data['alphax_el'] = data['alphax_w'][0].real
-        data['alphay_el'] = data['alphay_w'][0].real
-        data['alphaz_el'] = data['alphaz_w'][0].real
+            data['alphax_el'] = data['alphax_w'][0].real
+            data['alphay_el'] = data['alphay_w'][0].real
+            data['alphaz_el'] = data['alphaz_w'][0].real
 
     finally:
         world.barrier()
