@@ -360,20 +360,11 @@ def plot(row, fname, thisrow):
         return
 
     references = data['references']
-    thisreference = {
-        'hform': thisrow.hform,
-        'formula': thisrow.formula,
-        'uid': thisrow.uid,
-        'natoms': thisrow.natoms,
-        'legend': None,
-        'label': thisrow.formula,
-        'size': 1,
-    }
+
     pdrefs = []
     legends = []
-    colors = []
     sizes = []
-    references = [thisreference] + references
+
     for reference in references:
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
@@ -382,13 +373,11 @@ def plot(row, fname, thisrow):
             legends.append(legend)
         if legend in legends:
             idlegend = legends.index(reference['legend'])
-            color = f'C{idlegend + 2}'
             size = (3 * idlegend + 3)**2
         else:
-            color = 'k'
             size = 2
-        colors.append(color)
         sizes.append(size)
+    sizes = np.array(sizes)
 
     pd = PhaseDiagram(pdrefs, verbose=False)
 
@@ -410,39 +399,42 @@ def plot(row, fname, thisrow):
     hull_energies = get_hull_energies(pd)
 
     if len(count) == 2:
-        x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
+        xcoord, energy, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
         hull = np.array(hull_energies) < 0.05
         edgecolors = np.array(['C2' if hull_energy < 0.05 else 'C3'
                                for hull_energy in hull_energies])
         for i, j in simplices:
-            ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
+            ax.plot(xcoord[[i, j]], energy[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
-        s = np.array(sizes)
+
         if row.hform < 0:
-            mask = e < 0.05
-            e = e[mask]
-            x = x[mask]
+            mask = energy < 0.05
+            energy = energy[mask]
+            xcoord = xcoord[mask]
             edgecolors = edgecolors[mask]
             hull = hull[mask]
             names = [name for name, m in zip(names, mask) if m]
-            s = s[mask]
+            sizes = sizes[mask]
 
+        xcoord0 = xcoord[~hull]
+        energy0 = energy[~hull]
         ax.scatter(
-            x[~hull], e[~hull],
+            xcoord0, energy0,
+            # x[~hull], e[~hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=s[~hull],
+            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
             zorder=9)
 
         ax.scatter(
-            x[hull], e[hull],
+            xcoord[hull], energy[hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=s[hull],
+            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
             zorder=10)
 
         # ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
 
-        delta = e.ptp() / 30
-        for a, b, name, on_hull in zip(x, e, names, hull):
+        delta = energy.ptp() / 30
+        for a, b, name, on_hull in zip(xcoord, energy, names, hull):
             va = 'center'
             ha = 'left'
             dy = 0
@@ -454,8 +446,7 @@ def plot(row, fname, thisrow):
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
 
         # Circle this material
-        ymin = e.min()
-
+        ymin = energy.min()
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
         newlegendhandles = [(legendhandles[0], legendhandles[1]),
                             *legendhandles[2:]]
@@ -486,14 +477,14 @@ def plot(row, fname, thisrow):
         ax.scatter(
             x[~hull], y[~hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=np.array(sizes)[~hull],
+            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
             zorder=9,
         )
 
         ax.scatter(
             x[hull], y[hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=np.array(sizes)[hull],
+            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
             zorder=10,
         )
 
