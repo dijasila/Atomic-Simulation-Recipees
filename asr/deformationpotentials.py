@@ -10,8 +10,8 @@ def webpanel(result, row, key_descriptions):
     defpot = data['deformation_potentials']
     vbmdef = (defpot[0, 0] + defpot[1, 0]) / 2
     cbmdef = (defpot[0, 1] + defpot[1, 1]) / 2
-    rows = [['Uniaxial deformation potential at VBM', f'{cbmdef:0.2f} eV'],
-            ['Uniaxial deformation potential at CBM', f'{vbmdef:0.2f} eV']]
+    rows = [['Uniaxial deformation potential at VBM', f'{vbmdef:0.2f} eV'],
+            ['Uniaxial deformation potential at CBM', f'{cbmdef:0.2f} eV']]
     from asr.utils.hacks import gs_xcname_from_row
     xcname = gs_xcname_from_row(row)
     panel = {'title': f'Basic electronic properties ({xcname})',
