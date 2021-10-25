@@ -1,3 +1,4 @@
+from pathlib import Path
 import pytest
 from ase.db import connect
 
@@ -20,6 +21,7 @@ def project(database_with_one_row):
         name="database.db",
         database=database_with_one_row,
         uid_key="formula",
+        tmpdir=Path("tmpdir/"),
     )
 
     return project

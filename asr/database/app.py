@@ -1,23 +1,23 @@
 """Database web application."""
-from typing import List, TYPE_CHECKING, Optional
 import multiprocessing
-from pathlib import Path
+import tempfile
 import warnings
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional
 
-from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json as flask_json
-from jinja2 import UndefinedError
-from ase.db import connect
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
-from ase.geometry import cell_to_cellpar
+from ase.db import connect
+from ase.db.app import Database, DBApp
 from ase.formula import Formula
-from ase.db.app import DBApp, Database
+from ase.geometry import cell_to_cellpar
 from ase.io.jsonio import MyEncoder
+from flask import Response, jsonify, redirect, render_template, send_file
+from jinja2 import UndefinedError
 
 import asr
-from asr.core import decode_object, UnknownDataFormat
-
+from asr.core import UnknownDataFormat, decode_object
 
 if TYPE_CHECKING:
     from asr.database.project import DatabaseProject
@@ -47,19 +47,8 @@ class App(DBApp):
             Run server in debug mode, by default False
 
         """
-        # try:
         self.initialize()
         self.flask.run(host=host, debug=debug)
-        # finally:
-        # self.cleanup()
-
-    # def cleanup(self):
-    #     """Clean temporary directories."""
-
-    #     for project in self.projects:
-    #         if project.cleanup:
-    #             if project.tmpdir.exists():
-    #                 rmtree(project.tmpdir)
 
     def add_project(self, project: "DatabaseProject"):
         """Initialize a single project.
@@ -224,8 +213,9 @@ def get_db_keys(db):
 
 
 def convert_to_ase_compatible_key_descriptions(key_descriptions):
-    from asr.database.fromtree import parse_key_descriptions
     from ase.db.web import create_key_descriptions
+
+    from asr.database.fromtree import parse_key_descriptions
 
     kd = {
         key: (desc["shortdesc"], desc["longdesc"], desc["units"])
@@ -339,6 +329,11 @@ def main(
 ):
     """Start database app.
 
+    Start the database based on filenames. Assigns a pool to all projects
+    that doesn't already have a pool. Also automatically assigns a tmpdir
+    to all projects that doesn't already have this. If you don't want this
+    behaviour consider using :func:`asr.database.app.run_app` directly.
+
     Parameters
     ----------
     filenames : List[str]
@@ -352,7 +347,6 @@ def main(
         by default "key_descriptions.json"
     """
     projects = convert_files_to_projects(filenames)
-
     if (
         extra_kvp_descriptions_file is not None
         and Path(extra_kvp_descriptions_file).is_file()
@@ -360,7 +354,35 @@ def main(
         extras = get_key_descriptions_from_file(extra_kvp_descriptions_file)
     else:
         extras = None
-    run_app(projects, extras, host, test)
+
+    pool = set_pool_on_projects_if_missing(projects)
+
+    with tempfile.TemporaryDirectory(prefix='asr-app-') as tmpdir:
+        # For some reason MyPy complains about giving a string argument
+        # to the Path object. Don't know why. Ignoring.
+        tmpdir = Path(tmpdir)  # type: ignore
+        set_tmpdir_on_projects_if_missing(tmpdir, projects)
+        try:
+            run_app(projects, extras, host, test)
+        finally:
+            if pool:
+                pool.close()
+                pool.join()
+
+
+def set_tmpdir_on_projects_if_missing(tmpdir, projects):
+    for project in projects:
+        if project.tmpdir is None:
+            project.tmpdir = tmpdir
+
+
+def set_pool_on_projects_if_missing(projects: List["DatabaseProject"]):
+    pool = None
+    for project in projects:
+        if project.pool is None:
+            pool = multiprocessing.Pool(1)
+        project.pool = pool
+    return pool
 
 
 def run_app(
@@ -391,18 +413,11 @@ def run_app(
         add_extra_kvp_descriptions(projects, extra_key_descriptions)
 
     dbapp = App()
-    try:
-        dbapp.add_projects(projects)
-        if test:
-            check_rows_of_all_projects(dbapp)
-        else:
-            dbapp.run(host=host, debug=True)
-    finally:
-        for project in projects:
-            pool = project.pool
-            if pool is not None:
-                pool.close()
-                pool.join()
+    dbapp.add_projects(projects)
+    if test:
+        check_rows_of_all_projects(dbapp)
+    else:
+        dbapp.run(host=host, debug=True)
 
 
 def convert_files_to_projects(filenames):

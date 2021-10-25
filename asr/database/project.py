@@ -1,5 +1,5 @@
 """Define an object that represents a database project."""
-import multiprocessing
+import multiprocessing.pool
 import pathlib
 import runpy
 import typing
@@ -19,14 +19,14 @@ def args2query(args):
 def row_to_dict(row, project):
     from asr.database.app import Summary
 
-    def layout(*args, **kwargs):
+    def create_layout(*args, **kwargs):
         return project.layout_function(*args, pool=project.pool, **kwargs)
 
     project_name = project["name"]
     uid = row.get(project["uid_key"])
     s = Summary(
         row,
-        create_layout=layout,
+        create_layout=create_layout,
         key_descriptions=project["key_descriptions"],
         prefix=str(project.tmpdir / f"{project_name}/{uid}-"),
     )
@@ -76,17 +76,17 @@ class DatabaseProject:
     database: Database
     key_descriptions: "KeyDescriptions"
     uid_key: str = "uid"
-    row_to_dict_function: callable = row_to_dict
-    handle_query_function: callable = args2query
+    tmpdir: typing.Optional[pathlib.Path] = None
+    row_to_dict_function: typing.Callable = row_to_dict
+    handle_query_function: typing.Callable = args2query
     default_columns: typing.List[str] = field(
         default_factory=lambda: list(["formula", "id"])
     )
     table_template: str = "asr/database/templates/table.html"
     row_template: str = "asr/database/templates/row.html"
     search_template: str = "asr/database/templates/search.html"
-    layout_function: callable = layout
-    tmpdir: pathlib.Path = pathlib.Path("tmp/")
-    pool: typing.Optional[multiprocessing.Pool] = None
+    layout_function: typing.Callable = layout
+    pool: typing.Optional[multiprocessing.pool.Pool] = None
     cleanup: bool = False
     template_search_path: typing.Optional[str] = None
 
@@ -100,8 +100,9 @@ def make_project(
     title: typing.Optional[str] = None,
     key_descriptions: typing.Optional["KeyDescriptions"] = None,
     uid_key: str = "uid",
-    row_to_dict_function: callable = row_to_dict,
-    handle_query_function: callable = args2query,
+    tmpdir: typing.Optional[pathlib.Path] = None,
+    row_to_dict_function: typing.Callable = row_to_dict,
+    handle_query_function: typing.Callable = args2query,
     default_columns: typing.Optional[typing.List[str]] = None,
     table_template: str = "asr/database/templates/table.html",
     row_template: str = "asr/database/templates/row.html",
@@ -154,6 +155,7 @@ def make_project(
         name=name,
         title=title,
         database=database,
+        tmpdir=tmpdir,
         key_descriptions=key_descriptions,
         uid_key=uid_key,
         handle_query_function=handle_query_function,

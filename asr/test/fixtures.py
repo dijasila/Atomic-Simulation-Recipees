@@ -102,7 +102,10 @@ def _get_webcontent(dbname="database.db"):
 
     if world.rank == 0:
         dbapp = App()
+        tmpdir = Path("tmp/")
+        tmpdir.mkdir()
         project = get_project_from_database(dbname)
+        project.tmpdir = tmpdir
         dbapp.add_project(project)
         dbapp.initialize()
         flask = dbapp.flask
