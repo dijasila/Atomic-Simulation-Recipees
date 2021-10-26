@@ -2,8 +2,7 @@ from collections.abc import Mapping
 
 
 class WebPanel(Mapping):
-    def __init__(self, title, columns=None, plot_descriptions=None, sort=99,
-                 id=None):
+    def __init__(self, title, columns=None, plot_descriptions=None, sort=99, id=None):
 
         if plot_descriptions is None:
             plot_descriptions = []
@@ -32,5 +31,7 @@ class WebPanel(Mapping):
         return iter(self.data)
 
     def __repr__(self):
-        return (f'WebPanel(title="{self.title}",'
-                f'columns={self.columns},sort={self.sort},...)')
+        return (
+            f'WebPanel(title="{self.title}",'
+            f"columns={self.columns},sort={self.sort},...)"
+        )
