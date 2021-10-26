@@ -273,7 +273,6 @@ def get_project_from_database(
         search_template=search_template,
         row_template=row_template,
         pool=pool,
-        cleanup=True,
     )
     return project
 

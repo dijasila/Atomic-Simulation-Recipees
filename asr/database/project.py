@@ -87,7 +87,6 @@ class DatabaseProject:
     search_template: str = "asr/database/templates/search.html"
     layout_function: typing.Callable = layout
     pool: typing.Optional[multiprocessing.pool.Pool] = None
-    cleanup: bool = False
     template_search_path: typing.Optional[str] = None
 
     def __getitem__(self, item):
@@ -150,7 +149,7 @@ def make_project(
 
     if default_columns is None:
         default_columns = ["formula", "id"]
-
+    
     return DatabaseProject(
         name=name,
         title=title,
