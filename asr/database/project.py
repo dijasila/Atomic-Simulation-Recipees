@@ -149,7 +149,7 @@ def make_project(
 
     if default_columns is None:
         default_columns = ["formula", "id"]
-    
+
     return DatabaseProject(
         name=name,
         title=title,
