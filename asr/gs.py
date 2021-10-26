@@ -182,12 +182,8 @@ def bz_with_band_extremums(row, fname):
     import numpy as np
     ndim = sum(row.pbc)
 
-    cell_cv = row.cell
-    if ndim == 1:
-        cell_cv[2, :2] = 0.0
-
     # Standardize the cell rotation via Bravais lattice roundtrip:
-    lat = Cell(cell_cv).get_bravais_lattice(pbc=row.pbc)
+    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc)
     cell = lat.tocell()
 
     plt.figure(figsize=(4, 4))
@@ -252,7 +248,6 @@ class GapsResult(ASRResult):
     skn1_dir: typing.Tuple[int, int, int]
     skn2_dir: typing.Tuple[int, int, int]
     efermi: float
-    ndim: float
 
     key_descriptions: typing.Dict[str, str] = dict(
         efermi='Fermi level [eV].',
@@ -301,7 +296,7 @@ def gaps(calc, soc=True) -> GapsResult:
     k_cbm_c = get_kc(k_cbm)
     direct_k_vbm_c = get_kc(direct_k_vbm)
     direct_k_cbm_c = get_kc(direct_k_cbm)
-    
+
     if soc:
         theta, phi = get_spin_axis()
         _, efermi = calc2eigs(calc, soc=True,
@@ -324,7 +319,7 @@ def gaps(calc, soc=True) -> GapsResult:
         skn2=skn_cbm,
         skn1_dir=direct_skn_vbm,
         skn2_dir=direct_skn_cbm,
-        efermi=efermi,
+        efermi=efermi
     )
 
 
