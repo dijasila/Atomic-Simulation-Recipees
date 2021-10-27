@@ -399,7 +399,7 @@ def get_dependency_matcher_from_name(
             dep = dep + ':main'
         dependencies.append(dep)
     
-    return make_dependency_matcher(depedencies, "recipename")
+    return make_dependency_matcher(dependencies, "recipename")
 
 
 @dataclass

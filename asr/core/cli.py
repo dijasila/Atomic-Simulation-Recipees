@@ -813,6 +813,53 @@ def database():
 @database.command()
 @click.argument("databasein", type=str)
 @click.argument("databaseout", type=str)
+def collapse(databasein: str, databaseout: str) -> None:
+    """Collapse database and remove second class materials.
+
+    Takes a database that contains both first and second class materials and
+    produces a database that contain only the first class material rows but has
+    added the data from all child materials to the first class materials rows to
+    make a later migration possible.
+
+    This is done by considering the __children__ data entry of the first class
+    material rows which contains the directories and UIDs of child materials
+    which could be either a first class or a second class material (but
+    typically second class materials). The children UIDS are used to find the
+    corresponding database rows in the input database. The data of the children
+    rows are then saved into a dictionary where keys are the children material
+    UIDS and the values are dict(directory=child_directory, data=child_data)
+    dictionaries.
+
+    """
+    from ase.db import connect
+    assert not databasein == databaseout, \
+        "Input and output databases cannot be identical."
+    dbin = connect(databasein)
+    assert not Path(databaseout).exists()
+    with connect(databaseout) as dbout:
+        for ir, row in enumerate(dbin.select("first_class_material=True")):
+            children = row.data.get("__children__", {})
+            if ir % 100 == 0:
+                print(ir)
+            children_data = {}
+            for child_directory, child_uid in children.items():
+                child_row = dbin.get(uid=child_uid)
+                children_data[child_uid] = dict(
+                    directory=child_directory,
+                    data=child_row.data,
+                )
+            data = dict(__children_data__=children_data, **row.data)
+            dbout.write(
+                atoms=row.toatoms(),
+                key_value_pairs=row.key_value_pairs,
+                data=data,
+            )
+    dbout.metadata = dbin.metadata
+
+
+@database.command()
+@click.argument("databasein", type=str)
+@click.argument("databaseout", type=str)
 def convert(databasein: str, databaseout: str) -> None:
     """Convert data representation in database file."""
     from asr.core.serialize import JSONSerializer
@@ -825,7 +872,8 @@ def convert(databasein: str, databaseout: str) -> None:
     assert not Path(databaseout).exists()
     with connect(databaseout) as dbout:
         for row in dbin.select():
-            print(row.id)
+            if row.id % 100 == 0:
+                print(row.id)
             records = get_resultfile_records_from_database_row(row)
             data = serializer.serialize(dict(records=records))
             dbout.write(
