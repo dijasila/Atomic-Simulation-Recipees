@@ -1,22 +1,20 @@
 """ASR command line interface."""
+import importlib
+import os
+import pickle
+import sys
 from ast import literal_eval
 from contextlib import contextmanager
 from functools import partial
-import importlib
-import os
 from pathlib import Path
-import pickle
-import sys
-from typing import Union, Dict, Any, List, Tuple
-import asr
-from asr.core import (
-    chdir, ASRCommand, ASRResult, DictStr, set_defaults, get_cache, CommaStr,
-    get_recipes,
-)
+from typing import Any, Dict, List, Tuple, Union
+
 import click
 from ase.parallel import parprint
 
-from asr.core.migrate import records_to_migration_report
+import asr
+from asr.core import (ASRCommand, ASRResult, CommaStr, DictStr, chdir,
+                      get_cache, get_recipes, set_defaults)
 
 prt = partial(parprint, flush=True)
 
@@ -321,10 +319,10 @@ def params(recipe, params: Union[str, None] = None):
 
 
 def _params(name: str, params: str):
-    from collections.abc import Sequence
-    from asr.core import read_json, write_json
     import copy
-    from asr.core import recursive_update
+    from collections.abc import Sequence
+
+    from asr.core import read_json, recursive_update, write_json
 
     all_recipes = recipes_as_dict()
     defparamdict = {recipe.name: recipe.defaults
@@ -413,6 +411,7 @@ def add_resultfile_records(directories):
     file, adding a Record to the cache for each file.
     """
     from asr.core.resultfile import get_resultsfile_records
+
     from .utils import chdir
     if not directories:
         directories = [Path('.').resolve()]
@@ -747,8 +746,8 @@ def graph(draw=False, labels=False, saveto=None):
 
 
 def make_panels(record, cache):
-    from asr.core.material import make_panel_figures
     from asr.core.datacontext import DataContext
+    from asr.core.material import make_panel_figures
     result = record.result
     formats = result.get_formats()
 
@@ -807,7 +806,6 @@ def results(selection, show):
 @cli.group()
 def database():
     """ASR material project database."""
-    pass
 
 
 @database.command()
@@ -831,78 +829,26 @@ def collapse(databasein: str, databaseout: str) -> None:
     dictionaries.
 
     """
-    from ase.db import connect
-    assert not databasein == databaseout, \
-        "Input and output databases cannot be identical."
-    dbin = connect(databasein)
-    assert not Path(databaseout).exists()
-    with connect(databaseout) as dbout:
-        for ir, row in enumerate(dbin.select("first_class_material=True")):
-            children = row.data.get("__children__", {})
-            if ir % 100 == 0:
-                print(ir)
-            children_data = {}
-            for child_directory, child_uid in children.items():
-                child_row = dbin.get(uid=child_uid)
-                children_data[child_uid] = dict(
-                    directory=child_directory,
-                    data=child_row.data,
-                )
-            data = dict(__children_data__=children_data, **row.data)
-            dbout.write(
-                atoms=row.toatoms(),
-                key_value_pairs=row.key_value_pairs,
-                data=data,
-            )
-    dbout.metadata = dbin.metadata
+    from asr.database.migrate import collapse_database
+    collapse_database(databasein, databaseout)
 
 
 @database.command()
 @click.argument("databasein", type=str)
 @click.argument("databaseout", type=str)
 def convert(databasein: str, databaseout: str) -> None:
-    """Convert data representation in database file."""
-    from asr.core.serialize import JSONSerializer
-    from ase.db import connect
-    from .resultfile import get_resultfile_records_from_database_row
-    serializer = JSONSerializer()
-    assert not databasein == databaseout, \
-        "Input and output databases cannot be identical."
-    dbin = connect(databasein)
-    assert not Path(databaseout).exists()
-    with connect(databaseout) as dbout:
-        for row in dbin.select():
-            if row.id % 100 == 0:
-                print(row.id)
-            records = get_resultfile_records_from_database_row(row)
-            data = serializer.serialize(dict(records=records))
-            dbout.write(
-                atoms=row.toatoms(),
-                key_value_pairs=row.key_value_pairs,
-                data=data,
-            )
-    dbout.metadata = dbin.metadata
+    """Convert resultfile based database to record based database."""
+    from asr.database.migrate import convert_database
+    convert_database(databasein, databaseout)
 
 
 @database.command(name="migrate")
 @click.argument("databasein", type=str)
 @click.argument("databaseout", type=str)
-def database_migrate(databasein: str, databaseout: str) -> None:
-    from ase.db import connect
-    from .serialize import JSONSerializer
-    ser = JSONSerializer()
-    dbin = connect(databasein)
-    # with connect(databaseout) as dbout:
-    for row in dbin.select():
-        print(row.id)
-        records = ser.deserialize(ser.serialize(row.data['records']))
-        report = records_to_migration_report(records)
-        if report.n_errors == 0 and report.n_applicable_migrations == 0:
-            continue
-        if report.n_errors > 0:
-            report.print_errors()
-            break
-        print(report.summary)
+def migrate_database_cli(databasein: str, databaseout: str) -> None:
+    """Migrate records in database."""
+    from asr.database.migrate import migrate_database
+    migrate_database(databasein)
 
 
 @database.command()
