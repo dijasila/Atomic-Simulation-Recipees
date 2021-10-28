@@ -478,7 +478,7 @@ class Result(ASRResult):
 
 
 sel = Selector()
-sel.name = sel.EQ('asr.c2db.bandstructure')
+sel.name = sel.EQ('asr.c2db.bandstructure:main')
 sel.version = sel.EQ(-1)
 sel.parameters = sel.NOT(sel.CONTAINS('bsrestart'))
 

@@ -158,7 +158,7 @@ class Result(ASRResult):
 
 
 sel = Selector()
-sel.name = sel.OR(sel.EQ('asr.c2db.phonons'), sel.EQ('asr.c2db.phonons:calculate'))
+sel.name = sel.OR(sel.EQ('asr.c2db.phonons:main'), sel.EQ('asr.c2db.phonons:calculate'))
 sel.version = sel.EQ(-1)
 
 

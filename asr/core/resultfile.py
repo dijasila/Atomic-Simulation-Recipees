@@ -285,7 +285,10 @@ def fix_recipe_name_if_recipe_has_been_moved(name):
 
 def is_recipe_that_was_moved_to_c2db_subpackage(name: str) -> bool:
     count = name.count(".")
-    RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY = ["asr.structureinfo", "asr.setinfo"]
+    RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY = [
+        "asr.structureinfo", "asr.setinfo",
+        "asr.structureinfo:main", "asr.setinfo:main",
+    ]
     if (
         name.startswith("asr")
         and count == 1
@@ -395,11 +398,16 @@ def get_dependency_matcher_from_name(
     dependencies = []
     
     for dep in deps.get(name, []):
-        if ':' not in dep:
-            dep = dep + ':main'
+        dep = add_main_to_name_if_missing(dep)
         dependencies.append(dep)
     
     return make_dependency_matcher(dependencies, "recipename")
+
+
+def add_main_to_name_if_missing(dep):
+    if ':' not in dep:
+        dep = dep + ':main'
+    return dep
 
 
 @dataclass
@@ -591,7 +599,9 @@ PATH = pathlib.Path(__file__).parent / 'old_resultfile_defaults.json'
 OLD_DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 DEFAULTS: typing.Dict[str, typing.List[str]] = {}
 for key, value in OLD_DEFAULTS.items():
-    DEFAULTS[fix_recipe_name_if_recipe_has_been_moved(key)] = value
+    DEFAULTS[add_main_to_name_if_missing(fix_recipe_name_if_recipe_has_been_moved(key))] = value
+
+assert 'asr.c2db.structureinfo:main' not in DEFAULTS, DEFAULTS.keys() 
 
 
 def update_resultfile_record_to_version_0(record):

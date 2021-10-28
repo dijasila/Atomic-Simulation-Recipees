@@ -124,7 +124,7 @@ def convert_density_to_size(parameters):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.c2db.piezoelectrictensor')
+sel.name = sel.EQ('asr.c2db.piezoelectrictensor:main')
 sel.parameters = sel.NOT(sel.CONTAINS('relaxcalculator'))
 
 
