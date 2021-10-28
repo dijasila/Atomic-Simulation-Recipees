@@ -14,16 +14,24 @@ def collapse_database(databasein: str, databaseout: str):
     dbin = connect(databasein)
     assert not Path(databaseout).exists()
     with connect(databaseout) as dbout:
-        for ir, row in enumerate(dbin.select("first_class_material=True")):
-            if ir % 100 == 0:
-                print(ir)
-            data = get_data_including_child_data(dbin, row)
-            dbout.write(
-                atoms=row.toatoms(),
-                key_value_pairs=row.key_value_pairs,
-                data=data,
-            )
+        write_collapsed_database(dbin, dbout)
     copy_database_metadata(dbin, dbout)
+
+
+def write_collapsed_database(dbin, dbout):
+    for ir, row in enumerate(dbin.select("first_class_material=True")):
+        if ir % 100 == 0:
+            print(ir)
+        data = get_data_including_child_data(dbin, row)
+        write_row_with_new_data(dbout, row, data)
+
+
+def write_row_with_new_data(dbout, row, data):
+    dbout.write(
+            atoms=row.toatoms(),
+            key_value_pairs=row.key_value_pairs,
+            data=data,
+        )
 
 
 def get_data_including_child_data(dbin, row):
@@ -60,30 +68,34 @@ def get_children_from_row(row):
 
 
 def convert_database(databasein: str, databaseout: str):
-    serializer = JSONSerializer()
     assert (
         not databasein == databaseout
     ), "Input and output databases cannot be identical."
     dbin = connect(databasein)
     assert not Path(databaseout).exists()
     with connect(databaseout) as dbout:
-        for row in dbin.select():
-            if row.id % 100 == 0:
-                print(row.id)
-            records = get_resultfile_records_from_database_row(row)
-            data = serializer.serialize(dict(records=records))
-            dbout.write(
-                atoms=row.toatoms(),
-                key_value_pairs=row.key_value_pairs,
-                data=data,
-            )
-    dbout.metadata = dbin.metadata
+        write_converted_database(dbin, dbout)
+    copy_database_metadata(dbin, dbout)
 
 
-def migrate_database(databasein):
-    ser = JSONSerializer()
+def write_converted_database(dbin, dbout):
+    serializer = JSONSerializer()
+    for row in dbin.select():
+        if row.id % 100 == 0:
+            print(row.id)
+        records = get_resultfile_records_from_database_row(row)
+        data = serializer.serialize(dict(records=records))
+        write_row_with_new_data(dbout, row, data)
+
+
+def migrate_database(databasein, databaseout):
     dbin = connect(databasein)
-    # with connect(databaseout) as dbout:
+    with connect(databaseout) as dbout:
+        write_migrated_database(dbin, dbout)
+
+
+def write_migrated_database(dbin, dbout):
+    ser = JSONSerializer()
     for row in dbin.select():
         print(row.id)
         records = ser.deserialize(ser.serialize(row.data["records"]))
@@ -93,4 +105,6 @@ def migrate_database(databasein):
         if report.n_errors > 0:
             report.print_errors()
             break
+        data = ser.serialize(dict(records=records))
+        write_row_with_new_data(dbout, row, data)
         print(report.summary)

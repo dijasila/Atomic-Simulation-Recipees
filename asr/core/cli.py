@@ -848,7 +848,7 @@ def convert(databasein: str, databaseout: str) -> None:
 def migrate_database_cli(databasein: str, databaseout: str) -> None:
     """Migrate records in database."""
     from asr.database.migrate import migrate_database
-    migrate_database(databasein)
+    migrate_database(databasein, databaseout)
 
 
 @database.command()
