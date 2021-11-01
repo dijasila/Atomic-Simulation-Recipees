@@ -11,7 +11,11 @@ def some_instruction():
     return 2
 
 
-@asr.migration
+sel = asr.Selector()
+sel.name = sel.EQ("asr.test.test_core_migrate:some_instruction")
+
+
+@asr.migration(selector=sel)
 def a_migration(record):
     """Set a_parameter to 2."""
     record.parameters.a_parameter = 2
