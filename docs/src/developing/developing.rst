@@ -69,5 +69,5 @@ Upload to PyPI
 Towards ASR 1.0
 ---------------
 
-In January 2021 we had a presentation about the direction that ASR is taking.
+In January 2021 we had a presentation about the direction that ASR is going.
 See the presentation here: :ref:`Towards ASR1`.
