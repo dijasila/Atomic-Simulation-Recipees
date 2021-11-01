@@ -238,6 +238,7 @@ def pick_subset_of_keys(keys, key_descriptions):
 
 def get_project_from_database(
     database,
+    create_pool=True,
 ):
 
     db = connect(database, serial=True)
@@ -261,7 +262,11 @@ def get_project_from_database(
 
     from asr.database.project import DatabaseProject
 
-    pool = multiprocessing.Pool(1)
+    if create_pool:
+        pool = multiprocessing.Pool(1)
+    else:
+        pool = None
+
     project = DatabaseProject(
         name=name,
         title=title,

@@ -104,7 +104,7 @@ def _get_webcontent(dbname="database.db"):
         dbapp = App()
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
-        project = get_project_from_database(dbname)
+        project = get_project_from_database(dbname, create_pool=False)
         project.tmpdir = tmpdir
         dbapp.add_project(project)
         dbapp.initialize()
