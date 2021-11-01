@@ -32,7 +32,7 @@ Preferably make a new branch
 
 .. code-block:: console
 
-   $ git checkout -b release-DATE
+   $ git checkout -b release-VERSION
 
 Make a new version:
 

@@ -439,10 +439,10 @@ class DataFilenameTranslator:
 class RowWrapper(Mapping):
 
     def __init__(self, row):
-        from asr.database.fromtree import serializer
         cache = Cache(backend=MemoryBackend())
         if 'records' in row.data:
-            records = serializer.deserialize(row.data['records'])
+            data = parse_row_data(row.data)
+            records = data["records"]
         else:
             records = []
         self.records = records
@@ -484,6 +484,17 @@ class RowWrapper(Mapping):
 
 
 def parse_row_data(data: dict):
+    from asr.database.fromtree import serializer
+    data = serializer.deserialize(serializer.serialize(data))
+    return data
+
+
+def parse_row_data_old(data: dict):
+    """Parse row data from old ASE/ASR databases.
+
+    Parse resultfile data from ASE databases that are not based
+    on records.
+    """
     newdata = {}
     for key, value in data.items():
         if is_results_file(key):
