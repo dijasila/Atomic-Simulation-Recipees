@@ -56,3 +56,10 @@ Metadata
 --------
 .. autoclass:: asr.Metadata
    :members:
+
+
+Result object
+=============
+
+.. autoclass:: asr.ASRResult
+   :members:

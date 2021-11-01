@@ -15,6 +15,7 @@ from asr.core import (  # noqa
     Dependencies,
     RevisionHistory,
     Metadata,
+    ASRResult,
 )
 
 matchers = comparators
@@ -24,13 +25,20 @@ __version__ = '0.4.1'
 name = "asr"
 
 __all__ = [
-    'command',
-    'option',
-    'argument',
-    'migration',
-    'Selector',
-    'matchers',
-    'atomsopt',
-    'calcopt',
-    'instruction',
+    "command",
+    "option",
+    "argument",
+    "migration",
+    "Selector",
+    "comparators",
+    "atomsopt",
+    "calcopt",
+    "instruction",
+    "Record",
+    "RunSpecification",
+    "Resources",
+    "Dependencies",
+    "RevisionHistory",
+    "Metadata",
+    "ASRResult",
 ]

@@ -1,7 +1,7 @@
 Specifying result objects and webpanels
 =======================================
 
-The :py:class:`asr.core.ASRResult` object is a way for you to document
+The :py:class:`asr.ASRResult` object is a way for you to document
 the what might be contained in the results that you recipe-step returns.
 
 A typical realistic example of a Result object declaration can be seen below

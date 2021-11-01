@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :hidden:
 
    src/install
@@ -13,7 +13,7 @@
    src/explanations/explanations
    src/generated/recipes
    src/api
-   src/developing
+   src/developing/developing
    src/contact
 
 
@@ -40,10 +40,6 @@ First time here: :ref:`Getting started`
    * :ref:`Explanations`: Explanations that clarify and
      illuminate a particular topic.
    * :ref:`API Reference`: Technical documentation of the code.
-
-   See also Daniele Procida's PyCon 2017 talk "`How documentation
-   works... <https://www.youtube.com/watch?v=azf6yzuJt54>`_" for a
-   detailed explanation of this division.
 
 .. Admonition:: Check out the related article at
 

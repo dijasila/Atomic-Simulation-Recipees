@@ -4,11 +4,9 @@ Explanations
 ============
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    formalpolarization
-   setuprecipes
-   towards_asr_1/index.rst
 
 
 Here you will find discussion of various concepts in employed in ASR.
