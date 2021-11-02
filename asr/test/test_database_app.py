@@ -3,7 +3,7 @@ import pytest
 from ase.db import connect
 
 from asr.database.app import App
-from asr.database.project import make_project
+from asr.database.project import DatabaseProject
 from asr.test.materials import Ag
 
 
@@ -17,8 +17,9 @@ def database_with_one_row(asr_tmpdir):
 
 @pytest.fixture
 def project(database_with_one_row):
-    project = make_project(
+    project = DatabaseProject(
         name="database.db",
+        title="database.db",
         database=database_with_one_row,
         uid_key="formula",
         tmpdir=Path("tmpdir/"),

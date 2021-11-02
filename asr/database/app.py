@@ -3,12 +3,11 @@ import multiprocessing
 import tempfile
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import List, Optional
 
 import flask.json as flask_json
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
-from ase.db import connect
 from ase.db.app import Database, DBApp
 from ase.formula import Formula
 from ase.geometry import cell_to_cellpar
@@ -19,8 +18,7 @@ from jinja2 import UndefinedError
 import asr
 from asr.core import UnknownDataFormat, decode_object
 
-if TYPE_CHECKING:
-    from asr.database.project import DatabaseProject
+from asr.database.project import DatabaseProject
 
 
 class App(DBApp):
@@ -50,7 +48,7 @@ class App(DBApp):
         self.initialize()
         self.flask.run(host=host, debug=debug)
 
-    def add_project(self, project: "DatabaseProject"):
+    def add_project(self, project: DatabaseProject):
         """Initialize a single project.
 
         Parameters
@@ -60,12 +58,12 @@ class App(DBApp):
         """
         self.projects[project.name] = project
 
-    def add_projects(self, projects: List["DatabaseProject"]):
+    def add_projects(self, projects: List[DatabaseProject]):
         """Initialize multiple projects.
 
         Parameters
         ----------
-        projects : List["DatabaseProject"]
+        projects : List[DatabaseProject]
             Databases to be initializd
         """
         for project in projects:
@@ -235,47 +233,6 @@ def pick_subset_of_keys(keys, key_descriptions):
     return kd
 
 
-def get_project_from_database(
-    database,
-    pool=None,
-):
-
-    db = connect(database, serial=True)
-    metadata = db.metadata
-    name = metadata.get("name", Path(database).name)
-
-    key_descriptions = create_default_key_descriptions(db)
-    title = metadata.get("title", name)
-    uid_key = metadata.get("uid", "uid")
-    default_columns = metadata.get("default_columns", ["formula", "uid"])
-    table_template = str(
-        metadata.get(
-            "table_template",
-            "asr/database/templates/table.html",
-        )
-    )
-    search_template = str(
-        metadata.get("search_template", "asr/database/templates/search.html")
-    )
-    row_template = str(metadata.get("row_template", "asr/database/templates/row.html"))
-
-    from asr.database.project import DatabaseProject
-
-    project = DatabaseProject(
-        name=name,
-        title=title,
-        key_descriptions=key_descriptions,
-        uid_key=uid_key,
-        database=db,
-        default_columns=default_columns,
-        table_template=table_template,
-        search_template=search_template,
-        row_template=row_template,
-        pool=pool,
-    )
-    return project
-
-
 class Summary:
     def __init__(self, row, key_descriptions, create_layout, prefix=""):
         self.row = row
@@ -344,7 +301,6 @@ def main(
         File containing extra key descriptions for the database,
         by default "key_descriptions.json"
     """
-
     pool = multiprocessing.Pool(1)
     projects = convert_files_to_projects(filenames, pool=pool)
     if (
@@ -415,14 +371,12 @@ def run_app(
 
 
 def convert_files_to_projects(filenames, pool=None):
-    from asr.database.project import make_project_from_pyfile
-
     projects = []
     for filename in filenames:
         if filename.endswith("py"):
-            project = make_project_from_pyfile(filename)
+            project = DatabaseProject.from_pyfile(filename)
         elif filename.endswith("db"):
-            project = get_project_from_database(filename)
+            project = DatabaseProject.from_database(filename)
         else:
             raise ValueError
         projects.append(project)

@@ -8,14 +8,17 @@ from pathlib import Path
 from ase.db import connect
 from ase.db.core import Database
 
-from asr.database.browser import layout
 
-if typing.TYPE_CHECKING:
-    from asr.database.key_descriptions import KeyDescriptions
+KeyDescriptions = typing.Dict[str, typing.Tuple[str, str, str]]
 
 
 def args2query(args):
     return args["query"]
+
+
+def make_layout_function():
+    from asr.database.browser import layout
+    return layout
 
 
 def row_to_dict(row, project):
@@ -33,8 +36,6 @@ def row_to_dict(row, project):
         prefix=str(project.tmpdir / f"{project_name}/{uid}-"),
     )
     return s
-
-
 
 
 def make_default_key_descriptions(db=None):
@@ -97,10 +98,12 @@ class DatabaseProject:
     table_template: str = "asr/database/templates/table.html"
     row_template: str = "asr/database/templates/row.html"
     search_template: str = "asr/database/templates/search.html"
-    layout_function: typing.Callable = layout
+    layout_function: typing.Callable = field(default_factory=make_layout_function)
     pool: typing.Optional[multiprocessing.pool.Pool] = None
     template_search_path: typing.Optional[str] = None
 
+    # ASE project handling requires that the project is indexable,
+    # so we implement getitem to integrate with ASE.
     def __getitem__(self, item):
         return self.__dict__[item]
 
@@ -124,27 +127,14 @@ class DatabaseProject:
         """
         dct = runpy.run_path(str(path))
 
-        values = {}
+        kwargs_for_constructor = {}
 
-        KEYS_ALLOWED_FOR_PY_FILE_PROJECT_SPEC = set(
-            (
-                "name",
-                "title",
-                "database",
-                "key_descriptions",
-                "uid_key",
-                "handle_query_function",
-                "row_to_dict_function",
-                "default_columns",
-                "table_template",
-                "search_template",
-                "row_template",
-            )
-        )
-        for key in KEYS_ALLOWED_FOR_PY_FILE_PROJECT_SPEC:
+        th = typing.get_type_hints(cls)
+        keys_allowed_for_project_spec = set(th.keys())
+        for key in keys_allowed_for_project_spec:
             if key in dct:
-                values[key] = dct[key]
-        return cls(**dct)
+                kwargs_for_constructor[key] = dct[key]
+        return cls(**kwargs_for_constructor)
 
     @classmethod
     def from_database(cls, path: str, pool=None) -> "DatabaseProject":

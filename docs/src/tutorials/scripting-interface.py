@@ -1,9 +1,10 @@
 from ase.db import connect
-from asr.database import make_project_from_pyfile, make_project, App
+from asr.database import DatabaseProject, App
 
-project = make_project_from_pyfile("project.py")
-other_project = make_project(
+project = DatabaseProject.from_pyfile("project.py")
+other_project = DatabaseProject(
     name="Some other project",
+    title="Title of the other project".
     database=connect("database.db")
 )
 app = App()
