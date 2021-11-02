@@ -122,15 +122,20 @@ def main(state: int = 0,
         eref=eref)
 
 
-def return_defect_index():
+def return_defect_index(path=None):
     """Return the index of the present defect."""
     from pathlib import Path
     from asr.defect_symmetry import (get_defect_info,
                                      check_and_return_input,
                                      is_vacancy)
 
-    defectpath = Path('.')
-    structure, _, primitive, _ = check_and_return_input()
+    if path is None:
+        defectpath = Path('.')
+        structure, _, primitive, _ = check_and_return_input()
+    else:
+        with chdir(path):
+            defectpath = Path('.')
+            structure, _, primitive, _ = check_and_return_input()
     deftype, defpos = get_defect_info(primitive, defectpath)
     if not is_vacancy(defectpath):
         for i in range(len(primitive)):

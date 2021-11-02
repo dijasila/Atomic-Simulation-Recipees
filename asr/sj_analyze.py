@@ -48,16 +48,6 @@ def webpanel(result, row, key_descriptions):
                              description='Formation energy for charge state q '
                                          'at the valence band maximum [eV].'),
               f'{element[0]:.2f} eV']])
-    # pristine_table_sum = table(result, 'Pristine crystal', [])
-    # # pristine_table_sum['rows'].extend(
-    # #     [[describe_entry(f"Heat of formation",
-    # #                      description=result.key_descriptions['hof']),
-    # #       f"{result.hof:.2f} eV/atom"]])
-    # gap = result.pristine.cbm - result.pristine.vbm
-    # pristine_table_sum['rows'].extend(
-    #     [[describe_entry("Band gap (PBE)",
-    #                      description="Pristine band gap [eV]."),
-    #       f"{gap:.2f} eV"]])
 
     trans_results = result.transitions
     vbm = result.pristine.vbm
@@ -102,7 +92,6 @@ def webpanel(result, row, key_descriptions):
 
     summary = {'title': 'Summary',
                'columns': [[formation_table_sum],
-                            # pristine_table_sum],
                            []],
                'sort': 50}
 
@@ -460,11 +449,6 @@ def get_transition_level(transition, charge) -> TransitionResults:
     charge = str(charge)
     if transition[0] > transition[1]:
         atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
-        # if not np.sum(atoms.get_pbc()) == 2:
-        #     e_ref = calc.get_eigenvalues()[0]
-        # else:
-        #     e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        #     e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         unocc = []
@@ -475,11 +459,6 @@ def get_transition_level(transition, charge) -> TransitionResults:
     # LUMO
     elif transition[1] > transition[0]:
         atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
-        # if not np.sum(atoms.get_pbc()) == 2:
-        #     e_ref = calc.get_eigenvalues()[0]
-        # else:
-        #     e_ref_z = calc.get_electrostatic_potential().mean(0).mean(0)
-        #     e_ref = (e_ref_z[0] + e_ref_z[-1]) / 2.
         ev = calc.get_eigenvalues()
         e_fermi = calc.get_fermi_level()
         occ = []
