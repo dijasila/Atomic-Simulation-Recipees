@@ -613,8 +613,10 @@ def _layout(row, key_descriptions, prefix, pool):
             plot_descriptions.extend(panel.get('plot_descriptions', []))
 
         # List of functions and the figures they create:
-        missing_figures = generate_plots(context, prefix, plot_descriptions,
-                                         pool)
+        if prefix is not None:
+            missing_figures = generate_plots(
+                context, prefix, plot_descriptions, pool,
+            )
 
     for paneltitle, data_sources in panel_data_sources.items():
 
@@ -671,7 +673,7 @@ def _layout(row, key_descriptions, prefix, pool):
             return block['rows']
         if block['type'] != 'figure':
             return True
-        if Path(prefix + block['filename']) in missing_figures:
+        if prefix is not None and Path(prefix + block['filename']) in missing_figures:
             return False
         return True
 

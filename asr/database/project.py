@@ -18,6 +18,7 @@ def args2query(args):
 
 def make_layout_function():
     from asr.database.browser import layout
+
     return layout
 
 
@@ -29,11 +30,12 @@ def row_to_dict(row, project):
 
     project_name = project["name"]
     uid = row.get(project["uid_key"])
+    prefix = str(project.tmpdir / f"{project_name}/{uid}-") if project.tmpdir else None
     s = Summary(
         row,
         create_layout=create_layout,
         key_descriptions=project["key_descriptions"],
-        prefix=str(project.tmpdir / f"{project_name}/{uid}-"),
+        prefix=prefix,
     )
     return s
 
@@ -144,16 +146,21 @@ class DatabaseProject:
         key_descriptions = make_default_key_descriptions(db)
 
         extract_keys = {
-            "uid", "default_columns", "table_template",
-            "search_template", "row_template",
+            "uid",
+            "default_columns",
+            "table_template",
+            "search_template",
+            "row_template",
         }
-        kwargs_for_constructor = dict(name=name, database=db, key_descriptions=key_descriptions, pool=pool)
+        kwargs_for_constructor = dict(
+            name=name, database=db, key_descriptions=key_descriptions, pool=pool
+        )
         for key in extract_keys:
             if key in metadata:
                 kwargs_for_constructor[key] = metadata[key]
-        
+
         # To mirror previous behaviour, title is treated specially
-        if 'title' not in kwargs_for_constructor:
+        if "title" not in kwargs_for_constructor:
             kwargs_for_constructor["title"] = kwargs_for_constructor["name"]
-            
+
         return cls(**kwargs_for_constructor)
