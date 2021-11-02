@@ -435,6 +435,59 @@ def get_transition_level(transition, charge) -> TransitionResults:
     :param transition: (List), transition (e.g. [0,-1])
     :param correct_relax: (Boolean), True if transition energy will be corrected
     """
+    from asr.get_wfs import (return_defect_index,
+                             get_reference_index,
+                             extract_atomic_potentials)
+    # return index of the point defect in the defect structure
+    def_index, is_vacancy = return_defect_index()
+
+    # get calculators and atoms for pristine and defect calculation
+    try:
+        p = Path('.')
+        pristinelist = list(p.glob(f'./../../../defects.pristine_sc*/'))
+        pris_folder = pristinelist[0]
+        res_pris = read_json(pris_folder / 'results-asr.gs.json')
+        struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
+        struc_def, calc_def = restart(p / 'gs.gpw', txt=None)
+    except FileNotFoundError:
+        print('ERROR: does not find pristine gs, pristine results, or defect'
+              ' results. Did you run setup.defects and calculate the ground'
+              ' state for defect and pristine system?')
+
+    # evaluate which atom possesses maximum distance to the defect site
+    ref_index = get_reference_index(def_index, struc_def, struc_pris)
+
+    # get atomic electrostatic potentials at the atom far away for both the
+    # defect and pristine system
+    pot_def, pot_pris = extract_atomic_potentials(calc_def, calc_pris,
+                                                  ref_index, is_vacancy)
+
+    print(ref_index, is_vacancy, pot_def, pot_pris)
+
+    # get newly referenced eigenvalues for pristine and defect, as well as
+    # pristine fermi level for evaluation of the band gap
+    if np.sum(struc_def.get_pbc()) == 2:
+        evac = res_pris['evac']
+    else:
+        evac = 0
+
+    vbm = res_pris['vbm'] - pot_pris
+    cbm = res_pris['cbm'] - pot_pris
+
+    ev_def = calc_def.get_eigenvalues() - pot_def
+    ef_def = calc_def.get_fermi_level() - pot_def
+
+    # evaluate whether there are states above or below the fermi level
+    # and within the bandgap
+    above = False
+    below = False
+    for state in ev_def:
+        if state < cbm and state > vbm and state > ef_def:
+            above = True
+        elif state < cbm and state > vbm and state < ef_def:
+            below = True
+    above_below = (above, below)
+    dif = pot_def - pot_pris + evac
     # import numpy as np
     # extract lowest lying state for the pristine system as energy reference
     p = Path('.')
