@@ -79,9 +79,8 @@ class App(DBApp):
             if not project.tmpdir.exists():
                 project.tmpdir.mkdir()
 
-            project_tmpdir = project.tmpdir / project.name
-            if not project_tmpdir.exists():
-                project_tmpdir.mkdir()
+            actual_tmpdir = project.tmpdir / project.name
+            actual_tmpdir.mkdir(exist_ok=True, parents=True)
 
             if project.template_search_path is not None:
                 self.flask.jinja_loader.searchpath.append(  # pylint: disable=no-member
@@ -238,7 +237,7 @@ def pick_subset_of_keys(keys, key_descriptions):
 
 def get_project_from_database(
     database,
-    create_pool=True,
+    pool=None,
 ):
 
     db = connect(database, serial=True)
@@ -261,11 +260,6 @@ def get_project_from_database(
     row_template = str(metadata.get("row_template", "asr/database/templates/row.html"))
 
     from asr.database.project import DatabaseProject
-
-    if create_pool:
-        pool = multiprocessing.Pool(1)
-    else:
-        pool = None
 
     project = DatabaseProject(
         name=name,
@@ -350,16 +344,16 @@ def main(
         File containing extra key descriptions for the database,
         by default "key_descriptions.json"
     """
-    projects = convert_files_to_projects(filenames)
+
+    pool = multiprocessing.Pool(1)
+    projects = convert_files_to_projects(filenames, pool=pool)
     if (
         extra_kvp_descriptions_file is not None
         and Path(extra_kvp_descriptions_file).is_file()
     ):
         extras = get_key_descriptions_from_file(extra_kvp_descriptions_file)
     else:
-        extras = None
-
-    pool = set_pool_on_projects_if_missing(projects)
+        extras = {}
 
     with tempfile.TemporaryDirectory(prefix='asr-app-') as tmpdir:
         # For some reason MyPy complains about giving a string argument
@@ -369,9 +363,8 @@ def main(
         try:
             run_app(projects, extras, host, test)
         finally:
-            if pool:
-                pool.close()
-                pool.join()
+            pool.close()
+            pool.join()
 
 
 def set_tmpdir_on_projects_if_missing(tmpdir, projects):
@@ -380,13 +373,10 @@ def set_tmpdir_on_projects_if_missing(tmpdir, projects):
             project.tmpdir = tmpdir
 
 
-def set_pool_on_projects_if_missing(projects: List["DatabaseProject"]):
-    pool = None
+def set_pool_on_projects_if_missing(pool, projects: List["DatabaseProject"]):
     for project in projects:
         if project.pool is None:
-            pool = multiprocessing.Pool(1)
-        project.pool = pool
-    return pool
+            project.pool = pool
 
 
 def run_app(
@@ -424,7 +414,7 @@ def run_app(
         dbapp.run(host=host, debug=True)
 
 
-def convert_files_to_projects(filenames):
+def convert_files_to_projects(filenames, pool=None):
     from asr.database.project import make_project_from_pyfile
 
     projects = []
@@ -436,6 +426,7 @@ def convert_files_to_projects(filenames):
         else:
             raise ValueError
         projects.append(project)
+    set_pool_on_projects_if_missing(pool, projects)
     return projects
 
 

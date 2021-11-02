@@ -1,11 +1,13 @@
 """Define an object that represents a database project."""
 import multiprocessing.pool
-import pathlib
 import runpy
 import typing
 from dataclasses import dataclass, field
+from pathlib import Path
 
+from ase.db import connect
 from ase.db.core import Database
+
 from asr.database.browser import layout
 
 if typing.TYPE_CHECKING:
@@ -31,6 +33,14 @@ def row_to_dict(row, project):
         prefix=str(project.tmpdir / f"{project_name}/{uid}-"),
     )
     return s
+
+
+
+
+def make_default_key_descriptions(db=None):
+    from asr.database.app import create_default_key_descriptions
+
+    return create_default_key_descriptions(db=db)
 
 
 @dataclass
@@ -74,9 +84,11 @@ class DatabaseProject:
     name: str
     title: str
     database: Database
-    key_descriptions: "KeyDescriptions"
     uid_key: str = "uid"
-    tmpdir: typing.Optional[pathlib.Path] = None
+    key_descriptions: "KeyDescriptions" = field(
+        default_factory=make_default_key_descriptions
+    )
+    tmpdir: typing.Optional[Path] = None
     row_to_dict_function: typing.Callable = row_to_dict
     handle_query_function: typing.Callable = args2query
     default_columns: typing.List[str] = field(
@@ -92,120 +104,71 @@ class DatabaseProject:
     def __getitem__(self, item):
         return self.__dict__[item]
 
+    @classmethod
+    def from_pyfile(cls, path: str) -> "DatabaseProject":
+        """Make a database project from a Python file.
 
-def make_project(
-    name: str,
-    database: Database,
-    title: typing.Optional[str] = None,
-    key_descriptions: typing.Optional["KeyDescriptions"] = None,
-    uid_key: str = "uid",
-    tmpdir: typing.Optional[pathlib.Path] = None,
-    row_to_dict_function: typing.Callable = row_to_dict,
-    handle_query_function: typing.Callable = args2query,
-    default_columns: typing.Optional[typing.List[str]] = None,
-    table_template: str = "asr/database/templates/table.html",
-    row_template: str = "asr/database/templates/row.html",
-    search_template: str = "asr/database/templates/search.html",
-):
-    """Make database project.
+        Parameters
+        ----------
+        path : str
+            Path to a Python file that defines some or all of
+            the attributes that defines a database project, e.g.
+            name=, title=. At a minimum name and database needs
+            to be defined.
 
-    Used as input to the ASR app to give it information about key descriptions etc.
+        Returns
+        -------
+        DatabaseProject
+            A database project constructed from the attributes defined
+            in the python file.
+        """
+        dct = runpy.run_path(str(path))
 
-    Parameters
-    ----------
-    name : str
-        The name of the project
-    title : str, optional
-        The title of the database, defaults to name
-    key_descriptions : KeyDescriptions
-        Descriptions for key value pairs.
-    uid_key : str, optional
-        The key to use as UID, by default "id"
-    row_to_dict_function : callable, optional
-        A function that takes a row and returns a dict, by default row_to_dict
-    tmpdir : typing.Optional[pathlib.Path], optional
-        The temporary directory associated with the database app, by default None
-    handle_query_function : callable, optional
-        A functional that turns turn the app args into a database query,
-        by default args2query
-    default_columns : list[str], optional
-        Default project columns, by default ["formula", "uid"]
-    table_template : str, optional
-        The table template for the project,
-        by default "asr/database/templates/table.html"
-    row_template : str, optional
-        The row template for the project,
-        by default "asr/database/templates/row.html"
-    search_template : str, optional
-        The search template for the project,
-        by default "asr/database/templates/search.html"
-    """
-    if title is None:
-        title = name
+        values = {}
 
-    if key_descriptions is None:
-        from asr.database.app import create_default_key_descriptions
-        key_descriptions = create_default_key_descriptions()
-
-    if default_columns is None:
-        default_columns = ["formula", "id"]
-
-    return DatabaseProject(
-        name=name,
-        title=title,
-        database=database,
-        tmpdir=tmpdir,
-        key_descriptions=key_descriptions,
-        uid_key=uid_key,
-        handle_query_function=handle_query_function,
-        row_to_dict_function=row_to_dict_function,
-        default_columns=default_columns,
-        table_template=table_template,
-        search_template=search_template,
-        row_template=row_template,
-    )
-
-
-def make_project_from_pyfile(path: str) -> DatabaseProject:
-    """Make a database project from a Python file.
-
-    Parameters
-    ----------
-    path : str
-        Path to a Python file that defines some or all of
-        the attributes that defines a database project, e.g.
-        name=, title=. At a minimum name and database needs
-        to be defined.
-
-    Returns
-    -------
-    DatabaseProject
-        A database project constructed from the attributes defined
-        in the python file.
-    """
-    module = runpy.run_path(str(path))
-    return make_project_from_dict(module)
-
-
-def make_project_from_dict(dct):
-    values = {}
-    keys = set(
-        (
-            "name",
-            "title",
-            "database",
-            "key_descriptions",
-            "uid_key",
-            "handle_query_function",
-            "row_to_dict_function",
-            "default_columns",
-            "table_template",
-            "search_template",
-            "row_template",
+        KEYS_ALLOWED_FOR_PY_FILE_PROJECT_SPEC = set(
+            (
+                "name",
+                "title",
+                "database",
+                "key_descriptions",
+                "uid_key",
+                "handle_query_function",
+                "row_to_dict_function",
+                "default_columns",
+                "table_template",
+                "search_template",
+                "row_template",
+            )
         )
-    )
+        for key in KEYS_ALLOWED_FOR_PY_FILE_PROJECT_SPEC:
+            if key in dct:
+                values[key] = dct[key]
+        return cls(**dct)
 
-    for key in keys:
-        if key in dct:
-            values[key] = dct[key]
-    return make_project(**values)
+    @classmethod
+    def from_database(cls, path: str, pool=None) -> "DatabaseProject":
+        db = connect(path, serial=True)
+        metadata = db.metadata
+        name = metadata.get("name", Path(path).name)
+
+        key_descriptions = make_default_key_descriptions(db)
+        title = metadata.get("title", name)
+        uid_key = metadata.get("uid", "uid")
+        default_columns = metadata.get("default_columns", cls.default_columns)
+        table_template = str(metadata.get("table_template", cls.table_template))
+        search_template = str(metadata.get("search_template", cls.search_template))
+        row_template = str(metadata.get("row_template", cls.row_template))
+
+        return cls(
+            name=name,
+            title=title,
+            key_descriptions=key_descriptions,
+            uid_key=uid_key,
+            database=db,
+            default_columns=default_columns,
+            table_template=table_template,
+            search_template=search_template,
+            row_template=row_template,
+            pool=pool,
+        )
