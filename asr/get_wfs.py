@@ -240,22 +240,9 @@ def return_gapstates_new(calc_def):
 
     vbm = res_pris['vbm'] - pot_pris
     cbm = res_pris['cbm'] - pot_pris
-    # ef_pris = res_pris['efermi'] - pot_pris
-    # ev_pris = calc_pris.get_eigenvalues() - pot_pris
-    # for element in ev_pris:
-    #     if element > ef_pris:
-    #         cbm = element
-    #         break
-    #     vbm = element
 
     ev_def = calc_def.get_eigenvalues() - pot_def
     ef_def = calc_def.get_fermi_level() - pot_def
-    # print(pot_pris, pot_def)
-    # print(f'ef_def: {ef_def:.2f} eV',
-    #       f'ev_def: {ev_def}',
-    #       f'vbm / cbm: {vbm:.2f} eV / {cbm:.2f} eV.')
-    # print(f'ef_pris: {ef_pris:.2f} eV',
-    #       f'ev_pris: {ev_pris}')
 
     # evaluate whether there are states above or below the fermi level
     # and within the bandgap
