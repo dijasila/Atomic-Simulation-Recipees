@@ -98,18 +98,16 @@ def _get_webcontent(dbname="database.db"):
     # mf()
     fromtree(recursive=True)
     content = ""
-    from asr.database.app import App, get_project_from_database
-
+    from asr.database import DatabaseProject, App
     if world.rank == 0:
         dbapp = App()
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
-        project = get_project_from_database(dbname, create_pool=False)
+        project = DatabaseProject.from_database(dbname)
         project.tmpdir = tmpdir
         dbapp.add_project(project)
         dbapp.initialize()
         flask = dbapp.flask
-
         flask.testing = True
         with flask.test_client() as c:
             project = dbapp.projects["database.db"]

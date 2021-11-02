@@ -139,7 +139,7 @@ class DatabaseProject:
         return cls(**kwargs_for_constructor)
 
     @classmethod
-    def from_database(cls, path: str, pool=None) -> "DatabaseProject":
+    def from_database(cls, path: str) -> "DatabaseProject":
         db = connect(path, serial=True)
         metadata = db.metadata
         name = metadata.get("name", Path(path).name)
@@ -153,7 +153,7 @@ class DatabaseProject:
             "row_template",
         }
         kwargs_for_constructor = dict(
-            name=name, database=db, key_descriptions=key_descriptions, pool=pool
+            name=name, database=db, key_descriptions=key_descriptions,
         )
         for key in extract_keys:
             if key in metadata:
