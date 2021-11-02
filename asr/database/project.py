@@ -141,24 +141,19 @@ class DatabaseProject:
         db = connect(path, serial=True)
         metadata = db.metadata
         name = metadata.get("name", Path(path).name)
-
         key_descriptions = make_default_key_descriptions(db)
-        title = metadata.get("title", name)
-        uid_key = metadata.get("uid", "uid")
-        default_columns = metadata.get("default_columns", cls.default_columns)
-        table_template = str(metadata.get("table_template", cls.table_template))
-        search_template = str(metadata.get("search_template", cls.search_template))
-        row_template = str(metadata.get("row_template", cls.row_template))
 
-        return cls(
-            name=name,
-            title=title,
-            key_descriptions=key_descriptions,
-            uid_key=uid_key,
-            database=db,
-            default_columns=default_columns,
-            table_template=table_template,
-            search_template=search_template,
-            row_template=row_template,
-            pool=pool,
-        )
+        extract_keys = {
+            "uid", "default_columns", "table_template",
+            "search_template", "row_template",
+        }
+        kwargs_for_constructor = dict(name=name, database=db, key_descriptions=key_descriptions, pool=pool)
+        for key in extract_keys:
+            if key in metadata:
+                kwargs_for_constructor[key] = metadata[key]
+        
+        # To mirror previous behaviour, title is treated specially
+        if 'title' not in kwargs_for_constructor:
+            kwargs_for_constructor["title"] = kwargs_for_constructor["name"]
+            
+        return cls(**kwargs_for_constructor)
