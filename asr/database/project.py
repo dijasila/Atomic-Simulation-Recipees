@@ -58,10 +58,12 @@ class DatabaseProject:
         The title of the database object.
     database
         A database connection
+    uid_key
+        Key to be used as unique identifier.
     key_descriptions
         Key descriptions used by the web application
-    uid_key
-        Key to be used as unique identifier
+    tmpdir
+        Path to temporary directory used by project to store files.
     row_to_dict_function
         A function that takes (row, project) as input and produces an
         object (normally a dict) that is handed to the row template
@@ -82,6 +84,16 @@ class DatabaseProject:
     search_template
         Path to the search jinja-template. The search template embeds the table
         template and is responsible for formatting the search field.
+    layout function
+        Function used by the defuault row_to_dict_function to create columns,
+        figures, tables etc.
+    pool
+        Processes used for generating figures. If None, then figures are produced
+        by the main process.
+    template_search_path
+        Path that will be added to flask's template search paths where the row, search
+        and/or table template should be located. If None, ASR/ASE assumes the templates
+        to be located at default locations within ASE or ASR in that order.
     """
 
     name: str
@@ -113,12 +125,16 @@ class DatabaseProject:
     def from_pyfile(cls, path: str) -> "DatabaseProject":
         """Make a database project from a Python file.
 
+        The project is constructed from the variables defined in the input
+        python script. The extracted variable names are the same as as the
+        parameters to the :class:`asr.database.DatabaseProject` constructor.
+
         Parameters
         ----------
         path : str
             Path to a Python file that defines some or all of
             the attributes that defines a database project, e.g.
-            name=, title=. At a minimum name and database needs
+            name=, title=. At a minimum `name`, `title` and `database` needs
             to be defined.
 
         Returns
@@ -126,6 +142,17 @@ class DatabaseProject:
         DatabaseProject
             A database project constructed from the attributes defined
             in the python file.
+
+        Examples
+        --------
+        A minimal valid python script to define a database project looks like
+
+        .. code-block:: python
+
+            from ase.db import connect
+            name = "Name of my database"
+            title = "Title of my database"
+            database = connect("path/to/my/database.db")
         """
         dct = runpy.run_path(str(path))
 
@@ -140,6 +167,41 @@ class DatabaseProject:
 
     @classmethod
     def from_database(cls, path: str) -> "DatabaseProject":
+        """Make a database project from an ASE database.
+
+        The project construction acquires project attributes from the database
+        metadata. These includes the `name`, `title`, `uid`, `default_columns`,
+        `table_template`, `search_template`, `row_template`. Additionally, the
+        project construction requires that the database metadata contains a key
+        named `keys` whose value is a list of strings for which key-descriptions
+        should be generated from a default set of key descriptions.
+
+        If `name` is not specified then the filename is used. If `title` is not
+        specified then it is set to the same value as `name`.
+
+        Parameters
+        ----------
+        path : str
+            Path to an ASE database with the metadata outlined above.
+
+        Returns
+        -------
+        DatabaseProject
+            A database project constructed from the input database.
+
+
+        Examples
+        --------
+        A minimal valid metadata examples looks like
+
+        .. code-block:: json
+
+            {
+                "name": "Name of my database",
+                "keys": ["formula", "natoms"],
+            }
+
+        """
         db = connect(path, serial=True)
         metadata = db.metadata
         name = metadata.get("name", Path(path).name)
