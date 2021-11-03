@@ -20,6 +20,7 @@ from .fixtures import (  # noqa
     fscache,
     crosslinks_test_dbs,
     duplicates_test_db,
+    database_with_one_row,
 )
 
 
