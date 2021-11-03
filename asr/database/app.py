@@ -40,7 +40,7 @@ class App(DBApp):
         Parameters
         ----------
         host : str, optional
-            The host address, for example "0.0.0.0", by default "localhost
+            The host address, for example "0.0.0.0", by default "localhost"
         debug : bool, optional
             Run server in debug mode, by default False
 
@@ -49,22 +49,22 @@ class App(DBApp):
         self.flask.run(host=host, debug=debug)
 
     def add_project(self, project: DatabaseProject):
-        """Initialize a single project.
+        """Add a project to application.
 
         Parameters
         ----------
         project : DatabaseProject
-            The project to be initialized.
+            The project to be added.
         """
         self.projects[project.name] = project
 
     def add_projects(self, projects: List[DatabaseProject]):
-        """Initialize multiple projects.
+        """Add multiple projects to application.
 
         Parameters
         ----------
         projects : List[DatabaseProject]
-            Databases to be initializd
+            Databases to be added.
         """
         for project in projects:
             self.add_project(project)

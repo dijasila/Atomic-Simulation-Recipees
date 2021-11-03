@@ -22,6 +22,9 @@ CLI constructors
 
 Migration
 ---------
+
+asr.migration
+^^^^^^^^^^^^^
 .. autofunction:: asr.migration
 
 Dataclasses
@@ -84,11 +87,3 @@ Application object
 ------------------
 .. autoclass:: asr.database.App
    :members:
-
-
-CLI
-===
-
-The 
-
-.. autofunction:: asr.core.cli.app
