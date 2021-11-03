@@ -22,9 +22,6 @@ CLI constructors
 
 Migration
 ---------
-
-asr.migration
-^^^^^^^^^^^^^
 .. autofunction:: asr.migration
 
 Dataclasses
