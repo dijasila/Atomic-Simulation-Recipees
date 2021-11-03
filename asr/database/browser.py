@@ -441,8 +441,7 @@ class RowWrapper(Mapping):
     def __init__(self, row):
         cache = Cache(backend=MemoryBackend())
         if 'records' in row.data:
-            data = parse_row_data(row.data)
-            records = data["records"]
+            records = parse_row_data(row.data["records"])
         else:
             records = []
         self.records = records
@@ -483,9 +482,9 @@ class RowWrapper(Mapping):
         return self._row.key_value_pairs
 
 
-def parse_row_data(data: dict):
+def parse_row_data(data: str):
     from asr.database.fromtree import serializer
-    data = serializer.deserialize(serializer.serialize(data))
+    data = serializer.deserialize(data)
     return data
 
 
