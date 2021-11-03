@@ -1,8 +1,11 @@
-from asr.core import get_recipes, ASRResult
+import typing
+from asr.core import get_recipes
 from asr.c2db.dimensionality import get_dimtypes
 
-# Style: "KVP: Long description !short description! [unit]
 
+KeyDescriptions = typing.Dict[str, typing.Tuple[str, str, str]]
+
+# Style: "KVP: Long description !short description! [unit]
 key_descriptions = {
     "berry": {
         "Topology": "KVP: Band topology !Topology!",
@@ -237,7 +240,7 @@ for recipe in get_recipes():
 key_descriptions['extra'] = extras
 
 
-def main(database: str) -> ASRResult:
+def main(database: str):
     """Analyze database and set metadata.
 
     This recipe loops through all rows in a database and figures out what keys
