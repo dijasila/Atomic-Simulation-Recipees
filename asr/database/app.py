@@ -12,7 +12,7 @@ from ase.db.app import Database, DBApp
 from ase.formula import Formula
 from ase.geometry import cell_to_cellpar
 from ase.io.jsonio import MyEncoder
-from flask import Response, jsonify, redirect, render_template, send_file
+from flask import Response, jsonify, redirect, render_template, send_file, abort
 from jinja2 import UndefinedError
 
 import asr
@@ -103,6 +103,8 @@ class App(DBApp):
         @route("/<project>/file/<uid>/<name>")
         def file(project, uid, name):
             assert project in self.projects
+            if project.tmpdir is None:
+                abort(Response("Project has no tmpdir, cannot locate file."))
             path = project.tmpdir / f"{project}/{uid}-{name}"
             return send_file(str(path))
 
