@@ -12,10 +12,14 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['Click==7.1.2', 'ase', 'matplotlib',
-                'simplejson',
-                'spglib', 'plotly', 'flask', 'pymatgen',
-                'phonopy']
+requirements = [
+    'pyparsing==2.4.7',
+    'Click==7.1.2',
+    'ase', 'matplotlib',
+    'simplejson',
+    'spglib', 'plotly', 'flask', 'pymatgen',
+    'phonopy',
+]
 
 setup_requirements = []
 
