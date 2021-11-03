@@ -413,7 +413,6 @@ def check_rows_of_all_projects(dbapp):
                 uids.append(row.get(uid_key))
                 if len(uids) == n:
                     break
-            print(len(uids))
 
             for i, uid in enumerate(uids):
                 url = f"/{name}/row/{uid}"
