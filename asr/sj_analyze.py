@@ -108,7 +108,7 @@ class PristineResults(ASRResult):
 
     key_descriptions = dict(
         vbm='Pristine valence band maximum [eV].',
-        cbm='Pristien conduction band minimum [eV]',
+        cbm='Pristine conduction band minimum [eV]',
         evac='Pristine vacuum level [eV]')
 
 
@@ -341,25 +341,40 @@ def calculate_transitions():
 
 def get_pristine_band_edges() -> PristineResults:
     """Return band edges and vaccum level for the host system."""
-    import numpy as np
+    from asr.get_wfs import (return_defect_index,
+                             get_reference_index,
+                             extract_atomic_potentials)
     from asr.core import read_json
+    import numpy as np
+    # return index of the point defect in the defect structure
+    def_index, is_vacancy = return_defect_index()
+
+    # get calculators and atoms for pristine and defect calculation
+    try:
+        p = Path('.')
+        pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
+        pris_folder = pristinelist[0]
+        res_pris = read_json(pris_folder / 'results-asr.gs.json')
+        struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
+        struc_def, calc_def = restart(p / 'gs.gpw', txt=None)
+    except FileNotFoundError:
+        print('ERROR: does not find pristine gs, pristine results, or defect'
+              ' results. Did you run setup.defects and calculate the ground'
+              ' state for defect and pristine system?')
+
+    # evaluate which atom possesses maximum distance to the defect site
+    ref_index = get_reference_index(def_index, struc_def, struc_pris)
+
+    pot_def, pot_pris = extract_atomic_potentials(calc_def, calc_pris,
+                                                  ref_index, is_vacancy)
 
     print('INFO: extract pristine band edges.')
     p = Path('.')
-    # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-    # pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
-    # pris = pristinelist[0]
     pris = list(p.glob('./../../defects.pristine_sc*'))[0]
     if Path(pris / 'results-asr.gs.json').is_file():
         results_pris = read_json(pris / 'results-asr.gs.json')
-        atoms, calc = restart('gs.gpw', txt=None)
-        vbm = results_pris['vbm']
-        cbm = results_pris['cbm']
-        if not np.sum(atoms.get_pbc()) == 2:
-            _, calc_pris = restart(pris / 'gs.gpw', txt=None)
-            evac = calc_pris.get_eigenvalues()[0]
-        else:
-            evac = results_pris['evac']
+        vbm = results_pris['vbm'] - pot_pris
+        cbm = results_pris['cbm'] - pot_pris
     else:
         vbm = None
         cbm = None
@@ -368,7 +383,7 @@ def get_pristine_band_edges() -> PristineResults:
     return PristineResults.fromdata(
         vbm=vbm,
         cbm=cbm,
-        evac=evac)
+        evac=0)
 
 
 def obtain_chemical_potential(symbol, db):
@@ -438,13 +453,14 @@ def get_transition_level(transition, charge) -> TransitionResults:
     from asr.get_wfs import (return_defect_index,
                              get_reference_index,
                              extract_atomic_potentials)
+    from asr.core import read_json
     # return index of the point defect in the defect structure
     def_index, is_vacancy = return_defect_index()
 
     # get calculators and atoms for pristine and defect calculation
     try:
         p = Path('.')
-        pristinelist = list(p.glob(f'./../../../defects.pristine_sc*/'))
+        pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
         pris_folder = pristinelist[0]
         res_pris = read_json(pris_folder / 'results-asr.gs.json')
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
@@ -457,13 +473,6 @@ def get_transition_level(transition, charge) -> TransitionResults:
     # evaluate which atom possesses maximum distance to the defect site
     ref_index = get_reference_index(def_index, struc_def, struc_pris)
 
-    # get atomic electrostatic potentials at the atom far away for both the
-    # defect and pristine system
-    pot_def, pot_pris = extract_atomic_potentials(calc_def, calc_pris,
-                                                  ref_index, is_vacancy)
-
-    print(ref_index, is_vacancy, pot_def, pot_pris)
-
     # get newly referenced eigenvalues for pristine and defect, as well as
     # pristine fermi level for evaluation of the band gap
     if np.sum(struc_def.get_pbc()) == 2:
@@ -471,33 +480,7 @@ def get_transition_level(transition, charge) -> TransitionResults:
     else:
         evac = 0
 
-    vbm = res_pris['vbm'] - pot_pris
-    cbm = res_pris['cbm'] - pot_pris
-
-    ev_def = calc_def.get_eigenvalues() - pot_def
-    ef_def = calc_def.get_fermi_level() - pot_def
-
-    # evaluate whether there are states above or below the fermi level
-    # and within the bandgap
-    above = False
-    below = False
-    for state in ev_def:
-        if state < cbm and state > vbm and state > ef_def:
-            above = True
-        elif state < cbm and state > vbm and state < ef_def:
-            below = True
-    above_below = (above, below)
-    dif = pot_def - pot_pris + evac
-    # import numpy as np
-    # extract lowest lying state for the pristine system as energy reference
-    p = Path('.')
-    # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-    # pris = Path(f'./../../defects.pristine_sc.{sc}/')
-    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
-    _, calc_pris = restart(pris / 'gs.gpw', txt=None)
-    e_ref_pris = calc_pris.get_eigenvalues()[0]
-
-    # extrac HOMO or LUMO
+    # extract HOMO or LUMO (TBD)
     # HOMO
     charge = str(charge)
     if transition[0] > transition[1]:
@@ -520,7 +503,10 @@ def get_transition_level(transition, charge) -> TransitionResults:
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
 
-    e_ref = calc.get_eigenvalues()[0] - e_ref_pris
+    # get atomic electrostatic potentials at the atom far away for both the
+    # defect and pristine system
+    pot_def, pot_pris = extract_atomic_potentials(calc, calc_pris,
+                                                  ref_index, is_vacancy)
 
     # if possible, calculate correction due to relaxation in the charge state
     if Path('../charge_{}/results-asr.relax.json'.format(
@@ -535,7 +521,7 @@ def get_transition_level(transition, charge) -> TransitionResults:
 
     transition_name = f'{transition[0]}/{transition[1]}'
 
-    transition_values = return_transition_values(e_trans, e_cor, e_ref)
+    transition_values = return_transition_values(e_trans, e_cor, pot_def)
 
     return TransitionResults.fromdata(
         transition_name=transition_name,
