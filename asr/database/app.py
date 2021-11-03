@@ -305,13 +305,7 @@ def main(
     """
     pool = multiprocessing.Pool(1)
     projects = convert_files_to_projects(filenames, pool=pool)
-    if (
-        extra_kvp_descriptions_file is not None
-        and Path(extra_kvp_descriptions_file).is_file()
-    ):
-        extras = get_key_descriptions_from_file(extra_kvp_descriptions_file)
-    else:
-        extras = {}
+    extras = get_key_descriptions_from_file(extra_kvp_descriptions_file)
 
     with tempfile.TemporaryDirectory(prefix='asr-app-') as tmpdir:
         # For some reason MyPy complains about giving a string argument
