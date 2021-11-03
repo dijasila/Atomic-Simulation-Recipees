@@ -423,9 +423,6 @@ def calculate_neutral_formation_energy():
 
     results_def = read_json('./results-asr.gs.json')
     p = Path('.')
-    # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-    # pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
-    # pris = pristinelist[0]
     pris = list(p.glob('./../../defects.pristine_sc*'))[0]
     results_pris = read_json(pris / 'results-asr.gs.json')
 
@@ -483,23 +480,18 @@ def get_transition_level(transition, charge) -> TransitionResults:
     # extract HOMO or LUMO (TBD)
     # HOMO
     charge = str(charge)
+    N_homo = get_homo_index(calc_def)
     if transition[0] > transition[1]:
         atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
         ev = calc.get_eigenvalues()
-        e_fermi = calc.get_fermi_level()
-        unocc = []
-        [unocc.append(v) for v in ev if v > e_fermi]
-        e_trans = min(unocc)
+        e_trans = ev[N_homo]
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
     # LUMO
     elif transition[1] > transition[0]:
         atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
         ev = calc.get_eigenvalues()
-        e_fermi = calc.get_fermi_level()
-        occ = []
-        [occ.append(v) for v in ev if v < e_fermi]
-        e_trans = max(occ)
+        e_trans = ev[N_homo - 1]
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
 
@@ -526,6 +518,15 @@ def get_transition_level(transition, charge) -> TransitionResults:
     return TransitionResults.fromdata(
         transition_name=transition_name,
         transition_values=transition_values)
+
+
+def get_homo_index(calc):
+    ev = calc.get_eigenvalues()
+    e_fermi = calc.get_fermi_level()
+    occ = []
+    [occ.append(v) for v in ev if v < e_fermi]
+
+    return len(occ)
 
 
 def return_transition_values(e_trans, e_cor, e_ref) -> TransitionValues:
@@ -578,8 +579,8 @@ def plot_formation_energies(row, fname):
 
     data = row.data.get('results-asr.sj_analyze.json')
 
-    vbm = data['pristine']['vbm'] # - 142.7 - 2.56
-    cbm = data['pristine']['cbm'] # - 142.7 - 2.56
+    vbm = data['pristine']['vbm']
+    cbm = data['pristine']['cbm']
     gap = abs(cbm - vbm)
     eform = data['eform']
     transitions = data['transitions']
@@ -594,13 +595,10 @@ def plot_formation_energies(row, fname):
     for element in eform:
         ax1.plot([0, gap], [f(0, element[1], element[0]),
                             f(gap, element[1], element[0])],
-                 #color='C0',
                  color=colors[str(element[1])],
                  label=element[1])
-                 #linestyle='dotted')
 
     ax1.set_xlim(-0.2 * gap, gap + 0.2 * gap)
-    # ax1.set_ylim(-0.1, eform[0][0] + 0.5 * eform[0][0])
     yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
     ax1.text(-0.1 * gap, 0.5 * yrange, 'VBM', ha='center',
              va='center', rotation=90, weight='bold', color='white')
