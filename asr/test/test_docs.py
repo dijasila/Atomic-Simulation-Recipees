@@ -22,12 +22,13 @@ def rstfiles():
     # assert directory.is_dir(), directory
     rstfiles = list(directory.rglob('*.rst'))
     # XXXXX Does not find the files if running against installed version.
+    # XXX Why don't I see this?
     # assert len(rstfiles) > 0
     return rstfiles
 
 
 # XXX crashes pytest in parallel, or a plugin.
-@pytest.mark.skip
+@pytest.mark.fails_with_xdist
 @pytest.mark.parametrize("command_outputs", rstfiles(),
                          ids=lambda x: str(x), indirect=True)
 def test_rst_file(command_outputs, tmpdir):

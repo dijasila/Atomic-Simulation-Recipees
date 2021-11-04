@@ -44,16 +44,7 @@ def handle_problematic_characters(string: str) -> str:
 
 
 def get_command_and_output_ranges(lines):
-    command_lines = []
-    skip_next = False
-    for il, line in enumerate(lines):
-        if line_contains_skip_statement(line):
-            skip_next = True
-        elif line_contains_command(line):
-            if skip_next:
-                skip_next = False
-            else:
-                command_lines.append(il)
+    command_lines = get_command_line_numbers(lines)
 
     ranges = []
     for il in command_lines:
@@ -68,6 +59,20 @@ def get_command_and_output_ranges(lines):
     return ranges
 
 
+def get_command_line_numbers(lines):
+    command_lines = []
+    skip_next = False
+    for il, line in enumerate(lines):
+        if line_contains_skip_statement(line):
+            skip_next = True
+        elif line_contains_command(line):
+            if skip_next:
+                skip_next = False
+            else:
+                command_lines.append(il)
+    return command_lines
+
+
 def line_contains_skip_statement(line):
     return line.startswith('   DOC TOOL: SKIP NEXT COMMAND')
 
@@ -77,11 +82,6 @@ def line_contains_command(line):
 
 
 def get_commands_and_outputs(lines):
-    command_lines = []
-    for il, line in enumerate(lines):
-        if line.startswith('   $ '):
-            command_lines.append(il)
-
     commands_outputs = []
     ranges = get_command_and_output_ranges(lines)
     for ic, io in ranges:
