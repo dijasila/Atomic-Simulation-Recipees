@@ -30,20 +30,30 @@ def run_shell_command(command, env=None):
     )
     try:
         output = completed_process.stdout.decode()
-        assert not completed_process.returncode
+        assert not completed_process.returncode, completed_process.stderr.decode()
     except UnicodeDecodeError:
         output = completed_process.stderr.decode()
-    output = output.split('\n')
+    output = handle_problematic_characters(output).split('\n')
     if output[-1] == '':
         output.pop()
     return output
 
 
+def handle_problematic_characters(string: str) -> str:
+    return string.replace("\r", "\n")
+
+
 def get_command_and_output_ranges(lines):
     command_lines = []
+    skip_next = False
     for il, line in enumerate(lines):
-        if line.startswith('   $ '):
-            command_lines.append(il)
+        if line_contains_skip_statement(line):
+            skip_next = True
+        elif line_contains_command(line):
+            if skip_next:
+                skip_next = False
+            else:
+                command_lines.append(il)
 
     ranges = []
     for il in command_lines:
@@ -56,6 +66,14 @@ def get_command_and_output_ranges(lines):
                 break
         ranges.append(rng)
     return ranges
+
+
+def line_contains_skip_statement(line):
+    return line.startswith('   DOC TOOL: SKIP NEXT COMMAND')
+
+
+def line_contains_command(line):
+    return line.startswith('   $ ')
 
 
 def get_commands_and_outputs(lines):

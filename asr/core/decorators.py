@@ -38,6 +38,7 @@ def instruction(
             module=mod,
             version=version,
             argument_hooks=argument_hooks,
+            package_dependencies=package_dependencies,
         )
 
     return decorator

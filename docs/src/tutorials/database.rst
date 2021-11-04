@@ -19,14 +19,15 @@ first make those.
 .. code-block:: console
 
    $ asr init .
-   $ ase build Ag -x fcc
-   $ ase build Au -x fcc
-   $ mkdir Ag
-   $ mv Ag.json Ag/structure.json
-   $ mkdir Au
-   $ mv Au.json Au/structure.json
+   $ mkdir Ag Au
+   $ ase build -x fcc Ag Ag/structure.json
+   $ ase build -x fcc Au Au/structure.json
    $ asr run "structureinfo --atoms Ag/structure.json"
+   In folder: . (1/1)
+   Running asr.structureinfo(atoms=Atoms(symbols='Ag', pbc=True, cell=[[0.0, 2.045, 2.045], [2.045, 0.0, 2.045], [2.045, 2.045, 0.0]]))
    $ asr run "structureinfo --atoms Au/structure.json"
+   In folder: . (1/1)
+   Running asr.structureinfo(atoms=Atoms(symbols='Au', pbc=True, cell=[[0.0, 2.04, 2.04], [2.04, 0.0, 2.04], [2.04, 2.04, 0.0]]))
    $ asr cache ls
                 name                                  parameters                                      result
    asr.structureinfo atoms=Atoms(symbols='Ag', pbc=True, cell... Result(formula=Ag,stoichiometry=A,has_in...
@@ -53,9 +54,9 @@ using the CLI provided by ASE:
 .. code-block:: console
 
    $ ase db database.db
-   id|age|user |formula|natoms|pbc|volume|charge|   mass
-    1| 0s|mogje|Ag     |     1|TTT|17.104| 0.000|107.868
-    2| 0s|mogje|Au     |     1|TTT|16.979| 0.000|196.967
+   id|age|formula|natoms|pbc|volume|charge|   mass
+    1| 0s|Ag     |     1|TTT|17.104| 0.000|107.868
+    2| 0s|Au     |     1|TTT|16.979| 0.000|196.967
    Rows: 2
    Keys: crystal_type, folder, has_inversion_symmetry, pointgroup, spacegroup, spgnum, uid
 
@@ -65,6 +66,16 @@ contains information about the point group, space group etc.
 
 To view all this information interactively in the ASR web application it is most convenient
 again to use the CLI:
+
+..
+   $ asr database app database.db --test
+   Testing database.db
+   
+   Rows: 1/2 /database.db/row/Ag-44ffc62ad52f
+   Rows: 2/2 /database.db/row/Au-ee5714af2187
+
+..
+   DOC TOOL: SKIP NEXT COMMAND 
 
 .. code-block:: console
 
@@ -85,9 +96,30 @@ can be specified in a python file that contains at least the required arguments:
 
 We can then run the CLI again with the project configuration as input:
 
+..
+   DOC TOOL: SKIP NEXT COMMAND
+
 .. code-block:: console
 
    $ asr database app project.py
+
+Application Testing
+-------------------
+..
+   $ cp $ASRHOME/docs/src/tutorials/project.py project.py
+
+You can run a simple test of the application by with
+
+.. code-block:: console
+
+   $ asr database app project.py --test
+   Testing name_of_my_database
+   
+   Rows: 1/2 /name_of_my_database/row/Ag-44ffc62ad52f
+   Rows: 2/2 /name_of_my_database/row/Au-ee5714af2187
+
+Which queries all rows of the database to reveal any errors. In this case,
+we see no errors.
 
 
 Application scripting interface

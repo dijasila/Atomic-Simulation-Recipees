@@ -1,6 +1,6 @@
 from ase.db import connect
 
-name = "Name of my database."
+name = "name_of_my_database"
 title = "Title of my database."
 database = connect("database.db")
 key_descriptions = {

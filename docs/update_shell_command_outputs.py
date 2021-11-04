@@ -16,6 +16,7 @@ def update_tutorials(files):
         env = os.environ.copy()
         asrhome = get_asr_home_path()
         dirpath = tempfile.mkdtemp()
+        print(f"Evaluating {tutorial} in {dirpath}")
         with chdir(dirpath):
             asrlib = get_asr_library_path()
             env['ASRHOME'] = asrhome
@@ -26,6 +27,7 @@ def update_tutorials(files):
             outputs = []
             for ic, io in ranges:
                 command = lines[ic][5:]
+                print(f'$ {command}')
                 output = run_shell_command(command, env=env)
                 output = ['   ' + tmp for tmp in output]
                 outputs.append(output)
@@ -36,7 +38,6 @@ def update_tutorials(files):
                 lines = lines[:ic + 1] + output + lines[io:]
             new_text = '\n'.join(lines)
             path.write_text(new_text)
-            print(new_text)
 
 
 if __name__ == '__main__':

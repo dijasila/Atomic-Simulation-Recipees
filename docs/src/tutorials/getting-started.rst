@@ -96,13 +96,13 @@ The full contents of the record can be shown with
    dependencies=None
    history=None
    metadata=
-    created=2021-06-24 18:53:20.353366
+    created=2021-11-04 09:42:09.921302
     directory=.
-    modified=2021-06-24 18:53:20.353366
+    modified=2021-11-04 09:42:09.921302
    resources=
-    execution_duration=0.22190260887145996
-    execution_end=1624553600.3533049
-    execution_start=1624553600.1314023
+    execution_duration=0.14464545249938965
+    execution_end=1636015329.921233
+    execution_start=1636015329.7765875
     ncores=1
    result=-0.000367
    run_specification=
@@ -110,14 +110,14 @@ The full contents of the record can be shown with
      code=
       git_hash=None
       package=ase
-      version=3.22.0b1
+      version=3.23.0b1
      code=
       git_hash=None
       package=asr
       version=0.4.1
     name=asr.tutorial:energy
     parameters=element=Ag,crystal_structure=fcc
-    uid=cb55e8269ef14f11943d7273399f9d4f
+    uid=5799aa96b84e4207aadab4603d146a33
     version=0
    tags=None
 
@@ -145,7 +145,7 @@ result.
 
    $ asr run "asr.tutorial:energy Ag fcc"
    In folder: . (1/1)
-   asr.tutorial:energy: Found cached record.uid=cb55e8269ef14f11943d7273399f9d4f
+   asr.tutorial:energy: Found cached record.uid=5799aa96b84e4207aadab4603d146a33
 
 This is useful in workflows where it is beneficial to not
 redo expensive calculation steps when it has already been performed
@@ -170,9 +170,9 @@ to state so explicitly when running the main-instruction.
 
    $ asr run "asr.tutorial Ag"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Ag')
+   Running asr.tutorial(element='Ag')
    Running asr.tutorial:energy(element='Ag', crystal_structure='sc')
-   asr.tutorial:energy: Found cached record.uid=cb55e8269ef14f11943d7273399f9d4f
+   asr.tutorial:energy: Found cached record.uid=5799aa96b84e4207aadab4603d146a33
    Running asr.tutorial:energy(element='Ag', crystal_structure='bcc')
    Running asr.tutorial:energy(element='Ag', crystal_structure='diamond')
 
@@ -181,11 +181,11 @@ We can now check the result using the command-line tool
 
 .. code-block:: console
 
-   $ asr cache ls name=asr.tutorial:main
-                name parameters result
-   asr.tutorial:main element=Ag    fcc
+   $ asr cache ls name=asr.tutorial
+           name parameters result
+   asr.tutorial element=Ag    fcc
 
-Notice here we applied the "name=asr.tutorial:main" selection to
+Notice here we applied the "name=asr.tutorial" selection to
 select only the record of relevance. As we can see the EMT calculator
 correctly predicts FCC as the most stable crystal structure for
 silver.
@@ -194,21 +194,21 @@ Let's also look at the detailed contents of this record
 
 .. code-block:: console
 
-   $ asr cache detail name=asr.tutorial:main
+   $ asr cache detail name=asr.tutorial
    dependencies=
-    dependency=uid=4813f96fdd0447888f96996514e549cb revision=None
-    dependency=uid=cb55e8269ef14f11943d7273399f9d4f revision=None
-    dependency=uid=736496a649574aa5b51f47261773dcb6 revision=None
-    dependency=uid=1ce77b0d881f4fc5a24791f526a70402 revision=None
+    dependency=uid=da2adfba4643469994320d176470fcda revision=None
+    dependency=uid=5799aa96b84e4207aadab4603d146a33 revision=None
+    dependency=uid=aa16b032ef8248f98a8fc991ef9d6417 revision=None
+    dependency=uid=2fcd3c99e1b840ec8faa680141d8f5fb revision=None
    history=None
    metadata=
-    created=2021-06-24 18:53:23.115231
+    created=2021-11-04 09:42:11.662077
     directory=.
-    modified=2021-06-24 18:53:23.115231
+    modified=2021-11-04 09:42:11.662077
    resources=
-    execution_duration=1.1910970211029053
-    execution_end=1624553603.1151726
-    execution_start=1624553601.9240756
+    execution_duration=0.6687977313995361
+    execution_end=1636015331.6620367
+    execution_start=1636015330.993239
     ncores=1
    result=fcc
    run_specification=
@@ -216,14 +216,14 @@ Let's also look at the detailed contents of this record
      code=
       git_hash=None
       package=ase
-      version=3.22.0b1
+      version=3.23.0b1
      code=
       git_hash=None
       package=asr
       version=0.4.1
-    name=asr.tutorial:main
+    name=asr.tutorial
     parameters=element=Ag
-    uid=e04f84d8f9af4294bcd354c2acf2a23e
+    uid=2deb079207f540568495389abce99ef7
     version=0
    tags=None
 
@@ -241,42 +241,42 @@ various other metals
 
    $ asr run "asr.tutorial Al"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Al')
+   Running asr.tutorial(element='Al')
    Running asr.tutorial:energy(element='Al', crystal_structure='sc')
    Running asr.tutorial:energy(element='Al', crystal_structure='fcc')
    Running asr.tutorial:energy(element='Al', crystal_structure='bcc')
    Running asr.tutorial:energy(element='Al', crystal_structure='diamond')
    $ asr run "asr.tutorial Ni"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Ni')
+   Running asr.tutorial(element='Ni')
    Running asr.tutorial:energy(element='Ni', crystal_structure='sc')
    Running asr.tutorial:energy(element='Ni', crystal_structure='fcc')
    Running asr.tutorial:energy(element='Ni', crystal_structure='bcc')
    Running asr.tutorial:energy(element='Ni', crystal_structure='diamond')
    $ asr run "asr.tutorial Cu"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Cu')
+   Running asr.tutorial(element='Cu')
    Running asr.tutorial:energy(element='Cu', crystal_structure='sc')
    Running asr.tutorial:energy(element='Cu', crystal_structure='fcc')
    Running asr.tutorial:energy(element='Cu', crystal_structure='bcc')
    Running asr.tutorial:energy(element='Cu', crystal_structure='diamond')
    $ asr run "asr.tutorial Pd"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Pd')
+   Running asr.tutorial(element='Pd')
    Running asr.tutorial:energy(element='Pd', crystal_structure='sc')
    Running asr.tutorial:energy(element='Pd', crystal_structure='fcc')
    Running asr.tutorial:energy(element='Pd', crystal_structure='bcc')
    Running asr.tutorial:energy(element='Pd', crystal_structure='diamond')
    $ asr run "asr.tutorial Pt"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Pt')
+   Running asr.tutorial(element='Pt')
    Running asr.tutorial:energy(element='Pt', crystal_structure='sc')
    Running asr.tutorial:energy(element='Pt', crystal_structure='fcc')
    Running asr.tutorial:energy(element='Pt', crystal_structure='bcc')
    Running asr.tutorial:energy(element='Pt', crystal_structure='diamond')
    $ asr run "asr.tutorial Au"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Au')
+   Running asr.tutorial(element='Au')
    Running asr.tutorial:energy(element='Au', crystal_structure='sc')
    Running asr.tutorial:energy(element='Au', crystal_structure='fcc')
    Running asr.tutorial:energy(element='Au', crystal_structure='bcc')
@@ -286,15 +286,15 @@ We can now take a look at the results with
 
 .. code-block:: console
 
-   $ asr cache ls name=asr.tutorial:main
-                name parameters result
-   asr.tutorial:main element=Ag    fcc
-   asr.tutorial:main element=Al    fcc
-   asr.tutorial:main element=Ni    fcc
-   asr.tutorial:main element=Cu    fcc
-   asr.tutorial:main element=Pd    fcc
-   asr.tutorial:main element=Pt    fcc
-   asr.tutorial:main element=Au    fcc
+   $ asr cache ls name=asr.tutorial
+           name parameters result
+   asr.tutorial element=Ag    fcc
+   asr.tutorial element=Al    fcc
+   asr.tutorial element=Ni    fcc
+   asr.tutorial element=Cu    fcc
+   asr.tutorial element=Pd    fcc
+   asr.tutorial element=Pt    fcc
+   asr.tutorial element=Au    fcc
 
 From which we can see that the EMT calculator predicts the FCC crystal
 structure to be the most stable crystal structure for all tested
@@ -360,215 +360,215 @@ To apply the migrations we do
    $ asr cache migrate --apply
    There are 35 unapplied migrations, 0 erroneous migrations and 0 records are up to date.
    
-   record.uid=cb55e8269ef14f11943d7273399f9d4f
+   record.uid=5799aa96b84e4207aadab4603d146a33
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=768c45ede5594333b2d7f8ee76297a31
+   uid=8fc8e150ff7b4f51847d15750810baf8
    
-   record.uid=4813f96fdd0447888f96996514e549cb
+   record.uid=da2adfba4643469994320d176470fcda
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=7c920581f365450488910c0f557bc10a
+   uid=fc59143ee7884dd099cadaec8b88fdfa
    
-   record.uid=736496a649574aa5b51f47261773dcb6
+   record.uid=aa16b032ef8248f98a8fc991ef9d6417
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=5f9652c2319246f98307abbce089b241
+   uid=b7168dd364244954b59b5d250dd6665c
    
-   record.uid=1ce77b0d881f4fc5a24791f526a70402
+   record.uid=2fcd3c99e1b840ec8faa680141d8f5fb
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=474eef393aeb448980ffb37ba872d766
+   uid=7f10ce813c7342d8be1c358f911b684f
    
-   record.uid=e04f84d8f9af4294bcd354c2acf2a23e
+   record.uid=2deb079207f540568495389abce99ef7
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=d0cf68a6fc434d30926deed578795cf4
+   uid=f3c0c34eb183432988727ff6b60e750c
    
-   record.uid=3edae22c00b54e3b81f72dfd8f73472f
+   record.uid=da75f7e682d643689c025b2b851a0522
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=ef9b17889a564a52bd23d6c88b8da1c8
+   uid=d72f0763a312410ab03f6c31c5547cc8
    
-   record.uid=5cc5d6f64a0a47fd8915610aaf4e4053
+   record.uid=ca150639cba64d87ac621e6ea06d8fa9
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=56b0883f578f4e9db534491ca262f65b
+   uid=94aca2e9ef834750808e07123b5f930f
    
-   record.uid=5aaded28bd9e44a1a69ea5f1b07fc90a
+   record.uid=c625d4bd900a48a980e5e2f29fae394d
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=3405a6725f414a989780e924b5767a3b
+   uid=d3b44194035341639eddf494ae055d3d
    
-   record.uid=e4107d7beaf2492ea95384252113be9d
+   record.uid=82fdbaa9ddb84b3298924d4dfb191310
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=b07405e4804a4f0f92601a725e45d0dd
+   uid=253a6e6a7bb5446fb9e0a486504d225b
    
-   record.uid=3eb6b63e64c74598b8f1634c1acb9472
+   record.uid=729212b49ccd4ffa83c7e020eb1fc5d2
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=41a58e8f5fc94d5b829e5631cb066f09
+   uid=d4dc806eec094e56a3d442173d8d4638
    
-   record.uid=b02b8bd937bf43ceae63c7d799ab3103
+   record.uid=a3c2116190724144b4dacd3fdcef4f96
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=4278435cc6ef4c789b4ed4d8fbc3344f
+   uid=a4378db78c954229b5629bf4caeddb4a
    
-   record.uid=9192fd59187c4f06aeb18c4cb9259063
+   record.uid=5a8b309d73474787897ccb42f214a960
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=93cc43009c8e4ff2954c3cdab47772c3
+   uid=4137dd78691a4334834f3c2c91cac48d
    
-   record.uid=7049fd27fc9d487e86205de52c393e6b
+   record.uid=3ef7ef9436fb4dbca78eedb718fc5600
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=696b486931db449a95978dbf7858a942
+   uid=e1d3a99955d24378a34680b228369405
    
-   record.uid=021c5cd741da4f79af1e77b13cd48fb9
+   record.uid=49c483ac906b4e4fb970420755ab55b3
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=29e79f37a0674a5abfdecf51e2a39f4b
+   uid=ac6ff82daff24653bd6180fcda551e59
    
-   record.uid=75fe827361c549d18cbf8ef58b6aa5bb
+   record.uid=2ab99e2bf19443a896740f8c39d37944
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=39db96406fe24a8f9766e5a8435b9135
+   uid=f603f23214e24f5f9b2c3a89e67e979c
    
-   record.uid=8379adc2f6624abc89c972637a1be2ea
+   record.uid=86d9181e6aad495bbf71be12a30b4fe3
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=385c1d739df744118f00f3919cd46063
+   uid=5b519e851d8343169b6e87075d7d1f5a
    
-   record.uid=ac461e27094549f9bf55e72cd6fae8c0
+   record.uid=7a1058b3e7f6432a8d70f6702ec60d3b
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=46fd22c29dda484493a8dd0f82949763
+   uid=cb0794bfe00f44faace00ab8497f9411
    
-   record.uid=f3bd89cde5d748168316e786a6bd41e1
+   record.uid=07ebdc1e1ec54d0c8ba203d0b843c58f
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=30fab30f473c4260b9a1c648e76642ab
+   uid=2781de71364f4def83a8e0e270aee643
    
-   record.uid=ab5cc9ef9ea8476a89ed9b8b9755224a
+   record.uid=a5c2f3f073f3459194002d3f2d63cc09
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=8e91e092b49d4ee8a274b57f05b1c7e6
+   uid=eee9ee183c944cc59e4ac83faef57b0f
    
-   record.uid=42fa760fc0d142c5a4c6229ef686dd3d
+   record.uid=b4e7563be0da449caa14e8dfa711a750
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=61482d03a755460cbe287be2b7ab6714
+   uid=91143ebba191473bb5c2928fa9a5258e
    
-   record.uid=1498354017164ced90332e937faea740
+   record.uid=626b2a3cbbb245d4924e7052f17c65bd
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=2810b87a3b9f48ce98f688fd03b17649
+   uid=925d0d2f412c40c28b85df7a9d7c61c1
    
-   record.uid=dfde85c49eaa41a1b2f6a4f72cf151b1
+   record.uid=68e1a2a7e9b24cfda3d621077435ad83
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=90f1bcde4b134435bd9d422f885666a8
+   uid=e1f794200d194cc8ae2edf98adb7932c
    
-   record.uid=f271c4fd876f48588af523a4f2ba26a2
+   record.uid=3aed6f9558c74a3ba33310ac461e00a4
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=19fbb37cc5734d5783952dc1e00c5ef4
+   uid=b6682fa73d2d4f56a61974e0e8a13db3
    
-   record.uid=b42ccfbe8b2540778575e405c9b2b01a
+   record.uid=24768298982a4816b22eed2bf223467c
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=0f8b8d53e8c74bb69910aa364df188e5
+   uid=1cbac782729942c497e176792cb910d4
    
-   record.uid=45c3fcb292e846118da176f2bded709a
+   record.uid=5f5b362f91224ca284d2ea678fdc5f5f
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=637c80190ba949239584d5d4d26e26dc
+   uid=e38058daa4684d31a070b1cbc5514d49
    
-   record.uid=cb3a3335d2464c0d913807a9b8d65454
+   record.uid=8794960772c740f79d8e47c5ec7deb23
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=65c158935b0f45e1ab38a1bb0da92ff6
+   uid=a70fa60e1de04d888565ce514eb524b6
    
-   record.uid=6b514260e5c546d89e94e1b68e879b8d
+   record.uid=ea984cc41767477e9edf0afe9d36208a
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=38734b89c7e44a3bab165e4661f09162
+   uid=e016c39e073649a5b5f75976e4bd7513
    
-   record.uid=d5d66200434d4123891e51cd09c5eeec
+   record.uid=e71b4961666644f1a9f1eba3e9faff58
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=525f5485db9b4d6cbf6b28761687efdb
+   uid=07da74d798fa40b0a3e1536817bbadc1
    
-   record.uid=c291974b137941f8875f0c40cf1b1658
+   record.uid=ee4b0a910b5a4fdd850aac55b8546506
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=b385c5237f3e419884f6c32bdc7e51a8
+   uid=233dd820a9154ab194123a6a4090edd5
    
-   record.uid=664e7979812c4c618df4138261dc0ce4
+   record.uid=fa0199aaf2a049fab4516c8f33ad338f
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=dc6ba34054fd408a97c5b17de01c1f7f
+   uid=0614c83c1d2a4c7bb63e6315b8d5e3a7
    
-   record.uid=0c2fe18091c94bbc80bd59e481821a31
+   record.uid=661fc2e4f13a4933856bf8c99a9777f6
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=1477d4dd810d4c0181bf071b78810756
+   uid=ebb35b70532f4ababb3bbd8410a9db93
    
-   record.uid=0bd12e8242fd4f52a7e5f94cae6ef9e3
+   record.uid=0dbe5fc9fe204d149cdfcefe75cc1b94
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=3559b7f4dc2348ddad8810e298bb1c84
+   uid=29346196be8f478591262bf5d51ed689
    
-   record.uid=42dd6573b35f496d938e2b341d2ddb2d
+   record.uid=18b3641843a44a5290bf4cd2b9e20dbc
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=59e0816a29e44da0b7ab0dbdb4c77ef8
+   uid=9f709130db3a43c591579f4a488259c5
    
-   record.uid=8585e7bbbde44c6cb2049cd7d690cae3
+   record.uid=e30516903b904befa3c2018a8f5f95db
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=8528f37dd45e48e9803f76d66358c55a
+   uid=d661d20891f24e89b822589ea0a129fa
    
-   record.uid=08ca3f9a4b81440a89c21e777982cdb9
+   record.uid=cfbeef9ba8e2449c8cd0b7d0689f152a
    Revision #0 description=Fix old records that are missing calculator='emt'.
    migration_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
-   uid=1d00b5ed62ef4ecc915ad68419cfefd2
+   uid=7369dfb47bd445e4b0a06d7f6a7fc681
    
 
 The output informs us of the changes made to the existing records, in
@@ -583,20 +583,20 @@ of errors. Let's look at the details of one of the updated records
    $ asr cache detail name=asr.tutorial:energy parameters.element=Ag parameters.crystal_structure=fcc
    dependencies=None
    history=
-    latest_revision=768c45ede5594333b2d7f8ee76297a31
+    latest_revision=8fc8e150ff7b4f51847d15750810baf8
     revision=
      description=Fix old records that are missing calculator='emt'.
      migration_uid=None
      modification=New attribute=.run_specification.parameters.calculator value=emt
-     uid=768c45ede5594333b2d7f8ee76297a31
+     uid=8fc8e150ff7b4f51847d15750810baf8
    metadata=
-    created=2021-06-24 18:53:20.353366
+    created=2021-11-04 09:42:09.921302
     directory=.
-    modified=2021-06-24 18:53:20.353366
+    modified=2021-11-04 09:42:09.921302
    resources=
-    execution_duration=0.22190260887145996
-    execution_end=1624553600.3533049
-    execution_start=1624553600.1314023
+    execution_duration=0.14464545249938965
+    execution_end=1636015329.921233
+    execution_start=1636015329.7765875
     ncores=1
    result=-0.000367
    run_specification=
@@ -604,14 +604,14 @@ of errors. Let's look at the details of one of the updated records
      code=
       git_hash=None
       package=ase
-      version=3.22.0b1
+      version=3.23.0b1
      code=
       git_hash=None
       package=asr
       version=0.4.1
     name=asr.tutorial:energy
     parameters=element=Ag,crystal_structure=fcc,calculator=emt
-    uid=cb55e8269ef14f11943d7273399f9d4f
+    uid=5799aa96b84e4207aadab4603d146a33
     version=0
    tags=None
 
@@ -630,49 +630,49 @@ Lennard-Jones calculator identified as "lj" according to ASE.
 
    $ asr run "asr.tutorial Ag --calculator lj"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Ag', calculator='lj')
+   Running asr.tutorial(element='Ag', calculator='lj')
    Running asr.tutorial:energy(element='Ag', crystal_structure='sc', calculator='lj')
    Running asr.tutorial:energy(element='Ag', crystal_structure='fcc', calculator='lj')
    Running asr.tutorial:energy(element='Ag', crystal_structure='bcc', calculator='lj')
    Running asr.tutorial:energy(element='Ag', crystal_structure='diamond', calculator='lj')
    $ asr run "asr.tutorial Al --calculator lj"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Al', calculator='lj')
+   Running asr.tutorial(element='Al', calculator='lj')
    Running asr.tutorial:energy(element='Al', crystal_structure='sc', calculator='lj')
    Running asr.tutorial:energy(element='Al', crystal_structure='fcc', calculator='lj')
    Running asr.tutorial:energy(element='Al', crystal_structure='bcc', calculator='lj')
    Running asr.tutorial:energy(element='Al', crystal_structure='diamond', calculator='lj')
    $ asr run "asr.tutorial Ni --calculator lj"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Ni', calculator='lj')
+   Running asr.tutorial(element='Ni', calculator='lj')
    Running asr.tutorial:energy(element='Ni', crystal_structure='sc', calculator='lj')
    Running asr.tutorial:energy(element='Ni', crystal_structure='fcc', calculator='lj')
    Running asr.tutorial:energy(element='Ni', crystal_structure='bcc', calculator='lj')
    Running asr.tutorial:energy(element='Ni', crystal_structure='diamond', calculator='lj')
    $ asr run "asr.tutorial Cu --calculator lj"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Cu', calculator='lj')
+   Running asr.tutorial(element='Cu', calculator='lj')
    Running asr.tutorial:energy(element='Cu', crystal_structure='sc', calculator='lj')
    Running asr.tutorial:energy(element='Cu', crystal_structure='fcc', calculator='lj')
    Running asr.tutorial:energy(element='Cu', crystal_structure='bcc', calculator='lj')
    Running asr.tutorial:energy(element='Cu', crystal_structure='diamond', calculator='lj')
    $ asr run "asr.tutorial Pd --calculator lj"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Pd', calculator='lj')
+   Running asr.tutorial(element='Pd', calculator='lj')
    Running asr.tutorial:energy(element='Pd', crystal_structure='sc', calculator='lj')
    Running asr.tutorial:energy(element='Pd', crystal_structure='fcc', calculator='lj')
    Running asr.tutorial:energy(element='Pd', crystal_structure='bcc', calculator='lj')
    Running asr.tutorial:energy(element='Pd', crystal_structure='diamond', calculator='lj')
    $ asr run "asr.tutorial Pt --calculator lj"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Pt', calculator='lj')
+   Running asr.tutorial(element='Pt', calculator='lj')
    Running asr.tutorial:energy(element='Pt', crystal_structure='sc', calculator='lj')
    Running asr.tutorial:energy(element='Pt', crystal_structure='fcc', calculator='lj')
    Running asr.tutorial:energy(element='Pt', crystal_structure='bcc', calculator='lj')
    Running asr.tutorial:energy(element='Pt', crystal_structure='diamond', calculator='lj')
    $ asr run "asr.tutorial Au --calculator lj"
    In folder: . (1/1)
-   Running asr.tutorial:main(element='Au', calculator='lj')
+   Running asr.tutorial(element='Au', calculator='lj')
    Running asr.tutorial:energy(element='Au', crystal_structure='sc', calculator='lj')
    Running asr.tutorial:energy(element='Au', crystal_structure='fcc', calculator='lj')
    Running asr.tutorial:energy(element='Au', crystal_structure='bcc', calculator='lj')
@@ -682,22 +682,22 @@ Let's check the results
 
 .. code-block:: console
 
-   $ asr cache ls name=asr.tutorial:main
-                name                parameters result
-   asr.tutorial:main element=Ag,calculator=emt    fcc
-   asr.tutorial:main element=Al,calculator=emt    fcc
-   asr.tutorial:main element=Ni,calculator=emt    fcc
-   asr.tutorial:main element=Cu,calculator=emt    fcc
-   asr.tutorial:main element=Pd,calculator=emt    fcc
-   asr.tutorial:main element=Pt,calculator=emt    fcc
-   asr.tutorial:main element=Au,calculator=emt    fcc
-   asr.tutorial:main  element=Ag,calculator=lj    fcc
-   asr.tutorial:main  element=Al,calculator=lj    fcc
-   asr.tutorial:main  element=Ni,calculator=lj    fcc
-   asr.tutorial:main  element=Cu,calculator=lj    fcc
-   asr.tutorial:main  element=Pd,calculator=lj    fcc
-   asr.tutorial:main  element=Pt,calculator=lj    fcc
-   asr.tutorial:main  element=Au,calculator=lj    fcc
+   $ asr cache ls name=asr.tutorial
+           name                parameters result
+   asr.tutorial element=Ag,calculator=emt    fcc
+   asr.tutorial element=Al,calculator=emt    fcc
+   asr.tutorial element=Ni,calculator=emt    fcc
+   asr.tutorial element=Cu,calculator=emt    fcc
+   asr.tutorial element=Pd,calculator=emt    fcc
+   asr.tutorial element=Pt,calculator=emt    fcc
+   asr.tutorial element=Au,calculator=emt    fcc
+   asr.tutorial  element=Ag,calculator=lj    fcc
+   asr.tutorial  element=Al,calculator=lj    fcc
+   asr.tutorial  element=Ni,calculator=lj    fcc
+   asr.tutorial  element=Cu,calculator=lj    fcc
+   asr.tutorial  element=Pd,calculator=lj    fcc
+   asr.tutorial  element=Pt,calculator=lj    fcc
+   asr.tutorial  element=Au,calculator=lj    fcc
 
 In conclusion, the Lennard-Jones calculator also predict fcc as the
 most stable crystal structure.
