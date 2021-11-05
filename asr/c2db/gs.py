@@ -8,7 +8,7 @@ from asr.calculators import (
     set_calculator_hook, Calculation, get_calculator_class)
 
 from asr.database.browser import (
-    table, fig,
+    table, fig, Figure,
     describe_entry, WebPanel,
     make_panel_description,
 )
@@ -161,9 +161,14 @@ def webpanel(result, context):
             'rows': [datarow],
             'columnwidth': 3,
         }]],
-        plot_descriptions=[{'function': bz_with_band_extrema,
-                            'filenames': ['bz-with-gaps.png']}],
-        sort=10)
+        plot_descriptions=[
+            Figure(
+                function=bz_with_band_extrema,
+                filenames=['bz-with-gaps.png'],
+            ),
+        ],
+        sort=10
+    )
 
     return [panel, summary]
 

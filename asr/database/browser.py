@@ -1,18 +1,21 @@
-from collections.abc import Mapping
-import re
-from pathlib import Path
-from typing import List, Dict, Tuple, Any, Optional
-import traceback
-import os
 import multiprocessing
+import os
+import re
+import traceback
+from collections.abc import Mapping
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import numpy as np
 import matplotlib.pyplot as plt
-from asr.core import decode_object, ASRResult
+import numpy as np
+from ase.db.core import float_to_time_string, now
+from ase.db.row import AtomsRow
+
+from asr.core import ASRResult, decode_object
 from asr.core.cache import Cache, MemoryBackend
 from asr.core.datacontext import DataContext
-from ase.db.row import AtomsRow
-from ase.db.core import float_to_time_string, now
+
 from .webpanel import WebPanel
 
 
@@ -507,12 +510,22 @@ def runplot_clean(plotfunction, *args):
     plt.close('all')
     return value
 
+@dataclass
+class Figure:
+    """Class that represents a figure."""
+    function: Callable
+    filenames: List[str]
+
 
 def generate_plots(context, prefix, plot_descriptions, pool):
     missing = set()
     for desc in plot_descriptions:
-        function = desc['function']
-        filenames = desc['filenames']
+        if isinstance(desc, Figure):
+            function = desc.function
+            filenames = desc.filenames
+        else:
+            function = desc['function']
+            filenames = desc['filenames']
         paths = [Path(prefix + filename) for filename in filenames]
         for path in paths:
             if not path.is_file():
@@ -740,7 +753,7 @@ def set_value(panels, indices, value):
 
 
 def cache_webpanel(recipename, *selectors):
-    from asr.database.browser import html_table, par, br, bold
+    from asr.database.browser import bold, br, html_table, par
 
     def decorator(func):
         def wrapper(result, row, key_descriptions):
