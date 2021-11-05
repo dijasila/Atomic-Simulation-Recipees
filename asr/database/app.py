@@ -3,7 +3,7 @@ import multiprocessing
 import tempfile
 import warnings
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import flask.json as flask_json
 from ase import Atoms
@@ -116,6 +116,13 @@ class App(DBApp):
                 return item[1][1]
 
             return sorted(value.items(), key=sort_func)
+
+        @self.flask.template_filter()
+        def make_help_button(value: Any):
+            print(value, type(value))
+            if hasattr(value, "description"):
+                return value.description
+            return ""
 
         @self.flask.template_filter()
         def debug(text):

@@ -15,7 +15,7 @@ from asr.core import ASRResult, decode_object
 from asr.core.cache import Cache, MemoryBackend
 from asr.core.datacontext import DataContext
 
-from .webpanel import WebPanel, Figure
+from .webpanel import WebPanel, Figure, Panel, Table, TwoColumns, DescribedContent  # noqa
 
 
 def create_table(row,  # AtomsRow
@@ -36,14 +36,14 @@ def create_table(row,  # AtomsRow
             if isinstance(value, float):
                 old_value = value
                 value = '{:.{}f}'.format(value, digits)
-                if hasattr(old_value, '__explanation__'):
-                    value = describe_entry(value, old_value.__explanation__)
+                if hasattr(old_value, 'description'):
+                    value = describe_entry(value, old_value.description)
             elif not isinstance(value, str):
                 value = str(value)
 
             longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
-            if hasattr(key, '__explanation__'):
-                desc = describe_entry(desc, key.__explanation__)
+            if hasattr(key, 'description'):
+                desc = describe_entry(desc, key.description)
             if unit:
                 value += ' ' + unit
             table.append([desc, value])
@@ -88,38 +88,24 @@ def create_link_table(row, links, key_descriptions):
     return link_table
 
 
-value_type_to_explained_type = {}
-
-
-def describe_entry(value, description, title='Information'):
+def describe_entry(value, description, title='Information') -> DescribedContent:
     """Describe website entry.
 
-    This function sets an __explanation__ attribute on the given object
-    which is used by the web application to generate additional explanations.
+    This function makes a described content object which is used by the web
+    application to generate additional explanations.
+
     """
     description = normalize_string(description)
-    if hasattr(value, '__explanation__'):
-        if value.__explanation__ == '':
-            value.__explanation__ += description
+    if isinstance(value, DescribedContent):
+        if value.description == '':
+            value.description += description
         else:
-            value.__explanation__ += '\n' + description
-        value.__explanation_title__ = bold(title)
+            value.description += '\n' + description
+        value.title = bold(title)
         return value
 
-    value_type = type(value)
-    if value_type in value_type_to_explained_type:
-        value = value_type_to_explained_type[value_type](value)
-        value.__explanation__ = description
-        value.__explanation_title__ = bold(title)
-        return value
-
-    class ExplainedType(value_type):
-
-        __explanation__: str
-        __explanation_title__: str
-
-    value_type_to_explained_type[value_type] = ExplainedType
-    return describe_entry(value, description, title)
+    content = DescribedContent(content=value, description=description, title=title)
+    return content
 
 
 def describe_entries(rows, description):
@@ -363,17 +349,23 @@ def merge_panels(page):
         for tmppanel in panels:
             for column in tmppanel['columns']:
                 for ii, item in enumerate(column):
-                    if isinstance(item, dict):
-                        if item['type'] == 'table':
-                            if 'header' not in item:
-                                continue
-                            header = item['header'][0]
-                            if header in known_tables:
-                                known_tables[header]['rows']. \
-                                    extend(item['rows'])
-                                column[ii] = None
-                            else:
-                                known_tables[header] = item
+                    if isinstance(item, dict) and item['type'] == 'table':
+                        if 'header' not in item:
+                            continue
+                        header = item['header'][0]
+                        rows = item['rows']
+                    elif isinstance(item, Table):
+                        header = item.header[0]
+                        rows = item.rows
+                    else:
+                        continue
+
+                    if header in known_tables:
+                        known_tables[header]['rows']. \
+                            extend(rows)
+                        column[ii] = None
+                    else:
+                        known_tables[header] = item
 
             columns = tmppanel['columns']
             if len(columns) == 1:
@@ -574,14 +566,6 @@ def _layout(row, key_descriptions, prefix, pool):
     exclude = set()
 
     row = RowWrapper(row)
-#
-#     newdata = parse_row_data(row.data)
-#     row.data = newdata
-#     result_objects = []
-#
-#     for key, value in row.data.items():
-#         if isinstance(value, ASRResult):
-#             result_objects.append(value)
     panel_data_sources = {}
     # Locate all webpanels
 
@@ -629,8 +613,8 @@ def _layout(row, key_descriptions, prefix, pool):
         elements = []
         for panel in page[paneltitle]:
             tit = panel['title']
-            if hasattr(tit, '__explanation__'):
-                elements += [par(tit.__explanation__)]
+            if hasattr(tit, 'description'):
+                elements += [par(tit.description)]
 
         recipe_links = []
         for record in data_sources:
@@ -675,10 +659,12 @@ def _layout(row, key_descriptions, prefix, pool):
     def ok(block):
         if block is None:
             return False
+        if isinstance(block, Table):
+            return block.rows
+        if isinstance(block, Figure) or block['type'] != 'figure':
+            return True
         if block['type'] == 'table':
             return block['rows']
-        if block['type'] != 'figure':
-            return True
         if prefix is not None and Path(prefix + block['filename']) in missing_figures:
             return False
         return True
@@ -727,10 +713,14 @@ def get_panels_values(panels):
             for ie, element in enumerate(column):
                 if element['type'] == 'table':
                     rows = element['rows']
-                    for ir, row in enumerate(rows):
-                        for iv, value in enumerate(row):
-                            if iv > 0:
-                                yield value, (ip, 'columns', ic, ie, 'rows', ir, iv)
+                elif isinstance(element, Table):
+                    rows = element.rows
+                else:
+                    continue
+                for ir, row in enumerate(rows):
+                    for iv, value in enumerate(row):
+                        if iv > 0:
+                            yield value, (ip, 'columns', ic, ie, 'rows', ir, iv)
 
 
 def get_value(panels, indices):

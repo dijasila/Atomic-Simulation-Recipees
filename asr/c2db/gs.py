@@ -9,7 +9,7 @@ from asr.calculators import (
 
 from asr.database.browser import (
     table, fig, Figure,
-    describe_entry, WebPanel,
+    describe_entry, WebPanel, Table, TwoColumns,
     make_panel_description,
 )
 
@@ -144,8 +144,9 @@ def webpanel(result, context):
 
     panel = WebPanel(
         title=describe_entry(title, panel_description),
-        columns=[[tab], [fig('bz-with-gaps.png')]],
-        sort=10)
+        columns=TwoColumns([tab], [fig('bz-with-gaps.png')]),
+        sort=10,
+    )
 
     description = _explain_bandgap('gap', parameter_description)
     datarow = [description, f'{result.gap:0.2f} eV']
@@ -154,13 +155,17 @@ def webpanel(result, context):
         title=describe_entry(
             'Summary',
             description='This panel contains a summary of '
-            'basic properties of the material.'),
-        columns=[[{
-            'type': 'table',
-            'header': ['Electronic properties', ''],
-            'rows': [datarow],
-            'columnwidth': 3,
-        }]],
+            'basic properties of the material.'
+        ),
+        columns=TwoColumns(
+            [
+                Table(
+                    header=['Electronic properties', ''],
+                    rows=[datarow],
+                    columnwidth=3,
+                ),
+            ],
+        ),
         plot_descriptions=[
             Figure(
                 function=bz_with_band_extrema,

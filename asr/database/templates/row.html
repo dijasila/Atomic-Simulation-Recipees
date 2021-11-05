@@ -14,8 +14,8 @@
 {% macro help(data) %}
 {# Extract help from data if present #}
 
-{% if data.__explanation__ %}
-{{ help_button(data.__explanation__|replace("\n","<br />"), title=data.__explanation_title__) }}
+{% if data.description %}
+{{ help_button(data.description|replace("\n","<br />"), title=data.title) }}
 {% endif %}
 
 {% endmacro %}
@@ -163,7 +163,7 @@ jmol_isReady = function(applet)
 <div class="panel panel-default">
   <div class="panel-heading">
       <h4 class="panel-title">
-	{{ help(title) }}
+	{{ title|make_help_button }} {{ title }}
 	<a class="btn-lg" data-toggle="collapse" href="#collapse{{ loop.index0 }}">{{ title|safe }}</a>
       </h4>
   </div>

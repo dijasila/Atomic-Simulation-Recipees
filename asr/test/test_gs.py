@@ -76,6 +76,8 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
         assert "<td>Fermilevel</td>" in content, content
         assert "<td>Magneticstate</td><td>NM</td>" in \
             content, content
+        assert 'Thispanel' in content, content
+        assert "Electronicproperties" in content, content
 
 
 @pytest.mark.ci
