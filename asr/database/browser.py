@@ -3,9 +3,8 @@ import os
 import re
 import traceback
 from collections.abc import Mapping
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,7 +15,7 @@ from asr.core import ASRResult, decode_object
 from asr.core.cache import Cache, MemoryBackend
 from asr.core.datacontext import DataContext
 
-from .webpanel import WebPanel
+from .webpanel import WebPanel, Figure
 
 
 def create_table(row,  # AtomsRow
@@ -509,12 +508,6 @@ def runplot_clean(plotfunction, *args):
     value = plotfunction(*args)
     plt.close('all')
     return value
-
-@dataclass
-class Figure:
-    """Class that represents a figure."""
-    function: Callable
-    filenames: List[str]
 
 
 def generate_plots(context, prefix, plot_descriptions, pool):
