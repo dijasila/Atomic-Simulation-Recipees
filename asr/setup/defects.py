@@ -223,6 +223,141 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
     return structure_sc
 
 
+def create_vacancies(temp_dict, structure, pristine, eq_pos, finished_list, charge_states, base):
+    """Create vacancy defects."""
+    formula = structure.symbols
+    finished_list = []
+    for i in range(len(structure)):
+        if not eq_pos[i] in finished_list:
+            vacancy = pristine.copy()
+            sitename = vacancy.get_chemical_symbols()[i]
+            vacancy.pop(i)
+            vacancy.rattle()
+            string = f'defects.{base}.v_{sitename}'
+            charge_dict = {}
+            for q in range((-1) * charge_states, charge_states + 1):
+                parameters = {}
+                calculator_relax = {
+                    'name': 'gpaw',
+                    'mode': {
+                        'name': 'pw',
+                        'ecut': 800,
+                        'dedecut': 'estimate'},
+                    'xc': 'PBE',
+                    'kpts': {
+                        'density': 6.0,
+                        'gamma': True},
+                    'basis': 'dzp',
+                    'symmetry': {
+                        'symmorphic': False},
+                    'convergence': {
+                        'forces': 1e-4},
+                    'txt': 'relax.txt',
+                    'occupations': {
+                        'name': 'fermi-dirac',
+                        'width': 0.02},
+                    'spinpol': True}
+                calculator_gs = {'name': 'gpaw',
+                                 'mode': {'name': 'pw', 'ecut': 800},
+                                 'xc': 'PBE',
+                                 'basis': 'dzp',
+                                 'kpts': {'density': 12.0, 'gamma': True},
+                                 'occupations': {'name': 'fermi-dirac',
+                                                 'width': 0.02},
+                                 'convergence': {'bands': 'CBM+3.0'},
+                                 'nbands': '200%',
+                                 'txt': 'gs.txt',
+                                 'spinpol': True}
+                parameters['asr.gs@calculate'] = {
+                    'calculator': calculator_gs}
+                parameters['asr.gs@calculate']['calculator']['charge'] = q
+                parameters['asr.relax'] = {'calculator': calculator_relax}
+                parameters['asr.relax']['calculator']['charge'] = q
+                charge_string = 'charge_{}'.format(q)
+                charge_dict[charge_string] = {
+                    'structure': vacancy, 'parameters': parameters}
+            temp_dict[string] = charge_dict
+        finished_list.append(eq_pos[i])
+
+    return temp_dict, finished_list
+
+
+def create_substitutional(temp_dict, structure, pristine, eq_pos, finished_list, charge_states, base, defect_list=None):
+    """Create substitutional defects."""
+    if defect_list is None:
+        defect_list = []
+        for i in range(len(structure)):
+            symbol = structure[i].symbol
+            if symbol not in defect_list:
+                defect_list.append(symbol)
+    for i in range(len(structure)):
+        if not eq_pos[i] in finished_list:
+            for element in defect_list:
+                if not structure[i].symbol == element:
+                    defect = pristine.copy()
+                    sitename = defect.get_chemical_symbols()[i]
+                    defect[i].symbol = element
+                    defect.rattle()
+                    string = f'defects.{base}.{element}_{sitename}'
+                    charge_dict = {}
+                    for q in range(
+                            (-1) * charge_states,
+                            charge_states + 1):
+                        parameters = {}
+                        calculator_relax = {
+                            'name': 'gpaw',
+                            'mode': {
+                                'name': 'pw',
+                                'ecut': 800,
+                                'dedecut': 'estimate'},
+                            'xc': 'PBE',
+                            'kpts': {
+                                'density': 6.0,
+                                'gamma': True},
+                            'basis': 'dzp',
+                            'symmetry': {
+                                'symmorphic': False},
+                            'convergence': {
+                                'forces': 1e-4},
+                            'txt': 'relax.txt',
+                            'occupations': {
+                                'name': 'fermi-dirac',
+                                'width': 0.02},
+                            'spinpol': True}
+                        calculator_gs = {
+                            'name': 'gpaw',
+                            'mode': {
+                                'name': 'pw',
+                                'ecut': 800},
+                            'xc': 'PBE',
+                            'basis': 'dzp',
+                            'kpts': {
+                                'density': 12.0,
+                                'gamma': True},
+                            'occupations': {
+                                'name': 'fermi-dirac',
+                                'width': 0.02},
+                            'convergence': {
+                                'bands': 'CBM+3.0'},
+                            'nbands': '200%',
+                            'txt': 'gs.txt',
+                            'spinpol': True}
+                        parameters['asr.gs@calculate'] = {
+                            'calculator': calculator_gs}
+                        parameters['asr.gs@calculate']['calculator'
+                                                       ]['charge'] = q
+                        parameters['asr.relax'] = {
+                            'calculator': calculator_relax}
+                        parameters['asr.relax']['calculator']['charge'] = q
+                        charge_string = 'charge_{}'.format(q)
+                        charge_dict[charge_string] = {
+                            'structure': defect, 'parameters': parameters}
+                    temp_dict[string] = charge_dict
+            finished_list.append(eq_pos[i])
+
+    return temp_dict, finished_list
+
+
 def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, sc,
                   max_lattice, is_2D, vacuum, nopbc, general_algorithm):
     """
@@ -318,208 +453,45 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, sc,
     # incorporate the possible vacancies
     dataset = spglib.get_symmetry_dataset(cell)
     eq_pos = dataset.get('equivalent_atoms')
+    base = f'{formula}_{N_x}{N_y}{N_z}'
 
     finished_list = []
+    temp_dict = {}
     if vacancies:
-        temp_dict = {}
-        for i in range(len(structure)):
-            if not eq_pos[i] in finished_list:
-                vacancy = pristine.copy()
-                sitename = vacancy.get_chemical_symbols()[i]
-                vacancy.pop(i)
-                vacancy.rattle()
-                string = 'defects.{0}_{1}{2}{3}.v_{4}'.format(
-                         formula, N_x, N_y, N_z, sitename)
-                charge_dict = {}
-                for q in range((-1) * charge_states, charge_states + 1):
-                    parameters = {}
-                    calculator_relax = {
-                        'name': 'gpaw',
-                        'mode': {
-                            'name': 'pw',
-                            'ecut': 800,
-                            'dedecut': 'estimate'},
-                        'xc': 'PBE',
-                        'kpts': {
-                            'density': 6.0,
-                            'gamma': True},
-                        'basis': 'dzp',
-                        'symmetry': {
-                            'symmorphic': False},
-                        'convergence': {
-                            'forces': 1e-4},
-                        'txt': 'relax.txt',
-                        'occupations': {
-                            'name': 'fermi-dirac',
-                            'width': 0.02},
-                        'spinpol': True}
-                    calculator_gs = {'name': 'gpaw',
-                                     'mode': {'name': 'pw', 'ecut': 800},
-                                     'xc': 'PBE',
-                                     'basis': 'dzp',
-                                     'kpts': {'density': 12.0, 'gamma': True},
-                                     'occupations': {'name': 'fermi-dirac',
-                                                     'width': 0.02},
-                                     'convergence': {'bands': 'CBM+3.0'},
-                                     'nbands': '200%',
-                                     'txt': 'gs.txt',
-                                     'spinpol': True}
-                    parameters['asr.gs@calculate'] = {
-                        'calculator': calculator_gs}
-                    parameters['asr.gs@calculate']['calculator']['charge'] = q
-                    parameters['asr.relax'] = {'calculator': calculator_relax}
-                    parameters['asr.relax']['calculator']['charge'] = q
-                    charge_string = 'charge_{}'.format(q)
-                    charge_dict[charge_string] = {
-                        'structure': vacancy, 'parameters': parameters}
-                temp_dict[string] = charge_dict
-            finished_list.append(eq_pos[i])
+        temp_dict, finished_list = create_vacancies(temp_dict,
+                                                    structure,
+                                                    pristine,
+                                                    eq_pos,
+                                                    finished_list,
+                                                    charge_states,
+                                                    base)
 
-    # incorporate anti-site defects
+    # incorporate substitutional defects
     finished_list = []
     if intrinsic:
-        defect_list = []
-        for i in range(len(structure)):
-            symbol = structure[i].symbol
-            if symbol not in defect_list:
-                defect_list.append(symbol)
-        for i in range(len(structure)):
-            if not eq_pos[i] in finished_list:
-                for element in defect_list:
-                    if not structure[i].symbol == element:
-                        defect = pristine.copy()
-                        sitename = defect.get_chemical_symbols()[i]
-                        defect[i].symbol = element
-                        defect.rattle()
-                        string = 'defects.{0}_{1}{2}{3}.{4}_{5}'.format(
-                                 formula, N_x, N_y, N_z, element,
-                                 sitename)
-                        charge_dict = {}
-                        for q in range(
-                                (-1) * charge_states,
-                                charge_states + 1):
-                            parameters = {}
-                            calculator_relax = {
-                                'name': 'gpaw',
-                                'mode': {
-                                    'name': 'pw',
-                                    'ecut': 800,
-                                    'dedecut': 'estimate'},
-                                'xc': 'PBE',
-                                'kpts': {
-                                    'density': 6.0,
-                                    'gamma': True},
-                                'basis': 'dzp',
-                                'symmetry': {
-                                    'symmorphic': False},
-                                'convergence': {
-                                    'forces': 1e-4},
-                                'txt': 'relax.txt',
-                                'occupations': {
-                                    'name': 'fermi-dirac',
-                                    'width': 0.02},
-                                'spinpol': True}
-                            calculator_gs = {
-                                'name': 'gpaw',
-                                'mode': {
-                                    'name': 'pw',
-                                    'ecut': 800},
-                                'xc': 'PBE',
-                                'basis': 'dzp',
-                                'kpts': {
-                                    'density': 12.0,
-                                    'gamma': True},
-                                'occupations': {
-                                    'name': 'fermi-dirac',
-                                    'width': 0.02},
-                                'convergence': {
-                                    'bands': 'CBM+3.0'},
-                                'nbands': '200%',
-                                'txt': 'gs.txt',
-                                'spinpol': True}
-                            parameters['asr.gs@calculate'] = {
-                                'calculator': calculator_gs}
-                            parameters['asr.gs@calculate']['calculator'
-                                                           ]['charge'] = q
-                            parameters['asr.relax'] = {
-                                'calculator': calculator_relax}
-                            parameters['asr.relax']['calculator']['charge'] = q
-                            charge_string = 'charge_{}'.format(q)
-                            charge_dict[charge_string] = {
-                                'structure': defect, 'parameters': parameters}
-                        temp_dict[string] = charge_dict
-                finished_list.append(eq_pos[i])
+        temp_dict, finished_list = create_substitutional(temp_dict,
+                                                         structure,
+                                                         pristine,
+                                                         eq_pos,
+                                                         finished_list,
+                                                         charge_states,
+                                                         base)
 
     # incorporate extrinsic defects
     finished_list = []
     if extrinsic != ['NO']:
         defect_list = extrinsic
-        for i in range(len(structure)):
-            if not eq_pos[i] in finished_list:
-                for element in defect_list:
-                    if not structure[i].symbol == element:
-                        defect = pristine.copy()
-                        sitename = defect.get_chemical_symbols()[i]
-                        defect[i].symbol = element
-                        defect.rattle()
-                        string = 'defects.{0}_{1}{2}{3}.{4}_{5}'.format(
-                                 formula, N_x, N_y, N_z, element,
-                                 sitename)
-                        charge_dict = {}
-                        for q in range(
-                                (-1) * charge_states,
-                                charge_states + 1):
-                            parameters = {}
-                            calculator_relax = {
-                                'name': 'gpaw',
-                                'mode': {
-                                    'name': 'pw',
-                                    'ecut': 800,
-                                    'dedecut': 'estimate'},
-                                'xc': 'PBE',
-                                'kpts': {
-                                    'density': 6.0,
-                                    'gamma': True},
-                                'basis': 'dzp',
-                                'symmetry': {
-                                    'symmorphic': False},
-                                'convergence': {
-                                    'forces': 1e-4},
-                                'txt': 'relax.txt',
-                                'occupations': {
-                                    'name': 'fermi-dirac',
-                                    'width': 0.02},
-                                'spinpol': True}
-                            calculator_gs = {
-                                'name': 'gpaw',
-                                'mode': {
-                                    'name': 'pw',
-                                    'ecut': 800},
-                                'xc': 'PBE',
-                                'basis': 'dzp',
-                                'kpts': {
-                                    'density': 12.0,
-                                    'gamma': True},
-                                'occupations': {
-                                    'name': 'fermi-dirac',
-                                    'width': 0.02},
-                                'convergence': {
-                                    'bands': 'CBM+3.0'},
-                                'nbands': '200%',
-                                'txt': 'gs.txt',
-                                'spinpol': True}
-                            parameters['asr.gs@calculate'] = {
-                                'calculator': calculator_gs}
-                            parameters['asr.gs@calculate']['calculator'
-                                                           ]['charge'] = q
-                            parameters['asr.relax'] = {
-                                'calculator': calculator_relax}
-                            parameters['asr.relax']['calculator']['charge'] = q
-                            charge_string = 'charge_{}'.format(q)
-                            charge_dict[charge_string] = {
-                                'structure': defect, 'parameters': parameters}
-                        temp_dict[string] = charge_dict
-                finished_list.append(eq_pos[i])
+        temp_dict, finished_list = create_substitutional(temp_dict,
+                                                         structure,
+                                                         pristine,
+                                                         eq_pos,
+                                                         finished_list,
+                                                         charge_states,
+                                                         base,
+                                                         defect_list)
+
+    # create double defects
+    # TBD
 
     # put together structure dict
     structure_dict['defects'] = temp_dict
