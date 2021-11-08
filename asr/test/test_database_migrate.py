@@ -1,14 +1,14 @@
 from pathlib import Path
 
 import pytest
-from ase.db import connect
-from asr.core.resultfile import add_main_to_name_if_missing
 
 from asr.database.migrate import (
     write_converted_database,
     write_collapsed_database,
     write_migrated_database,
 )
+
+from asr.database import connect
 
 
 @pytest.fixture
@@ -32,7 +32,6 @@ def test_collapse_database(database_to_be_collapsed, asr_tmpdir):
     records = row.data['records']
     gwrecord = [rec.name for rec in records if rec.name == "asr.c2db.gw:main"]
 
-    
     migrated = connect("migrated.db")
     write_migrated_database(converted, migrated)
     assert "records" in migrated.get(id=1).data
