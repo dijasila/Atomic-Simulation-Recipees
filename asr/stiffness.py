@@ -67,7 +67,7 @@ def webpanel(result, row, key_descriptions):
              'columns': [[ctable], [eigtable]],
              'sort': 3}
 
-    dynstab = row.dynamic_stability_stiffness
+    #dynstab = row.dynamic_stability_stiffness
     high = 'Minimum stiffness tensor eigenvalue > 0'
     low = 'Minimum stiffness tensor eigenvalue < 0'
 
@@ -82,8 +82,8 @@ def webpanel(result, row, key_descriptions):
                     ["HIGH", high],
                 ]
             )
-        ),
-        dynstab.upper()]
+        )]
+        #dynstab.upper()]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
