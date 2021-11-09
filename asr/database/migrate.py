@@ -28,10 +28,10 @@ def write_collapsed_database(dbin, dbout):
 
 def write_row_with_new_data(dbout, row, data):
     dbout.write(
-            atoms=row.toatoms(),
-            key_value_pairs=row.key_value_pairs,
-            data=data,
-        )
+        atoms=row.toatoms(),
+        key_value_pairs=row.key_value_pairs,
+        data=data,
+    )
 
 
 def get_data_including_child_data(dbin, row):

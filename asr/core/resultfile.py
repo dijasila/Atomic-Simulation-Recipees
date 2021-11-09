@@ -405,11 +405,10 @@ def get_dependency_matcher_from_name(
     }
     deps = {add_main_to_name_if_missing(key): value for key, value in deps.items()}
     dependencies = []
-    
     for dep in deps.get(name, []):
         dep = add_main_to_name_if_missing(dep)
         dependencies.append(dep)
-    
+
     return make_dependency_matcher(dependencies, "recipename")
 
 
@@ -499,13 +498,23 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
             continue
         filenames.append(filename)
 
-    uids = generate_uids(filenames)
     contexts = []
+
+    children_data = data.get('__children_data__', {})
+    for child_values in children_data.values():
+        directory = child_values['directory']
+        child_data = child_values['data']
+        child_contexts = convert_row_data_to_contexts(child_data, directory)
+        contexts.extend(child_contexts)
+
+    uids = generate_uids(filenames)
     for filename in filenames:
         from .results import decode_object
         result = data[filename]
         result = decode_object(result)
         recipename = get_recipe_name_from_filename(filename)
+        path = pathlib.Path(directory) / \
+            f'results-{remove_main_in_name(recipename)}.json'
         atomic_structures = {}
         for name, value in data.items():
             if name in ATOMSFILES:
@@ -534,10 +543,17 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
             dependency_matcher=matcher,
             dependencies=None,
             directory=directory,
+            path=path,
         )
         contexts.append(context)
 
     return contexts
+
+
+def remove_main_in_name(name: str) -> str:
+    if name.endswith(':main'):
+        name = name[:-5]
+    return name
 
 
 def make_records_from_contexts(contexts):
@@ -652,7 +668,7 @@ def update_resultfile_record_to_version_0(record):
         candidate_dependencies = find_dep_names_with_params_matching_key(
             dep_params, key,
         )
-        assert len(candidate_dependencies) < 0
+        assert len(candidate_dependencies) < 2
         if candidate_dependencies:
             dependency = candidate_dependencies[0]
             new_parameters[key] = dep_params[dependency][key]
