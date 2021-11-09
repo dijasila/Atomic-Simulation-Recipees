@@ -191,6 +191,16 @@ key_descriptions = {
         "vbm_rashba_splitting": "KVP:vbm rashba splitting energy",
         "cbm_rashba_splitting": "KVP:cbm rashba splitting energy",
         "energy_differnece": "KVP: energy difference between bulk and 1D",
+        "s0_exp":  "KVP: s0 (exp)",
+        "s1_exp":  "KVP: s1 (exp)",
+        "s2_exp":  "KVP: s2 (exp)",
+        "s3_exp":  "KVP: s3 (exp)",
+        "s01_exp": "KVP: s01 (exp)",
+        "s0_cal":  "KVP: s0 (cal)",   
+        "s1_cal":  "KVP: s1 (cal)",
+        "s2_cal":  "KVP: s2 (cal)",
+        "s3_cal":   "KVP: s3 (cal)",
+        "s01_cal":  "KVP: s01 (cal)",
     },
     "emasses": {
         'emass_vb_dir1':
