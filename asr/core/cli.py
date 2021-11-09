@@ -826,7 +826,7 @@ def collapse(databasein: str, databaseout: str) -> None:
     corresponding database rows in the input database. The data of the children
     rows are then saved into a dictionary where keys are the children material
     UIDS and the values are dict(directory=child_directory, data=child_data)
-    dictionaries.
+    dictionaries under the key __children_data__ in each data attribute of every row.
 
     """
     from asr.database.migrate import collapse_database

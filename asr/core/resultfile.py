@@ -76,13 +76,13 @@ def filter_contexts_for_unused_recipe_results(
     contexts: typing.List["RecordContext"]
 ) -> typing.List["RecordContext"]:
     skip_patterns = [
-        '*asr.database.fromtree',
-        '*asr.database.app',
-        '*asr.database.key_descriptions',
+        '*asr.database.fromtree*',
+        '*asr.database.app*',
+        '*asr.database.key_descriptions*',
         '*asr.setup.strains*',
-        '*asr.database.material_fingerprint',
+        '*asr.database.material_fingerprint*',
         '*asr.setinfo*',
-        '*asr.setup.params',
+        '*asr.setup.params*',
         '*asr.c2db.exchange:calculate*',
         '*asr.c2db.plasmafrequency:calculate*'
     ]
@@ -140,7 +140,7 @@ def construct_record_from_context(
 
     try:
         parameters = result.metadata.params
-        if recipename == 'asr.c2db.gs@calculate' and 'name' in parameters:
+        if recipename == 'asr.c2db.gs:calculate' and 'name' in parameters:
             del parameters['name']
     except MetaDataNotSetError:
         parameters = {}
@@ -198,8 +198,8 @@ def construct_record_from_context(
     return record
 
 
-def fix_asr_gs_record(folder, result, recipename):
-    if isinstance(result, dict) and recipename == 'asr.c2db.gs@calculate':
+def fix_asr_gs_result_missing_calculator(folder, result, recipename):
+    if isinstance(result, dict) and recipename == 'asr.c2db.gs:calculate':
         from asr.c2db.gs import GroundStateCalculationResult
         from asr.calculators import Calculation
         calculation = Calculation(
@@ -219,6 +219,13 @@ def fix_asr_gs_record(folder, result, recipename):
         }
         result.metadata = metadata
     return result
+
+
+def fix_asr_gs_record_missing_calculator(record: "Record"):
+    if record.name == 'asr.c2db.gs:calculate':
+        if 'calculator' not in record.parameters:
+            record.parameters.calculator = \
+                OLD_DEFAULTS['asr.c2db.gs:calculate']['calculator']
 
 
 def get_relevant_resultfile_parameters(path):
@@ -272,12 +279,13 @@ def make_concrete_dependencies(
 def get_recipe_name_from_filename(filename):
     from os.path import splitext
     name = splitext(filename.split('-')[1])[0]
-    name = fix_recipe_name_if_recipe_has_been_moved(name)
     name = name.replace("@", ":")
+    name = add_main_to_name_if_missing(name)
+    name = fix_recipe_name_if_recipe_has_been_moved(name)
     return name
 
 
-def fix_recipe_name_if_recipe_has_been_moved(name):
+def fix_recipe_name_if_recipe_has_been_moved(name: str) -> str:
     if is_recipe_that_was_moved_to_c2db_subpackage(name):
         name = extend_name_with_c2db_subpackage(name)
     return name
@@ -326,13 +334,13 @@ def get_dependency_matcher_from_name(
 ) -> typing.Callable[["RecordContext"], bool]:
 
     # Some manually implemented dependencies
-    if name == 'asr.c2db.piezoelectrictensor':
+    if name == 'asr.c2db.piezoelectrictensor:main':
         patterns = [
             'strains*/results-asr.c2db.relax.json',
             'strains*/results-asr.c2db.formalpolarization.json'
         ]
         return make_dependency_matcher(patterns, "path")
-    elif name == 'asr.c2db.stiffness':
+    elif name == 'asr.c2db.stiffness:main':
         patterns = [
             'strains*/results-asr.c2db.relax.json',
         ]
@@ -395,6 +403,7 @@ def get_dependency_matcher_from_name(
         'asr.c2db.polarizability': ['asr.structureinfo',
                                     'asr.c2db.gs:calculate'],
     }
+    deps = {add_main_to_name_if_missing(key): value for key, value in deps.items()}
     dependencies = []
     
     for dep in deps.get(name, []):
@@ -404,7 +413,7 @@ def get_dependency_matcher_from_name(
     return make_dependency_matcher(dependencies, "recipename")
 
 
-def add_main_to_name_if_missing(dep):
+def add_main_to_name_if_missing(dep: str) -> str:
     if ':' not in dep:
         dep = dep + ':main'
     return dep
@@ -443,8 +452,8 @@ def deserialize_data(
 
 def get_resultfile_records_from_database_row(row: AtomsRow):
     contexts = convert_row_data_to_contexts(row.data, row.folder)
-    contexts = set_context_dependencies(contexts)
     contexts = filter_contexts_for_unused_recipe_results(contexts)
+    contexts = set_context_dependencies(contexts)
     records = make_records_from_contexts(contexts)
     return records
 
@@ -464,7 +473,7 @@ def get_contexts_in_current_directory() -> typing.List[RecordContext]:
                 directory,
             ) = get_relevant_resultfile_parameters(path)
             uid = uids[path]
-            result = fix_asr_gs_record(folder, result, recipename)
+            result = fix_asr_gs_result_missing_calculator(folder, result, recipename)
             context = RecordContext(
                 result=result,
                 recipename=recipename,
@@ -535,6 +544,7 @@ def make_records_from_contexts(contexts):
     records = []
     for context in contexts:
         record = construct_record_from_context(context)
+        fix_asr_gs_record_missing_calculator(record)
         records.append(record)
     records = inherit_dependency_parameters(records)
     return records
@@ -596,18 +606,21 @@ def get_resultfile_migration_generator() -> SelectorMigrationGenerator:
 
 
 PATH = pathlib.Path(__file__).parent / 'old_resultfile_defaults.json'
-OLD_DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
-DEFAULTS: typing.Dict[str, typing.List[str]] = {}
-for key, value in OLD_DEFAULTS.items():
-    DEFAULTS[add_main_to_name_if_missing(fix_recipe_name_if_recipe_has_been_moved(key))] = value
+TMP_DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
+OLD_DEFAULTS: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
+for key, value in TMP_DEFAULTS.items():
+    OLD_DEFAULTS[
+        add_main_to_name_if_missing(
+            fix_recipe_name_if_recipe_has_been_moved(key)
+        )
+    ] = value
 
-assert 'asr.c2db.structureinfo:main' not in DEFAULTS, DEFAULTS.keys() 
+assert 'asr.c2db.structureinfo:main' not in OLD_DEFAULTS, OLD_DEFAULTS.keys()
 
 
 def update_resultfile_record_to_version_0(record):
-    default_params = DEFAULTS[record.name]
+    default_params = OLD_DEFAULTS[record.name]
     name = record.name
-    new_parameters = Parameters({})
     recipe = get_recipe_from_name(name)
     sig = recipe.get_signature()
     parameters = record.parameters
@@ -625,36 +638,29 @@ def update_resultfile_record_to_version_0(record):
                   if name == 'atoms'][0]
     atomsfilename = atomsparam['default']
 
+    new_parameters = Parameters({})
     for key in sig_parameters:
         if key in parameters:
             new_parameters[key] = parameters[key]
             unused_old_params.remove(key)
+            continue
         elif key == 'atoms':
             # Atoms are treated differently
             new_parameters[key] = parameters.atomic_structures[atomsfilename]
+            continue
+
+        candidate_dependencies = find_dep_names_with_params_matching_key(
+            dep_params, key,
+        )
+        assert len(candidate_dependencies) < 0
+        if candidate_dependencies:
+            dependency = candidate_dependencies[0]
+            new_parameters[key] = dep_params[dependency][key]
+            unused_dependency_params[dependency].remove(key)
         else:
-            candidate_dependencies = []
-            for depname, recipedepparams in dep_params.items():
-                if key in recipedepparams:
-                    candidate_dependencies.append(depname)
-            if candidate_dependencies:
-                assert len(candidate_dependencies) == 1
-                dependency = candidate_dependencies[0]
-                new_parameters[key] = dep_params[dependency][key]
-                unused_dependency_params[dependency].remove(key)
-            else:
-                missing_params.add(key)  # new_parameters[key] = default_params[key]
+            missing_params.add(key)
+
     unused_old_params.remove('atomic_structures')
-
-    # remove_keys = set(['dependency_parameters'])
-    # if name == 'asr.c2db.formalpolarization':
-    #     remove_keys.add('gpwname')
-    # elif name == 'asr.setup.displacements':
-    #     remove_keys.add('copy_params')
-    # elif name in {'asr.c2db.emasses:refine', 'asr.c2db.emasses'}:
-    #     remove_keys.add('gpwfilename')
-    # unused_old_params = unused_old_params - remove_keys
-
     unused_old_params -= set(['dependency_parameters'])
     unused_dependency_params = {
         value
@@ -690,6 +696,13 @@ def update_resultfile_record_to_version_0(record):
     record.run_specification.parameters = new_parameters
     record.version = 0
     return record
+
+def find_dep_names_with_params_matching_key(dep_params, key):
+    candidate_dependencies = []
+    for depname, recipedepparams in dep_params.items():
+        if key in recipedepparams:
+            candidate_dependencies.append(depname)
+    return candidate_dependencies
 
 
 def get_defaults_from_all_recipes():
