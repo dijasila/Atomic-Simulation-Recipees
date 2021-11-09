@@ -53,7 +53,7 @@ class Row:
     def data(self):
         if self._data is None:
             from .fromtree import serializer
-            self._data = serializer.deserialize(serializer.serialize(self.row.data)) 
+            self._data = serializer.deserialize(serializer.serialize(self.row.data))
         return self._data
 
     @property
@@ -95,7 +95,7 @@ class Row:
     @property
     def id(self):
         return self.row.id
-    
+
     def __getattr__(self, name):
         return self.key_value_pairs[name]
 
@@ -114,8 +114,13 @@ class ASEDatabaseInterface:
         return self.db.metadata(*args, **kwargs)
 
     @wraps(Database.write)
-    def write(self, *args, **kwargs):
-        return self.db.write(*args, **kwargs)
+    def write(self, *args, records=None, **kwargs):
+        from .fromtree import serializer
+        data = {}
+        if records:
+            data["records"] = serializer.serialize(records)
+
+        return self.db.write(data=data, *args, **kwargs)
 
     @wraps(Database.reserve)
     def reserve(self, *args, **kwargs):

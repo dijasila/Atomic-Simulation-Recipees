@@ -137,7 +137,8 @@ def add_relaxcalculator_parameter(record):
     del_par = {'calculator', 'd3',
                'allow_symmetry_breaking', 'fixcell'}
     for par in del_par:
-        del dep_params['asr.c2db.relax:main'][par]
+        if par in dep_params['asr.c2db.relax:main']:
+            del dep_params['asr.c2db.relax:main'][par]
 
     del_par = {'gpwname'}
     for par in del_par:

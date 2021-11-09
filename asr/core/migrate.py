@@ -634,14 +634,17 @@ def get_migrations() -> set:
     return MIGRATIONS
 
 
-def records_to_migration_report(records):
+def records_to_migration_report(records: typing.List[Record]) -> "MigrationReport":
     record_migrations = make_record_migrations(records)
     report = make_migration_report(record_migrations)
     return report
 
 
-def make_record_migrations(records, make_migrations=None):
-    from asr.core.migrate import get_migration_generator, migrate_record
+def make_record_migrations(
+    records: typing.List[Record],
+    make_migrations: typing.Optional[MakeMigrations] = None
+) -> typing.List["RecordMigration"]:
+    # from asr.core.migrate import get_migration_generator, migrate_record
     if make_migrations is None:
         make_migrations = get_migration_generator()
     record_migrations = []
@@ -651,7 +654,9 @@ def make_record_migrations(records, make_migrations=None):
     return record_migrations
 
 
-def make_migration_report(record_migrations):
+def make_migration_report(
+    record_migrations: typing.List["RecordMigration"]
+) -> "MigrationReport":
     erroneous_migrations = []
     n_up_to_date = 0
     n_applicable_migrations = 0

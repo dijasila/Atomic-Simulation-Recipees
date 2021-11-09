@@ -26,11 +26,11 @@ def write_collapsed_database(dbin, dbout):
         write_row_with_new_data(dbout, row, data)
 
 
-def write_row_with_new_data(dbout, row, data):
+def write_row_with_new_data(dbout, row, records):
     dbout.write(
         atoms=row.toatoms(),
         key_value_pairs=row.key_value_pairs,
-        data=data,
+        records=records,
     )
 
 
@@ -105,6 +105,13 @@ def write_migrated_database(dbin, dbout):
         if report.n_errors > 0:
             report.print_errors()
             break
-        data = ser.serialize(dict(records=records))
-        write_row_with_new_data(dbout, row, data)
+        from asr.core.cache import Cache, MemoryBackend
+        cache = Cache(backend=MemoryBackend())
+        for record in records:
+            cache.add(record)
+        for record_migration in report.applicable_migrations:
+            print()
+            record_migration.apply(cache)
+        records = cache.select()
+        write_row_with_new_data(dbout, row, records)
         print(report.summary)
