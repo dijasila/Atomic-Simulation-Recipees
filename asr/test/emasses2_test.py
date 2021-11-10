@@ -1,10 +1,12 @@
 import pytest
 from types import SimpleNamespace as SN
 from ase.units import Bohr, Ha
+from ase import Atoms
 import numpy as np
 
 from asr.emasses2 import (connect, extract_stuff_from_gpaw_calculation,
                           find_extrema, fit)
+from gpaw import GPAW
 
 
 def test_1d():
@@ -76,13 +78,28 @@ def test_extract_stuff_from_gpaw_calculation():
     bands = find_extrema(**dct)
     for band in bands[:2]:
         print(band)
-        assert (band[1] == 1.5).all()
+        assert (band[1] == 2.0).all()
         with pytest.raises(ValueError):
             fit(*band)
     for band in bands[2:]:
         print(band)
         k_v, e, m_v, h_vv = fit(*band)
         assert k_v[0] == pytest.approx(0.0)
-        assert e == pytest.approx(0.5)
+        assert e == pytest.approx(1.0)
         assert m_v[0] == pytest.approx(1.0)
         assert h_vv[0, 0] == pytest.approx(1.0)
+
+
+def test_emass_h2():
+    h2 = Atoms('H2', [[0, 0, 0], [0, 0, 0.74]],
+               cell=[2, 3, 3], pbc=True)
+    h2.calc = GPAW(mode={'name': 'pw', 'ecut': 300},
+                   kpts=[20, 1, 1],
+                   txt=None)
+    h2.get_potential_energy()
+    dct = extract_stuff_from_gpaw_calculation(h2.calc, soc=True)
+    # print(dct)
+    bands = find_extrema(**dct, kind='vbm')
+    print(bands)
+    for band in bands:
+        fit(*band)

@@ -48,20 +48,20 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
         proj_ksnI = np.array([[calc.wfs.kpt_qs[k][s].projections.collect()
                                for s in range(kd.nspins)]
                               for k in range(kd.nibzkpts)])
-        K, S, N, I = proj_ksnI.shape
+        K, S, N, nI = proj_ksnI.shape
         if kd.nspins == 2:
             proj1_ksnI = proj_ksnI
-            proj_ksnI = np.zeros((K, S, N, 2 * I))
-            proj_ksnI[:, 0, :, :I] = proj1_ksnI[:, 0]
-            proj_ksnI[:, 1, :, I:] = proj1_ksnI[:, 1]
-            I *= 2
+            proj_ksnI = np.zeros((K, S, N, 2 * nI))
+            proj_ksnI[:, 0, :, :nI] = proj1_ksnI[:, 0]
+            proj_ksnI[:, 1, :, nI:] = proj1_ksnI[:, 1]
+            nI *= 2
 
         spinproj_ksnv = np.zeros((K, S, N, 3))
         for s in range(kd.nspins):
             spinproj_ksnv[:, s, :, 2] = 1 - 2 * s
 
         eig_kn = eig_ksn.reshape((K, S * N))
-        proj_knI = proj_ksnI.reshape((K, S * N, I))
+        proj_knI = proj_ksnI.reshape((K, S * N, nI))
         spinproj_knv = spinproj_ksnv.reshape((K, S * N, 3))
         n_kn = eig_kn.argsort(axis=1)
         eig_kn = np.take_along_axis(eig_kn, n_kn, axis=1)
@@ -71,12 +71,12 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
         fermilevel = calc.get_fermi_level()
 
     K1, K2, K3 = tuple(kd.N_c)
-    _, N, I = proj_knI.shape
+    _, N, nI = proj_knI.shape
     return {'cell_cv': calc.atoms.cell,
             'kpt_ijkc': k_kc.reshape((K1, K2, K3, 3)),
             'fermilevel': fermilevel,
             'eig_ijkn': eig_kn.reshape((K1, K2, K3, N)),
-            'proj_ijknI': proj_knI.reshape((K1, K2, K3, N, I)),
+            'proj_ijknI': proj_knI.reshape((K1, K2, K3, N, nI)),
             'spinproj_ijknv': spinproj_knv.reshape((K1, K2, K3, N, 3))}
 
 
@@ -156,7 +156,18 @@ def main(datapath: Path,
          kind='cbm',
          nbands=4):
     dct = pickle.loads(datapath.read_bytes())
-    extrema = find_extrema(kind, nbands, **dct)
+    bands = find_extrema(kind, nbands, **dct)
+
+    extrema = []
+    for band in bands:
+        try:
+            k_v, energy, mass_v, direction_vv = fit(*band)
+        except NoMinimum:
+            continue
+        if kind == 'vbm':
+            energy *= -1
+        extrema.append(k_v, energy, mass_v, direction_vv)
+
     return extrema
 
 
@@ -180,10 +191,13 @@ def find_extrema(cell_cv,
 
     if kind == 'cbm':
         bands = slice(nocc, nocc + nbands)
-        eig_ijkn = eig_ijkn[..., bands] - fermilevel
+        eig_ijkn = eig_ijkn[..., bands]
     else:
-        bands = slice(nocc - 1, nocc - 1 - nbands, -1)
-        eig_ijkn = fermilevel - eig_ijkn[..., bands]
+        n1 = nocc - 1
+        n2 = n1 - nbands
+        bands = slice(n1, n2 if n2 >= 0 else None, -1)
+        eig_ijkn = -eig_ijkn[..., bands]
+        nbands = min(nocc, nbands)
 
     proj_ijknI = proj_ijknI[..., bands, :]
     spinproj_ijknv = spinproj_ijknv[..., bands, :]
@@ -195,9 +209,9 @@ def find_extrema(cell_cv,
     log(eig_ijkn[i, j, k])
 
     a, b, c = (0 if size == 1 else npoints for size in kpt_ijkc.shape[:3])
-    A = np.arange(i - a, i + a + 1)
-    B = np.arange(j - b, j + b + 1)
-    C = np.arange(k - c, k + c + 1)
+    A = np.arange(i - a, i + a + 1) % K1
+    B = np.arange(j - b, j + b + 1) % K2
+    C = np.arange(k - c, k + c + 1) % K3
 
     eig_ijkn = eig_ijkn[A][:, B][:, :, C]
     spinproj_ijknv = spinproj_ijknv[A][:, B][:, :, C]
@@ -226,6 +240,10 @@ def find_extrema(cell_cv,
     return bands
 
 
+class NoMinimum(ValueError):
+    """Band doesn't have a minumum."""
+
+
 def fit(k_kv, eig_k, spinproj_kv, npoints=None):
     dims = k_kv.shape[1]
     npoints = npoints or [7, 15, 25][dims - 1]
@@ -240,7 +258,7 @@ def fit(k_kv, eig_k, spinproj_kv, npoints=None):
     hessian_vv = fit.hessian(np.zeros(dims))
     evals_v = np.linalg.eigvalsh(hessian_vv)
     if evals_v.min() <= 0.0:
-        raise ValueError('Not a minimum')
+        raise NoMinimum
     k_v = fit.find_minimum()
     emin = fit.value(k_v)
     hessian_vv = fit.hessian(k_v)
