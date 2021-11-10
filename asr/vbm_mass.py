@@ -95,13 +95,9 @@ def plot_vbm(row, fname):
     ax = fig.gca()
 
 
-    color=0 
     for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']:
-        #for n in indices:
-        ax.plot(x, eigs[:, indices], 'o', color=f'C{color}')
-        #ax.plot(x, eigs[:, n], 'o', color=f'C{color}')
-        ax.plot(xfit, yfit, '-', color=f'C{color}')
-        color += 1
+        ax.plot(x, eigs[:, indices], 'o')#, color=f'C{color}')
+        ax.plot(xfit, yfit, '-')#, color=f'C{color}')
 
 
     ax.set_xlabel('k [Ang$^{-1}$]')

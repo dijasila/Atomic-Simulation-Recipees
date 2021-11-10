@@ -89,26 +89,22 @@ def plot_cbm(row, fname):
     import matplotlib.pyplot as plt
 
 
+
+    
     data= row.data.get('results-asr.cbm_mass.json')
 
     fig = plt.figure(figsize=(6.4, 3.9))
     ax = fig.gca()
-
-
-    color=0
-    for xfit, yfit, indices,x, eigs, k, energy, m, spin  in data['extrema']:
-        #for n in indices:
-        ax.plot(x, eigs[:, indices], 'o', color=f'C{color}')
-        ax.plot(xfit, yfit, '-', color=f'C{color}')
-        color += 1
+    
+    for  xfit, yfit, indices,x, eigs, k, energy, m, spin in data['extrema']:        
+        ax.plot(xfit, yfit, '-')
+        ax.plot(x, eigs[:,indices], 'o')
 
     ax.set_xlabel('k [Ang$^{-1}$]')
     ax.set_ylabel('e - e$_F$ [eV]')
     fig.tight_layout()
     fig.savefig(fname)
-    fig.close()
-
-
+    plt.close()
 
 
 
