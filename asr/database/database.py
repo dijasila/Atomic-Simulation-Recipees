@@ -52,9 +52,24 @@ class Row:
     @property
     def data(self):
         if self._data is None:
-            from .fromtree import serializer
-            self._data = serializer.deserialize(serializer.serialize(self.row.data))
+            self._load_data()
         return self._data
+
+    @property
+    def records(self):
+        if self._data is None:
+            self._load_data()
+        return self._data["records"]
+
+    def _load_data(self):
+        from .fromtree import serializer
+        rowdata = self.row.data
+        _data = {key: value for key, value in rowdata.items() if key != "records"}
+
+        if "records" in rowdata:
+            records = serializer.deserialize(rowdata["records"])
+            _data["records"] = records
+        self._data = _data
 
     @property
     def natoms(self):
@@ -114,13 +129,17 @@ class ASEDatabaseInterface:
         return self.db.metadata(*args, **kwargs)
 
     @wraps(Database.write)
-    def write(self, *args, records=None, **kwargs):
+    def write(self, *args, data=None, records=None, **kwargs):
         from .fromtree import serializer
-        data = {}
-        if records:
-            data["records"] = serializer.serialize(records)
 
-        return self.db.write(data=data, *args, **kwargs)
+        if data is None:
+            data = {}
+        container = {**data}
+
+        if records:
+            container["records"] = serializer.serialize(records)
+
+        return self.db.write(data=container, *args, **kwargs)
 
     @wraps(Database.reserve)
     def reserve(self, *args, **kwargs):
@@ -164,6 +183,13 @@ class ASEDatabaseInterface:
     @wraps(Database.__delitem__)
     def __delitem__(self, *args, **kwargs):
         return self.db.__detitem__(*args, **kwargs)
+
+    def __enter__(self):
+        self.db.__enter__()
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.db.__exit__()
 
 
 def connect(dbname: str) -> ASEDatabaseInterface:

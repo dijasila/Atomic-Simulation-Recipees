@@ -1,10 +1,9 @@
 from pathlib import Path
 
-from ase.db import connect
+from asr.database import connect, ASEDatabaseInterface, Row
 
 from asr.core.migrate import records_to_migration_report
 from asr.core.resultfile import get_resultfile_records_from_database_row
-from asr.core.serialize import JSONSerializer
 
 
 def collapse_database(databasein: str, databaseout: str):
@@ -18,23 +17,30 @@ def collapse_database(databasein: str, databaseout: str):
     copy_database_metadata(dbin, dbout)
 
 
-def write_collapsed_database(dbin, dbout):
+def write_collapsed_database(dbin: ASEDatabaseInterface, dbout: ASEDatabaseInterface):
     for ir, row in enumerate(dbin.select("first_class_material=True")):
         if ir % 100 == 0:
             print(ir)
+        assert "records" not in row.data
         data = get_data_including_child_data(dbin, row)
+        assert "records" not in data
         write_row_with_new_data(dbout, row, data)
 
 
-def write_row_with_new_data(dbout, row, records):
+def write_row_with_new_data(
+    dbout: ASEDatabaseInterface, row: Row, data=None, records=None
+):
+    if data is None:
+        data = {}
     dbout.write(
         atoms=row.toatoms(),
         key_value_pairs=row.key_value_pairs,
         records=records,
+        data=data,
     )
 
 
-def get_data_including_child_data(dbin, row):
+def get_data_including_child_data(dbin: ASEDatabaseInterface, row: Row):
     children = get_children_from_row(row)
     children_data = get_children_data_from_database(dbin, children)
     data = add_children_data(row.data, children_data)
@@ -62,7 +68,7 @@ def get_children_data_from_database(dbin, children):
     return children_data
 
 
-def get_children_from_row(row):
+def get_children_from_row(row: Row):
     children = row.data.get("__children__", {})
     return children
 
@@ -78,14 +84,23 @@ def convert_database(databasein: str, databaseout: str):
     copy_database_metadata(dbin, dbout)
 
 
+def get_other_data_files_from_row(row):
+    data = row.data
+    other_data = {}
+    for name, value in data.items():
+        if not name.startswith("results-"):
+            other_data[name] = value
+    return other_data
+
+
 def write_converted_database(dbin, dbout):
-    serializer = JSONSerializer()
     for row in dbin.select():
         if row.id % 100 == 0:
             print(row.id)
         records = get_resultfile_records_from_database_row(row)
-        data = serializer.serialize(dict(records=records))
-        write_row_with_new_data(dbout, row, data)
+        data = get_other_data_files_from_row(row)
+        assert records
+        write_row_with_new_data(dbout, row, data=data, records=records)
 
 
 def migrate_database(databasein, databaseout):
@@ -95,10 +110,9 @@ def migrate_database(databasein, databaseout):
 
 
 def write_migrated_database(dbin, dbout):
-    ser = JSONSerializer()
     for row in dbin.select():
         print(row.id)
-        records = ser.deserialize(ser.serialize(row.data["records"]))
+        records = row.records
         report = records_to_migration_report(records)
         if report.n_errors == 0 and report.n_applicable_migrations == 0:
             continue
@@ -106,6 +120,7 @@ def write_migrated_database(dbin, dbout):
             report.print_errors()
             break
         from asr.core.cache import Cache, MemoryBackend
+
         cache = Cache(backend=MemoryBackend())
         for record in records:
             cache.add(record)
@@ -113,5 +128,5 @@ def write_migrated_database(dbin, dbout):
             print()
             record_migration.apply(cache)
         records = cache.select()
-        write_row_with_new_data(dbout, row, records)
+        write_row_with_new_data(dbout, row, records=records)
         print(report.summary)

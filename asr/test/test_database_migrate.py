@@ -23,13 +23,16 @@ def test_collapse_database(database_to_be_collapsed, asr_tmpdir):
     collapsed = connect("collapsed.db")
     write_collapsed_database(database_to_be_collapsed, collapsed)
     assert len(collapsed) == 1
+    row = collapsed.get(id=1)
+    assert 'records' not in row.data
+    assert 'records' not in row.row.data
 
     converted = connect("converted.db")
     write_converted_database(collapsed, converted)
     row = converted.get(id=1)
     assert "records" in row.data
 
-    records = row.data['records']
+    records = row.records
     gwrecords = [rec for rec in records if rec.name == "asr.c2db.gw:main"]
     assert len(gwrecords) == 1
 
