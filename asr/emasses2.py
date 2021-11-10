@@ -1,130 +1,15 @@
 """Effective masses."""
+import pickle
 from collections import defaultdict
 from math import pi
 from pathlib import Path
-from typing import Generator, List, Tuple
+from typing import Any, Dict
 
 import numpy as np
-from ase.dft.bandgap import bandgap
 from ase.units import Bohr, Ha
-
-from gpaw import GPAW
+from gpaw.calculator import GPAW
+from gpaw.kpt_descriptor import KPointDescriptor
 from gpaw.spinorbit import soc_eigenstates
-from gpaw.typing import Array1D, Array2D, Array3D
-
-
-def fit(kpoints: Array1D,
-        fermi_level: float,
-        eigenvalues: Array2D,
-        fingerprints: Array3D,
-        spinprojections: Array3D = None,
-        kind: str = 'cbm',
-        N: int = 4,
-        plot: bool = True) -> List[Tuple[float, float, float, Array1D]]:
-    """...
-
-    >>> k = np.linspace(-1, 1, 7)
-    >>> eigs = 0.5 * k**2 * Ha * Bohr**2
-    >>> minima = fit(kpoints=k,
-    ...              fermi_level=-1.0,
-    ...              eigenvalues=eigs[:, np.newaxis],
-    ...              fingerprints=np.zeros((7, 1, 1)),
-    ...              kind='cbm',
-    ...              N=1,
-    ...              plot=False)
-    k [Ang^-1]  e-e_F [eV]    m [m_e]
-        -0.000       1.000      1.000
-    >>> k0, e0, m0 = minima[0]
-    """
-
-    K = len(kpoints)
-
-    nocc = (eigenvalues[0] < fermi_level).sum()
-
-    if kind == 'cbm':
-        bands = slice(nocc, nocc + N)
-        eigs = eigenvalues[:, bands] - fermi_level
-    else:
-        bands = slice(nocc - 1, nocc - 1 - N, -1)
-        eigs = fermi_level - eigenvalues[:, bands]
-
-    fps = fingerprints[:, bands]
-    sps = spinprojections[:, bands]
-
-    eigs2 = np.empty_like(eigs)
-    fps2 = np.empty_like(fps)
-    sps2 = np.empty_like(sps)
-    imin = eigs[:, 0].argmin()
-    i0 = K // 2
-    for i in range(K):
-        eigs2[(i0 + i) % K] = eigs[(imin + i) % K]
-        fps2[(i0 + i) % K] = fps[(imin + i) % K]
-        sps2[(i0 + i) % K] = sps[(imin + i) % K]
-    x = kpoints[imin] + kpoints - kpoints[i0]
-
-    eigs, sps = connect(eigs2, fps2, sps2)
-
-    extrema = {}
-    indices = eigs[i0].argsort()
-    print('k [Ang^-1]  e-e_F [eV]    m [m_e]            spin [x,y,z]')
-    for n in indices:
-        band = eigs[:, n]
-        i = band.argmin()
-        if 2 <= i <= K - 3:
-            poly = np.polyfit(x[i - 2:i + 3], band[i - 2:i + 3], 2)
-            dx = 1.5 * (x[i + 2] - x[i])
-            xfit = np.linspace(x[i] - dx, x[i] + dx, 61)
-            yfit = np.polyval(poly, xfit)
-            mass = 0.5 * Bohr**2 * Ha / poly[0]
-            assert mass > 0
-            k = -0.5 * poly[1] / poly[0]
-            energy = np.polyval(poly, k)
-            if kind == 'vbm':
-                energy *= -1
-                yfit *= -1
-            spin = sps[i, n]
-            print(f'{k:10.3f} {energy:11.3f} {mass:10.3f}',
-                  '  (' + ', '.join(f'{s:+.2f}' for s in spin) + ')')
-            extrema[n] = (xfit, yfit, k, energy, mass, spin)
-
-    if kind == 'vbm':
-        eigs *= -1
-
-    if plot:
-        import matplotlib.pyplot as plt
-        color = 0
-        for n in indices:
-            plt.plot(x, eigs[:, n], 'o', color=f'C{color}')
-            if n in extrema:
-                xfit, yfit, *_ = extrema[n]
-                plt.plot(xfit, yfit, '-', color=f'C{color}')
-            color += 1
-        plt.xlabel('k [Ang$^{-1}$]')
-        plt.ylabel('e - e$_F$ [eV]')
-        plt.show()
-
-    return [(k, energy, mass, spin)
-            for (_, _, k, energy, mass, spin) in extrema.values()]
-
-
-def a_test():
-    k = np.linspace(-1, 1, 7)
-    b1 = (k - 0.2)**2
-    b2 = 1 * (k + 0.2)**2 + 0.01 * 0
-    eigs = np.array([b1, b2]).T
-    indices = eigs.argsort(axis=1)
-    eigs = np.take_along_axis(eigs, indices, axis=1)
-    fps = np.zeros((7, 2, 2))
-    fps[:, 0, 0] = 1
-    fps[:, 1, 1] = 1
-    fps[3] = 0.0
-    fps[:, :, 0] = np.take_along_axis(fps[:, :, 0], indices, axis=1)
-    fps[:, :, 1] = np.take_along_axis(fps[:, :, 1], indices, axis=1)
-    eigs = fit(k, eigs, fps)
-    import matplotlib.pyplot as plt
-    plt.plot(k, eigs[:, 0])
-    plt.plot(k, eigs[:, 1])
-    plt.show()
 
 
 def extract_stuff_from_gpw_file(gpwpath: Path,
@@ -135,9 +20,10 @@ def extract_stuff_from_gpw_file(gpwpath: Path,
     outpath.write_bytes(pickle.dumps(stuff))
 
 
-def extract_stuff_from_gpaw_calculation(calc,
+def extract_stuff_from_gpaw_calculation(calc: GPAW,
                                         soc: False) -> Dict[str, Any]:
-    kd = calc.wfs.kd
+    assert calc.world.size == 1
+    kd: KPointDescriptor = calc.wfs.kd
     if soc:
         states = soc_eigenstates(calc)
         k_kc = np.array([kd.bzk_kc[wf.bz_index]
@@ -150,22 +36,43 @@ def extract_stuff_from_gpaw_calculation(calc,
         fermilevel = states.fermi_level
     else:
         k_kc = kd.bzk_kc
-        eig_skn = np.array([[calc.get_eigenvalues(kpt=k, spin=s)
-                             for k in range(kd.nibzkpts)]
-                            for s in range(kd.nspins)])
-        proj_sknI = np.array([[calc.get_projections(kpt=k, spin=s)
-                               for k in range(kd.nibzkpts)]
-                              for s in range(kd.nspins)])
-        spinproj_knv = states.spin_projections()
+        assert kd.ibzk_kc.shape == k_kc.shape
+        eig_ksn = np.array([[calc.get_eigenvalues(kpt=k, spin=s)
+                             for s in range(kd.nspins)]
+                            for k in range(kd.nibzkpts)])
+        proj_ksnI = np.array([[calc.wfs.kpt_qs[k][s].projections.collect()
+                               for s in range(kd.nspins)]
+                              for k in range(kd.nibzkpts)])
+        K, S, N, I = proj_ksnI.shape
+        if kd.nspins == 2:
+            proj1_ksnI = proj_ksnI
+            proj_ksnI = np.zeros((K, S, N, 2 * I))
+            proj_ksnI[:, 0, :, :I] = proj1_ksnI[:, 0]
+            proj_ksnI[:, 1, :, I:] = proj1_ksnI[:, 1]
+            I *= 2
+
+        spinproj_ksnv = np.zeros((K, S, N, 3))
+        for s in range(kd.nspins):
+            spinproj_ksnv[:, s, :, 2] = 1 - 2 * s
+
+        eig_kn = eig_ksn.reshape((K, S * N))
+        proj_knI = proj_ksnI.reshape((K, S * N, I))
+        spinproj_knv = spinproj_ksnv.reshape((K, S * N, 3))
+        n_kn = eig_kn.argsort(axis=1)
+        eig_kn = np.take_along_axis(eig_kn, n_kn, axis=1)
+        proj_knI = np.take_along_axis(proj_knI, n_kn[:, :, None], axis=1)
+        spinproj_knv = np.take_along_axis(spinproj_knv, n_kn[:, :, None],
+                                          axis=1)
+        fermilevel = calc.get_fermi_level()
 
     K1, K2, K3 = tuple(kd.N_c)
     _, N, I = proj_knI.shape
-    return {'cell': calc.atoms.cell,
-            'kpts': k_kc.reshape((K1, K2, K3, 3)),
+    return {'cell_cv': calc.atoms.cell,
+            'kpt_ijkc': k_kc.reshape((K1, K2, K3, 3)),
             'fermilevel': fermilevel,
-            'eigs': eig_kn.reshape((K1, K2, K3, N)),
-            'projs': proj_knI.reshape((K1, K2, K3, N, I)),
-            'spinprojs': spinproj_knv.reshape((K1, K2, K3, N, 3))}
+            'eig_ijkn': eig_kn.reshape((K1, K2, K3, N)),
+            'proj_ijknI': proj_knI.reshape((K1, K2, K3, N, I)),
+            'spinproj_ijknv': spinproj_knv.reshape((K1, K2, K3, N, 3))}
 
 
 def connect(fingerprint_ijknx, threshold=2.0):
@@ -240,58 +147,97 @@ def con1d(fp_knx,
     return bnew
 
 
-def main(kind='cbm', N=4):
-    import sys
-    path = Path(sys.argv[1])
-    (k_ijkc, cell_cv, fermi_level, eig_ijkn, fp_ijknx) = \
-        extract_stuff_from_gpw_file(path)
-    print(k_ijkc.shape)
-    nocc = (eig_ijkn[0, 0] < fermi_level).sum()
-    print(nocc)
+def main(datapath: Path,
+         kind='cbm',
+         nbands=4):
+    dct = pickle.loads(datapath.read_bytes())
+    extrema = find_extrema(kind, nbands, **dct)
+    return extrema
+
+
+def find_extrema(cell_cv,
+                 kpt_ijkc,
+                 fermilevel,
+                 eig_ijkn,
+                 proj_ijknI,
+                 spinproj_ijknv=None,
+                 kind='cbm',
+                 nbands=4,
+                 log=print,
+                 npoints=3):
+    nocc = (eig_ijkn[0, 0, 0] < fermilevel).sum()
+    log(nocc)
+
+    K1, K2, K3, N, _ = proj_ijknI.shape
+
+    if spinproj_ijknv is None:
+        spinproj_ijknv = np.zeros((K1, K2, K3, N, 3))
 
     if kind == 'cbm':
-        bands = slice(nocc, nocc + N)
-        eig_ijkn = eig_ijkn[..., bands] - fermi_level
+        bands = slice(nocc, nocc + nbands)
+        eig_ijkn = eig_ijkn[..., bands] - fermilevel
     else:
-        bands = slice(nocc - 1, nocc - 1 - N, -1)
-        eig_ijkn = fermi_level - eig_ijkn[:, :, bands]
+        bands = slice(nocc - 1, nocc - 1 - nbands, -1)
+        eig_ijkn = fermilevel - eig_ijkn[..., bands]
 
-    fp_ijknx = fp_ijknx[..., bands, :]
+    proj_ijknI = proj_ijknI[..., bands, :]
+    spinproj_ijknv = spinproj_ijknv[..., bands, :]
 
     ijk = eig_ijkn[..., 0].ravel().argmin()
     i, j, k = np.unravel_index(ijk, eig_ijkn.shape[:3])
-    print(i, j, k)
-    print(k_ijkc[i, j, k])
-    print(eig_ijkn[i, j, k])
-    import matplotlib.pyplot as plt
-    plt.plot(eig_ijkn[i, :, 0, 0])
-    plt.plot(eig_ijkn[i, :, 0, 1])
-    plt.show()
-    I = np.arange(i - 3, i + 4)
-    J = np.arange(j - 3, j + 4)
-    K = np.arange(k - 0, k + 1)
-    eig_ijkn = eig_ijkn[I][:, J][:, :, K]
-    b_ijkn = connect(fp_ijknx[I][:, J][:, :, K])
-    k_ijkc = np.indices((7, 7, 1)).transpose((1, 2, 3, 0)) - (3, 3, 0)
-    print(k_ijkc.shape)
-    k_ijkv = k_ijkc# @ np.linalg.inv(cell_cv).T * 2 * pi
+    log(i, j, k)
+    log(kpt_ijkc[i, j, k])
+    log(eig_ijkn[i, j, k])
 
-    f_ijkn = np.zeros_like(eig_ijkn) + np.nan
-    import matplotlib.pyplot as plt
-    for b in range(N):
-        f_ijkn[(b_ijkn == b).any(3), b] = eig_ijkn[b_ijkn == b]
-        # x = f_ijkn[:, 3, 0, b]
-        # plt.plot(x, label=str(b))
-    # plt.legend()
-    # plt.show()
+    a, b, c = (0 if size == 1 else npoints for size in kpt_ijkc.shape[:3])
+    A = np.arange(i - a, i + a + 1)
+    B = np.arange(j - b, j + b + 1)
+    C = np.arange(k - c, k + c + 1)
 
-    for b in range(N):
+    eig_ijkn = eig_ijkn[A][:, B][:, :, C]
+    spinproj_ijknv = spinproj_ijknv[A][:, B][:, :, C]
+    print(spinproj_ijknv.shape)
+    b_ijkn = connect(proj_ijknI[A][:, B][:, :, C])
+
+    k_ijkc = np.indices(
+        (2 * a + 1, 2 * b + 1, 2 * c + 1)).transpose((1, 2, 3, 0))
+    k_ijkc += (i - a, j - b, k - c)
+    log(k_ijkc.shape)
+    k_ijkv = k_ijkc @ np.linalg.inv(cell_cv).T * 2 * pi
+
+    axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
+    bands = []
+    for b in range(nbands):
         mask_ijkn = b_ijkn == b
         eig_k = eig_ijkn[mask_ijkn]
-        k_kv = k_ijkv[mask_ijkn.any(axis=3)]
-        k = (k_kv**2).sum(1).argsort()[:15]
-        k_kv = k_kv[k]
-        eig_k = eig_k[k]
+        print(spinproj_ijknv.shape, mask_ijkn.shape)
+        spinproj_kv = np.array([spinproj_ijknv[..., v][mask_ijkn]
+                                for v in range(3)]).T
+        k_kv = k_ijkv[mask_ijkn.any(axis=3)][:, axes]
+        bands.append((k_kv, eig_k, spinproj_kv))
+
+    return bands
+
+
+def fit(k_kv, eig_k, spinproj_kv, npoints=None):
+    dims = k_kv.shape[1]
+    npoints = npoints or [7, 15, 25][dims - 1]
+
+    kmin_v = k_kv[eig_k.argmin()]
+    k_kv -= kmin_v
+    k = (k_kv**2).sum(1).argsort()[:npoints]
+    print(k, kmin_v)
+    k_kv = k_kv[k]
+    eig_k = eig_k[k]
+    fit = Fit3D(k_kv, eig_k)
+    hessian_vv = fit.hessian(np.zeros(dims))
+    evals = np.linalg.eigvalsh(hessian_vv)
+    if evals.min() <= 0.0:
+        raise ValueError('Not a minimum')
+    o = fit.find_minimum()
+    print(o)
+    return o
+    # mass= 0.5 * Bohr**2 * Ha / poly[0]
 
 
 class Fit3D:
@@ -299,45 +245,31 @@ class Fit3D:
         self.dims = k_iv.shape[1]
         if self.dims == 1:
             x = k_iv[:, 0]
-            f_ji = np.array([x**0,
-                             x,
-                             x**2,
-                             x**3])
+            f_ji = np.array([x**0, x, x**2, x**3])
         elif self.dims == 2:
             x, y = k_iv.T
-            f_ji = np.array([x**0,
-                             x,
-                             y,
-                             x**2,
-                             y**2,
-                             x * y,
-                             x**3,
-                             y**3,
-                             x**2 * y,
-                             y**2 * x])
+            f_ji = np.array(
+                [x**0, x, y, x**2, y**2, x * y, x**3, y**3, x**2 * y, y**2 * x])
         else:
             x, y, z = k_iv.T
-            f_ji = np.array([x**0,
-                             x,
-                             y,
-                             z,
-                             x**2,
-                             y**2,
-                             z**2,
-                             x * y,
-                             y * z,
-                             z * x,
-                             x**3,
-                             y**3,
-                             z**3,
-                             x**2 * y,
-                             x**2 * z,
-                             y**2 * x,
-                             y**2 * z,
-                             z**2 * x,
-                             z**2 * y,
-                             x * y * z])
-        self.coef_j = np.linalg.solv(f_ji @ f_ji.T, f_ji @ eig_i)
+            f_ji = np.array(
+                [x**0, x, y, z, x**2, y**2, z**2, x * y, y * z, z * x,
+                 x**3, y**3, z**3,
+                 x**2 * y, x**2 * z, y**2 * x, y**2 * z, z**2 * x, z**2 * y,
+                 x * y * z])
+        self.coef_j = np.linalg.solve(f_ji @ f_ji.T, f_ji @ eig_i)
+
+    def find_minimum(self, k_v=None):
+        from scipy.optimize import minimize
+
+        def f(k_v):
+            return self.value(k_v), self.gradient(k_v)
+
+        if k_v is None:
+            k_v = np.zeros(self.dims)
+
+        o = minimize(f, k_v, jac=True)
+        return o
 
     def value(self, k_v):
         if self.dims == 1:
@@ -383,15 +315,6 @@ class Fit3D:
                     [cxy + 2 * cxyy * y + 2 * cxxy * x,
                      2 * cyy + 6 * cyyy * y + 2 * cxyy * x]]
         1 / 0
-
-    def find_minimum(self, k_v):
-        from scipy.optimize import minimize
-
-        def f(k_v):
-            return self.value(k_v), self.gradient(k_v)
-
-        o = minimize(f, [0, 0], jac=True)
-        print(o)
 
 
 if __name__ == '__main__':
