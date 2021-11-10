@@ -1,5 +1,6 @@
+import pytest
 from types import SimpleNamespace as SN
-
+from ase.units import Bohr, Ha
 import numpy as np
 
 from asr.emasses2 import (connect, extract_stuff_from_gpaw_calculation,
@@ -17,7 +18,7 @@ def test_1d():
     fps = np.zeros((7, 2, 2))
     fps[:, 0, 0] = 1
     fps[:, 1, 1] = 1
-    #fps[3] = 0.0
+    # fps[3] = 0.0
     fps[:, :, 0] = np.take_along_axis(fps[:, :, 0], indices, axis=1)
     fps[:, :, 1] = np.take_along_axis(fps[:, :, 1], indices, axis=1)
     indices = connect(fps.reshape((7, 1, 1, 2, 2)))
@@ -39,6 +40,7 @@ def test_extract_stuff_from_gpaw_calculation():
         [SN(projections=SN(collect=lambda: np.eye(3)))
          for _ in range(2)]
         for _ in range(10)]
+    c = 0.5 * Ha * Bohr**2 * (np.pi / 5)**2  # make mass = 1 m_e
     calc = SN(
         world=SN(size=1),
         wfs=SN(
@@ -50,8 +52,8 @@ def test_extract_stuff_from_gpaw_calculation():
                 nbzkpts=10,
                 nibzkpts=10),
             kpt_qs=kpt_qs),
-        get_eigenvalues=lambda kpt, spin: [-(kpt - 5)**2,
-                                           1 + (kpt - 5)**2,
+        get_eigenvalues=lambda kpt, spin: [-c * (kpt - 5)**2,
+                                           1 + c * (kpt - 5)**2,
                                            2],
         atoms=SN(
             cell=np.eye(3)),
@@ -59,22 +61,28 @@ def test_extract_stuff_from_gpaw_calculation():
     dct = extract_stuff_from_gpaw_calculation(calc, False)
     print(dct)
     bands = connect(dct['proj_ijknI'])
+    print(bands[0, 0].tolist())
     assert bands[0, 0].tolist() == [[0, 1, 2, 3, 4, 5],
                                     [0, 1, 2, 3, 4, 5],
                                     [0, 1, 2, 3, 4, 5],
                                     [0, 1, 2, 3, 4, 5],
-                                    [0, 1, 4, 2, 5, 3],
+                                    [0, 1, 2, 3, 4, 5],
                                     [0, 1, 4, 5, 2, 3],
-                                    [0, 1, 4, 2, 5, 3],
+                                    [0, 1, 2, 3, 4, 5],
                                     [0, 1, 2, 3, 4, 5],
                                     [0, 1, 2, 3, 4, 5],
                                     [0, 1, 2, 3, 4, 5]]
 
     bands = find_extrema(**dct)
-    for band in bands:
+    for band in bands[:2]:
         print(band)
-        try:
+        assert (band[1] == 1.5).all()
+        with pytest.raises(ValueError):
             fit(*band)
-        except ValueError:
-            assert (band[1] == 1.5).all()
-        
+    for band in bands[2:]:
+        print(band)
+        k_v, e, m_v, h_vv = fit(*band)
+        assert k_v[0] == pytest.approx(0.0)
+        assert e == pytest.approx(0.5)
+        assert m_v[0] == pytest.approx(1.0)
+        assert h_vv[0, 0] == pytest.approx(1.0)

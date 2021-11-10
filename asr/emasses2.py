@@ -1,15 +1,19 @@
 """Effective masses."""
+# noqa: W504
 import pickle
 from collections import defaultdict
 from math import pi
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
 
 import numpy as np
 from ase.units import Bohr, Ha
-from gpaw.calculator import GPAW
-from gpaw.kpt_descriptor import KPointDescriptor
-from gpaw.spinorbit import soc_eigenstates
+if TYPE_CHECKING:
+    from gpaw.calculator import GPAW
+    from gpaw.kpt_descriptor import KPointDescriptor
+else:
+    GPAW = None
+    KPointDescriptor = None
 
 
 def extract_stuff_from_gpw_file(gpwpath: Path,
@@ -25,6 +29,7 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
     assert calc.world.size == 1
     kd: KPointDescriptor = calc.wfs.kd
     if soc:
+        from gpaw.spinorbit import soc_eigenstates
         states = soc_eigenstates(calc)
         k_kc = np.array([kd.bzk_kc[wf.bz_index]
                          for wf in states])
@@ -200,8 +205,10 @@ def find_extrema(cell_cv,
     b_ijkn = connect(proj_ijknI[A][:, B][:, :, C])
 
     k_ijkc = np.indices(
-        (2 * a + 1, 2 * b + 1, 2 * c + 1)).transpose((1, 2, 3, 0))
+        (2 * a + 1, 2 * b + 1, 2 * c + 1),
+        dtype=float).transpose((1, 2, 3, 0))
     k_ijkc += (i - a, j - b, k - c)
+    k_ijkc /= [K1, K2, K3]
     log(k_ijkc.shape)
     k_ijkv = k_ijkc @ np.linalg.inv(cell_cv).T * 2 * pi
 
@@ -231,13 +238,16 @@ def fit(k_kv, eig_k, spinproj_kv, npoints=None):
     eig_k = eig_k[k]
     fit = Fit3D(k_kv, eig_k)
     hessian_vv = fit.hessian(np.zeros(dims))
-    evals = np.linalg.eigvalsh(hessian_vv)
-    if evals.min() <= 0.0:
+    evals_v = np.linalg.eigvalsh(hessian_vv)
+    if evals_v.min() <= 0.0:
         raise ValueError('Not a minimum')
-    o = fit.find_minimum()
-    print(o)
-    return o
-    # mass= 0.5 * Bohr**2 * Ha / poly[0]
+    k_v = fit.find_minimum()
+    emin = fit.value(k_v)
+    hessian_vv = fit.hessian(k_v)
+    evals_v, evecs_vv = np.linalg.eigh(hessian_vv)
+    mass_v = Bohr**2 * Ha / evals_v
+    print(k_v + kmin_v, emin, mass_v, evecs_vv)
+    return k_v + kmin_v, emin, mass_v, evecs_vv
 
 
 class Fit3D:
@@ -268,8 +278,8 @@ class Fit3D:
         if k_v is None:
             k_v = np.zeros(self.dims)
 
-        o = minimize(f, k_v, jac=True)
-        return o
+        result = minimize(f, k_v, jac=True)
+        return result.x
 
     def value(self, k_v):
         if self.dims == 1:
