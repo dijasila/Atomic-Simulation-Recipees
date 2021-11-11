@@ -155,19 +155,23 @@ def con1d(fp_knx,
 
 def main(datapath: Path,
          kind='cbm',
-         nbands=4):
+         nbands=4,
+         log=print):
     dct = pickle.loads(datapath.read_bytes())
-    bands = find_extrema(kind=kind, nbands=nbands, **dct)
+    bands, axes = find_extrema(kind=kind, nbands=nbands, log=log, **dct)
+
+    cell_cv = dct['cell_cv'][axes][:, axes]
 
     extrema = []
     for band in bands:
         try:
-            k_v, energy, mass_v, direction_vv = fit(*band)
+            k_v, energy, mass_w, direction_wv, error_k = fit(*band, cell_cv,
+                                                             log=log)
         except NoMinimum:
             continue
         if kind == 'vbm':
             energy *= -1
-        extrema.append((k_v, energy, mass_v, direction_vv))
+        extrema.append((k_v, energy, mass_w, direction_wv, error_k))
 
     return extrema
 
@@ -182,8 +186,11 @@ def find_extrema(cell_cv,
                  nbands=4,
                  log=print,
                  npoints=3):
+    assert kind in ['vbm', 'cbm']
+
     nocc = (eig_ijkn[0, 0, 0] < fermilevel).sum()
-    log(nocc)
+    log(f'Occupied bands: {nocc}')
+    log(f'Fermi level: {fermilevel} eV')
 
     K1, K2, K3, N, _ = proj_ijknI.shape
 
@@ -205,10 +212,12 @@ def find_extrema(cell_cv,
 
     ijk = eig_ijkn[..., 0].ravel().argmin()
     i, j, k = np.unravel_index(ijk, eig_ijkn.shape[:3])
-    log(i, j, k)
     kmin_c = kpt_ijkc[i, j, k]
-    log(kmin_c)
-    log(eig_ijkn[i, j, k])
+    log(f'Found {kind} at approximately {k2str(kmin_c, cell_cv)}')
+    eig_n = eig_ijkn[i, j, k]
+    if kind == 'vbm':
+        eig_n = eig_n[::-1]
+    log(f'Eigenvalues at that k-point:\n  {eig_n} eV')
 
     a, b, c = (0 if size == 1 else npoints for size in kpt_ijkc.shape[:3])
     A = np.arange(i - a, i + a + 1) % K1
@@ -217,8 +226,8 @@ def find_extrema(cell_cv,
 
     eig_ijkn = eig_ijkn[A][:, B][:, :, C]
     spinproj_ijknv = spinproj_ijknv[A][:, B][:, :, C]
-    print(spinproj_ijknv.shape)
 
+    log(f'Connecting bands in {2 * a + 1}x{2 * b + 1}x{2 * c + 1} grid')
     b_ijkn = connect(proj_ijknI[A][:, B][:, :, C])
 
     k_ijkc = np.indices(
@@ -227,7 +236,7 @@ def find_extrema(cell_cv,
     k_ijkc -= (a, b, c)
     k_ijkc /= [K1, K2, K3]
     k_ijkc += kmin_c
-    log(k_ijkc.shape)
+
     k_ijkv = k_ijkc @ np.linalg.inv(cell_cv).T * 2 * pi
 
     axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
@@ -235,43 +244,66 @@ def find_extrema(cell_cv,
     for b in range(nbands):
         mask_ijkn = b_ijkn == b
         eig_k = eig_ijkn[mask_ijkn]
-        print(spinproj_ijknv.shape, mask_ijkn.shape)
+        log(f'Band #{b}: {len(eig_k)} points '
+            f'[{eig_k.min()} ... {eig_k.max()}] eV')
         spinproj_kv = np.array([spinproj_ijknv[..., v][mask_ijkn]
                                 for v in range(3)]).T
         k_kv = k_ijkv[mask_ijkn.any(axis=3)][:, axes]
         bands.append((k_kv, eig_k, spinproj_kv))
 
-    return bands
+    return bands, axes
 
 
 class NoMinimum(ValueError):
     """Band doesn't have a minumum."""
 
 
-def fit(k_kv, eig_k, spinproj_kv, npoints=None):
+def k2str(k_v, cell_cv):
+    k_c = cell_cv @ k_v / (2 * pi)
+    v = ', '.join(f'{k:7.3f}' for k in k_v)
+    c = ', '.join(f'{k:6.3f}' for k in k_c)
+    return f'({v}) Ang^-1 = ({c})'
+
+
+def fit(k_kv, eig_k, spinproj_kv,
+        cell_cv,
+        npoints=None,
+        log=print):
     dims = k_kv.shape[1]
     npoints = npoints or [7, 15, 25][dims - 1]
 
-    kmin_v = k_kv[eig_k.argmin()]
+    def K(k_v):
+        return k2str(k_v, cell_cv)
+
+    kmin_v = k_kv[eig_k.argmin()].copy()
     k_kv -= kmin_v
     k = (k_kv**2).sum(1).argsort()[:npoints]
-    print(k, kmin_v, k_kv.shape)
+    log(f'Fitting to {len(k)} points close to {K(kmin_v)}:')
+
     k_kv = k_kv[k]
     eig_k = eig_k[k]
-    print(k_kv, eig_k)
     fit = Fit3D(k_kv, eig_k)
+
     hessian_vv = fit.hessian(np.zeros(dims))
-    evals_v = np.linalg.eigvalsh(hessian_vv)
-    print(evals_v)
-    if evals_v.min() <= 0.0:
+    eval_w = np.linalg.eigvalsh(hessian_vv)
+    if eval_w.min() <= 0.0:
+        log('  Not a minimum')
         raise NoMinimum
+
+    error_k = np.array([fit.value(k_v) - e for k_v, e in zip(k_kv, eig_k)])
+    log(f'  Maximum error: {abs(error_k).max() * 1000:.3f} meV')
+
     k_v = fit.find_minimum()
     emin = fit.value(k_v)
     hessian_vv = fit.hessian(k_v)
-    evals_v, evecs_vv = np.linalg.eigh(hessian_vv)
-    mass_v = Bohr**2 * Ha / evals_v
-    print(k_v + kmin_v, emin, mass_v, evecs_vv)
-    return k_v + kmin_v, emin, mass_v, evecs_vv
+    evals_w, evec_vw = np.linalg.eigh(hessian_vv)
+    mass_w = Bohr**2 * Ha / evals_w
+
+    log(f'  Found minimum: {K(k_v + kmin_v)}, {emin:.3f} eV')
+    for w, (mass, evec_v) in enumerate(zip(mass_w, evec_vw.T)):
+        log(f'    Mass #{w}: {mass:.3f} m_e, {K(evec_v)}')
+
+    return k_v + kmin_v, emin, mass_w, evec_vw.T, error_k
 
 
 class Fit3D:
@@ -349,7 +381,7 @@ class Fit3D:
         1 / 0
 
 
-if __name__ == '__main__':
+def cli():
     import sys
     path = Path(sys.argv[1])
     if path.suffix == '.gpw':
@@ -358,5 +390,11 @@ if __name__ == '__main__':
     else:
         kind = sys.argv[2]
         nbands = int(sys.argv[3])
-        bands = main(path, kind, nbands)
-        print(bands)
+        with path.with_suffix(f'.{kind}.log').open('w') as log:
+            bands = main(path, kind, nbands,
+                         lambda *a, **k: print(*a, **k, file=log))
+        path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(bands))
+
+
+if __name__ == '__main__':
+    cli()
