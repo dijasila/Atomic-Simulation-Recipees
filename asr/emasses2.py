@@ -19,8 +19,9 @@ else:
 def extract_stuff_from_gpw_file(gpwpath: Path,
                                 soc: False,
                                 outpath: Path = None) -> None:
+    from gpaw.calculator import GPAW
     calc = GPAW(gpwpath)
-    stuff = extract_stuff_from_gpaw_calculation(calc)
+    stuff = extract_stuff_from_gpaw_calculation(calc, soc)
     outpath.write_bytes(pickle.dumps(stuff))
 
 
@@ -156,7 +157,7 @@ def main(datapath: Path,
          kind='cbm',
          nbands=4):
     dct = pickle.loads(datapath.read_bytes())
-    bands = find_extrema(kind, nbands, **dct)
+    bands = find_extrema(kind=kind, nbands=nbands, **dct)
 
     extrema = []
     for band in bands:
@@ -166,7 +167,7 @@ def main(datapath: Path,
             continue
         if kind == 'vbm':
             energy *= -1
-        extrema.append(k_v, energy, mass_v, direction_vv)
+        extrema.append((k_v, energy, mass_v, direction_vv))
 
     return extrema
 
@@ -205,7 +206,8 @@ def find_extrema(cell_cv,
     ijk = eig_ijkn[..., 0].ravel().argmin()
     i, j, k = np.unravel_index(ijk, eig_ijkn.shape[:3])
     log(i, j, k)
-    log(kpt_ijkc[i, j, k])
+    kmin_c = kpt_ijkc[i, j, k]
+    log(kmin_c)
     log(eig_ijkn[i, j, k])
 
     a, b, c = (0 if size == 1 else npoints for size in kpt_ijkc.shape[:3])
@@ -216,13 +218,15 @@ def find_extrema(cell_cv,
     eig_ijkn = eig_ijkn[A][:, B][:, :, C]
     spinproj_ijknv = spinproj_ijknv[A][:, B][:, :, C]
     print(spinproj_ijknv.shape)
+
     b_ijkn = connect(proj_ijknI[A][:, B][:, :, C])
 
     k_ijkc = np.indices(
         (2 * a + 1, 2 * b + 1, 2 * c + 1),
         dtype=float).transpose((1, 2, 3, 0))
-    k_ijkc += (i - a, j - b, k - c)
+    k_ijkc -= (a, b, c)
     k_ijkc /= [K1, K2, K3]
+    k_ijkc += kmin_c
     log(k_ijkc.shape)
     k_ijkv = k_ijkc @ np.linalg.inv(cell_cv).T * 2 * pi
 
@@ -251,12 +255,14 @@ def fit(k_kv, eig_k, spinproj_kv, npoints=None):
     kmin_v = k_kv[eig_k.argmin()]
     k_kv -= kmin_v
     k = (k_kv**2).sum(1).argsort()[:npoints]
-    print(k, kmin_v)
+    print(k, kmin_v, k_kv.shape)
     k_kv = k_kv[k]
     eig_k = eig_k[k]
+    print(k_kv, eig_k)
     fit = Fit3D(k_kv, eig_k)
     hessian_vv = fit.hessian(np.zeros(dims))
     evals_v = np.linalg.eigvalsh(hessian_vv)
+    print(evals_v)
     if evals_v.min() <= 0.0:
         raise NoMinimum
     k_v = fit.find_minimum()
@@ -306,12 +312,11 @@ class Fit3D:
             return c + cx * x + cxx * x**2 + cxxx * x**3
         if self.dims == 2:
             x, y = k_v
-            c, cx, cy, cxx, cxy, cyy, cxxx, cxxy, cxyy, cyyy = self.coef_j
-            return (c +
-                    cx * x + cy * y +
-                    cxx * x**2 + cxy * x * y + cyy * y**2 +
-                    cxxx * x**3 + cxxy * x**2 * y +
-                    cxyy * x * y**2 + cyyy * y**3)
+            c, cx, cy, cxx, cyy, cxy, cxxx, cyyy, cxxy, cxyy = self.coef_j
+            return (
+                c + cx * x + cy * y + cxx * x**2 + cxy * x * y +  # noqa: W504
+                cyy * y**2 + cxxx * x**3 + cxxy * x**2 * y +  # noqa: W504
+                cxyy * x * y**2 + cyyy * y**3)
         1 / 0
 
     def gradient(self, k_v):
@@ -321,13 +326,12 @@ class Fit3D:
             return [cx + 2 * cxx * x + 3 * cxxx * x**2]
         if self.dims == 2:
             x, y = k_v
-            c, cx, cy, cxx, cxy, cyy, cxxx, cxxy, cxyy, cyyy = self.coef_j
-            return [cx +
-                    2 * cxx * x + cxy * y +
-                    3 * cxxx * x**2 + 2 * cxxy * x * y + cxyy * y**2,
-                    cy +
-                    2 * cyy * y + cxy * x +
-                    3 * cyyy * y**2 + 2 * cxyy * x * y + cxxy * x**2]
+            _, cx, cy, cxx, cyy, cxy, cxxx, cyyy, cxxy, cxyy = self.coef_j
+            return [
+                cx + 2 * cxx * x + cxy * y +  # noqa: W504
+                3 * cxxx * x**2 + 2 * cxxy * x * y + cxyy * y**2,
+                cy + 2 * cyy * y + cxy * x +  # noqa: W504
+                3 * cyyy * y**2 + 2 * cxyy * x * y + cxxy * x**2]
         1 / 0
 
     def hessian(self, k_v):
@@ -337,7 +341,7 @@ class Fit3D:
             return [[2 * cxx + 6 * cxxx * x]]
         if self.dims == 2:
             x, y = k_v
-            _, _, _, cxx, cxy, cyy, cxxx, cxxy, cxyy, cyyy = self.coef_j
+            _, _, _, cxx, cyy, cxy, cxxx, cyyy, cxxy, cxyy = self.coef_j
             return [[2 * cxx + 6 * cxxx * x + 2 * cxxy * y,
                      cxy + 2 * cxyy * y + 2 * cxxy * x],
                     [cxy + 2 * cxyy * y + 2 * cxxy * x,
@@ -346,4 +350,13 @@ class Fit3D:
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    path = Path(sys.argv[1])
+    if path.suffix == '.gpw':
+        soc = bool(sys.argv[2])
+        extract_stuff_from_gpw_file(path, soc, path.with_suffix('.pckl'))
+    else:
+        kind = sys.argv[2]
+        nbands = int(sys.argv[3])
+        bands = main(path, kind, nbands)
+        print(bands)
