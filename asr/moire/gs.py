@@ -4,24 +4,23 @@ import numpy as np
 import typing
 
 
-@command(module='asr.gs',
+@command(module='asr.moire.gs',
          creates=['gs.gpw'],
          requires=['structure.json'],
          resources='8:10h')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(calculator: dict = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
-        'xc': 'PBE',
-        'basis': 'dzp',
-        'kpts': {'density': 12.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'bands': 'CBM+3.0'},
-        'nbands': '200%',
-        'txt': 'gs.txt',
-        'maxiter': 333,
-        'charge': 0}) -> ASRResult:
+                  'name': 'gpaw',
+                  'mode': {'name': 'lcao'},
+                  'xc': 'PBE',
+                  'basis': 'dzp',
+                  'kpts': {'density': 12.0, 'gamma': True},
+                  'occupations': {'name': 'fermi-dirac',
+                                  'width': 0.05},
+                  'convergence': {'bands': 'CBM+3.0'},
+                  'nbands': '200%',
+                  'txt': 'gs.txt',
+                  'charge': 0}) -> ASRResult:
     """Calculate ground state file.
 
     This recipe saves the ground state to a file gs.gpw based on the structure
@@ -66,7 +65,7 @@ def webpanel(result, row, key_descriptions):
 
     parameter_description = entry_parameter_description(
         row.data,
-        'asr.gs@calculate',
+        'asr.moire.gs@calculate',
         exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
                           'idiotproof', 'maxiter', 'hund', 'random',
                           'experimental', 'basis', 'setups']))
@@ -112,7 +111,7 @@ def webpanel(result, row, key_descriptions):
 
     parameter_description = entry_parameter_description(
         row.data,
-        'asr.gs@calculate',
+        'asr.moire.gs@calculate',
         exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
                           'idiotproof', 'maxiter', 'hund', 'random',
                           'experimental', 'basis', 'setups']))
@@ -215,7 +214,7 @@ def gaps(calc, soc=True) -> GapsResult:
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.moire.magnetic_anisotropy import get_spin_axis
 
     if soc:
         ibzkpts = calc.get_bz_k_points()
@@ -276,7 +275,7 @@ def get_1bz_k(ibzkpts, calc, k_index):
 def get_gap_info(soc, direct, calc):
     from ase.dft.bandgap import bandgap
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.magnetic_anisotropy import get_spin_axis
+    from asr.moire.magnetic_anisotropy import get_spin_axis
     # e1 is VBM, e2 is CBM
     if soc:
         theta, phi = get_spin_axis()
@@ -466,10 +465,10 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.gs',
+@command(module='asr.moire.gs',
          requires=['gs.gpw', 'structure.json',
-                   'results-asr.magnetic_anisotropy.json'],
-         dependencies=['asr.gs@calculate', 'asr.magnetic_anisotropy',
+                   'results-asr.moire.magnetic_anisotropy.json'],
+         dependencies=['asr.moire.gs@calculate', 'asr.moire.magnetic_anisotropy',
                        'asr.structureinfo'],
          returns=Result)
 def main() -> Result:

@@ -11,7 +11,7 @@ import typing
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(calculator: dict = {
         'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
+        'mode': {'name': 'pw', 'ecut': 1200},
         'xc': 'PBE',
         'basis': 'dzp',
         'kpts': {'density': 12.0, 'gamma': True},
@@ -20,7 +20,7 @@ def calculate(calculator: dict = {
         'convergence': {'bands': 'CBM+3.0'},
         'nbands': '200%',
         'txt': 'gs.txt',
-        'maxiter': 333,
+        'maxiter': 666,
         'charge': 0}) -> ASRResult:
     """Calculate ground state file.
 

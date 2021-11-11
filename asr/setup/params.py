@@ -38,9 +38,10 @@ def main(params: Union[str, None] = None) -> ASRResult:
     if isinstance(params, (list, tuple)):
         # Find recipe:option
         tmpoptions = params[::2]
+        print(tmpoptions)
         tmpargs = params[1::2]
-        assert len(tmpoptions) == len(tmpargs), \
-            'You must provide a value for each option'
+        #assert len(tmpoptions) == len(tmpargs), \
+        #    'You must provide a value for each option'
         options = []
         args = []
         for tmpoption, tmparg in zip(tmpoptions, tmpargs):

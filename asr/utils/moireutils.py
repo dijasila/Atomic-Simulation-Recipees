@@ -22,7 +22,7 @@ def get_shifts(uid_a: Union[str, None] = None,
         json.dump(dct, out)
 
 
-def get_layers(atoms, center: bool = True):
+def get_layers(atoms, swap: bool = False):
     '''divide structure in top and bottom layer,
        according to tags and atoms positions along z.
 
@@ -33,18 +33,14 @@ def get_layers(atoms, center: bool = True):
     copy = atoms.copy()
     tags = copy.get_tags()
     unique = np.unique(tags)
-    err = f'A bilayer can only have 2 different values for tags! You have {len(unique)}'
-    assert len(unique) == 2, err
-    if center:
-        copy.center()
-    l1 = copy[tags == unique[0]]
-    l2 = copy[tags == unique[1]]
-    l1z = l1.positions[:, 2]
-    l2z = l2.positions[:, 2]
-    if np.all(l2z > l1z.max()):
+    assert len(unique) == 2, \
+        f'A bilayer can only have 2 different values for tags! You have {len(unique)}'
+
+    l1 = copy[tags == unique[1]]
+    l2 = copy[tags == unique[0]]
+    if swap:
         return l2, l1
-    else:
-        return l1, l2
+    return l1, l2
 
 
 class Bilayer(Atoms):
@@ -81,7 +77,7 @@ class Bilayer(Atoms):
         distance = ceiling - floor
         return distance
 
-    def set_interlayer_distance(self, distance: float, center: bool = True):
+    def set_interlayer_distance(self, distance: float):
         '''Sets interlayer distance according to the above definition'''
         current_distance = self.get_interlayer_distance()
         shift = distance - current_distance
@@ -89,8 +85,6 @@ class Bilayer(Atoms):
         top = self.top_layer.copy()
         top.translate([0, 0, shift])
         new = top + bottom
-        if center:
-            new.center()
         self.__init__(new)
 
     def sort_along_z(self, order: Union[list, str] = 'descending'):
@@ -102,7 +96,6 @@ class Bilayer(Atoms):
         '''
         sorter = np.argsort(self.positions[:, 2])
         old = self.copy()
-        new = old[sorter]
         new = old[sorter]
         if order == 'descending':
             new = new[::-1]
