@@ -189,7 +189,7 @@ class ASEDatabaseInterface:
         return self
 
     def __exit__(self, *args, **kwargs):
-        self.db.__exit__()
+        self.db.__exit__(*args, **kwargs)
 
 
 def connect(dbname: str) -> ASEDatabaseInterface:

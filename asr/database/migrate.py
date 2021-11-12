@@ -7,11 +7,9 @@ from asr.core.resultfile import get_resultfile_records_from_database_row
 
 
 def collapse_database(databasein: str, databaseout: str):
-    assert (
-        not databasein == databaseout
-    ), "Input and output databases cannot be identical."
+    assert_databases_not_identical(databasein, databaseout)
     dbin = connect(databasein)
-    assert not Path(databaseout).exists()
+    assert_database_doesnt_exist(databaseout)
     with connect(databaseout) as dbout:
         write_collapsed_database(dbin, dbout)
     copy_database_metadata(dbin, dbout)
@@ -74,11 +72,9 @@ def get_children_from_row(row: Row):
 
 
 def convert_database(databasein: str, databaseout: str):
-    assert (
-        not databasein == databaseout
-    ), "Input and output databases cannot be identical."
+    assert_databases_not_identical(databasein, databaseout)
+    assert_database_doesnt_exist(databaseout)
     dbin = connect(databasein)
-    assert not Path(databaseout).exists()
     with connect(databaseout) as dbout:
         write_converted_database(dbin, dbout)
     copy_database_metadata(dbin, dbout)
@@ -104,9 +100,21 @@ def write_converted_database(dbin, dbout):
 
 
 def migrate_database(databasein, databaseout):
+    assert_databases_not_identical(databasein, databaseout)
+    assert_database_doesnt_exist(databaseout)
     dbin = connect(databasein)
     with connect(databaseout) as dbout:
         write_migrated_database(dbin, dbout)
+
+
+def assert_databases_not_identical(databasein, databaseout):
+    assert (
+        not databasein == databaseout
+    ), "Input and output databases cannot be identical."
+
+
+def assert_database_doesnt_exist(database):
+    assert not Path(database).exists(), f"{database} already exists."
 
 
 def write_migrated_database(dbin, dbout):
@@ -125,8 +133,7 @@ def write_migrated_database(dbin, dbout):
         for record in records:
             cache.add(record)
         for record_migration in report.applicable_migrations:
-            print()
             record_migration.apply(cache)
         records = cache.select()
         write_row_with_new_data(dbout, row, records=records)
-        print(report.summary)
+        # print(report.summary)

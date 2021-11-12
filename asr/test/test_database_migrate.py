@@ -20,15 +20,15 @@ def database_to_be_collapsed():
 @pytest.mark.ci
 def test_collapse_database(database_to_be_collapsed, asr_tmpdir):
     assert len(database_to_be_collapsed) == 31
-    collapsed = connect("collapsed.db")
-    write_collapsed_database(database_to_be_collapsed, collapsed)
+    with connect("collapsed.db") as collapsed:
+        write_collapsed_database(database_to_be_collapsed, collapsed)
     assert len(collapsed) == 1
     row = collapsed.get(id=1)
     assert 'records' not in row.data
     assert 'records' not in row.row.data
 
-    converted = connect("converted.db")
-    write_converted_database(collapsed, converted)
+    with connect("converted.db") as converted:
+        write_converted_database(collapsed, converted)
     row = converted.get(id=1)
     assert "records" in row.data
 
@@ -39,6 +39,6 @@ def test_collapse_database(database_to_be_collapsed, asr_tmpdir):
     gwrecord = gwrecords[0]
 
     assert "asr.c2db.bandstructure:calculate" in gwrecord.parameters.dependency_parameters
-    migrated = connect("migrated.db")
-    write_migrated_database(converted, migrated)
+    with connect("migrated.db") as migrated:
+        write_migrated_database(converted, migrated)
     assert "records" in migrated.get(id=1).data
