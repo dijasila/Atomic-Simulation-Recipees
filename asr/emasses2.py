@@ -213,10 +213,10 @@ def find_extrema(cell_cv,
     ijk = eig_ijkn[..., 0].ravel().argmin()
     i, j, k = np.unravel_index(ijk, eig_ijkn.shape[:3])
     kmin_c = kpt_ijkc[i, j, k]
-    log(f'Found {kind} at approximately {k2str(kmin_c, cell_cv)}')
+    log(f'Found {kind} at approximately {kmin_c}')
     eig_n = eig_ijkn[i, j, k]
     if kind == 'vbm':
-        eig_n = eig_n[::-1]
+        eig_n = -eig_n[::-1]
     log(f'Eigenvalues at that k-point:\n  {eig_n} eV')
 
     a, b, c = (0 if size == 1 else npoints for size in kpt_ijkc.shape[:3])
@@ -334,7 +334,7 @@ class Fit3D:
         if k_v is None:
             k_v = np.zeros(self.dims)
 
-        result = minimize(f, k_v, jac=True)
+        result = minimize(f, k_v, jac=True, method='Newton-CG')
         return result.x
 
     def value(self, k_v):
@@ -390,9 +390,7 @@ def cli():
     else:
         kind = sys.argv[2]
         nbands = int(sys.argv[3])
-        with path.with_suffix(f'.{kind}.log').open('w') as log:
-            bands = main(path, kind, nbands,
-                         lambda *a, **k: print(*a, **k, file=log))
+        bands = main(path, kind, nbands)
         path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(bands))
 
 
