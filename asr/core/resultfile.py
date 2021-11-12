@@ -376,8 +376,11 @@ def get_dependency_matcher_from_name(
         'asr.c2db.exchange:calculate': ['asr.c2db.gs:calculate'],
         'asr.c2db.exchange': ['asr.c2db.exchange:calculate'],
         'asr.c2db.plasmafrequency:calculate': ['asr.c2db.gs:calculate'],
-        'asr.c2db.plasmafrequency': ['asr.c2db.plasmafrequency:calculate'],
-        'asr.c2db.shg': ['asr.c2db.gs:calculate'],
+        'asr.c2db.plasmafrequency': [
+            'asr.c2db.plasmafrequency:calculate',
+            'asr.c2db.gs',
+        ],
+        'asr.c2db.shg': ['asr.c2db.gs:calculate', 'asr.c2db.gs'],
         'asr.c2db.magstate': ['asr.c2db.gs:calculate'],
         'asr.c2db.fermisurface': ['asr.c2db.gs', 'asr.structureinfo'],
         'asr.c2db.magnetic_anisotropy': ['asr.c2db.gs:calculate',
