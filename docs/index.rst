@@ -45,6 +45,18 @@ First time here: :ref:`Getting started`
    works... <https://www.youtube.com/watch?v=azf6yzuJt54>`_" for a
    detailed explanation of this division.
 
+.. Admonition:: Check out the related article at
+
+    `Atomic Simulation Recipes – A Python framework and library for automated workflows`__
+
+    M. Gjerding, T. Skovhus, A. Rasmussen, F. Bertoldo, A. H. Larsen,
+    J. J. Mortensen, K. S. Thygesen 
+    
+    Computational materials science, 199, 110731 (2021)
+
+    __ https://doi.org/10.1016/j.commatsci.2021.110731 
+
+
 Indices and tables
 ==================
 * :ref:`genindex`

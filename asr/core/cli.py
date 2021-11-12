@@ -101,6 +101,8 @@ def init(directories):
     from .root import Repository
     if not directories:
         directories = [Path('.')]
+    else:
+        directories = [Path(drty) for drty in directories]
     for directory in directories:
         Repository.initialize(directory)
 
@@ -1000,15 +1002,15 @@ def totree(
 
 @database.command()
 @click.argument("databases", nargs=-1, type=str)
-@click.option("--host", help="Host address.", type=str, default='0.0.0.0')
+@click.option("--host", help="Host address.", type=str, default='localhost')
 @click.option("--test", is_flag=True, help="Test the app.")
 @click.option("--extra_kvp_descriptions", type=str,
               help='File containing extra kvp descriptions for info.json')
 def app(databases, host, test, extra_kvp_descriptions):
     """Run the database web app."""
     from asr.database.app import main
-    main(databases=databases, host=host, test=test,
-         extra_kvp_descriptions=extra_kvp_descriptions)
+    main(filenames=databases, host=host, test=test,
+         extra_kvp_descriptions_file=extra_kvp_descriptions)
 
 
 @database.command()

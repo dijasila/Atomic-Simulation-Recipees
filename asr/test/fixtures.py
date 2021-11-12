@@ -91,22 +91,23 @@ def asr_tmpdir(request, tmp_path_factory):
         yield path
 
 
-def _get_webcontent(dbname='database.db'):
+def _get_webcontent(dbname="database.db"):
     from asr.database.fromtree import main as fromtree
     # from asr.database.material_fingerprint import main as mf
 
     # mf()
     fromtree(recursive=True)
     content = ""
-    from asr.database.app import ASRDBApp
-
+    from asr.database import DatabaseProject, App
     if world.rank == 0:
+        dbapp = App()
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
-        dbapp = ASRDBApp(tmpdir)
-        dbapp.initialize_project(dbname)
+        project = DatabaseProject.from_database(dbname)
+        project.tmpdir = tmpdir
+        dbapp.add_project(project)
+        dbapp.initialize()
         flask = dbapp.flask
-
         flask.testing = True
         with flask.test_client() as c:
             project = dbapp.projects["database.db"]
@@ -116,11 +117,7 @@ def _get_webcontent(dbname='database.db'):
             uid = row.get(uid_key)
             url = f"/database.db/row/{uid}"
             content = c.get(url).data.decode()
-            content = (
-                content
-                .replace("\n", "")
-                .replace(" ", "")
-            )
+            content = content.replace("\n", "").replace(" ", "")
     else:
         content = None
     content = broadcast(content)
@@ -299,3 +296,12 @@ def crosslinks_test_dbs(asr_tmpdir):
                       'link_url': 'testref/testref/{row.uid}'}
 
     return None
+
+
+@pytest.fixture
+def database_with_one_row(asr_tmpdir):
+    from ase.db import connect
+    from asr.test.materials import Ag
+    database = connect("test_database.db")
+    database.write(Ag)
+    return database
