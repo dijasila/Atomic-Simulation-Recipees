@@ -100,12 +100,13 @@ class App(DBApp):
                 ),
             )
 
-        @route("/<project>/file/<uid>/<name>")
-        def file(project, uid, name):
-            assert project in self.projects
+        @route("/<project_name>/file/<uid>/<name>")
+        def file(project_name, uid, name):
+            assert project_name in self.projects
+            project = self.projects[project_name]
             if project.tmpdir is None:
                 abort(Response("Project has no tmpdir, cannot locate file."))
-            path = project.tmpdir / f"{project}/{uid}-{name}"
+            path = project.tmpdir / f"{project_name}/{uid}-{name}"
             return send_file(str(path))
 
         @self.flask.template_filter()
