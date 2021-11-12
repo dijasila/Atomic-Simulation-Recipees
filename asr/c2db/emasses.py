@@ -835,12 +835,21 @@ sel.name = sel.EQ('asr.c2db.emasses:main')
 @asr.migration(selector=sel)
 def prepare_parameters_for_version_0_migration(record):
     """Prepare record for version 0 migration."""
-    record.parameters.settings = {
-        'erange1': 250e-3,
-        'nkpts1': 19,
-        'erange2': 1e-3,
-        'nkpts2': 9,
-    }
+    if "settings" in record.parameters:
+        for dep_params in record.parameters.dependency_parameters.values():
+            if 'settings' in dep_params:
+                del dep_params['settings']
+    else:
+        for dep_params in record.parameters.dependency_parameters.values():
+            if 'settings' in dep_params:
+                break
+        else:
+            record.parameters.settings = {
+                'erange1': 250e-3,
+                'nkpts1': 19,
+                'erange2': 1e-3,
+                'nkpts2': 9,
+            }
 
     if 'gpwfilename' in record.parameters:
         del record.parameters.gpwfilename
@@ -1599,6 +1608,19 @@ def remove_gpwname_from_dependency_parameters(record):
     for name, params in dep_params.items():
         if 'gpwfilename' in params:
             del params['gpwfilename']
+    return record
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ("asr.c2db.emasses:refine")
+sel.parameters = sel.CONTAINS("gpwfilename")
+
+
+@asr.migration(selector=sel)
+def remove_gpwfilename_from_parameters(record):
+    """Remove gpwfilename from parameters."""
+    del record.parameters.gpwfilename
     return record
 
 

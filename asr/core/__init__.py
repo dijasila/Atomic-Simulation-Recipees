@@ -14,8 +14,7 @@ from .results import (ASRResult, prepare_result, WebPanelEncoder, dct_to_result,
                       encode_object, decode_result)  # noqa
 from .record import Record  # noqa
 from .specification import RunSpecification  # noqa
-from .command import (get_recipes, ASRCommand,  # noqa
-                      get_recipes)  # noqa
+from .command import get_recipes, ASRCommand  # noqa
 from .decorators import instruction, command, option, argument  # noqa 
 from .parameters import set_defaults, Parameters  # noqa
 from .cache import get_cache  # noqa
@@ -23,7 +22,7 @@ from .shortcuts import atomsopt, calcopt  # noqa
 from .selector import Selector  # noqa
 from .migrate import (  # noqa
     migration, Migration, SelectorMigrationGenerator, make_migration_generator,
-    RevisionHistory, Revision,
+    RevisionHistory, Revision, NonMigratableRecord,
 )  # noqa
 from .comparators import comparators  # noqa
 

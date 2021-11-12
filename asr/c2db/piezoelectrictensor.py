@@ -157,11 +157,16 @@ def add_relaxcalculator_parameter(record):
 @option('--strain-percent', help='Strain fraction.', type=float)
 @calcopt
 @asr.calcopt(aliases=['--relaxcalculator'], help='Calculator parameters.')
+@option('--fmax', help='Maximum force allowed.', type=float)
+@option('--enforce-symmetry/--dont-enforce-symmetry',
+        help='Symmetrize forces and stresses.', is_flag=True)
 def main(
         atoms: Atoms,
         strain_percent: float = 1,
         calculator: dict = formalpolarization.defaults.calculator,
         relaxcalculator: dict = relax.defaults.calculator,
+        fmax: float = relax.defaults.fmax,
+        enforce_symmetry: bool = True,
 ) -> Result:
     """Calculate piezoelectric tensor.
 
@@ -213,6 +218,8 @@ def main(
                         fixcell=True,
                         d3=False,
                         allow_symmetry_breaking=True,
+                        fmax=fmax,
+                        enforce_symmetry=enforce_symmetry,
                     )
                     atoms_for_pol = relaxres.atoms
 

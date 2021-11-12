@@ -13,8 +13,8 @@ from .history import History
 from .utils import compare_equal
 
 
-class UnapplicableMigration(Exception):
-    """Raise when migration doesn't apply."""
+class NonMigratableRecord(Exception):
+    """Raise when migration cannot be used to migrate a Record."""
 
 
 RecordUID = str
@@ -496,15 +496,15 @@ def migrate_record(
         if not candidate_migrations:
             break
 
-        migration = max(candidate_migrations, key=lambda mig: mig.eagerness)
+        candidate_migration = max(candidate_migrations, key=lambda mig: mig.eagerness)
         try:
-            revision = migration(migrated_record)
-            migrated_record = revision.apply(migrated_record)
-        except Exception as err:
-            problematic_migrations.append(migration)
-            errors.append((migration, err))
+            revision = candidate_migration(migrated_record)
+        except NonMigratableRecord:
+            problematic_migrations.append(candidate_migration)
+            errors.append((candidate_migration, err))
             continue
-        applied_migrations.append(migration)
+        migrated_record = revision.apply(migrated_record)
+        applied_migrations.append(candidate_migration)
         revisions.append(revision)
     return RecordMigration(
         initial_record=record,
@@ -649,6 +649,7 @@ def make_record_migrations(
         make_migrations = get_migration_generator()
     record_migrations = []
     for record in records:
+        print(record.name)
         record_migration = migrate_record(record, make_migrations)
         record_migrations.append(record_migration)
     return record_migrations

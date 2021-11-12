@@ -210,6 +210,10 @@ def transform_stiffness_resultfile_record(record):
     for param in delparams:
         if param in relax_dep_params:
             del relax_dep_params[param]
+    if "fmax" not in relax_dep_params:
+        record.parameters.fmax = 0.01  # 0.01 is a historical constant
+    if "enforce_symmetry" not in relax_dep_params:
+        record.parameters.enforce_symmetry = True  # True because of history
     return record
 
 
@@ -221,10 +225,15 @@ def transform_stiffness_resultfile_record(record):
 @asr.calcopt
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
+@option('--fmax', help='Maximum force allowed.', type=float)
+@option('--enforce-symmetry/--dont-enforce-symmetry',
+        help='Symmetrize forces and stresses.', is_flag=True)
 def main(atoms: Atoms,
          calculator: dict = relax.defaults.calculator,
          strain_percent: float = 1.0,
-         d3: bool = False) -> Result:
+         d3: bool = False,
+         fmax: float = relax.defaults.fmax,
+         enforce_symmetry: bool = True) -> Result:
     """Calculate stiffness tensor."""
     from asr.setup.strains import main as make_strained_atoms
     from asr.setup.strains import get_relevant_strains
@@ -249,6 +258,9 @@ def main(atoms: Atoms,
                 calculator=calculator,
                 fixcell=True,
                 allow_symmetry_breaking=True,
+                d3=d3,
+                fmax=fmax,
+                enforce_symmetry=enforce_symmetry,
             )
             stress = relaxresult.stress
             dstress += stress * sign

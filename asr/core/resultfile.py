@@ -634,8 +634,6 @@ for key, value in TMP_DEFAULTS.items():
         )
     ] = value
 
-assert 'asr.c2db.structureinfo:main' not in OLD_DEFAULTS, OLD_DEFAULTS.keys()
-
 
 def update_resultfile_record_to_version_0(record):
     default_params = OLD_DEFAULTS[record.name]
@@ -671,10 +669,15 @@ def update_resultfile_record_to_version_0(record):
         candidate_dependencies = find_dep_names_with_params_matching_key(
             dep_params, key,
         )
-        assert len(candidate_dependencies) < 2
         if candidate_dependencies:
             dependency = candidate_dependencies[0]
-            new_parameters[key] = dep_params[dependency][key]
+            dep_value = dep_params[dependency][key]
+            if len(candidate_dependencies) > 1:
+                assert all(
+                    dep_value == dep_params[cand_dep][key]
+                    for cand_dep in candidate_dependencies[1:]
+                )
+            new_parameters[key] = dep_value
             unused_dependency_params[dependency].remove(key)
         else:
             missing_params.add(key)
