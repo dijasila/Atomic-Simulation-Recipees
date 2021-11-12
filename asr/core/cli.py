@@ -15,6 +15,30 @@ from ase.parallel import parprint
 import asr
 from asr.core import (ASRCommand, ASRResult, CommaStr, DictStr, chdir,
                       get_cache, get_recipes, set_defaults)
+from asr.core.cache import MemoryBackend, Cache
+
+
+selection_argument = click.argument('selection', required=False, nargs=-1)
+
+formatting_option = click.option(
+    '-f', '--formatting',
+    default='run_specification.name run_specification.parameters result ',
+    type=str,
+)
+
+sorting_option = click.option(
+    '-s', '--sort',
+    default='run_specification.name',
+    type=str,
+)
+
+
+width_option = click.option(
+    '-w', '--width',
+    default=40, type=int,
+    help='Maximum width of column.',
+)
+
 
 prt = partial(parprint, flush=True)
 
@@ -435,8 +459,10 @@ def add_resultfile_records(directories):
                 cache.add(record)
 
 
+
+
 @cache.command()
-@click.argument('selection', required=False, nargs=-1)
+@selection_argument
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 @click.option('-v', '--verbose', is_flag=True, help='Apply migrations.')
 @click.option('-e', '--show-errors', is_flag=True,
@@ -504,24 +530,19 @@ def make_selector_from_selection(cache, selection):
 
 
 @cache.command()
-@click.argument('selection', required=False, nargs=-1)
-@click.option('-f', '--formatting',
-              default=('run_specification.name '
-                       'run_specification.parameters '
-                       'result '
-                       ), type=str)
-@click.option('-s', '--sort',
-              default='run_specification.name', type=str)
-@click.option('-w', '--width', default=40, type=int,
-              help='Maximum width of column.')
-@click.option('-i', '--include-migrated', is_flag=True,
-              help='Also include migrated records.')
-def ls(selection, formatting, sort, width, include_migrated):
+@selection_argument
+@formatting_option
+@sorting_option
+@width_option
+def ls(selection, formatting, sort, width):
     """List records in cache."""
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
-
     records = cache.select(selector=selector)
+    print_record_details(formatting, sort, width, records)
+
+
+def print_record_details(formatting, sort, width, records):
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()
     formats = []
@@ -559,7 +580,7 @@ def ls(selection, formatting, sort, width, include_migrated):
 
 
 @cache.command()
-@click.argument('selection', required=False, nargs=-1)
+@selection_argument
 @click.option('-z', '--dry-run', is_flag=True,
               help='Print what will happen without doing anything.')
 def rm(selection, dry_run):
@@ -582,7 +603,7 @@ def rm(selection, dry_run):
 
 
 @cache.command()
-@click.argument('selection', required=False, nargs=-1)
+@selection_argument
 def detail(selection):
     """Detail records."""
     cache = get_cache()
@@ -808,6 +829,57 @@ def results(selection, show):
 @cli.group()
 def database():
     """ASR material project database."""
+
+
+@database.group(name="cache")
+def db_cache():
+    """Inspect caches in database rows."""
+    pass
+
+
+@db_cache.command(name="ls")
+@click.argument("database")
+@click.option("--db-selection", help="ASE DB query.")
+@selection_argument
+@formatting_option
+@width_option
+@sorting_option
+def db_cache_ls(database, db_selection, selection, formatting, width, sort):
+    from asr.database import connect
+    db = connect(database)
+    rows = db.select(db_selection)
+    for row in rows:
+        print(f"Showing records for row.id={row.id}")
+        records = get_record_selection_from_row(selection, row)
+
+        print_record_details(
+            formatting, sort, width, records,
+        )
+
+
+def get_record_selection_from_row(selection, row):
+    records = row.records
+    cache = Cache(backend=MemoryBackend())
+    for record in records:
+        cache.add(record)
+    selector = make_selector_from_selection(cache, selection)
+    records = cache.select(selector=selector)
+    return records
+
+
+@db_cache.command(name="detail")
+@click.argument("database")
+@click.option("--db-selection", help="ASE DB query.")
+@selection_argument
+def db_cache_detail(database, db_selection, selection):
+    from asr.database import connect
+    db = connect(database)
+    rows = db.select(db_selection)
+    for row in rows:
+        print(f"Showing records for row.id={row.id}")
+        records = get_record_selection_from_row(selection, row)
+        for record in records:
+            print(record)
 
 
 @database.command()
