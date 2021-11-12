@@ -459,8 +459,6 @@ def add_resultfile_records(directories):
                 cache.add(record)
 
 
-
-
 @cache.command()
 @selection_argument
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')

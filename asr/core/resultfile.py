@@ -716,6 +716,7 @@ def update_resultfile_record_to_version_0(record):
     record.version = 0
     return record
 
+
 def find_dep_names_with_params_matching_key(dep_params, key):
     candidate_dependencies = []
     for depname, recipedepparams in dep_params.items():

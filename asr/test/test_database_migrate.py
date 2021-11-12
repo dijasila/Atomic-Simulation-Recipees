@@ -38,7 +38,8 @@ def test_collapse_database(database_to_be_collapsed, asr_tmpdir):
 
     gwrecord = gwrecords[0]
 
-    assert "asr.c2db.bandstructure:calculate" in gwrecord.parameters.dependency_parameters
+    assert "asr.c2db.bandstructure:calculate" in \
+        gwrecord.parameters.dependency_parameters
     with connect("migrated.db") as migrated:
         write_migrated_database(converted, migrated)
     assert "records" in migrated.get(id=1).data
