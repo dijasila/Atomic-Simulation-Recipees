@@ -43,7 +43,6 @@ def main(
     mingo,
     eta,
     qcut,
-    microvolume,
     maxband,
     kptdensity,
     borncalculator,
@@ -112,11 +111,11 @@ def main(
     volume = pair.vol
     eta = eta / Hartree
     eps = epsmac
-    ZBM = (volume * eps * (0.00299 ** 2 - 0.00139 ** 2) / (4 * np.pi)) ** (1 / 2)
+    zbm = (volume * eps * (0.00299 ** 2 - 0.00139 ** 2) / (4 * np.pi)) ** (1 / 2)
 
-    freqTO = omega_kl[0, mode] / Hartree
-    freqLO = (freqTO ** 2 + 4 * np.pi * ZBM ** 2 / (eps * volume)) ** (1 / 2)
-    freqLO2 = freqLO ** 2
+    freq_to = omega_kl[0, mode] / Hartree
+    freq_lo = (freq_to ** 2 + 4 * np.pi * zbm ** 2 / (eps * volume)) ** (1 / 2)
+    freq_lo2 = freq_lo ** 2
 
     # q-dependency
     offset_c = 0.5 * ((N_c + 1) % 2) / N_c
@@ -131,7 +130,7 @@ def main(
 
     mybzq_qc = bzq_qc[world.rank :: world.size]
 
-    prefactor = -(((4 * np.pi * ZBM) / eps) ** 2) / (volume ** 2 * nqtot)
+    prefactor = -(((4 * np.pi * zbm) / eps) ** 2) / (volume ** 2 * nqtot)
 
     sigmalat_nk = np.zeros([nall, nikpts], dtype=complex)
     iq = 0
@@ -167,7 +166,7 @@ def main(
                 pairrho2_nm = np.abs(pairrho_nmG[:, :, 0]) ** 2 / q2abs
 
             deps0_nm = deps0_nm - 1j * eta
-            corr_n = np.sum(pairrho2_nm / (deps0_nm ** 2 - freqLO2), axis=1)
+            corr_n = np.sum(pairrho2_nm / (deps0_nm ** 2 - freq_lo2), axis=1)
             sigmalat_nk[:, k] += corr_n
 
     world.sum(sigmalat_nk)
