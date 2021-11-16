@@ -670,24 +670,19 @@ def update_resultfile_record_to_version_0(record):
             dep_names, dep_values = find_deps_matching_key(
                 dep_params, key,
             )
-        if candidate_dependencies:
-            dependency = candidate_dependencies[0]
-            dep_value = dep_params[dependency][key]
-            if len(candidate_dependencies) > 1:
-                assert all(
-                    dep_value == dep_params[cand_dep][key]
-                    for cand_dep in candidate_dependencies[1:]
-                )
-            new_parameters[key] = dep_value
-            unused_dependency_params[dependency].remove(key)
-        else:
+            if dep_values:
+                check_all_values_equal(dep_values)
+                new_parameters[key] = dep_values[0]
+            for dependency in dep_names:
+                unused_dependency_params[dependency].remove(key)
+        except KeyError:
             missing_params.add(key)
 
     unused_old_params.remove('atomic_structures')
     unused_old_params -= set(['dependency_parameters'])
     unused_dependency_params = {
-        value
-        for values in unused_dependency_params.values()
+        (name, value)
+        for name, values in unused_dependency_params.items()
         for value in values
         if value != 'atomic_structures'
     }
@@ -721,12 +716,24 @@ def update_resultfile_record_to_version_0(record):
     return record
 
 
-def find_dep_names_with_params_matching_key(dep_params, key):
-    candidate_dependencies = []
+def check_all_values_equal(values):
+    first_value = values[0]
+    assert all(
+        first_value == other_value
+        for other_value in values[1:]
+    )
+
+
+def find_deps_matching_key(dep_params, key):
+    candidate_dependency_names = []
+    candidate_dependency_values = []
     for depname, recipedepparams in dep_params.items():
-        if key in recipedepparams:
-            candidate_dependencies.append(depname)
-    return candidate_dependencies
+        try:
+            candidate_dependency_values.append(recipedepparams[key])
+        except KeyError:
+            continue
+        candidate_dependency_names.append(depname)
+    return candidate_dependency_names, candidate_dependency_values
 
 
 def get_defaults_from_all_recipes():
