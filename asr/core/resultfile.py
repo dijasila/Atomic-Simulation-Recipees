@@ -666,9 +666,10 @@ def update_resultfile_record_to_version_0(record):
             new_parameters[key] = parameters.atomic_structures[atomsfilename]
             continue
 
-        candidate_dependencies = find_dep_names_with_params_matching_key(
-            dep_params, key,
-        )
+        try:
+            dep_names, dep_values = find_deps_matching_key(
+                dep_params, key,
+            )
         if candidate_dependencies:
             dependency = candidate_dependencies[0]
             dep_value = dep_params[dependency][key]
