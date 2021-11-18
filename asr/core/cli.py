@@ -846,13 +846,17 @@ def db_cache_ls(database, db_selection, selection, formatting, width, sort):
     from asr.database import connect
     db = connect(database)
     rows = db.select(db_selection)
+    found_anything = False
     for row in rows:
-        print(f"Showing records for row.id={row.id}")
         records = get_record_selection_from_row(selection, row)
-
-        print_record_details(
-            formatting, sort, width, records,
-        )
+        if records:
+            found_anything = True
+            print(f"Showing records for row.id={row.id}")
+            print_record_details(
+                formatting, sort, width, records,
+            )
+    if not found_anything:
+        print("Found no records matching query in any rows.")
 
 
 def get_record_selection_from_row(selection, row):

@@ -56,7 +56,7 @@ def webpanel(result, context):
     if gsresults['gap'] > 0.01:
         return []
 
-    assert 'plasmafrequency_x1' in result
+    assert 'plasmafrequency_x' in result
     plasmatable = table(result, 'Property', [
         'plasmafrequency_x', 'plasmafrequency_y'], context.descriptions)
 

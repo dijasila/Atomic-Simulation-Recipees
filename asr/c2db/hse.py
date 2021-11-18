@@ -435,5 +435,43 @@ def main(
     return Result(data=results)
 
 
+sel = asr.Selector()
+sel.name = sel.EQ("asr.c2db.hse:main")
+sel.version = sel.EQ(-1)
+
+
+@asr.migration(selector=sel)
+def add_missing_hse_keys(record: asr.Record) -> asr.Record:
+    """Add missing keys in old HSE results."""
+    res = record.result
+    if isinstance(res, ASRResult):
+        data = res.data
+    else:
+        assert isinstance(res, dict)
+        data = res
+
+    keys_and_values = [
+        "vbm_hse_nosoc", None,
+        "cbm_hse_nosoc", None,
+        "gap_dir_hse_nosoc", 0,
+        "gap_hse_nosoc", 0,
+        "kvbm_nosoc", None,
+        "kcbm_nosoc", None,
+        "vbm_hse", None,
+        "cbm_hse", None,
+        "gap_dir_hse", 0,
+        "gap_hse", 0,
+        "kvbm", None,
+        "kcbm", None,
+    ]
+
+    for key, default_value in zip(keys_and_values[::2], keys_and_values[1::2]):
+        if key not in data:
+            data[key] = default_value
+    new_result = Result.fromdata(**data)
+    record.result = new_result
+    return record
+
+
 if __name__ == '__main__':
     main.cli()

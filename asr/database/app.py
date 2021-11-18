@@ -397,6 +397,7 @@ def get_key_descriptions_from_file(extra_kvp_descriptions_file):
 def check_rows_of_all_projects(dbapp):
     import traceback
 
+    dbapp.initialize()
     flask = dbapp.flask
     projects = dbapp.projects
 

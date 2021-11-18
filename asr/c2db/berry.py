@@ -318,15 +318,24 @@ def main(
 
 
 sel = asr.Selector()
-sel.name = sel.EQ("asr.c2db.berry:calculate")
+sel.name = sel.OR(
+    sel.EQ("asr.c2db.berry:calculate"),
+    sel.EQ("asr.c2db.berry:main"),
+)
 sel.version = sel.EQ(-1)
 
 
 @asr.migration(selector=sel)
 def remove_gs_param(record: asr.Record) -> asr.Record:
-    """Remove "gs" parameter from record."""
-    if "gs" in record.parameters:
-        del record.parameters["gs"]
+    """Remove "gs" parameter from record parameters and de_params."""
+    params = record.parameters
+    if "gs" in params:
+        del params["gs"]
+    dep_params = params.dependency_parameters
+    try:
+        del dep_params["asr.c2db.berry:calculate"]["gs"]
+    except (KeyError, AttributeError):
+        pass
     return record
 
 

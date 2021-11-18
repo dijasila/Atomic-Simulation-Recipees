@@ -505,13 +505,17 @@ def plot(context, fname):
         hull = np.array(hull)
         hull = np.array(hull_energies) < 0.05
         names = [ref['label'] for ref in references]
-        latexnames = [
-            format(
-                Formula(name.split(' ')[0]).reduce()[0],
-                'latex'
-            )
-            for name in names
-        ]
+        latexnames = []
+        for name in names:
+            try:
+                pretty = format(
+                    Formula(name.split(' ')[0]).reduce()[0],
+                    'latex'
+                )
+            except ValueError:
+                pretty = name
+            latexnames.append(pretty)
+
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
         edgecolors = ['C2' if hull_energy < 0.05 else 'C3'

@@ -356,8 +356,8 @@ def get_dependency_matcher_from_name(
             'asr.c2db.emasses:refine', 'asr.c2db.gs:calculate',
             'asr.c2db.gs', 'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
         'asr.c2db.emasses:validate': ['asr.c2db.emasses'],
-        'asr.berry:calculate': ['asr.c2db.gs'],
-        'asr.berry': ['asr.berry:calculate'],
+        'asr.c2db.berry:calculate': ['asr.c2db.gs'],
+        'asr.c2db.berry': ['asr.c2db.berry:calculate', 'asr.c2db.gs'],
         'asr.c2db.gw:gs': ['asr.c2db.gs:calculate'],
         'asr.c2db.gw:gw': ['asr.c2db.gw:gs'],
         'asr.c2db.gw:empirical_mean_z': ['asr.c2db.gw:gw'],
@@ -374,7 +374,7 @@ def get_dependency_matcher_from_name(
             'asr.structureinfo', 'asr.c2db.gs:calculate', 'asr.c2db.gs'],
         'asr.c2db.hse': ['asr.c2db.hse:calculate', 'asr.c2db.bandstructure'],
         'asr.c2db.exchange:calculate': ['asr.c2db.gs:calculate'],
-        'asr.c2db.exchange': ['asr.c2db.exchange:calculate'],
+        'asr.c2db.exchange': ['asr.c2db.gs:main'],
         'asr.c2db.plasmafrequency:calculate': ['asr.c2db.gs:calculate'],
         'asr.c2db.plasmafrequency': [
             'asr.c2db.plasmafrequency:calculate',
@@ -409,7 +409,8 @@ def get_dependency_matcher_from_name(
     deps = {add_main_to_name_if_missing(key): value for key, value in deps.items()}
     dependencies = []
     for dep in deps.get(name, []):
-        dep = add_main_to_name_if_missing(dep)
+        dep = fix_recipe_name_if_recipe_has_been_moved(
+            add_main_to_name_if_missing(dep))
         dependencies.append(dep)
 
     return make_dependency_matcher(dependencies, "recipename")
@@ -720,9 +721,9 @@ def update_resultfile_record_to_version_0(record):
 
 
 def remove_matching_dependency_params(
-    dep_params, 
-    unused_dependency_params, 
-    key, 
+    dep_params,
+    unused_dependency_params,
+    key,
     param_value,
 ):
     dep_names, dep_values = find_deps_matching_key(dep_params, key)

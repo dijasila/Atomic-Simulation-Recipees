@@ -521,7 +521,7 @@ def generate_plots(context, prefix, plot_descriptions, pool):
                 args = [function, context] + strpaths
 
                 try:
-                    if pool is None:
+                    if pool in [False, None]:
                         runplot_clean(*args)
                     else:
                         # The app uses threads, and we cannot call matplotlib
