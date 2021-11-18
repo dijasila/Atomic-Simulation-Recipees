@@ -15,6 +15,7 @@ from asr.core import (  # noqa
     Dependencies,
     RevisionHistory,
     Metadata,
+    NonMigratableRecord,
 )
 
 matchers = comparators
