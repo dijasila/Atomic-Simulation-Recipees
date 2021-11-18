@@ -627,10 +627,10 @@ def get_resultfile_migration_generator() -> SelectorMigrationGenerator:
 PATH = pathlib.Path(__file__).parent / 'old_resultfile_defaults.json'
 TMP_DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 OLD_DEFAULTS: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
-for key, value in TMP_DEFAULTS.items():
+for tmpkey, value in TMP_DEFAULTS.items():
     OLD_DEFAULTS[
         add_main_to_name_if_missing(
-            fix_recipe_name_if_recipe_has_been_moved(key)
+            fix_recipe_name_if_recipe_has_been_moved(tmpkey)
         )
     ] = value
 
@@ -658,23 +658,26 @@ def update_resultfile_record_to_version_0(record):
     new_parameters = Parameters({})
     for key in sig_parameters:
         if key in parameters:
-            new_parameters[key] = parameters[key]
+            param_value = parameters[key]
+            new_parameters[key] = param_value
             unused_old_params.remove(key)
+            remove_matching_dependency_params(
+                dep_params, unused_dependency_params, key, param_value)
             continue
         elif key == 'atoms':
             # Atoms are treated differently
             new_parameters[key] = parameters.atomic_structures[atomsfilename]
             continue
-
         try:
             dep_names, dep_values = find_deps_matching_key(
                 dep_params, key,
             )
             if dep_values:
-                check_all_values_equal(dep_values)
+                if not all_values_equal(dep_values):
+                    raise AssertionError
                 new_parameters[key] = dep_values[0]
             for dependency in dep_names:
-                unused_dependency_params[dependency].remove(key)
+                remove_dependency_param(unused_dependency_params, key, dependency)
         except KeyError:
             missing_params.add(key)
 
@@ -716,9 +719,22 @@ def update_resultfile_record_to_version_0(record):
     return record
 
 
-def check_all_values_equal(values):
+def remove_matching_dependency_params(
+    dep_params, 
+    unused_dependency_params, 
+    key, 
+    param_value,
+):
+    dep_names, dep_values = find_deps_matching_key(dep_params, key)
+    for dep_name, dep_value in zip(dep_names, dep_values):
+        if dep_value == param_value:
+            remove_dependency_param(
+                unused_dependency_params, key, dep_name)
+
+
+def all_values_equal(values):
     first_value = values[0]
-    assert all(
+    return all(
         first_value == other_value
         for other_value in values[1:]
     )
@@ -748,3 +764,6 @@ if __name__ == '__main__':
     defaults = get_defaults_from_all_recipes()
     jsontxt = JSONSerializer().serialize(defaults)
     write_file(PATH, jsontxt)
+
+def remove_dependency_param(unused_dependency_params, key, dependency):
+    unused_dependency_params[dependency].remove(key)

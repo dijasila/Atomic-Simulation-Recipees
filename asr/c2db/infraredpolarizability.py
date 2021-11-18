@@ -143,13 +143,6 @@ class Result(ASRResult):
 
 sel = Selector()
 sel.version = sel.EQ(-1)
-sel.parameters = sel.NOT(
-    sel.ANY(
-        sel.CONTAINS('bandfactor'),
-        sel.CONTAINS('xc'),
-        sel.CONTAINS('phononcalculator'),
-    )
-)
 sel.name = sel.EQ('asr.c2db.infraredpolarizability:main')
 
 
@@ -160,39 +153,55 @@ def prepare_for_resultfile_migration(record):
         'asr.c2db.phonons:calculate']
     fconverge = phononpar['fconverge']
     del phononpar['fconverge']
-    record.parameters.bandfactor = 5
-    record.parameters.xc = 'RPA'
-    record.parameters.phononcalculator = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
-        'xc': 'PBE',
-        'kpts': {'density': 6.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'forces': fconverge},
-        'symmetry': {'point_group': False},
-        'nbands': '200%',
-        'txt': 'phonons.txt',
-        'charge': 0,
-    }
-    record.parameters.borncalculator = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
-        'xc': 'PBE',
-        'kpts': {'density': 12.0},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'symmetry': 'off',
-        'convergence': {'eigenstates': 1e-11,
-                        'density': 1e-7},
-        'txt': 'formalpol.txt',
-        'charge': 0,
-    }
+    phononecut = phononpar['ecut']
+    del phononpar['ecut']
+    phononekptdens = phononpar['kptdensity']
+    del phononpar['kptdensity']
+    if 'phononcalculator' not in record.parameters:
+        record.parameters.phononcalculator = {
+            'name': 'gpaw',
+            'mode': {'name': 'pw', 'ecut': phononecut},
+            'xc': 'PBE',
+            'kpts': {'density': phononekptdens, 'gamma': True},
+            'occupations': {'name': 'fermi-dirac',
+                            'width': 0.05},
+            'convergence': {'forces': fconverge},
+            'symmetry': {'point_group': False},
+            'nbands': '200%',
+            'txt': 'phonons.txt',
+            'charge': 0,
+        }
+    if 'borncalculator' not in record.parameters:
+        record.parameters.borncalculator = {
+            'name': 'gpaw',
+            'mode': {'name': 'pw', 'ecut': 800},
+            'xc': 'PBE',
+            'kpts': {'density': 12.0},
+            'occupations': {'name': 'fermi-dirac',
+                            'width': 0.05},
+            'symmetry': 'off',
+            'convergence': {'eigenstates': 1e-11,
+                            'density': 1e-7},
+            'txt': 'formalpol.txt',
+            'charge': 0,
+        }
     record.parameters.polarizabilitycalculator = \
         record.parameters.dependency_parameters[
             'asr.c2db.gs:calculate']['calculator']
     del record.parameters.dependency_parameters[
         'asr.c2db.gs:calculate']['calculator']
+
+    params = record.parameters
+    dep_params = record.parameters.dependency_parameters
+    if 'gs' in dep_params["asr.c2db.polarizability:main"]:
+        del dep_params["asr.c2db.polarizability:main"]["gs"]
+    if 'bandfactor' in params:
+        try:
+            del dep_params["asr.c2db.polarizability:main"]["bandfactor"]
+        except KeyError:
+            pass
+    if 'xc' in params:
+        del dep_params["asr.c2db.polarizability:main"]["xc"]
     return record
 
 

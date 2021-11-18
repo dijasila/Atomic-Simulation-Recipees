@@ -6,6 +6,7 @@ from click import Choice
 import numpy as np
 from ase import Atoms
 
+import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt,
     calcopt)
@@ -317,6 +318,19 @@ def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
     fig = ax.get_figure()
     fig.tight_layout()
     fig.savefig(filename)
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ("asr.c2db.polarizability:main")
+sel.parameters = sel.CONTAINS("gs")
+
+
+@asr.migration(selector=sel)
+def remove_gs_parameter(record):
+    """Remove "gs" parameter."""
+    del record.parameters["gs"]
+    return record
 
 
 if __name__ == '__main__':

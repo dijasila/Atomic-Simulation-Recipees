@@ -40,6 +40,9 @@ class Modification:
     def __str__(self):
         return '\n'.join(str(diff) for diff in self.differences)
 
+    def __bool__(self):
+        return bool(self.differences)
+
 
 @dataclass
 class Difference(abc.ABC):
@@ -297,6 +300,9 @@ class Revision:
                 value = '\n' + textwrap.indent(value, ' ')
             lines.append(f'{key}={value}')
         return '\n'.join(lines)
+    
+    def __bool__(self):
+        return bool(self.modification)
 
 
 @dataclass
@@ -437,7 +443,7 @@ class RecordMigration:
     initial_record: Record
     migrated_record: Record
     revisions: typing.List[Revision]
-    errors: typing.List[typing.Tuple[Migration, Exception]]
+    errors: typing.List[typing.Tuple[Migration, NonMigratableRecord]]
 
     def has_revisions(self):
         """Has migrations to apply."""
@@ -499,12 +505,14 @@ def migrate_record(
         candidate_migration = max(candidate_migrations, key=lambda mig: mig.eagerness)
         try:
             revision = candidate_migration(migrated_record)
-        except NonMigratableRecord:
+        except NonMigratableRecord as err:
             problematic_migrations.append(candidate_migration)
             errors.append((candidate_migration, err))
             continue
-        migrated_record = revision.apply(migrated_record)
         applied_migrations.append(candidate_migration)
+#         if not revision:
+#             continue
+        migrated_record = revision.apply(migrated_record)
         revisions.append(revision)
     return RecordMigration(
         initial_record=record,
@@ -649,7 +657,6 @@ def make_record_migrations(
         make_migrations = get_migration_generator()
     record_migrations = []
     for record in records:
-        print(record.name)
         record_migration = migrate_record(record, make_migrations)
         record_migrations.append(record_migration)
     return record_migrations

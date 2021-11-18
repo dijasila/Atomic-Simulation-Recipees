@@ -47,26 +47,6 @@ def set_default(settings):
         settings['nkpts2'] = 9
 
 
-sel = asr.Selector()
-sel.name = sel.EQ('asr.c2db.emasses:refine')
-sel.version = sel.EQ(-1)
-sel.parameters = sel.AND(
-    sel.NOT(sel.CONTAINS('settings')),
-    sel.CONTAINS('gpwfilename')
-)
-
-
-@asr.migration(selector=sel)
-def add_settings_parameter_remove_gpwfilename(record):
-    """Add settings parameter and remove gpwfilename."""
-    record.parameters.settings = {
-        'erange1': 250e-3,
-        'nkpts1': 19,
-        'erange2': 1e-3,
-        'nkpts2': 9,
-    }
-    del record.parameters.gpwfilename
-    return record
 
 
 @command(
@@ -1575,53 +1555,6 @@ class ValidateResult(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-sel = asr.Selector()
-sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.c2db.emasses:validate')
-sel.parameters = sel.NOT(sel.CONTAINS('settings'))
-
-
-@asr.migration(selector=sel)
-def add_settings_parameter(record):
-    """Add settings parameter."""
-    record.parameters.settings = {
-        'erange1': 250e-3,
-        'nkpts1': 19,
-        'erange2': 1e-3,
-        'nkpts2': 9,
-    }
-    return record
-
-
-sel = asr.Selector()
-sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.c2db.emasses:validate')
-sel.parameters.dependency_parameters = \
-    lambda value: bool(val for val in value.values()
-                       if 'gpwname' in val)
-
-
-@asr.migration(selector=sel)
-def remove_gpwname_from_dependency_parameters(record):
-    """Remove gpwfilename from dependency parameters."""
-    dep_params = record.parameters.dependency_parameters
-    for name, params in dep_params.items():
-        if 'gpwfilename' in params:
-            del params['gpwfilename']
-    return record
-
-
-sel = asr.Selector()
-sel.version = sel.EQ(-1)
-sel.name = sel.EQ("asr.c2db.emasses:refine")
-sel.parameters = sel.CONTAINS("gpwfilename")
-
-
-@asr.migration(selector=sel)
-def remove_gpwfilename_from_parameters(record):
-    """Remove gpwfilename from parameters."""
-    del record.parameters.gpwfilename
-    return record
 
 
 @command(
@@ -1685,6 +1618,65 @@ def validate(
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
 
     return ValidateResult(myresults, strict=False)
+
+
+sel = asr.Selector()
+sel.name = sel.CONTAINS('asr.c2db.emasses')
+sel.version = sel.EQ(-1)
+
+
+@asr.migration(selector=sel)
+def remove_gpwfilename_if_present(record):
+    """Remove gpwfilename in emass records if present."""
+    if 'gpwfilename' in record.parameters:
+        del record.parameters.gpwfilename
+
+    dep_params = record.parameters.dependency_parameters
+    for name, params in dep_params.items():
+        if 'gpwfilename' in params:
+            del params['gpwfilename']
+
+    return record
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.CONTAINS('asr.c2db.emasses')
+
+
+@asr.migration(selector=sel)
+def fix_settings_parameters(record):
+    """Fix settings parameter.
+
+    If settings parameter already exists then remove it from
+    dependency parameters.
+
+    If it is not set, then check if it is avaliable from dependency
+    parameters and if not, set it.
+    """
+    params = record.parameters
+    dep_params = params.dependency_parameters
+    if 'settings' not in params:
+        # If settings is found in dependencies
+        for value in dep_params.values():
+            if 'settings' in value:
+                # Then all good
+                break
+        else:
+            # Else we set the settings parameter
+            # ourselves
+            params.settings = {
+                'erange1': 250e-3,
+                'nkpts1': 19,
+                'erange2': 1e-3,
+                'nkpts2': 9,
+            }
+    else:
+        for values in dep_params.values():
+            if 'settings' in values:
+                del values['settings']
+
+    return record
 
 
 if __name__ == '__main__':

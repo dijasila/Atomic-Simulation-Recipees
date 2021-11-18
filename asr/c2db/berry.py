@@ -3,6 +3,7 @@ import numpy as np
 
 from ase import Atoms
 
+import asr
 from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt)
 from asr.c2db.gs import calculate as gscalculate
@@ -314,6 +315,19 @@ def main(
     # XXX Note I changed this behaviour Thomas. We need to talk.
     data = {'Topology': topology}
     return Result(data=data)
+
+
+sel = asr.Selector()
+sel.name = sel.EQ("asr.c2db.berry:calculate")
+sel.version = sel.EQ(-1)
+
+
+@asr.migration(selector=sel)
+def remove_gs_param(record: asr.Record) -> asr.Record:
+    """Remove "gs" parameter from record."""
+    if "gs" in record.parameters:
+        del record.parameters["gs"]
+    return record
 
 
 if __name__ == '__main__':
