@@ -380,7 +380,10 @@ def get_emass_dict_from_context(context, has_mae=False):
             direction = 0
             marekey = name.lower() + '_soc_wideareaPARAMARE'
             if marekey not in data:
-                print(f'WARNING: Your data is outdated. Please rerun emasses@validate.')
+                print(
+                    'WARNING: Your data is outdated. '
+                    'Please rerun asr.c2db.emasses:validate.'
+                )
                 mares = None
                 has_mae = False
             else:
