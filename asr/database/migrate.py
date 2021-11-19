@@ -57,7 +57,20 @@ def add_children_data(data, children_data):
 def get_children_data_from_database(dbin, children):
     children_data = {}
     for child_directory, child_uid in children.items():
-        child_row = dbin.get(uid=child_uid)
+        try:
+            child_row = dbin.get(uid=child_uid)
+        except AssertionError:
+            # If there are multiple matching child rows
+            # we need to use the one that matches child_directory
+            child_rows = list(dbin.select(uid=child_uid))
+            child_rows = list(
+                filter(
+                    lambda x: x.folder.endswith(child_directory),
+                    child_rows
+                )
+            )
+            assert len(child_rows) == 1, "Cannot find matching child rows."
+            child_row = child_rows[0]
         children_data[child_uid] = dict(
             directory=child_directory,
             data=child_row.data,

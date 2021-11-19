@@ -61,6 +61,14 @@ class Row:
             self._load_data()
         return self._data["records"]
 
+    @property
+    def cache(self):
+        from asr import get_cache
+        mem_cache = get_cache("memory")
+        for record in self.records:
+            mem_cache.add(record)
+        return mem_cache
+
     def _load_data(self):
         from .fromtree import serializer
         rowdata = self.row.data
