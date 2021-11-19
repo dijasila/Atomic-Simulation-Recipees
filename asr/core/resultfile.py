@@ -761,10 +761,11 @@ def get_defaults_from_all_recipes():
     return defaults
 
 
+def remove_dependency_param(unused_dependency_params, key, dependency):
+    unused_dependency_params[dependency].remove(key)
+
+
 if __name__ == '__main__':
     defaults = get_defaults_from_all_recipes()
     jsontxt = JSONSerializer().serialize(defaults)
     write_file(PATH, jsontxt)
-
-def remove_dependency_param(unused_dependency_params, key, dependency):
-    unused_dependency_params[dependency].remove(key)

@@ -300,7 +300,7 @@ class Revision:
                 value = '\n' + textwrap.indent(value, ' ')
             lines.append(f'{key}={value}')
         return '\n'.join(lines)
-    
+
     def __bool__(self):
         return bool(self.modification)
 

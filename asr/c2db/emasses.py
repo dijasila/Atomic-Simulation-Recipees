@@ -47,8 +47,6 @@ def set_default(settings):
         settings['nkpts2'] = 9
 
 
-
-
 @command(
     module='asr.c2db.emasses',
 )
@@ -1556,8 +1554,6 @@ def evalparamare(fitinfo, bt, cell, k_kc, e_k):
 class ValidateResult(ASRResult):
 
     formats = {'webpanel2': webpanel}
-
-
 
 
 @command(
