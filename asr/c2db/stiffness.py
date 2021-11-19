@@ -206,7 +206,13 @@ def transform_stiffness_resultfile_record(record):
     """Remove fixcell and allow_symmetry_breaking from dependency_parameters."""
     dep_params = record.parameters['dependency_parameters']
     relax_dep_params = dep_params['asr.c2db.relax:main']
-    delparams = {'fixcell', 'allow_symmetry_breaking'}
+    delparams = {
+        'fixcell',
+        'allow_symmetry_breaking',
+        'atoms',
+        'tmp_atoms',
+        'tmp_atoms_file',
+    }
     for param in delparams:
         if param in relax_dep_params:
             del relax_dep_params[param]
