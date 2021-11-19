@@ -17,7 +17,7 @@ def collapse_database(databasein: str, databaseout: str):
 
 def write_collapsed_database(dbin: ASEDatabaseInterface, dbout: ASEDatabaseInterface):
     for ir, row in enumerate(dbin.select("first_class_material=True")):
-        timed_print(f"Treating record #{ir}")
+        timed_print(f"Treating row #{ir}")
         assert "records" not in row.data
         data = get_data_including_child_data(dbin, row)
         assert "records" not in data
@@ -103,8 +103,7 @@ def get_other_data_files_from_row(row):
 
 def write_converted_database(dbin, dbout):
     for row in dbin.select():
-        if row.id % 100 == 0:
-            print(row.id)
+        timed_print(f"Treating row.id={row.id}")
         records = get_resultfile_records_from_database_row(row)
         data = get_other_data_files_from_row(row)
         assert records
@@ -131,7 +130,7 @@ def assert_database_doesnt_exist(database):
 
 def write_migrated_database(dbin, dbout):
     for row in dbin.select():
-        print(row.id)
+        timed_print(f"Treating row.id={row.id}")
         records = row.records
         report = records_to_migration_report(records)
         if report.n_errors == 0 and report.n_applicable_migrations == 0:
@@ -148,4 +147,3 @@ def write_migrated_database(dbin, dbout):
             record_migration.apply(cache)
         records = cache.select()
         write_row_with_new_data(dbout, row, records=records)
-        # print(report.summary)
