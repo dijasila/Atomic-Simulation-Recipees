@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from asr.database import connect, ASEDatabaseInterface, Row
-
 from asr.core.migrate import records_to_migration_report
 from asr.core.resultfile import get_resultfile_records_from_database_row
+from asr.database import ASEDatabaseInterface, Row, connect
+from asr.utils import timed_print
 
 
 def collapse_database(databasein: str, databaseout: str):
@@ -17,8 +17,7 @@ def collapse_database(databasein: str, databaseout: str):
 
 def write_collapsed_database(dbin: ASEDatabaseInterface, dbout: ASEDatabaseInterface):
     for ir, row in enumerate(dbin.select("first_class_material=True")):
-        if ir % 100 == 0:
-            print(ir)
+        timed_print(f"Treating record #{ir}")
         assert "records" not in row.data
         data = get_data_including_child_data(dbin, row)
         assert "records" not in data
