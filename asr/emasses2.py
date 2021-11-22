@@ -81,7 +81,7 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
             'spinproj_ijknv': spinproj_knv.reshape((K1, K2, K3, N, 3))}
 
 
-def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0-0.5):
+def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
     K1, K2, K3, N = fingerprint_ijknx.shape[:-1]
     band_ijkn = np.zeros((K1, K2, K3, N), int) - 1
     bnew = 0
@@ -190,14 +190,13 @@ def con1d(e_kn,
     return bnew
 
 
-def main(datapath: Path,
+def main(data: dict,
          kind='cbm',
          nbands=4,
          log=print):
-    dct = pickle.loads(datapath.read_bytes())
-    bands, axes = find_extrema(kind=kind, nbands=nbands, log=log, **dct)
+    bands, axes = find_extrema(kind=kind, nbands=nbands, log=log, **data)
 
-    cell_cv = dct['cell_cv'][axes][:, axes]
+    cell_cv = data['cell_cv'][axes][:, axes]
 
     extrema = []
     for band in bands:
@@ -427,7 +426,8 @@ def cli():
     else:
         kind = sys.argv[2]
         nbands = int(sys.argv[3])
-        bands = main(path, kind, nbands)
+        data = pickle.loads(path.read_bytes())
+        bands = main(data, kind, nbands)
         path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(bands))
 
 
