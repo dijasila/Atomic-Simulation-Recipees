@@ -81,23 +81,29 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
             'spinproj_ijknv': spinproj_knv.reshape((K1, K2, K3, N, 3))}
 
 
-def connect(fingerprint_ijknx, threshold=2.0):
+def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0-0.5):
     K1, K2, K3, N = fingerprint_ijknx.shape[:-1]
     band_ijkn = np.zeros((K1, K2, K3, N), int) - 1
     bnew = 0
     equal = []
     for k1 in range(K1):
         for k2 in range(K2):
-            bnew = con1d(fingerprint_ijknx[k1, k2], band_ijkn[k1, k2],
-                         bnew, equal)
+            bnew = con1d(
+                eig_ijkn[k1, k2],
+                fingerprint_ijknx[k1, k2], band_ijkn[k1, k2],
+                bnew, equal)
     for k1 in range(K1):
         for k3 in range(K3):
-            bnew = con1d(fingerprint_ijknx[k1, :, k3], band_ijkn[k1, :, k3],
-                         bnew, equal)
+            bnew = con1d(
+                eig_ijkn[k1, :, k3],
+                fingerprint_ijknx[k1, :, k3], band_ijkn[k1, :, k3],
+                bnew, equal)
     for k2 in range(K2):
         for k3 in range(K3):
-            bnew = con1d(fingerprint_ijknx[:, k2, k3], band_ijkn[:, k2, k3],
-                         bnew, equal)
+            bnew = con1d(
+                eig_ijkn[:, k2, k3],
+                fingerprint_ijknx[:, k2, k3], band_ijkn[:, k2, k3],
+                bnew, equal)
 
     mapping = {}
     for i, j in equal:
@@ -123,13 +129,44 @@ def connect(fingerprint_ijknx, threshold=2.0):
     return band_ijkn
 
 
-def con1d(fp_knx,
+def clusters(eigs,
+             eps: float = 1e-4):  # -> Generator[List[int], None, None]:
+    """
+    >>> list(clusters(np.zeros(4)))
+    >>> list(clusters(np.arange(4)))
+    >>> list(clusters(np.array([0, 0, 1, 1, 1, 2])))
+    """
+    e1 = eigs[0]
+    n = 0
+    c = []
+    for i2, e2 in enumerate(eigs[1:], 1):
+        if e2 - e1 < eps:
+            n += 1
+        else:
+            e1 = e2
+            if n:
+                c.append((i2 - n - 1, i2))
+                n = 0
+    if n:
+        c.append((i2 - n, i2 + 1))
+    return c
+
+
+def con1d(e_kn,
+          fp_knx,
           b_kn,
           bnew,
           equal):
     K, N = fp_knx.shape[:2]
+    c1 = clusters(e_kn[0])
     for k in range(K - 1):
         ovl_n1n2 = abs(fp_knx[k] @ fp_knx[k + 1].conj().T)
+        c2 = clusters(e_kn[k + 1])
+        for a1, b1 in c1:
+            for a2, b2 in c2:
+                if b1 - a1 == b2 - a2:
+                    o = ovl_n1n2[a1:b1, a2:b2]
+                    ovl_n1n2[a1:b1, a2:b2] = o.max() * np.eye(b1 - a1)
         taken = set()
         for n2 in range(N):
             n1b, n1a = ovl_n1n2[:, n2].argsort()[-2:]
@@ -228,7 +265,7 @@ def find_extrema(cell_cv,
     spinproj_ijknv = spinproj_ijknv[A][:, B][:, :, C]
 
     log(f'Connecting bands in {2 * a + 1}x{2 * b + 1}x{2 * c + 1} grid')
-    b_ijkn = connect(proj_ijknI[A][:, B][:, :, C])
+    b_ijkn = connect(eig_ijkn, proj_ijknI[A][:, B][:, :, C])
 
     k_ijkc = np.indices(
         (2 * a + 1, 2 * b + 1, 2 * c + 1),
