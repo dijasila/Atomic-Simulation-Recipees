@@ -199,22 +199,21 @@ def main(data: dict,
          kind='cbm',
          nbands=4,
          log=print):
-    bands, axes = find_extrema(kind=kind, nbands=nbands, log=log, **data)
+    k_kv, eig_k, spinproj_kv, axes = find_extrema(kind=kind,
+                                                  nbands=nbands,
+                                                  log=log,
+                                                  **data)
 
     cell_cv = data['cell_cv'][axes][:, axes]
 
-    extrema = []
-    for band in bands:
-        try:
-            k_v, energy, mass_w, direction_wv, error_k = fit(*band, cell_cv,
-                                                             log=log)
-        except NoMinimum:
-            continue
-        if kind == 'vbm':
-            energy *= -1
-        extrema.append((k_v, energy, mass_w, direction_wv, error_k))
+    k_v, energy, mass_w, direction_wv, error_k = fit(
+        k_kv, eig_k, spinproj_kv, cell_cv,
+        log=log)
 
-    return extrema, bands, axes
+    if kind == 'vbm':
+        energy *= -1
+
+    return k_v, energy, mass_w, direction_wv, error_k
 
 
 def find_extrema(cell_cv,
@@ -281,18 +280,15 @@ def find_extrema(cell_cv,
     k_ijkv = k_ijkc @ np.linalg.inv(cell_cv).T * 2 * pi
 
     axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
-    bands = []
-    for b in range(nbands):
-        mask_ijkn = b_ijkn == b
-        eig_k = eig_ijkn[mask_ijkn]
-        log(f'Band #{b}: {len(eig_k)} points '
-            f'[{eig_k.min()} ... {eig_k.max()}] eV')
-        spinproj_kv = np.array([spinproj_ijknv[..., v][mask_ijkn]
-                                for v in range(3)]).T
-        k_kv = k_ijkv[mask_ijkn.any(axis=3)][:, axes]
-        bands.append((k_kv, eig_k, spinproj_kv))
-
-    return bands, axes
+    b0 = b_ijkn[a, b, c, 0]
+    mask_ijkn = b_ijkn == b0
+    eig_k = eig_ijkn[mask_ijkn]
+    log(f'Band #{b0}: {len(eig_k)} points '
+        f'[{eig_k.min()} ... {eig_k.max()}] eV')
+    spinproj_kv = np.array([spinproj_ijknv[..., v][mask_ijkn]
+                            for v in range(3)]).T
+    k_kv = k_ijkv[mask_ijkn.any(axis=3)][:, axes]
+    return k_kv, eig_k, spinproj_kv, axes
 
 
 class NoMinimum(ValueError):
@@ -347,6 +343,10 @@ def fit(k_kv, eig_k, spinproj_kv,
     log(f'  Found minimum: {K(k_v + kmin_v)}, {emin:.3f} eV')
     for w, (mass, evec_v) in enumerate(zip(mass_w, evec_vw.T)):
         log(f'    Mass #{w}: {mass:.3f} m_e, {K(evec_v)}')
+
+    if (mass_w < 0.01).any():
+        log('  Unrealistic mass!')
+        raise NoMinimum
 
     return k_v + kmin_v, emin, mass_w, evec_vw.T, error_k
 
@@ -436,8 +436,9 @@ def cli():
         kind = sys.argv[2]
         nbands = int(sys.argv[3])
         data = pickle.loads(path.read_bytes())
-        bands, _, _ = main(data, kind, nbands)
-        path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(bands))
+        # k_v, energy, mass_w, direction_wv, error_k = ...
+        things = main(data, kind, nbands)
+        path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(things))
 
 
 if __name__ == '__main__':
