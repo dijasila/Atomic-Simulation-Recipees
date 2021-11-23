@@ -1,13 +1,14 @@
-"""Effective masses."""
+"""Effective masses - version 117."""
 # noqa: W504
 import pickle
 from collections import defaultdict
 from math import pi
 from pathlib import Path
-from typing import Any, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 import numpy as np
 from ase.units import Bohr, Ha
+
 if TYPE_CHECKING:
     from gpaw.calculator import GPAW
     from gpaw.kpt_descriptor import KPointDescriptor
@@ -130,11 +131,15 @@ def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
 
 
 def clusters(eigs,
-             eps: float = 1e-4):  # -> Generator[List[int], None, None]:
-    """
+             eps: float = 1e-4) -> List[Tuple[int, int]]:
+    """Find clusters of degenerate eigenvalues.
+
     >>> list(clusters(np.zeros(4)))
+    [(0, 4)]
     >>> list(clusters(np.arange(4)))
+    []
     >>> list(clusters(np.array([0, 0, 1, 1, 1, 2])))
+    [(0, 2), (2, 5)]
     """
     e1 = eigs[0]
     n = 0
