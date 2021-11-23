@@ -209,7 +209,7 @@ def main(data: dict,
             energy *= -1
         extrema.append((k_v, energy, mass_w, direction_wv, error_k))
 
-    return extrema
+    return extrema, bands, axes
 
 
 def find_extrema(cell_cv,
@@ -431,7 +431,7 @@ def cli():
         kind = sys.argv[2]
         nbands = int(sys.argv[3])
         data = pickle.loads(path.read_bytes())
-        bands = main(data, kind, nbands)
+        bands, _, _ = main(data, kind, nbands)
         path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(bands))
 
 
