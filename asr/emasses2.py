@@ -316,6 +316,10 @@ def fit(k_kv, eig_k, spinproj_kv,
     k = (k_kv**2).sum(1).argsort()[:npoints]
     log(f'Fitting to {len(k)} points close to {K(kmin_v)}:')
 
+    if len(k) < npoints:
+        log('  Too few points!')
+        raise NoMinimum
+
     k_kv = k_kv[k]
     eig_k = eig_k[k]
     fit = Fit3D(k_kv, eig_k)
