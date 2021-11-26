@@ -283,8 +283,20 @@ def find_extrema(cell_cv,
     b0 = b_ijkn[a, b, c, 0]
     mask_ijkn = b_ijkn == b0
     eig_k = eig_ijkn[mask_ijkn]
-    log(f'Band #{b0}: {len(eig_k)} points '
+    nk = len(eig_k)
+    log(f'Band #{b0}: {nk} points '
         f'[{eig_k.min()} ... {eig_k.max()}] eV')
+    if nk == 1:
+        abc = [a, b, c]
+        abc[axes[0]] += 1
+        b0 = b_ijkn[abc[0], abc[1], abc[2], 0]
+        b_ijkn[a, b, c, 0] = b0
+        mask_ijkn = b_ijkn == b0
+        eig_k = eig_ijkn[mask_ijkn]
+        nk = len(eig_k)
+        log(f'Band #{b0}: {nk} points '
+            f'[{eig_k.min()} ... {eig_k.max()}] eV')
+
     spinproj_kv = np.array([spinproj_ijknv[..., v][mask_ijkn]
                             for v in range(3)]).T
     k_kv = k_ijkv[mask_ijkn.any(axis=3)][:, axes]
