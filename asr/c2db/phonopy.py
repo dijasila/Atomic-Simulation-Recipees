@@ -451,5 +451,66 @@ def plot_bandstructure(context, fname):
     plt.close()
 
 
+sel = asr.Selector()
+sel.name = sel.EQ('asr.c2db.phonopy:calculate')
+sel.version = sel.EQ(-1)
+
+
+@asr.migration(selector=sel)
+def construct_calculator_from_old_parameters(record):
+    """Construct calculator from old parameters."""
+    params = record.parameters
+    if 'calculator' in params:
+        return record
+
+    calculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 6.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'forces': 1e-4},
+        'symmetry': {'point_group': False},
+        'nbands': '200%',
+        'txt': 'phonons.txt',
+        'charge': 0
+    }
+
+    par_value = [
+        ('fconverge', calculator['convergence'], 'forces'),
+        ('kptdensity', calculator['kpts'], 'density'),
+        ('ecut', calculator['mode'], 'ecut'),
+    ]
+    for par, calc_dct, name in par_value:
+        if par in params:
+            calc_dct[name] = params[par]
+            del params[par]
+
+        for dep_params in params['dependency_parameters'].values():
+            if par in dep_params:
+                del dep_params[par]
+    if record.name == 'asr.c2db.phonopy:calculate':
+        params.dependency_parameters = {}
+    params.calculator = calculator
+    return record
+
+
+sel = asr.Selector()
+sel.name = sel.EQ('asr.c2db.phonopy:calculate')
+sel.version = sel.EQ(-1)
+sel.parameters = sel.CONTAINS('n')
+
+
+@asr.migration(selector=sel)
+def make_supercell_argument(record: asr.Record):
+    """Make supercell argument from old integer specification."""
+    n = record.parameters.n
+    supercell = [n, n, n]
+    record.parameters.sc = supercell
+    del record.parameters.n
+    return record
+
+
 if __name__ == "__main__":
     main.cli()
