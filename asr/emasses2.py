@@ -210,7 +210,7 @@ def main(data: dict,
         kpt0_c = kpt_kc[k0]
         dk_kc = kpt_kc - kpt0_c
         dk_kc -= dk_kc.round()
-        k_kv = (kpt0_c + dk_kc) @ np.linalg.inv(cell_cv).T * 2 * pi
+        k_kv = (kpt0_c + dk_kc)[:, axes] @ np.linalg.inv(cell_cv).T * 2 * pi
 
         try:
             k_v, energy, mass_w, direction_wv, error_k = fit(
@@ -268,8 +268,9 @@ def find_extrema(cell_cv,
 
     bands.sort(key=lambda value: value[0].min())
 
-    for eig0, eig_k, kpt_kc, spinproj_kv in bands[:6]:
-        log(f'{eig0 - bands[0][0]} eV: {len(eig_k)} points')
+    e0 = bands[0][0].min()
+    for eig_k, kpt_kc, spinproj_kv in bands[:6]:
+        log(f'{eig_k.min() - e0} eV: {len(eig_k)} points')
 
     return [(kpt_kc, eig_k, spinproj_kv)
             for eig_k, kpt_kc, spinproj_kv in bands[:6]], axes
@@ -307,7 +308,11 @@ def fit(k_kv, eig_k, spinproj_kv,
 
     k_kv = k_kv[k]
     eig_k = eig_k[k]
-    fit = Fit3D(k_kv, eig_k)
+    try:
+        fit = Fit3D(k_kv, eig_k)
+    except np.linalg.LinAlgError:
+        log('   Bad minimum!')
+        raise NoMinimum
 
     hessian_vv = fit.hessian(np.zeros(dims))
     eval_w = np.linalg.eigvalsh(hessian_vv)
