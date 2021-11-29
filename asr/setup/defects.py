@@ -230,9 +230,9 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
     return structure_sc
 
 
-def create_vacancies(temp_dict, structure, pristine, eq_pos, finished_list, charge_states, base):
+def create_vacancies(temp_dict, structure, pristine, eq_pos, finished_list,
+                     charge_states, base):
     """Create vacancy defects."""
-    formula = structure.symbols
     finished_list = []
     for i in range(len(structure)):
         if not eq_pos[i] in finished_list:
@@ -299,11 +299,11 @@ def is_new_complex(el1, el2, doubles):
     return new
 
 
-def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_states, base, defect_list=None):
+def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_states,
+                  base, defect_list=None):
     """Create double defects."""
     print('INFO: create vacancy-vacancy pairs.')
     complex_list = []
-    formula = structure.symbols
     finished_list = []
     for i in range(len(structure)):
         if not eq_pos[i] in finished_list:
@@ -453,7 +453,6 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
     for i in range(len(structure)):
         if not eq_pos[i] in finished_list:
             for element in defect_list:
-            # for element2 in defect_list:
                 for j in range(len(structure)):
                     defect = pristine.copy()
                     site1 = f'v_{defect.get_chemical_symbols()[i]}'
@@ -524,7 +523,8 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
     return temp_dict, finished_list
 
 
-def create_substitutional(temp_dict, structure, pristine, eq_pos, finished_list, charge_states, base, defect_list=None):
+def create_substitutional(temp_dict, structure, pristine, eq_pos, finished_list,
+                          charge_states, base, defect_list=None):
     """Create substitutional defects."""
     if defect_list is None:
         defect_list = []
