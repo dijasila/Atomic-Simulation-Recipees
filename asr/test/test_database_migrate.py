@@ -10,13 +10,16 @@ from asr.database.migrate import (
 
 from asr.database import connect
 
+COLLAPSE_DB = Path(__file__).parent / "data/mos2_collapsable_database.db"
+
 
 @pytest.fixture
 def database_to_be_collapsed():
-    db = connect(Path(__file__).parent / "data/mos2_collapsable_database.db")
+    db = connect(COLLAPSE_DB)
     return db
 
 
+@pytest.mark.skipif(not COLLAPSE_DB.is_file(), reason="Database to test doesn't exist.")
 @pytest.mark.ci
 def test_collapse_database(database_to_be_collapsed, asr_tmpdir):
     assert len(database_to_be_collapsed) == 31

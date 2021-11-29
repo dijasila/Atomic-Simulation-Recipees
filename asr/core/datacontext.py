@@ -35,7 +35,10 @@ class DataContext:
 
     @property
     def name(self):
-        return self.record.name
+        name = self.record.name
+        if ':' not in name:
+            name += ':main'
+        return name
 
     @property
     def result(self):
