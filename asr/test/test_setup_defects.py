@@ -76,3 +76,24 @@ def test_setup_supercell(asr_tmpdir):
         assert N_y == y[i]
         assert N_z == z[i]
         assert len(structure) == x[i] * y[i] * z[i] * len(atom)
+
+
+@pytest.mark.ci
+def test_intrinsic_single_defects(asr_tmpdir):
+    import numpy as np
+    from pathlib import Path
+    from asr.core import chdir
+    from asr.setup.defects import setup_supercell, main
+    from ase.io import read, write
+    from .materials import std_test_materials, GaAs
+
+    lengths = [1, 4, 1, 1]
+    std_test_materials.pop(2)
+    for i, atoms in enumerate(std_test_materials):
+        name = atoms.get_chemical_formula()
+        folder = Path(name).mkdir()
+        write(f'{name}/unrelaxed.json', atoms)
+        with chdir(name):
+            main(general_algorithm=15.)
+            pathlist = list(Path('.').glob('defects.*/charge_0'))
+            assert len(pathlist) == lengths[i]
