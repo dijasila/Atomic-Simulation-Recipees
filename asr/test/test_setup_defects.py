@@ -57,10 +57,7 @@ def test_vacuum(asr_tmpdir):
 
 @pytest.mark.ci
 def test_setup_supercell(asr_tmpdir):
-    import numpy as np
-    from pathlib import Path
     from asr.setup.defects import setup_supercell
-    from ase.io import read, write
     from .materials import std_test_materials, GaAs
 
     atoms = [std_test_materials[1], GaAs]
@@ -80,18 +77,17 @@ def test_setup_supercell(asr_tmpdir):
 
 @pytest.mark.ci
 def test_intrinsic_single_defects(asr_tmpdir):
-    import numpy as np
     from pathlib import Path
     from asr.core import chdir
-    from asr.setup.defects import setup_supercell, main
-    from ase.io import read, write
-    from .materials import std_test_materials, GaAs
+    from asr.setup.defects import main
+    from ase.io import write
+    from .materials import std_test_materials
 
     lengths = [1, 4, 1]
     std_test_materials.pop(2)
     for i, atoms in enumerate(std_test_materials):
         name = atoms.get_chemical_formula()
-        folder = Path(name).mkdir()
+        Path(name).mkdir()
         write(f'{name}/unrelaxed.json', atoms)
         with chdir(name):
             main(general_algorithm=15.)
@@ -101,18 +97,17 @@ def test_intrinsic_single_defects(asr_tmpdir):
 
 @pytest.mark.ci
 def test_extrinsic_single_defects(asr_tmpdir):
-    import numpy as np
     from pathlib import Path
     from asr.core import chdir
-    from asr.setup.defects import setup_supercell, main
-    from ase.io import read, write
-    from .materials import std_test_materials, GaAs
+    from asr.setup.defects import main
+    from ase.io import write
+    from .materials import std_test_materials
 
     lengths = [3, 8, 3]
     std_test_materials.pop(2)
     for i, atoms in enumerate(std_test_materials):
         name = atoms.get_chemical_formula()
-        folder = Path(name).mkdir()
+        Path(name).mkdir()
         write(f'{name}/unrelaxed.json', atoms)
         with chdir(name):
             main(general_algorithm=15., extrinsic='V,Nb')
@@ -122,18 +117,17 @@ def test_extrinsic_single_defects(asr_tmpdir):
 
 @pytest.mark.ci
 def test_extrinsic_double_defects(asr_tmpdir):
-    import numpy as np
     from pathlib import Path
     from asr.core import chdir
-    from asr.setup.defects import setup_supercell, main
-    from ase.io import read, write
-    from .materials import std_test_materials, GaAs
+    from asr.setup.defects import main
+    from ase.io import write
+    from .materials import std_test_materials
 
     lengths = [15]
     std_test_materials = [std_test_materials[1]]
     for i, atoms in enumerate(std_test_materials):
         name = atoms.get_chemical_formula()
-        folder = Path(name).mkdir()
+        Path(name).mkdir()
         write(f'{name}/unrelaxed.json', atoms)
         with chdir(name):
             main(general_algorithm=16., extrinsic='Nb',
@@ -157,12 +151,11 @@ def test_new_double():
 
 @pytest.mark.ci
 def test_setup_halfinteger(asr_tmpdir):
-    import numpy as np
     from pathlib import Path
     from asr.core import chdir
-    from asr.setup.defects import setup_supercell, main
-    from ase.io import read, write
-    from .materials import std_test_materials, GaAs
+    from asr.setup.defects import main
+    from ase.io import write
+    from .materials import std_test_materials
 
     atoms = std_test_materials[1]
     write('unrelaxed.json', atoms)
