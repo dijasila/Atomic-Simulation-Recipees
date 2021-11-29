@@ -87,7 +87,7 @@ def test_intrinsic_single_defects(asr_tmpdir):
     from ase.io import read, write
     from .materials import std_test_materials, GaAs
 
-    lengths = [1, 4, 1, 1]
+    lengths = [1, 4, 1]
     std_test_materials.pop(2)
     for i, atoms in enumerate(std_test_materials):
         name = atoms.get_chemical_formula()
@@ -97,3 +97,83 @@ def test_intrinsic_single_defects(asr_tmpdir):
             main(general_algorithm=15.)
             pathlist = list(Path('.').glob('defects.*/charge_0'))
             assert len(pathlist) == lengths[i]
+
+
+@pytest.mark.ci
+def test_extrinsic_single_defects(asr_tmpdir):
+    import numpy as np
+    from pathlib import Path
+    from asr.core import chdir
+    from asr.setup.defects import setup_supercell, main
+    from ase.io import read, write
+    from .materials import std_test_materials, GaAs
+
+    lengths = [3, 8, 3]
+    std_test_materials.pop(2)
+    for i, atoms in enumerate(std_test_materials):
+        name = atoms.get_chemical_formula()
+        folder = Path(name).mkdir()
+        write(f'{name}/unrelaxed.json', atoms)
+        with chdir(name):
+            main(general_algorithm=15., extrinsic='V,Nb')
+            pathlist = list(Path('.').glob('defects.*/charge_0'))
+            assert len(pathlist) == lengths[i]
+
+
+@pytest.mark.ci
+def test_extrinsic_double_defects(asr_tmpdir):
+    import numpy as np
+    from pathlib import Path
+    from asr.core import chdir
+    from asr.setup.defects import setup_supercell, main
+    from ase.io import read, write
+    from .materials import std_test_materials, GaAs
+
+    lengths = [15]
+    std_test_materials = [std_test_materials[1]]
+    for i, atoms in enumerate(std_test_materials):
+        name = atoms.get_chemical_formula()
+        folder = Path(name).mkdir()
+        write(f'{name}/unrelaxed.json', atoms)
+        with chdir(name):
+            main(general_algorithm=16., extrinsic='Nb',
+                 double=True)
+            pathlist = list(Path('.').glob('defects.*/charge_0'))
+            assert len(pathlist) == lengths[i]
+
+
+@pytest.mark.ci
+def test_new_double():
+    from asr.setup.defects import is_new_complex
+
+    complex_list = ['v_N.v_B', 'Cr_N.N_B', 'N_B.B_N', 'Nb_B.F_N']
+    newlist = ['N_B.Cr_N', 'Cr_N.N_B', 'v_N.v_B', 'F_N.I_B', 'V_N.v_B']
+    refs = [False, False, False, True, True]
+    for i, new in enumerate(newlist):
+        el1 = new.split('.')[0]
+        el2 = new.split('.')[1]
+        assert is_new_complex(el1, el2, complex_list) == refs[i]
+
+
+@pytest.mark.ci
+def test_setup_halfinteger(asr_tmpdir):
+    import numpy as np
+    from pathlib import Path
+    from asr.core import chdir
+    from asr.setup.defects import setup_supercell, main
+    from ase.io import read, write
+    from .materials import std_test_materials, GaAs
+
+    atoms = std_test_materials[1]
+    write('unrelaxed.json', atoms)
+    main(supercell=[3, 3, 3])
+    p = Path('.')
+    pathlist = list(p.glob('defects.*/charge_0'))
+    for path in pathlist:
+        with chdir(path):
+            write('structure.json', atoms)
+            main(halfinteger=True)
+            plus = Path('sj_+0.5/params.json')
+            minus = Path('sj_-0.5/params.json')
+            assert plus.is_file()
+            assert minus.is_file()
