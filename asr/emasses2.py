@@ -264,15 +264,15 @@ def find_extrema(cell_cv,
         kpt_kc = kpt_ijkc[mask_ijkn.any(axis=3)]
         spinproj_kv = np.array([spinproj_ijknv[..., v][mask_ijkn]
                                 for v in range(3)]).T
-        bands.append((eig_k.min(), eig_k, kpt_kc, spinproj_kv))
+        bands.append((eig_k, kpt_kc, spinproj_kv))
 
-    bands.sort()
+    bands.sort(key=lambda value: value[0].min())
 
     for eig0, eig_k, kpt_kc, spinproj_kv in bands[:6]:
         log(f'{eig0 - bands[0][0]} eV: {len(eig_k)} points')
 
     return [(kpt_kc, eig_k, spinproj_kv)
-            for _, eig_k, kpt_kc, spinproj_kv in bands[:6]], axes
+            for eig_k, kpt_kc, spinproj_kv in bands[:6]], axes
 
 
 class NoMinimum(ValueError):
