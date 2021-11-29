@@ -484,14 +484,14 @@ def get_transition_level(transition, charge) -> TransitionResults:
     if transition[0] > transition[1]:
         atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
         ev = calc.get_eigenvalues()
-        e_trans = ev[N_homo]
+        e_trans = ev[N_homo + 1]
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
     # LUMO
     elif transition[1] > transition[0]:
         atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
         ev = calc.get_eigenvalues()
-        e_trans = ev[N_homo - 1]
+        e_trans = ev[N_homo]
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
 
@@ -526,7 +526,7 @@ def get_homo_index(calc):
     occ = []
     [occ.append(v) for v in ev if v < e_fermi]
 
-    return len(occ)
+    return len(occ) - 1
 
 
 def return_transition_values(e_trans, e_cor, e_ref) -> TransitionValues:
