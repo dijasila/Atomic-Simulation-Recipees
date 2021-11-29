@@ -164,9 +164,10 @@ def con1d(e_kn,
           equal):
     K, N = fp_knx.shape[:2]
     c1 = clusters(e_kn[0])
-    for k in range(K - 1):
-        ovl_n1n2 = abs(fp_knx[k] @ fp_knx[k + 1].conj().T)
-        c2 = clusters(e_kn[k + 1])
+    for k1 in range(K):
+        k2 = (k1 + 1) % K
+        ovl_n1n2 = abs(fp_knx[k1] @ fp_knx[k2].conj().T)
+        c2 = clusters(e_kn[k2])
         for a1, b1 in c1:
             for a2, b2 in c2:
                 if b1 - a1 == b2 - a2:
@@ -175,45 +176,50 @@ def con1d(e_kn,
         taken = set()
         for n2 in range(N):
             n1b, n1a = ovl_n1n2[:, n2].argsort()[-2:]
-            b2 = b_kn[k + 1, n2]
+            b2 = b_kn[k2, n2]
             if ovl_n1n2[n1a, n2] > 2 * ovl_n1n2[n1b, n2] and n1a not in taken:
-                b1 = b_kn[k, n1a]
+                b1 = b_kn[k1, n1a]
                 if b1 == -1:
                     b1 = bnew
                     bnew += 1
-                    b_kn[k, n1a] = b1
+                    b_kn[k1, n1a] = b1
                 taken.add(n1a)
                 if b2 == -1:
-                    b_kn[k + 1, n2] = b1
+                    b_kn[k1 + 1, n2] = b1
                 else:
                     if b1 != b2:
                         equal.append((b1, b2))
             else:
                 if b2 == -1:
-                    b_kn[k + 1, n2] = bnew
+                    b_kn[k2, n2] = bnew
                     bnew += 1
     return bnew
 
 
 def main(data: dict,
          kind='cbm',
-         nbands=4,
          log=print):
-    k_kv, eig_k, spinproj_kv, axes = find_extrema(kind=kind,
-                                                  nbands=nbands,
-                                                  log=log,
-                                                  **data)
+    bands, axes = find_extrema(kind=kind,
+                               log=log,
+                               **data)
 
     cell_cv = data['cell_cv'][axes][:, axes]
 
-    k_v, energy, mass_w, direction_wv, error_k = fit(
-        k_kv, eig_k, spinproj_kv, cell_cv,
-        log=log)
+    for kpt_kc, eig_k, spinproj_kv in bands:
+        k0 = eig_k.argmin()
+        kpt0_c = kpt_kc[k0]
+        dk_kc = kpt_kc - kpt0_c
+        dk_kc -= dk_kc.round()
+        k_kv = (kpt0_c + dk_kc) @ np.linalg.inv(cell_cv).T * 2 * pi
 
-    if kind == 'vbm':
-        energy *= -1
+        try:
+            k_v, energy, mass_w, direction_wv, error_k = fit(
+                k_kv, eig_k, spinproj_kv, cell_cv,
+                log=log)
+        except NoMinimum:
+            pass
 
-    return k_v, energy, mass_w, direction_wv, error_k
+    return bands
 
 
 def find_extrema(cell_cv,
@@ -223,7 +229,6 @@ def find_extrema(cell_cv,
                  proj_ijknI,
                  spinproj_ijknv=None,
                  kind='cbm',
-                 nbands=4,
                  log=print,
                  npoints=3):
     assert kind in ['vbm', 'cbm']
@@ -238,69 +243,36 @@ def find_extrema(cell_cv,
         spinproj_ijknv = np.zeros((K1, K2, K3, N, 3))
 
     if kind == 'cbm':
-        bands = slice(nocc, nocc + nbands)
+        bands = slice(nocc, N)
         eig_ijkn = eig_ijkn[..., bands]
     else:
-        n1 = nocc - 1
-        n2 = n1 - nbands
-        bands = slice(n1, n2 if n2 >= 0 else None, -1)
+        bands = slice(nocc - 1, None, -1)
         eig_ijkn = -eig_ijkn[..., bands]
-        nbands = min(nocc, nbands)
 
     proj_ijknI = proj_ijknI[..., bands, :]
     spinproj_ijknv = spinproj_ijknv[..., bands, :]
 
-    ijk = eig_ijkn[..., 0].ravel().argmin()
-    i, j, k = np.unravel_index(ijk, eig_ijkn.shape[:3])
-    kmin_c = kpt_ijkc[i, j, k]
-    log(f'Found {kind} at approximately {kmin_c}')
-    eig_n = eig_ijkn[i, j, k]
-    if kind == 'vbm':
-        eig_n = -eig_n[::-1]
-    log(f'Eigenvalues at that k-point:\n  {eig_n} eV')
-
-    a, b, c = (0 if size == 1 else npoints for size in kpt_ijkc.shape[:3])
-    A = np.arange(i - a, i + a + 1) % K1
-    B = np.arange(j - b, j + b + 1) % K2
-    C = np.arange(k - c, k + c + 1) % K3
-
-    eig_ijkn = eig_ijkn[A][:, B][:, :, C]
-    spinproj_ijknv = spinproj_ijknv[A][:, B][:, :, C]
-
-    log(f'Connecting bands in {2 * a + 1}x{2 * b + 1}x{2 * c + 1} grid')
-    b_ijkn = connect(eig_ijkn, proj_ijknI[A][:, B][:, :, C])
-
-    k_ijkc = np.indices(
-        (2 * a + 1, 2 * b + 1, 2 * c + 1),
-        dtype=float).transpose((1, 2, 3, 0))
-    k_ijkc -= (a, b, c)
-    k_ijkc /= [K1, K2, K3]
-    k_ijkc += kmin_c
-
-    k_ijkv = k_ijkc @ np.linalg.inv(cell_cv).T * 2 * pi
+    log('Connecting bands')
+    b_ijkn = connect(eig_ijkn, proj_ijknI)
 
     axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
-    b0 = b_ijkn[a, b, c, 0]
-    mask_ijkn = b_ijkn == b0
-    eig_k = eig_ijkn[mask_ijkn]
-    nk = len(eig_k)
-    log(f'Band #{b0}: {nk} points '
-        f'[{eig_k.min()} ... {eig_k.max()}] eV')
-    if nk == 1:
-        abc = [a, b, c]
-        abc[axes[0]] += 1
-        b0 = b_ijkn[abc[0], abc[1], abc[2], 0]
-        b_ijkn[a, b, c, 0] = b0
-        mask_ijkn = b_ijkn == b0
-        eig_k = eig_ijkn[mask_ijkn]
-        nk = len(eig_k)
-        log(f'Band #{b0}: {nk} points '
-            f'[{eig_k.min()} ... {eig_k.max()}] eV')
 
-    spinproj_kv = np.array([spinproj_ijknv[..., v][mask_ijkn]
-                            for v in range(3)]).T
-    k_kv = k_ijkv[mask_ijkn.any(axis=3)][:, axes]
-    return k_kv, eig_k, spinproj_kv, axes
+    bands = []
+    for b in range(b_ijkn.max() + 1):
+        mask_ijkn = b_ijkn == b
+        eig_k = eig_ijkn[mask_ijkn]
+        kpt_kc = kpt_ijkc[mask_ijkn.any(axis=3)]
+        spinproj_kv = np.array([spinproj_ijknv[..., v][mask_ijkn]
+                                for v in range(3)]).T
+        bands.append((eig_k.min(), eig_k, kpt_kc, spinproj_kv))
+
+    bands.sort()
+
+    for eig0, eig_k, kpt_kc, spinproj_kv in bands[:6]:
+        log(f'{eig0 - bands[0][0]} eV: {len(eig_k)} points')
+
+    return [(kpt_kc, eig_k, spinproj_kv)
+            for _, eig_k, kpt_kc, spinproj_kv in bands[:6]], axes
 
 
 class NoMinimum(ValueError):
