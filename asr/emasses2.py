@@ -185,7 +185,7 @@ def con1d(e_kn,
                     b_kn[k1, n1a] = b1
                 taken.add(n1a)
                 if b2 == -1:
-                    b_kn[k1 + 1, n2] = b1
+                    b_kn[k2, n2] = b1
                 else:
                     if b1 != b2:
                         equal.append((b1, b2))
