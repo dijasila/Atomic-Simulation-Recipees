@@ -159,6 +159,8 @@ def setup_supercell(structure, max_lattice, is_2D):
         if diff > max_lattice:
             y_size = y - 1
             break
+    x_size = max(x_size, y_size)
+    y_size = x_size
     if not is_2D:
         for z in range(1, 50):
             struc_temp = structure.repeat((1, 1, z))
@@ -166,6 +168,7 @@ def setup_supercell(structure, max_lattice, is_2D):
             if diff > max_lattice:
                 z_size = z - 1
                 break
+        z_size = max(y_size, z_size)
     else:
         z_size = 1
 
