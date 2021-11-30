@@ -6,6 +6,40 @@ import click
 import os
 
 
+# Define calculators that are needed for the params.json file
+# of each individual defect and charge folder
+relax_calc_dict = {'name': 'gpaw',
+                   'mode': {
+                       'name': 'pw',
+                       'ecut': 800,
+                       'dedecut': 'estimate'},
+                   'xc': 'PBE',
+                   'kpts': {
+                       'density': 6.0,
+                       'gamma': True},
+                   'basis': 'dzp',
+                   'symmetry': {
+                       'symmorphic': False},
+                   'convergence': {
+                       'forces': 1e-4},
+                   'txt': 'relax.txt',
+                   'occupations': {
+                       'name': 'fermi-dirac',
+                       'width': 0.02},
+                   'spinpol': True}
+gs_calc_dict = {'name': 'gpaw',
+                'mode': {'name': 'pw', 'ecut': 800},
+                'xc': 'PBE',
+                'basis': 'dzp',
+                'kpts': {'density': 12.0, 'gamma': True},
+                'occupations': {'name': 'fermi-dirac',
+                                'width': 0.02},
+                'convergence': {'bands': 'CBM+3.0'},
+                'nbands': '200%',
+                'txt': 'gs.txt',
+                'spinpol': True}
+
+
 @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.')
@@ -244,37 +278,8 @@ def create_vacancies(temp_dict, structure, pristine, eq_pos, finished_list,
             charge_dict = {}
             for q in range((-1) * charge_states, charge_states + 1):
                 parameters = {}
-                calculator_relax = {
-                    'name': 'gpaw',
-                    'mode': {
-                        'name': 'pw',
-                        'ecut': 800,
-                        'dedecut': 'estimate'},
-                    'xc': 'PBE',
-                    'kpts': {
-                        'density': 6.0,
-                        'gamma': True},
-                    'basis': 'dzp',
-                    'symmetry': {
-                        'symmorphic': False},
-                    'convergence': {
-                        'forces': 1e-4},
-                    'txt': 'relax.txt',
-                    'occupations': {
-                        'name': 'fermi-dirac',
-                        'width': 0.02},
-                    'spinpol': True}
-                calculator_gs = {'name': 'gpaw',
-                                 'mode': {'name': 'pw', 'ecut': 800},
-                                 'xc': 'PBE',
-                                 'basis': 'dzp',
-                                 'kpts': {'density': 12.0, 'gamma': True},
-                                 'occupations': {'name': 'fermi-dirac',
-                                                 'width': 0.02},
-                                 'convergence': {'bands': 'CBM+3.0'},
-                                 'nbands': '200%',
-                                 'txt': 'gs.txt',
-                                 'spinpol': True}
+                calculator_relax = relax_calc_dict.copy()
+                calculator_gs = gs_calc_dict.copy()
                 parameters['asr.gs@calculate'] = {
                     'calculator': calculator_gs}
                 parameters['asr.gs@calculate']['calculator']['charge'] = q
@@ -324,37 +329,8 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                     charge_dict = {}
                     for q in range((-1) * charge_states, charge_states + 1):
                         parameters = {}
-                        calculator_relax = {
-                            'name': 'gpaw',
-                            'mode': {
-                                'name': 'pw',
-                                'ecut': 800,
-                                'dedecut': 'estimate'},
-                            'xc': 'PBE',
-                            'kpts': {
-                                'density': 6.0,
-                                'gamma': True},
-                            'basis': 'dzp',
-                            'symmetry': {
-                                'symmorphic': False},
-                            'convergence': {
-                                'forces': 1e-4},
-                            'txt': 'relax.txt',
-                            'occupations': {
-                                'name': 'fermi-dirac',
-                                'width': 0.02},
-                            'spinpol': True}
-                        calculator_gs = {'name': 'gpaw',
-                                         'mode': {'name': 'pw', 'ecut': 800},
-                                         'xc': 'PBE',
-                                         'basis': 'dzp',
-                                         'kpts': {'density': 12.0, 'gamma': True},
-                                         'occupations': {'name': 'fermi-dirac',
-                                                         'width': 0.02},
-                                         'convergence': {'bands': 'CBM+3.0'},
-                                         'nbands': '200%',
-                                         'txt': 'gs.txt',
-                                         'spinpol': True}
+                        calculator_relax = relax_calc_dict.copy()
+                        calculator_gs = gs_calc_dict.copy()
                         parameters['asr.gs@calculate'] = {
                             'calculator': calculator_gs}
                         parameters['asr.gs@calculate']['calculator']['charge'] = q
@@ -393,44 +369,8 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                                     (-1) * charge_states,
                                     charge_states + 1):
                                 parameters = {}
-                                calculator_relax = {
-                                    'name': 'gpaw',
-                                    'mode': {
-                                        'name': 'pw',
-                                        'ecut': 800,
-                                        'dedecut': 'estimate'},
-                                    'xc': 'PBE',
-                                    'kpts': {
-                                        'density': 6.0,
-                                        'gamma': True},
-                                    'basis': 'dzp',
-                                    'symmetry': {
-                                        'symmorphic': False},
-                                    'convergence': {
-                                        'forces': 1e-4},
-                                    'txt': 'relax.txt',
-                                    'occupations': {
-                                        'name': 'fermi-dirac',
-                                        'width': 0.02},
-                                    'spinpol': True}
-                                calculator_gs = {
-                                    'name': 'gpaw',
-                                    'mode': {
-                                        'name': 'pw',
-                                        'ecut': 800},
-                                    'xc': 'PBE',
-                                    'basis': 'dzp',
-                                    'kpts': {
-                                        'density': 12.0,
-                                        'gamma': True},
-                                    'occupations': {
-                                        'name': 'fermi-dirac',
-                                        'width': 0.02},
-                                    'convergence': {
-                                        'bands': 'CBM+3.0'},
-                                    'nbands': '200%',
-                                    'txt': 'gs.txt',
-                                    'spinpol': True}
+                                calculator_relax = relax_calc_dict.copy()
+                                calculator_gs = gs_calc_dict.copy()
                                 parameters['asr.gs@calculate'] = {
                                     'calculator': calculator_gs}
                                 parameters['asr.gs@calculate']['calculator'
@@ -469,44 +409,8 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                                 (-1) * charge_states,
                                 charge_states + 1):
                             parameters = {}
-                            calculator_relax = {
-                                'name': 'gpaw',
-                                'mode': {
-                                    'name': 'pw',
-                                    'ecut': 800,
-                                    'dedecut': 'estimate'},
-                                'xc': 'PBE',
-                                'kpts': {
-                                    'density': 6.0,
-                                    'gamma': True},
-                                'basis': 'dzp',
-                                'symmetry': {
-                                    'symmorphic': False},
-                                'convergence': {
-                                    'forces': 1e-4},
-                                'txt': 'relax.txt',
-                                'occupations': {
-                                    'name': 'fermi-dirac',
-                                    'width': 0.02},
-                                'spinpol': True}
-                            calculator_gs = {
-                                'name': 'gpaw',
-                                'mode': {
-                                    'name': 'pw',
-                                    'ecut': 800},
-                                'xc': 'PBE',
-                                'basis': 'dzp',
-                                'kpts': {
-                                    'density': 12.0,
-                                    'gamma': True},
-                                'occupations': {
-                                    'name': 'fermi-dirac',
-                                    'width': 0.02},
-                                'convergence': {
-                                    'bands': 'CBM+3.0'},
-                                'nbands': '200%',
-                                'txt': 'gs.txt',
-                                'spinpol': True}
+                            calculator_relax = relax_calc_dict.copy()
+                            calculator_gs = gs_calc_dict.copy()
                             parameters['asr.gs@calculate'] = {
                                 'calculator': calculator_gs}
                             parameters['asr.gs@calculate']['calculator'
@@ -546,44 +450,8 @@ def create_substitutional(temp_dict, structure, pristine, eq_pos, finished_list,
                             (-1) * charge_states,
                             charge_states + 1):
                         parameters = {}
-                        calculator_relax = {
-                            'name': 'gpaw',
-                            'mode': {
-                                'name': 'pw',
-                                'ecut': 800,
-                                'dedecut': 'estimate'},
-                            'xc': 'PBE',
-                            'kpts': {
-                                'density': 6.0,
-                                'gamma': True},
-                            'basis': 'dzp',
-                            'symmetry': {
-                                'symmorphic': False},
-                            'convergence': {
-                                'forces': 1e-4},
-                            'txt': 'relax.txt',
-                            'occupations': {
-                                'name': 'fermi-dirac',
-                                'width': 0.02},
-                            'spinpol': True}
-                        calculator_gs = {
-                            'name': 'gpaw',
-                            'mode': {
-                                'name': 'pw',
-                                'ecut': 800},
-                            'xc': 'PBE',
-                            'basis': 'dzp',
-                            'kpts': {
-                                'density': 12.0,
-                                'gamma': True},
-                            'occupations': {
-                                'name': 'fermi-dirac',
-                                'width': 0.02},
-                            'convergence': {
-                                'bands': 'CBM+3.0'},
-                            'nbands': '200%',
-                            'txt': 'gs.txt',
-                            'spinpol': True}
+                        calculator_relax = relax_calc_dict.copy()
+                        calculator_gs = gs_calc_dict.copy()
                         parameters['asr.gs@calculate'] = {
                             'calculator': calculator_gs}
                         parameters['asr.gs@calculate']['calculator'
@@ -659,37 +527,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
         pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
     parameters = {}
     string = 'defects.pristine_sc.{}{}{}'.format(N_x, N_y, N_z)
-    calculator_relax = {
-        'name': 'gpaw',
-        'mode': {
-            'name': 'pw',
-            'ecut': 800,
-            'dedecut': 'estimate'},
-        'xc': 'PBE',
-        'kpts': {
-            'density': 6.0,
-            'gamma': True},
-        'basis': 'dzp',
-        'symmetry': {
-            'symmorphic': False},
-        'convergence': {
-            'forces': 1e-4},
-        'txt': 'relax.txt',
-        'occupations': {
-            'name': 'fermi-dirac',
-            'width': 0.02},
-        'spinpol': True}
-    calculator_gs = {'name': 'gpaw',
-                     'mode': {'name': 'pw', 'ecut': 800},
-                     'xc': 'PBE',
-                     'basis': 'dzp',
-                     'kpts': {'density': 12.0, 'gamma': True},
-                     'occupations': {'name': 'fermi-dirac',
-                                     'width': 0.02},
-                     'convergence': {'bands': 'CBM+3.0'},
-                     'nbands': '200%',
-                     'txt': 'gs.txt',
-                     'spinpol': True}
+    calculator_relax = relax_calc_dict.copy()
+    calculator_gs = gs_calc_dict.copy()
     parameters['asr.gs@calculate'] = {
         'calculator': calculator_gs}
     parameters['asr.relax'] = {'calculator': calculator_relax}
