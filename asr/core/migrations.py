@@ -21,13 +21,18 @@ def param_is_missing_gpaw_calculator(param: typing.Any):
 
 
 def select_records_that_misses_names_in_gpaw_calculator(record):
-    for name, value in record.parameters.items():
+    if record.version < 0:
+        return False
+    for _, value in record.parameters.items():
         if param_is_missing_gpaw_calculator(value):
             return True
     return False
 
 
-@asr.migration(selector=select_records_that_misses_names_in_gpaw_calculator)
+@asr.migration(
+    selector=select_records_that_misses_names_in_gpaw_calculator,
+    eagerness=5,
+)
 def add_missing_names_in_gpaw_calculators(record):
     """Add missing names in GPAW calculators."""
     for name, value in record.parameters.items():
