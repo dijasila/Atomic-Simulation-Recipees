@@ -2,6 +2,22 @@ import pytest
 
 
 @pytest.mark.ci
+def test_nearest_distance():
+    from asr.setup.defects import return_distances_cell
+    from .materials import std_test_materials
+    import numpy as np
+
+    atoms = std_test_materials[1]
+    cell = atoms.get_cell()
+    distances = return_distances_cell(cell)
+    refs = [cell[0][0], np.sqrt(cell[1][0]**2 + cell[1][1]**2),
+            np.sqrt((-cell[0][0] + cell[1][0])**2 + cell[1][1]**2),
+            np.sqrt((cell[0][0] + cell[1][0])**2 + cell[1][1]**2)]
+    for i, dist in enumerate(distances):
+        assert dist == refs[i]
+
+
+@pytest.mark.ci
 def test_setup_defects(asr_tmpdir):
     from pathlib import Path
     from .materials import std_test_materials
@@ -47,8 +63,8 @@ def test_vacuum(asr_tmpdir):
     atoms = std_test_materials[1]
     write('unrelaxed.json', atoms)
     for vac in np.arange(20, 30, 1):
-        main(uniform_vacuum=vac)
-        pathlist = list(Path('.').glob('defects.BN_331*/charge_0/'))
+        main(general_algorithm=15., uniform_vacuum=vac)
+        pathlist = list(Path('.').glob('defects.BN_*/charge_0/'))
         for path in pathlist:
             structure = read(path / 'unrelaxed.json')
             cell = structure.get_cell()
@@ -90,7 +106,7 @@ def test_intrinsic_single_defects(asr_tmpdir):
         Path(name).mkdir()
         write(f'{name}/unrelaxed.json', atoms)
         with chdir(name):
-            main(general_algorithm=15.)
+            main()
             pathlist = list(Path('.').glob('defects.*/charge_0'))
             assert len(pathlist) == lengths[i]
 
@@ -110,7 +126,7 @@ def test_extrinsic_single_defects(asr_tmpdir):
         Path(name).mkdir()
         write(f'{name}/unrelaxed.json', atoms)
         with chdir(name):
-            main(general_algorithm=15., extrinsic='V,Nb')
+            main(extrinsic='V,Nb')
             pathlist = list(Path('.').glob('defects.*/charge_0'))
             assert len(pathlist) == lengths[i]
 

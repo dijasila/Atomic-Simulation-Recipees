@@ -735,14 +735,24 @@ def create_general_supercell(structure, size=12.5):
     Creates supercell of a form that breaks initial bravais lattice symmetry
     as well as tries to find the most uniform configuration containing the
     least number of atoms. Only works in 2D so far!
+
+    Here's the idea behind the algorithm:
+            b1 = n1*a1 + m1*a2
+            b2 = n2*a1 + m2*a2
+            we restrict ourselves such that m1=0
+            the respective new cell is then:
+            P = [[n1, 0, 0], [n2, m2, 0], [0, 0, 1]].
     """
     from ase.build import make_supercell
     import numpy as np
+    assert np.sum(structure.get_pbc()) == 2, 'Symmetry breaking only in 2D!'
+
     # b1 = n1*a1 + m1*a2
     # b2 = n2*a1 + m2*a2
     # we restrict ourselves such that m1=0
     # the respective new cell is then:
     # P = [[n1, 0, 0], [n2, m2, 0], [0, 0, 1]]
+
     print('INFO: set up general supercell.')
     sc_structuredict = {}
     for n1 in range(1, 10):
@@ -764,17 +774,7 @@ def create_general_supercell(structure, size=12.5):
     stdev_list = []
     for i, element in enumerate(sc_structuredict):
         cell = sc_structuredict[element]['structure'].get_cell()
-        distance_xx = np.sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2)
-        distance_yy = np.sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2)
-        distance_xy = np.sqrt((
-            cell[0][0] + cell[1][0])**2 + (
-            cell[0][1] + cell[1][1])**2 + (
-            cell[0][2] + cell[1][2])**2)
-        distance_mxy = np.sqrt((
-            -cell[0][0] + cell[1][0])**2 + (
-            -cell[0][1] + cell[1][1])**2 + (
-            -cell[0][2] + cell[1][2])**2)
-        distances = [distance_xx, distance_yy, distance_xy, distance_mxy]
+        distances = return_distances_cell(cell)
         stdev = np.std(distances)
         sc_structuredict[element]['distances'] = distances
         sc_structuredict[element]['stdev'] = stdev
@@ -799,6 +799,27 @@ def create_general_supercell(structure, size=12.5):
             finalstruc = structure
 
     return finalstruc
+
+
+def return_distances_cell(cell):
+    import numpy as np
+    # there are four possible distinct next neighbor
+    # distances of repititions in a given cell
+
+    distances = []
+    # calculate a1 and a2 distances
+    for i in range(2):
+        distances.append(np.sqrt(cell[i][0]**2
+                         + cell[i][1]**2
+                         + cell[i][2]**2))
+    # calculate mixed distances (comb. of a1 and a2)
+    for sign in [-1, 1]:
+        distances.append(np.sqrt((
+            sign * cell[0][0] + cell[1][0])**2 + (
+            sign * cell[0][1] + cell[1][1])**2 + (
+            sign * cell[0][2] + cell[1][2])**2))
+
+    return distances
 
 
 if __name__ == '__main__':
