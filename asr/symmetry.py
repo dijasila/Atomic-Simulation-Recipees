@@ -1,5 +1,3 @@
-from gpaw import GPAW
-from gpaw.spinorbit import get_symmetry_eigenvalues
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (entry_parameter_description,
                                   describe_entry, WebPanel)
@@ -40,6 +38,9 @@ class Result(ASRResult):
          returns=Result)
 @option('-so', '--spin_orbit', help='Toggle spin orbit coupling', type=bool)
 def main(spin_orbit: bool = True) -> Result:
+    from gpaw import GPAW
+    from gpaw.spinorbit import get_symmetry_eigenvalues
+
     # Not parallelized
     calc = GPAW('high_sym.gpw')
     atoms = calc.atoms
@@ -85,6 +86,7 @@ def calculate():
     from pathlib import Path
 
     if not Path('high_sym.gpw').is_file():
+        from gpaw import GPAW
         calc = GPAW('gs.gpw')
         atoms = calc.atoms
         kpts = atoms.cell.get_bravais_lattice(pbc=atoms.pbc).get_special_points()
