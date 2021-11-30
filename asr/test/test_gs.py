@@ -40,7 +40,7 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     dep_names = [dep_record.run_specification.name
                  for dep_record in dep_records]
     assert (set(dep_names)
-            == set(['asr.c2db.gs:calculate', 'asr.c2db.magnetic_anisotropy']))
+            == set(['asr.c2db.gs:calculate', 'asr.c2db.magnetic_anisotropy:main']))
     gsfile = calculateresult.calculation.paths[0]
     assert Path(gsfile).is_file()
     gs = read_json(gsfile)
