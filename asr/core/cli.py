@@ -413,13 +413,22 @@ def cache():
 
 
 def get_item(attrs: List[str], obj):
-
     for attr in attrs:
+        if attr.endswith("()"):
+            method = True
+            attr = attr[:-2]
+        else:
+            method = False
+
         if hasattr(obj, attr):
             obj = getattr(obj, attr)
+            if method:
+                obj = obj()
         else:
             try:
                 obj = obj[attr]
+                if method:
+                    obj = obj()
             except TypeError:
                 obj = None
 
@@ -537,10 +546,10 @@ def ls(selection, formatting, sort, width):
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
     records = cache.select(selector=selector)
-    print_record_details(formatting, sort, width, records)
+    print_record_listing(formatting, sort, width, records)
 
 
-def print_record_details(formatting, sort, width, records):
+def print_record_listing(formatting, sort, width, records):
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()
     formats = []
@@ -561,7 +570,7 @@ def print_record_details(formatting, sort, width, records):
             if not fmt:
                 fmt = ''
             text = format(obj, fmt)
-            if len(text) > width:
+            if width > 0 and len(text) > width:
                 text = text[:width] + '...'
             row.append(text)
         rows.append(row)
@@ -852,7 +861,7 @@ def db_cache_ls(database, db_selection, selection, formatting, width, sort):
         if records:
             found_anything = True
             print(f"Showing records for row.id={row.id}")
-            print_record_details(
+            print_record_listing(
                 formatting, sort, width, records,
             )
     if not found_anything:
