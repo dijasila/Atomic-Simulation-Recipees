@@ -40,8 +40,8 @@ import os
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
 def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
-         supercell: List[int] = [0, 0, 0],
-         maxsize: float = 8, intrinsic: bool = True, extrinsic: str = 'NO',
+         supercell: List[int] = [3, 3, 3],
+         maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: bool = False, uniform_vacuum: bool = False,
          nopbc: bool = True,
          halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
@@ -636,7 +636,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
     formula = structure.symbols
 
     # first, find the desired supercell
-    if sc[0] == 0 and sc[1] == 0 and sc[2] == 0 and general_algorithm is False:
+    if max_lattice is not None and general_algorithm is False:
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
         pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
@@ -647,9 +647,12 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
         N_y = 0
         N_z = 0
     else:
+        if is_2D:
+            N_z = 1
+        else:
+            N_z = sc[2]
         N_x = sc[0]
         N_y = sc[1]
-        N_z = sc[2]
         print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
               N_x, N_y, N_z))
         pristine = structure.repeat((N_x, N_y, N_z))

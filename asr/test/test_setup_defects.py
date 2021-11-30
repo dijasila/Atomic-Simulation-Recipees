@@ -47,7 +47,7 @@ def test_vacuum(asr_tmpdir):
     atoms = std_test_materials[1]
     write('unrelaxed.json', atoms)
     for vac in np.arange(20, 30, 1):
-        main(supercell=[3, 3, 1], uniform_vacuum=vac)
+        main(uniform_vacuum=vac)
         pathlist = list(Path('.').glob('defects.BN_331*/charge_0/'))
         for path in pathlist:
             structure = read(path / 'unrelaxed.json')
@@ -159,7 +159,7 @@ def test_setup_halfinteger(asr_tmpdir):
 
     atoms = std_test_materials[1]
     write('unrelaxed.json', atoms)
-    main(supercell=[3, 3, 3])
+    main()
     p = Path('.')
     pathlist = list(p.glob('defects.*/charge_0'))
     for path in pathlist:
