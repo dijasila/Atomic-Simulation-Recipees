@@ -232,7 +232,8 @@ def get_material_uid(atoms: Atoms):
 def collect_folder(
     folder: Path, atomsname: str, patterns: List[str] = [''],
     exclude_patterns: List[str] = [],
-    children_patterns=[]):
+    children_patterns=[],
+):
     """Collect data from a material folder.
 
     Parameters
