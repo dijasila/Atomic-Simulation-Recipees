@@ -4,23 +4,23 @@ from asr.database.browser import (entry_parameter_description,
 from typing import List
 
 
-def webpanel(result, row, key_descriptions):
+# def webpanel(result, row, key_descriptions):
 
-    parameter_description = entry_parameter_description(
-        row.data, 'asr.symmetry')
-    description = ('Second order symmetry indicator of the occupied bands \n\n'
-                   + parameter_description)
+#     parameter_description = entry_parameter_description(
+#         row.data, 'asr.symmetry')
+#     description = ('Second order symmetry indicator of the occupied bands \n\n'
+#                    + parameter_description)
 
-    datarow = [describe_entry('Symmetry indicator', description),
-               result.indicators, result.Qc]
+#     datarow = [describe_entry('Symmetry indicator', description),
+#                result.indicators, result.Qc]
 
-    summary = WebPanel(title='Summary',
-                       columns=[[{'type': 'table',
-                                  'header': ['Electronic properties',
-                                             'Indicators', 'Qc'],
-                                  'rows': [datarow]}]])
+#     summary = WebPanel(title='Summary',
+#                        columns=[[{'type': 'table',
+#                                   'header': ['Electronic properties',
+#                                              'Indicators', 'Qc'],
+#                                   'rows': [datarow]}]])
 
-    return [summary]
+#     return [summary]
 
 
 @prepare_result
@@ -29,7 +29,7 @@ class Result(ASRResult):
     Qc: float
     key_descriptions = {'indicators': 'Higher order topological index',
                         'Qc': 'Fractionalized corner charges'}
-    formats = {"ase_webpanel": webpanel}
+    # formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.symmetry',
@@ -50,9 +50,23 @@ def main(spin_orbit: bool = True) -> Result:
     kpts = list(kpts.values())
     # Set up parameters for symmetry eigenvalue calculation
     Nv = int(calc.get_number_of_electrons() / 2)
-    r_v = [0, 0, 0]
     bands = range(0, Nv)
     sym = 'C3'
+
+    # Calculate origin of unit cell
+    from asr.utils.symmetry import atoms2symmetry
+    from itertools import product
+    o_c = atoms2symmetry(atoms,
+                         tolerance=1e-3,
+                         angle_tolerance=0.1).dataset['origin_shift']
+    n = 2
+    lat = np.arange(-n, n + 1)
+    for combis in product(lat, repeat=2):
+        R_c = np.asarray(combis + (0,))
+        r_c = R_c - o_c
+        if 0 < r_c[0] < 1 and 0 < r_c[1] < 1:
+            break
+    r_v = r_c @ atoms.get_cell()
 
     P_i = []
     for ik in range(len(kpts)):
