@@ -477,7 +477,7 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
     if index is None:
         ref_index = get_reference_index(def_index, struc_def, struc_pris)
     else:
-        ret_index = index
+        ref_index = index
 
     # get newly referenced eigenvalues for pristine and defect, as well as
     # pristine fermi level for evaluation of the band gap
