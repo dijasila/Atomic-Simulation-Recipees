@@ -1,5 +1,5 @@
 """Generate defective atomic structures."""
-from typing import List
+from typing import Sequence
 from pathlib import Path
 from asr.core import command, option, ASRResult
 import click
@@ -74,7 +74,7 @@ gs_calc_dict = {'name': 'gpaw',
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
 def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
-         supercell: List[int] = [3, 3, 3],
+         supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: bool = False, uniform_vacuum: bool = False,
          nopbc: bool = True,
