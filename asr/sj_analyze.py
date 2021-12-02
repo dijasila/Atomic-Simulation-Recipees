@@ -210,7 +210,7 @@ def main(index: int = None) -> Result:
     transition_list = calculate_transitions(index)
 
     # get pristine band edges for correct referencing and plotting
-    pris = get_pristine_band_edges()
+    pris = get_pristine_band_edges(index)
 
     # get neutral formation energy without chemical potentials applied
     eform, standard_states = calculate_neutral_formation_energy()
@@ -342,7 +342,7 @@ def calculate_transitions(index):
     return transition_list
 
 
-def get_pristine_band_edges() -> PristineResults:
+def get_pristine_band_edges(index) -> PristineResults:
     """Return band edges and vaccum level for the host system."""
     from asr.get_wfs import (return_defect_index,
                              get_reference_index,
@@ -366,7 +366,10 @@ def get_pristine_band_edges() -> PristineResults:
               ' state for defect and pristine system?')
 
     # evaluate which atom possesses maximum distance to the defect site
-    ref_index = get_reference_index(def_index, struc_def, struc_pris)
+    if index is None:
+        ref_index = get_reference_index(def_index, struc_def, struc_pris)
+    else:
+        ret_index = index
 
     pot_def, pot_pris = extract_atomic_potentials(calc_def, calc_pris,
                                                   ref_index, is_vacancy)
