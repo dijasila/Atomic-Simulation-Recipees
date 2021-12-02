@@ -135,7 +135,7 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
         print('INFO: starting recipe for setting up defect systems of '
               '{} host system.'.format(structure.symbols))
         # check dimensionality of initial parent structure
-        nd = int(np.sum(structure.get_pbc()))
+        nd = sum(structure.pbc)
         if nd == 3:
             is2d = False
         elif nd == 2:
