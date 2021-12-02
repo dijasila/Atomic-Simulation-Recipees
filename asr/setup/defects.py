@@ -120,7 +120,6 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
       of the different defect structures.
     """
     from ase.io import read
-    import numpy as np
 
     # convert extrinsic defect string
     extrinsic = extrinsic.split(',')
