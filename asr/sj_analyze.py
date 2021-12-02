@@ -1,4 +1,4 @@
-from asr.core import command, ASRResult, prepare_result  # , option
+from asr.core import command, ASRResult, prepare_result, option
 from asr.database.browser import make_panel_description, href
 from pathlib import Path
 from ase.io import Trajectory
@@ -188,7 +188,10 @@ class Result(ASRResult):
                    'gs.gpw'],
          resources='24:2h',
          returns=Result)
-def main() -> Result:
+@option('--index', help='Specify index of the atom in the pristine supercell '
+        'that you want to use as a potential reference. ONLY TEMPORARY OPTION!',
+        type=int)
+def main(index: int = None) -> Result:
     """Calculate charge transition levels for defect systems.
 
     This recipe uses SJ theory to calculate charge transition levels for defect systems.
@@ -204,7 +207,7 @@ def main() -> Result:
     hof = get_heat_of_formation()
 
     # Obtain a list of all transitions with the respective ASRResults object
-    transition_list = calculate_transitions()
+    transition_list = calculate_transitions(index)
 
     # get pristine band edges for correct referencing and plotting
     pris = get_pristine_band_edges()
@@ -314,26 +317,26 @@ def get_kindlist():
     return kindlist
 
 
-def calculate_transitions():
+def calculate_transitions(index):
     """Calculate all of the present transitions and return TransitionResults."""
     transition_list = []
     # First, get IP and EA (charge transition levels for the neutral defect
     if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
         transition = [0, +1]
-        transition_results = get_transition_level(transition, 0)
+        transition_results = get_transition_level(transition, 0, index)
         transition_list.append(transition_results)
         transition = [0, -1]
-        transition_results = get_transition_level(transition, 0)
+        transition_results = get_transition_level(transition, 0, index)
         transition_list.append(transition_results)
 
     for q in [-3, -2, -1, 1, 2, 3]:
         if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
-            transition_results = get_transition_level(transition, q)
+            transition_results = get_transition_level(transition, q, index)
             transition_list.append(transition_results)
         if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q - 1]
-            transition_results = get_transition_level(transition, q)
+            transition_results = get_transition_level(transition, q, index)
             transition_list.append(transition_results)
 
     return transition_list
@@ -441,7 +444,7 @@ def calculate_neutral_formation_energy():
     return eform, standard_states
 
 
-def get_transition_level(transition, charge) -> TransitionResults:
+def get_transition_level(transition, charge, index) -> TransitionResults:
     """Calculate the charge transition level for a given charge transition.
 
     :param transition: (List), transition (e.g. [0,-1])
@@ -468,7 +471,10 @@ def get_transition_level(transition, charge) -> TransitionResults:
               ' state for defect and pristine system?')
 
     # evaluate which atom possesses maximum distance to the defect site
-    ref_index = get_reference_index(def_index, struc_def, struc_pris)
+    if index is None:
+        ref_index = get_reference_index(def_index, struc_def, struc_pris)
+    else:
+        ret_index = index
 
     # get newly referenced eigenvalues for pristine and defect, as well as
     # pristine fermi level for evaluation of the band gap
