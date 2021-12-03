@@ -48,7 +48,10 @@ doctest:
 python38:
   image: python:3.8
   stage: test
-  script: tox -e py38
+  script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
+    - tox -e py38
   artifacts:
     paths:
       - .tox/.coverage*
@@ -57,7 +60,10 @@ python38:
 python39:
   image: python:3.9
   stage: test
-  script: tox -e py39
+  script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
+    - tox -e py39
   artifacts:
     paths:
       - .tox/.coverage*
