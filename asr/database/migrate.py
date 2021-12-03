@@ -137,7 +137,6 @@ def write_migrated_database(dbin, dbout):
             continue
         if report.n_errors > 0:
             report.print_errors()
-            break
         from asr.core.cache import Cache, MemoryBackend
 
         cache = Cache(backend=MemoryBackend())
