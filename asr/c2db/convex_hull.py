@@ -137,7 +137,10 @@ def select_records_with_databases_as_string(record):
 @asr.migration(selector=select_records_with_databases_as_string)
 def convert_database_parameter_to_file(record):
     """Convert databases represented as strings to File objects."""
-    parameters = convert_database_strings_to_files(record.parameters)
+    try:
+        parameters = convert_database_strings_to_files(record.parameters)
+    except FileNotFoundError:
+        raise asr.NonMigratableRecord
     record.parameters = parameters
     return record
 
