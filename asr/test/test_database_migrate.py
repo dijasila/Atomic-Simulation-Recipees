@@ -14,24 +14,32 @@ ASR_TEST_DIR = os.environ.get("ASR_TEST_DATA")
 
 if ASR_TEST_DIR is not None:
     DIRECTORY_WITH_DATABASES_TO_BE_MIGRATED = (
-        ASR_TEST_DIR
-        + "/ASR_MIGRATION_TEST_DATABASES"
+        ASR_TEST_DIR + "/ASR_MIGRATION_TEST_DATABASES"
     )
-    databases_to_be_migrated = list(
-        Path(DIRECTORY_WITH_DATABASES_TO_BE_MIGRATED).glob("*.db")
+    databases_to_be_migrated = [
+        (False, pth)
+        for pth in Path(DIRECTORY_WITH_DATABASES_TO_BE_MIGRATED).glob("*.db")
+    ]
+    DIRECTORY_WITH_DATABASES_TO_BE_COLLAPSED = (
+        ASR_TEST_DIR + "/ASR_COLLAPSE_TEST_DATABASES"
     )
+    databases_to_be_collapsed = [
+        (True, pth)
+        for pth in Path(DIRECTORY_WITH_DATABASES_TO_BE_COLLAPSED).glob("*.db")
+    ]
+    databases_to_be_migrated.extend(databases_to_be_collapsed)
 else:
     databases_to_be_migrated = []
 
 
 @pytest.fixture(
     params=databases_to_be_migrated,
-    ids=[str(pth.absolute()) for pth in databases_to_be_migrated],
+    ids=[str(pth[1].absolute()) for pth in databases_to_be_migrated],
 )
 def database_to_be_migrated(request):
-    database_name = request.param
+    collapse, database_name = request.param
     db = connect(database_name)
-    return db
+    return collapse, db
 
 
 @pytest.mark.skipif(
@@ -40,14 +48,17 @@ def database_to_be_migrated(request):
 )
 @pytest.mark.ci
 def test_collapse_database(database_to_be_migrated, asr_tmpdir):
-    with connect("collapsed.db") as collapsed:
-        write_collapsed_database(database_to_be_migrated, collapsed)
-    row = collapsed.get(id=1)
-    assert "records" not in row.data
-    assert "records" not in row.row.data
+    collapse, database_to_be_migrated = database_to_be_migrated
+    if collapse:
+        with connect("collapsed.db") as collapsed:
+            write_collapsed_database(database_to_be_migrated, collapsed)
+        row = collapsed.get(id=1)
+        assert "records" not in row.data
+        assert "records" not in row.row.data
+        database_to_be_migrated = collapsed
 
     with connect("converted.db") as converted:
-        write_converted_database(collapsed, converted)
+        write_converted_database(database_to_be_migrated, converted)
     row = converted.get(id=1)
     assert "records" in row.data
 
