@@ -40,11 +40,12 @@ class Result(ASRResult):
 def main(spin_orbit: bool = True) -> Result:
     from gpaw import GPAW
     from gpaw.spinorbit import get_symmetry_eigenvalues
+    import numpy as np
 
     # Not parallelized
     calc = GPAW('high_sym.gpw')
     atoms = calc.atoms
-    kpts = atoms.cell.get_bravais_lattice(pbc=atoms.pbc).get_special_points()
+    kpts = atoms.cell.bandpath(npoints=0, pbc=atoms.pbc).special_points
 
     X = list(kpts.keys())
     kpts = list(kpts.values())
@@ -59,6 +60,7 @@ def main(spin_orbit: bool = True) -> Result:
     o_c = atoms2symmetry(atoms,
                          tolerance=1e-3,
                          angle_tolerance=0.1).dataset['origin_shift']
+
     n = 2
     lat = np.arange(-n, n + 1)
     for combis in product(lat, repeat=2):
@@ -103,11 +105,11 @@ def calculate():
         from gpaw import GPAW
         calc = GPAW('gs.gpw')
         atoms = calc.atoms
-        kpts = atoms.cell.get_bravais_lattice(pbc=atoms.pbc).get_special_points()
+        kpts = atoms.cell.bandpath(npoints=0, pbc=atoms.pbc).special_points
         calc = calc.fixed_density(kpts=list(kpts.values()), txt='high_sym.txt',
                                   parallel={'domain': 1}, symmetry='off')
 
-        calc.diagonalize_full_hamiltonian(nbands=30)
+        calc.diagonalize_full_hamiltonian()
         calc.write('high_sym.gpw', mode='all')
 
     return
