@@ -1,6 +1,6 @@
 from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (entry_parameter_description,
-                                  describe_entry, WebPanel)
+# from asr.database.browser import (entry_parameter_description,
+#                                   describe_entry, WebPanel)
 from typing import List
 
 
