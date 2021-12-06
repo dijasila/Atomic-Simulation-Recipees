@@ -277,7 +277,7 @@ def main(temp: float = 300,
 
     sc_results = []
     for element in el_list:
-        print(f'INFO: run self-consitent EF evaluation for {element}-rich conditions.')
+        print(f'INFO: run self-consitent EF evaluation for {element}-poor conditions.')
         defectdict = adjust_formation_energies(inputdict, element)
         # Initialize self-consistent loop for finding Fermi energy
         E = 0
@@ -398,26 +398,54 @@ def get_defect_info(defect):
     return defect.split('_')[0], defect.split('_')[1]
 
 
-def get_chemical_potentials():
+def get_chemical_potentials(stoi, element):
     from asr.core import read_json
     from pathlib import Path
 
     paths = list(Path('.').glob('../defects.*/charge_0/results-asr.sj_analyze.json'))
     sj_res = read_json(paths[0])
     hof = sj_res['hof']
-    sstates = []
+    sstates = {}
     for sstate in sj_res['standard_states']:
-        sstates.append((sstate['element'], sstate['eref']))
+        name = sstate['element']
+        if sstate['element'] == element:
+            mu_el = hof / stoi[element] + sstate['eref']
+            sstates[f'{name}'] = mu_el
+        else:
+            sstates[f'{name}'] = sstate['eref']
 
-    return hof, sstates
+    return sstates
 
 
 def adjust_formation_energies(defectdict, element):
-    """Return defect dict in X-rich conditions given a defect dict @ stand. states."""
-    hof, sstates = get_chemical_potentials()
+    """Return defect dict in X-poor conditions given a defect dict @ stand. states."""
+    newdict = {}
+    stoi = get_stoichiometry()
+    sstates = get_chemical_potentials(stoi, element)
+    print(sstates)
     for defect in defectdict:
         def_type, def_pos = get_defect_info(defect)
-    return defectdict
+        if def_type == 'v':
+            add = 0
+        else:
+            add = sstates[f'{def_type}']
+        remove = sstates[f'{def_pos}']
+        tuple_list = []
+        for tpl in defectdict[f'{defect}']:
+            tuple_list.append((tpl[0] - add + remove,
+                               tpl[1]))
+        newdict[f'{defect}'] = tuple_list
+
+    return newdict
+
+
+def get_stoichiometry():
+    from ase.formula import Formula
+    atoms = read('../unrelaxed.json')
+    w = Formula(atoms.get_chemical_formula())
+
+    return w.count()
+
 
 
 def get_element_list(atoms):
