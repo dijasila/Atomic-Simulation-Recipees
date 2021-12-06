@@ -3,12 +3,15 @@ from pathlib import Path
 
 import pytest
 
-from asr.database import connect
+from asr.database import DatabaseProject, connect
 from asr.database.migrate import (
     write_collapsed_database,
     write_converted_database,
     write_migrated_database,
 )
+
+from .fixtures import get_app_row_contents
+
 
 ASR_TEST_DIR = os.environ.get("ASR_TEST_DATA")
 
@@ -74,4 +77,15 @@ def test_collapse_database(database_to_be_migrated, asr_tmpdir):
 
     with connect("migrated.db") as migrated:
         write_migrated_database(converted, migrated)
-    assert "records" in migrated.get(id=1).data
+    row = migrated.get(id=1)
+    assert "records" in row.data
+
+    tmpdir = Path("tmp/")
+    tmpdir.mkdir()
+    project = DatabaseProject(
+        name="migrated_database",
+        title="Migrated database",
+        database=migrated,
+        tmpdir=tmpdir,
+    )
+    get_app_row_contents(project)

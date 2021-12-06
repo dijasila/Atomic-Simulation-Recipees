@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Generator, Tuple
+from typing import Generator, Tuple, Dict, Any
 
 from ase import Atoms
 from ase.db import connect as ase_connect
@@ -59,7 +59,7 @@ class Row:
     def records(self):
         if self._data is None:
             self._load_data()
-        return self._data["records"]
+        return self._data.get("records", [])
 
     @property
     def cache(self):
@@ -119,8 +119,16 @@ class Row:
     def id(self):
         return self.row.id
 
+    @property
+    def cell(self):
+        return self.row.cell
+
+    @property
+    def pbc(self):
+        return self.row.pbc
+
     def __getattr__(self, name):
-        return self.key_value_pairs[name]
+        return getattr(self.row, name)
 
 
 class ASEDatabaseInterface:
@@ -132,9 +140,13 @@ class ASEDatabaseInterface:
     def __init__(self, db: Database):
         self.db = db
 
-    @wraps(Database.metadata)
-    def metadata(self, *args, **kwargs):
-        return self.db.metadata(*args, **kwargs)
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        return self.db.metadata
+
+    @metadata.setter
+    def metadata(self, value):
+        self.db.metadata = value
 
     @wraps(Database.write)
     def write(self, *args, data=None, records=None, **kwargs):
@@ -217,5 +229,5 @@ def connect(dbname: str) -> ASEDatabaseInterface:
     ASEDatabaseInterface
         ASR-ASE database interface.
     """
-    db = ase_connect(dbname)
+    db = ase_connect(dbname, serial=True)
     return ASEDatabaseInterface(db)

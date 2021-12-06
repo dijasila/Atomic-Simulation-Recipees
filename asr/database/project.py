@@ -5,8 +5,8 @@ import typing
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ase.db import connect
 from ase.db.core import Database
+from asr.database import connect
 
 
 KeyDescriptions = typing.Dict[str, typing.Tuple[str, str, str]]
@@ -202,7 +202,7 @@ class DatabaseProject:
             }
 
         """
-        db = connect(path, serial=True)
+        db = connect(path)
         metadata = db.metadata
         name = metadata.get("name", Path(path).name)
         key_descriptions = make_default_key_descriptions(db)

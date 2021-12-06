@@ -82,11 +82,10 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
 def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     from .materials import std_test_materials
     from asr.c2db.gs import main
-    from ase.db import connect
+    from asr.database import connect
     from asr.core.material import make_panel_figures
     from asr.core.datacontext import DataContext
     from asr.database.fromtree import collect_folders
-    from asr.database.browser import RowWrapper
     atoms = std_test_materials[0]
     atomsname = 'structure.json'
     atoms.write(atomsname)
@@ -101,7 +100,7 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
     with connect(dbname) as conn:
         rows = list(conn.select())
     assert len(rows) == 1
-    row = RowWrapper(rows[0])
+    row = rows[0]
 
     context = DataContext(row, record, row.cache)
     panels = result.format_as('webpanel2', context)

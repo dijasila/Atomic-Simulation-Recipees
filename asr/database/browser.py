@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Any, Optional
@@ -9,7 +8,6 @@ import multiprocessing
 import numpy as np
 import matplotlib.pyplot as plt
 from asr.core import decode_object, ASRResult
-from asr.core.cache import Cache, MemoryBackend
 from asr.core.datacontext import DataContext
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
@@ -436,53 +434,6 @@ class DataFilenameTranslator:
         return self.cache.has(selector=selector)
 
 
-class RowWrapper(Mapping):
-
-    def __init__(self, row):
-        from asr.database.fromtree import serializer
-        cache = Cache(backend=MemoryBackend())
-        if 'records' in row.data:
-            records = serializer.deserialize(row.data['records'])
-        else:
-            records = []
-        self.records = records
-        for record in records:
-            cache.add(record)
-        self._row = row
-        self.cache = cache
-        self.data = DataFilenameTranslator(cache, data=row.data)
-
-    def __getstate__(self):
-        return vars(self).copy()
-
-    def __setstate__(self, dct):
-        vars(self).update(dct)
-
-    def __getattr__(self, key):
-        """Wrap attribute lookup of AtomsRow."""
-        return getattr(self._row, key)
-
-    def __getitem__(self, key):
-        try:
-            return getattr(self, key)
-        except AttributeError:
-            raise KeyError(key)
-
-    def __iter__(self):
-        return iter(self._row)
-
-    def __len__(self):
-        return len(self._row)
-
-    @property
-    def ctime(self):
-        return self._row.ctime
-
-    @property
-    def key_value_pairs(self):
-        return self._row.key_value_pairs
-
-
 def parse_row_data(data: dict):
     newdata = {}
     for key, value in data.items():
@@ -567,15 +518,6 @@ def _layout(row, key_descriptions, prefix, pool):
     page = {}
     exclude = set()
 
-    row = RowWrapper(row)
-#
-#     newdata = parse_row_data(row.data)
-#     row.data = newdata
-#     result_objects = []
-#
-#     for key, value in row.data.items():
-#         if isinstance(value, ASRResult):
-#             result_objects.append(value)
     panel_data_sources = {}
     # Locate all webpanels
 
