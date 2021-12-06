@@ -17,6 +17,8 @@ from asr.core import (  # noqa
     instruction,
     migration,
     option,
+    ASRResult,
+    prepare_result,
 )
 
 matchers = comparators
