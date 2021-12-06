@@ -17,12 +17,12 @@ key_descriptions = {
     # },
     # "bse": {"E_B": "KVP: Exciton binding energy from BSE "
     #         "!Exc. bind. energy! [eV]"},
-    "charge_neutrality": {
-        "efermi_sc": "KVP: Equilibrium defect Fermi level !SCF E_F! [eV]",
-        "dopability": "KVP: Dopability (n-/p-type or intrisic) !Dopability!",
-        "n0": "KVP: Eq. electron carrier concentration !n0!",
-        "p0": "KVP: Eq. hole carrier concentration !p0!"
-    },
+    # "charge_neutrality": {
+    #     "efermi_sc": "KVP: Equilibrium defect Fermi level !SCF E_F! [eV]",
+    #     "dopability": "KVP: Dopability (n-/p-type or intrisic) !Dopability!",
+    #     "n0": "KVP: Eq. electron carrier concentration !n0!",
+    #     "p0": "KVP: Eq. hole carrier concentration !p0!"
+    # },
     # "convex_hull": {
     #     "ehull": "KVP: Energy above convex hull [eV/atom]",
     #     "hform": "KVP: Heat of formation [eV/atom]",

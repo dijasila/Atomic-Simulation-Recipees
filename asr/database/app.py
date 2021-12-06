@@ -210,8 +210,8 @@ def handle_query(args):
         parts.append('host_name=' + args['host_name'])
     if args['charge_state']:
         parts.append('charge_state=(charge ' + args['charge_state'] + ')')
-    if args['dopability']:
-        parts.append('dopability=' + args['dopability'])
+    # if args['dopability']:
+    #     parts.append('dopability=' + args['dopability'])
     if args['is_magnetic']:
         parts.append('is_magnetic=' + args['is_magnetic'])
     # We only want to show charge 0 systems to the user by default
