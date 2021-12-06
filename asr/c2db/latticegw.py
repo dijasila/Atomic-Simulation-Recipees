@@ -19,6 +19,12 @@ from asr.core.utils import file_barrier
 @asr.instruction("asr.latticegw")
 @asr.atomsopt()
 @asr.calcopt()
+@asr.option("-n", help="Supercell size", type=int)
+@asr.option(
+    "--mingo/--no-mingo",
+    is_flag=True,
+    help="Perform Mingo correction of force constant matrix",
+)
 @asr.option("--eta", help="Broadening parameter", default=0.01, type=float)
 @asr.option("--qcut", help="Cutoff for q-integration", default=2, type=float)
 @asr.option(
@@ -35,6 +41,11 @@ from asr.core.utils import file_barrier
     default=12,
     type=float,
     help="K Point density for ground state calculation",
+)
+@asr.calcopt(aliases=["--borncalculator"])
+@asr.option(
+    "--displacement",
+    help="Born charge displacement.",
 )
 def main(
     atoms,
