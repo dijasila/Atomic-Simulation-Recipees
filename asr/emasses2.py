@@ -93,12 +93,14 @@ def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
                 eig_ijkn[k1, k2],
                 fingerprint_ijknx[k1, k2], band_ijkn[k1, k2],
                 bnew, equal)
+
     for k1 in range(K1):
         for k3 in range(K3):
             bnew = con1d(
                 eig_ijkn[k1, :, k3],
                 fingerprint_ijknx[k1, :, k3], band_ijkn[k1, :, k3],
                 bnew, equal)
+
     for k2 in range(K2):
         for k3 in range(K3):
             bnew = con1d(
@@ -107,14 +109,35 @@ def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
                 bnew, equal)
 
     mapping = {}
+    sets = []
     for i, j in equal:
-        i, j = sorted([i, j])
-        if i not in mapping:
-            mapping[j] = i
-        else:
+        if i in mapping and j not in mapping:
+            sets[mapping[i]].add(j)
             mapping[j] = mapping[i]
+        elif j in mapping and i not in mapping:
+            sets[mapping[j]].add(i)
+            mapping[i] = mapping[j]
+        elif i not in mapping and j not in mapping:
+            mapping[i] = len(sets)
+            mapping[j] = len(sets)
+            sets.append({i, j})
+        elif mapping[i] != mapping[j]:
+            s1 = sets[mapping[i]]
+            s2 = sets[mapping[j]]
+            s1.update(s2)
+            for j in s2:
+                mapping[j] = mapping[i]
+            s2.clear()
 
-    band_ijkn = np.array([mapping.get(b, b)
+    dct = {}
+    for s in sets:
+        if not s:
+            continue
+        m = min(s)
+        for i in s:
+            dct[i] = m
+
+    band_ijkn = np.array([dct.get(b, b)
                           for b in band_ijkn.ravel()]).reshape(band_ijkn.shape)
 
     count = defaultdict(int)
@@ -131,7 +154,7 @@ def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
 
 
 def clusters(eigs,
-             eps: float = 1e-4) -> List[Tuple[int, int]]:
+             eps: float = 1e-3) -> List[Tuple[int, int]]:
     """Find clusters of degenerate eigenvalues.
 
     >>> list(clusters(np.zeros(4)))
@@ -177,7 +200,7 @@ def con1d(e_kn,
         for n2 in range(N):
             n1b, n1a = ovl_n1n2[:, n2].argsort()[-2:]
             b2 = b_kn[k2, n2]
-            if ovl_n1n2[n1a, n2] > 2 * ovl_n1n2[n1b, n2] and n1a not in taken:
+            if ovl_n1n2[n1a, n2] > 2.0 * ovl_n1n2[n1b, n2] and n1a not in taken:
                 b1 = b_kn[k1, n1a]
                 if b1 == -1:
                     b1 = bnew
@@ -236,7 +259,9 @@ def find_extrema(cell_cv,
     nocc = (eig_ijkn[0, 0, 0] < fermilevel).sum()
     log(f'Occupied bands: {nocc}')
     log(f'Fermi level: {fermilevel} eV')
-
+    log(proj_ijknI.shape)
+    print(eig_ijkn[47, 4, 0, :nocc])
+    print(kpt_ijkc[47, 4, 0])
     K1, K2, K3, N, _ = proj_ijknI.shape
 
     if spinproj_ijknv is None:
@@ -244,13 +269,27 @@ def find_extrema(cell_cv,
 
     if kind == 'cbm':
         bands = slice(nocc, N)
+        # bands = slice(nocc, nocc+2)
         eig_ijkn = eig_ijkn[..., bands]
     else:
         bands = slice(nocc - 1, None, -1)
+        # bands = slice(nocc - 1, nocc-4, -1)
         eig_ijkn = -eig_ijkn[..., bands]
 
     proj_ijknI = proj_ijknI[..., bands, :]
     spinproj_ijknv = spinproj_ijknv[..., bands, :]
+
+    ijk = eig_ijkn[:, :, :, 0].ravel().argmin()
+    i, j, k = np.unravel_index(ijk, (K1, K2, K3))
+    print(i, j, k)
+
+    print(eig_ijkn[i, j, 0, :4])
+    for d1, d2 in [[1, 0], [-1, 0], [0, 1], (0, -1)]:
+        print(d1, d2)
+        print(eig_ijkn[(i + d1) % K1, (j + d2) % K2, 0, :4])
+        o = abs(proj_ijknI[i, j, k] @
+                proj_ijknI[(i + d1) % K1, (j + d2) % K2, 0].conj().T)
+        print(o[0].argmax(), o[:, 0].argmax())
 
     log('Connecting bands')
     b_ijkn = connect(eig_ijkn, proj_ijknI)
@@ -271,7 +310,12 @@ def find_extrema(cell_cv,
     e0 = bands[0][0].min()
     for eig_k, kpt_kc, spinproj_kv in bands[:6]:
         log(f'{eig_k.min() - e0} eV: {len(eig_k)} points')
-
+        log(kpt_kc[eig_k.argmin()])
+        if 1:
+            import matplotlib.pyplot as plt
+            plt.scatter(*kpt_kc[:, :2].T)
+            plt.show()
+            asdgf
     return [(kpt_kc, eig_k, spinproj_kv)
             for eig_k, kpt_kc, spinproj_kv in bands[:6]], axes
 
@@ -308,6 +352,7 @@ def fit(k_kv, eig_k, spinproj_kv,
 
     k_kv = k_kv[k]
     eig_k = eig_k[k]
+
     try:
         fit = Fit3D(k_kv, eig_k)
     except np.linalg.LinAlgError:
@@ -423,10 +468,9 @@ def cli():
         extract_stuff_from_gpw_file(path, soc, path.with_suffix('.pckl'))
     else:
         kind = sys.argv[2]
-        nbands = int(sys.argv[3])
         data = pickle.loads(path.read_bytes())
         # k_v, energy, mass_w, direction_wv, error_k = ...
-        things = main(data, kind, nbands)
+        things = main(data, kind)
         path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(things))
 
 
