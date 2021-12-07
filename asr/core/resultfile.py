@@ -1,23 +1,27 @@
 """Functionality for converting old resultfiles to records."""
 
-import typing
 import fnmatch
 import pathlib
-from asr.core import ASRResult
+import typing
 from dataclasses import dataclass
+
 from ase import Atoms
 from ase.db.core import AtomsRow
-from .dependencies import Dependency, Dependencies
-from .metadata import construct_metadata
-from .parameters import Parameters
-from .specification import RunSpecification, get_new_uuid
-from .serialize import JSONSerializer
-from .record import Record
-from .migrate import Migration, SelectorMigrationGenerator
-from .selector import Selector
+
+from asr.core import ASRResult
+
 from .command import get_recipes
-from .utils import parse_mod_func, write_file, read_file, get_recipe_from_name
+from .dependencies import Dependencies, Dependency
+from .metadata import construct_metadata
+from .migrate import Migration, SelectorMigrationGenerator
+from .parameters import Parameters
+from .record import Record
+from .results import decode_object
 from .root import find_root
+from .selector import Selector
+from .serialize import JSONSerializer
+from .specification import RunSpecification, get_new_uuid
+from .utils import get_recipe_from_name, parse_mod_func, read_file, write_file
 
 
 def find_directories() -> typing.List[pathlib.Path]:
@@ -102,9 +106,10 @@ ATOMSFILES = [
 def construct_record_from_context(
         record_context: "RecordContext",
 ):
-    from .record import Record
+    from asr.core.codes import Code, Codes
     from asr.core.results import MetaDataNotSetError
-    from asr.core.codes import Codes, Code
+
+    from .record import Record
 
     result = record_context.result
     recipename = record_context.recipename
@@ -229,8 +234,9 @@ def fix_asr_gs_record_missing_calculator(record: "Record"):
 
 
 def get_relevant_resultfile_parameters(path):
-    from asr.core import read_json
     from ase.io import read
+
+    from asr.core import read_json
     folder = path.parent
     result = read_json(path)
     recipename = get_recipe_name_from_filename(path.name)
@@ -513,10 +519,16 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
 
     uids = generate_uids(filenames)
     for filename in filenames:
-        from .results import decode_object
-        result = data[filename]
-        result = decode_object(result)
         recipename = get_recipe_name_from_filename(filename)
+        result = data[filename]
+
+        try:
+            result = decode_object(result)
+        except ModuleNotFoundError as err:
+            print(err)
+            continue
+        result = fix_result_object_missing_name(recipename, result)
+
         path = pathlib.Path(directory) / \
             f'results-{remove_main_in_name(recipename)}.json'
         atomic_structures = {}
@@ -552,6 +564,13 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
         contexts.append(context)
 
     return contexts
+
+
+def fix_result_object_missing_name(recipename, result):
+    if isinstance(result, dict) and '__asr_name__' not in result:
+        result['__asr_name__'] = recipename
+        result = decode_object(result)
+    return result
 
 
 def remove_main_in_name(name: str) -> str:
@@ -669,17 +688,16 @@ def update_resultfile_record_to_version_0(record):
             # Atoms are treated differently
             new_parameters[key] = parameters.atomic_structures[atomsfilename]
             continue
-        try:
-            dep_names, dep_values = find_deps_matching_key(
-                dep_params, key,
-            )
-            if dep_values:
-                if not all_values_equal(dep_values):
-                    raise AssertionError
-                new_parameters[key] = dep_values[0]
+        dep_names, dep_values = find_deps_matching_key(
+            dep_params, key,
+        )
+        if dep_values:
+            if not all_values_equal(dep_values):
+                raise AssertionError
+            new_parameters[key] = dep_values[0]
             for dependency in dep_names:
                 remove_dependency_param(unused_dependency_params, key, dependency)
-        except KeyError:
+        else:
             missing_params.add(key)
 
     unused_old_params.remove('atomic_structures')
@@ -714,6 +732,9 @@ def update_resultfile_record_to_version_0(record):
                 ]
             )
         )
+
+    # Sanity check
+    assert set(new_parameters.keys()) == set(sig_parameters)
 
     record.run_specification.parameters = new_parameters
     record.version = 0
