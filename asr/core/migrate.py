@@ -1,4 +1,5 @@
 """Implements record migration functionality."""
+import os
 import textwrap
 import abc
 import copy
@@ -443,7 +444,7 @@ class RecordMigration:
     initial_record: Record
     migrated_record: Record
     revisions: typing.List[Revision]
-    errors: typing.List[typing.Tuple[Migration, NonMigratableRecord]]
+    errors: typing.List[typing.Tuple[Migration, Exception]]
 
     def has_revisions(self):
         """Has migrations to apply."""
@@ -488,7 +489,7 @@ def migrate_record(
     migrated_record = record.copy()
     applied_migrations = []
     problematic_migrations = []
-    errors = []
+    errors: typing.List[typing.Tuple[Migration, Exception]] = []
     revisions = []
     while True:
         applicable_migrations = migration_generator(migrated_record)
