@@ -509,6 +509,12 @@ def migrate_record(
             problematic_migrations.append(candidate_migration)
             errors.append((candidate_migration, err))
             continue
+        except Exception as err:
+            problematic_migrations.append(candidate_migration)
+            errors.append((candidate_migration, err))
+            if os.environ.get("ASR_DEBUG", False):
+                raise
+            continue
         applied_migrations.append(candidate_migration)
 #         if not revision:
 #             continue
