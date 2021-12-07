@@ -34,21 +34,28 @@ def webpanel(result, row, key_descriptions):
     unit = result.conc_unit
     unitstring = f"cm<sup>{unit.split('^')[-1]}</sup>"
     panels = []
-    for scresult in result.scresults:
+    for i, scresult in enumerate(result.scresults):
         condition = scresult.condition
         tables = []
         for element in scresult.defect_concentrations:
             table = get_conc_table(result, element, unitstring)
             tables.append(table)
         scf_overview, scf_summary = get_overview_table(scresult, result, unitstring)
+        plotname = f'neutrality-{condition}.png'
         panel = WebPanel(
             describe_entry(f'Equilibrium defect energetics ({condition})',
                            panel_description),
-            columns=[[scf_overview], tables],
-            # plot_descriptions=[{'function': plot_formation_scf,
-            #                     'filenames': ['charge_neutrality.png']}],
-            sort=25)
+            columns=[[fig(f'{plotname}'), scf_overview], tables],
+            plot_descriptions=[{'function': plot_formation_scf,
+                                'filenames': [plotname]}],
+            sort=25+i)
         panels.append(panel)
+
+    # summary = {'title': 'Summary',
+    #            'columns': [[scf_summary], []],
+    #            'sort': 1}
+
+    # panels.append(summary)
 
     return panels
 
@@ -362,9 +369,9 @@ class SelfConsistentResult(ASRResult):
     dopability: str
 
     key_descriptions: typing.Dict[str, str] = dict(
-        condition='Chemical potential condition, e.g. A-rich. '
-                  'If one is rich, all other potentials are in '
-                  'poor conditions.',
+        condition='Chemical potential condition, e.g. A-poor. '
+                  'If one is poor, all other potentials are in '
+                  'rich conditions.',
         efermi_sc='Self-consistent Fermi level at which charge '
                   'neutrality condition is fulfilled [eV].',
         n0='Electron carrier concentration at SC Fermi level.',
@@ -539,7 +546,7 @@ def main(temp: float = 300,
             dop = 'intrinsic'
 
         sc_results.append(SelfConsistentResult.fromdata(
-            condition=f'{element}-rich',
+            condition=f'{element}-poor',
             efermi_sc=E,
             n0=n0,
             p0=p0,
@@ -557,7 +564,8 @@ def get_defect_info(defect):
     return defect.split('_')[0], defect.split('_')[1]
 
 
-def get_chemical_potentials(stoi, element):
+def get_chemical_potentials(stoi, element, el_list):
+    from ase.db import connect
     from asr.core import read_json
     from pathlib import Path
 
@@ -565,23 +573,38 @@ def get_chemical_potentials(stoi, element):
     sj_res = read_json(paths[0])
     hof = sj_res['hof']
     sstates = {}
-    for sstate in sj_res['standard_states']:
-        name = sstate['element']
-        if sstate['element'] == element:
-            mu_el = hof / stoi[element] + sstate['eref']
+    db = connect('/home/niflheim/fafb/db/oqmd12.db')
+    for el in el_list:
+        sstate = obtain_chemical_potential(el, db)
+        name = el
+        if el == element:
+            mu_el = hof / stoi[element] + sstate
             sstates[f'{name}'] = mu_el
         else:
-            sstates[f'{name}'] = sstate['eref']
+            sstates[f'{name}'] = sstate
 
     return sstates
+
+
+def obtain_chemical_potential(symbol, db):
+    """Extract the standard state of a given element."""
+    energies_ss = []
+    if symbol == 'v':
+        eref = 0.
+    else:
+        for row in db.select(symbol, ns=1):
+            energies_ss.append(row.energy / row.natoms)
+        eref = min(energies_ss)
+    return eref
 
 
 def adjust_formation_energies(defectdict, element):
     """Return defect dict in X-poor conditions given a defect dict @ stand. states."""
     newdict = {}
+    atoms = read('structure.json')
+    el_list = get_element_list(atoms)
     stoi = get_stoichiometry()
-    sstates = get_chemical_potentials(stoi, element)
-    print(sstates)
+    sstates = get_chemical_potentials(stoi, element, el_list)
     for defect in defectdict:
         def_type, def_pos = get_defect_info(defect)
         if def_type == 'v':
@@ -604,7 +627,6 @@ def get_stoichiometry():
     w = Formula(atoms.get_chemical_formula())
 
     return w.count()
-
 
 
 def get_element_list(atoms):
@@ -853,38 +875,42 @@ def plot_formation_scf(row, fname):
     import matplotlib.pyplot as plt
 
     data = row.data.get('results-asr.charge_neutrality.json')
-
-    ef = data['efermi_sc']
     gap = data['gap']
-    for i, defect in enumerate(data['defect_concentrations']):
-        name = defect['defect_name']
-        def_type = name.split('_')[0]
-        def_name = name.split('_')[-1]
-        if def_type == 'v':
-            def_type = 'V'
-        namestring = f"{def_type}$_\\{'mathrm{'}{def_name}{'}'}$"
-        plt.plot([], [], linestyle='solid', color=f'C{i}', label=namestring)
-        for conc_tuple in defect['concentrations']:
-            q = conc_tuple[1]
-            eform = conc_tuple[2]
-            y0 = q * (-ef) + eform
-            y1 = q * (gap - ef) + eform
-            plt.plot([0, gap], [y0, y1], linestyle='solid', color=f'C{i}')
-
-    plt.axvline(0, color='black')
-    plt.axvline(gap, color='black')
-    plt.axvspan(-100, 0, alpha=0.5, color='grey')
-    plt.axvspan(gap, 100, alpha=0.5, color='grey')
-    plt.axvline(ef, color='red', linestyle='dotted', label=r'$E_\mathrm{F}^{\mathrm{sc}}$')
-    plt.xlim(0 - gap / 10., gap + gap / 10.)
-    yminold = plt.gca().get_ylim()[0]
-    plt.ylim(yminold, yminold + 4)
-    plt.xlabel(r'$E_\mathrm{F} - E_{\mathrm{VBM}}$ [eV]')
-    plt.ylabel(r'$E^f$ [eV] (wrt. standard states)')
-    # plt.legend(ncol=2, loc=9)
-    plt.legend(bbox_to_anchor=(0.5, 1.1), ncol=5, loc='lower center')
-    plt.tight_layout()
-    plt.savefig(fname)
+    comparison = fname.split('neutrality-')[-1].split('.png')[0]
+    fig, ax = plt.subplots()
+    for j, condition in enumerate(data['scresults']):
+        if comparison == condition['condition']:
+            ef = condition['efermi_sc']
+            for i, defect in enumerate(condition['defect_concentrations']):
+                name = defect['defect_name']
+                def_type = name.split('_')[0]
+                def_name = name.split('_')[-1]
+                if def_type == 'v':
+                    def_type = 'V'
+                namestring = f"{def_type}$_\\{'mathrm{'}{def_name}{'}'}$"
+                ax.plot([], [], linestyle='solid', color=f'C{i}', label=namestring)
+                for conc_tuple in defect['concentrations']:
+                    q = conc_tuple[1]
+                    eform = conc_tuple[2]
+                    y0 = q * (-ef) + eform
+                    y1 = q * (gap - ef) + eform
+                    ax.plot([0, gap], [y0, y1], linestyle='solid', color=f'C{i}')
+            ax.axvline(0, color='black')
+            ax.axvline(gap, color='black')
+            ax.axvspan(-100, 0, alpha=0.5, color='grey')
+            ax.axvspan(gap, 100, alpha=0.5, color='grey')
+            ax.axvline(ef, color='red', linestyle='dotted', label=r'$E_\mathrm{F}^{\mathrm{sc}}$')
+            ax.set_xlim(0 - gap / 10., gap + gap / 10.)
+            # yminold = plt.gca().get_ylim()[0]
+            # ax.set_ylim(yminold, yminold + 4)
+            ax.set_xlabel(r'$E_\mathrm{F} - E_{\mathrm{VBM}}$ [eV]')
+            ax.set_ylabel(f'$E^f$ [eV]')
+            title = comparison
+            ax.set_title(title)
+            # plt.legend(ncol=2, loc=9)
+            ax.legend(bbox_to_anchor=(0.5, 1.1), ncol=5, loc='lower center')
+            plt.tight_layout()
+            plt.savefig(fname)
 
 
 if __name__ == '__main__':
