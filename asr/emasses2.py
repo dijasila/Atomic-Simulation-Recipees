@@ -187,7 +187,7 @@ def con1d(e_kn,
           equal):
     K, N = fp_knx.shape[:2]
     c1 = clusters(e_kn[0])
-    for k1 in range(K):
+    for k1 in range(K - 1):
         k2 = (k1 + 1) % K
         ovl_n1n2 = abs(fp_knx[k1] @ fp_knx[k2].conj().T)
         c2 = clusters(e_kn[k2])
@@ -200,7 +200,7 @@ def con1d(e_kn,
         for n2 in range(N):
             n1b, n1a = ovl_n1n2[:, n2].argsort()[-2:]
             b2 = b_kn[k2, n2]
-            if ovl_n1n2[n1a, n2] > 2.0 * ovl_n1n2[n1b, n2] and n1a not in taken:
+            if ovl_n1n2[n1a, n2] > 3.0 * ovl_n1n2[n1b, n2] and n1a not in taken:
                 b1 = b_kn[k1, n1a]
                 if b1 == -1:
                     b1 = bnew
@@ -260,16 +260,14 @@ def find_extrema(cell_cv,
     log(f'Occupied bands: {nocc}')
     log(f'Fermi level: {fermilevel} eV')
     log(proj_ijknI.shape)
-    print(eig_ijkn[47, 4, 0, :nocc])
-    print(kpt_ijkc[47, 4, 0])
     K1, K2, K3, N, _ = proj_ijknI.shape
 
     if spinproj_ijknv is None:
         spinproj_ijknv = np.zeros((K1, K2, K3, N, 3))
 
     if kind == 'cbm':
-        bands = slice(nocc, N)
-        # bands = slice(nocc, nocc+2)
+        # bands = slice(nocc, N)
+        bands = slice(nocc, nocc + 6)
         eig_ijkn = eig_ijkn[..., bands]
     else:
         bands = slice(nocc - 1, None, -1)
@@ -281,15 +279,6 @@ def find_extrema(cell_cv,
 
     ijk = eig_ijkn[:, :, :, 0].ravel().argmin()
     i, j, k = np.unravel_index(ijk, (K1, K2, K3))
-    print(i, j, k)
-
-    print(eig_ijkn[i, j, 0, :4])
-    for d1, d2 in [[1, 0], [-1, 0], [0, 1], (0, -1)]:
-        print(d1, d2)
-        print(eig_ijkn[(i + d1) % K1, (j + d2) % K2, 0, :4])
-        o = abs(proj_ijknI[i, j, k] @
-                proj_ijknI[(i + d1) % K1, (j + d2) % K2, 0].conj().T)
-        print(o[0].argmax(), o[:, 0].argmax())
 
     log('Connecting bands')
     b_ijkn = connect(eig_ijkn, proj_ijknI)
@@ -311,11 +300,6 @@ def find_extrema(cell_cv,
     for eig_k, kpt_kc, spinproj_kv in bands[:6]:
         log(f'{eig_k.min() - e0} eV: {len(eig_k)} points')
         log(kpt_kc[eig_k.argmin()])
-        if 1:
-            import matplotlib.pyplot as plt
-            plt.scatter(*kpt_kc[:, :2].T)
-            plt.show()
-            asdgf
     return [(kpt_kc, eig_k, spinproj_kv)
             for eig_k, kpt_kc, spinproj_kv in bands[:6]], axes
 
