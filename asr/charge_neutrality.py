@@ -578,10 +578,12 @@ def get_chemical_potentials(stoi, element, el_list):
         sstate = obtain_chemical_potential(el, db)
         name = el
         if el == element:
-            mu_el = hof / stoi[element] + sstate
+            # mu_el = hof / stoi[element] + sstate
+            mu_el = hof / stoi[element]
             sstates[f'{name}'] = mu_el
         else:
-            sstates[f'{name}'] = sstate
+            # sstates[f'{name}'] = sstate
+            sstates[f'{name}'] = 0
 
     return sstates
 
