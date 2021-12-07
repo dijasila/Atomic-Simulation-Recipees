@@ -108,5 +108,54 @@ def plot(context, filename):
     plt.savefig(filename)
 
 
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ("asr.c2db.dos:main")
+sel.parameters = sel.CONTAINS("name")
+
+
+@asr.migration(selector=sel)
+def remove_name_from_params(record: asr.Record) -> asr.Record:
+    """Remove name param from record."""
+    del record.parameters.name
+    return record
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ("asr.c2db.dos:main")
+sel.parameters = sel.CONTAINS("filename")
+
+
+@asr.migration(selector=sel)
+def remove_filename_from_params(record: asr.Record) -> asr.Record:
+    """Remove filename param from record."""
+    del record.parameters.filename
+    return record
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.EQ("asr.c2db.dos:main")
+sel.parameters = sel.NOT(sel.CONTAINS("calculator"))
+
+
+@asr.migration(selector=sel)
+def add_calculator_to_params(record: asr.Record) -> asr.Record:
+    """Add calculator to parameters."""
+    record.parameters.calculator = {
+        "name": "gpaw",
+        "mode": {"name": "pw", "ecut": 800},
+        "xc": "PBE",
+        "kpts": {"density": 12.0, "gamma": True},
+        "occupations": {"name": "fermi-dirac", "width": 0.05},
+        "convergence": {"bands": "CBM+3.0"},
+        "nbands": "200%",
+        "txt": "gs.txt",
+        "charge": 0,
+    }
+    return record
+
+
 if __name__ == "__main__":
     main.cli()
