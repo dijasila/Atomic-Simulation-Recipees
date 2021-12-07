@@ -323,6 +323,7 @@ def main(
 def set_tmpdir_on_projects_if_missing(tmpdir, projects):
     for project in projects:
         if project.tmpdir is None:
+            print(f"Setting tmpdir={tmpdir} for project.name={project.name}")
             project.tmpdir = tmpdir
 
 
