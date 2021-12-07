@@ -81,11 +81,12 @@ class Summary:
         defect_name = row.defect_name.split('_')[-1]
         if defect_name == 'pristine':
             defect_string = 'Pristine'
+            q = ''
         else:
             defect_string = f"{defect_type}<sub>{defect_name}</sub>"
+            q = '(q = ' + row.charge_state.split()[-1].split(')')[0] + ')'
         ase_formula = Formula(row.host_name)
         host_latex = f'{ase_formula:html}'
-        q = '(q = ' + row.charge_state.split()[-1].split(')')[0] + ')'
         self.formula = (defect_string + ' in ' + host_latex + ' '
                         + q)  # .format('html')
         # self.formula = Formula(
