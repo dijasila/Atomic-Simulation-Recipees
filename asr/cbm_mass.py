@@ -102,8 +102,8 @@ def plot_cbm(row, fname):
 
     ax.set_xlabel('k [Ang$^{-1}$]')
     ax.set_ylabel('e - e$_F$ [eV]')
-    fig.tight_layout()
-    fig.savefig(fname)
+    plt.tight_layout()
+    plt.savefig(fname)
     plt.close()
 
 
