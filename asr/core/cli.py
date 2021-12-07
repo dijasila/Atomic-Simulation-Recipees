@@ -922,7 +922,21 @@ def collapse(databasein: str, databaseout: str) -> None:
 @click.argument("databasein", type=str)
 @click.argument("databaseout", type=str)
 def convert(databasein: str, databaseout: str) -> None:
-    """Convert resultfile based database to record based database."""
+    """Convert resultfile-based DATABASEIN to record-based database DATABASEOUT.
+
+    A resultfile based database is a database where resultfiles are stored in
+    the data object of each row and the keys are the filenames and the values
+    are the actual results, ie. row.data = {"results-asr.gs.json": Result(...),
+    "results-asr.bandstructure.json": ..., ...}
+
+    This row is then converted into a database where the resultfiles has been
+    converted to records and stored under the records key in the data object of
+    the database, ie. row.data = {"records": [record1, record2, ...], ...}.
+
+    Any other files that were associated with the row like info.json,
+    params.json, links.json etc, will not be touched by this tool.
+
+    """
     from asr.database.migrate import convert_database
     convert_database(databasein, databaseout)
 
@@ -931,7 +945,7 @@ def convert(databasein: str, databaseout: str) -> None:
 @click.argument("databasein", type=str)
 @click.argument("databaseout", type=str)
 def migrate_database_cli(databasein: str, databaseout: str) -> None:
-    """Migrate records in database."""
+    """Migrate records in DATABASEIN and output migrated database in DATABASEOUT."""
     from asr.database.migrate import migrate_database
     migrate_database(databasein, databaseout)
 

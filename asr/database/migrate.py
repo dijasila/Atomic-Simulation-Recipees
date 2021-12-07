@@ -1,3 +1,20 @@
+"""Database migration module.
+
+This module implements tools for collapsing, converting and migrating
+databases. The meaning of these verbs are the following:
+
+   - Collapse: Take a database with a subset of materials that have been marked
+   as "first_class_material"=True and use the children information on these databases
+   to include children data in these rows as well. Write only these new first class rows
+   to the "collapsed" database.
+   - Convert: Take a database where data is represented by resultfiles and write a new
+   database where the resultfiles has been converted to records.
+   - Migrate: Apply migration to the records in all rows of the input database and write
+   a new database where rows has been migrated.
+
+"""
+
+
 from pathlib import Path
 
 from asr.core.migrate import records_to_migration_report
@@ -37,7 +54,7 @@ def write_row_with_new_data(
     )
 
 
-def get_data_including_child_data(dbin: ASEDatabaseInterface, row: Row):
+def get_data_including_child_data(dbin: ASEDatabaseInterface, row: Row) -> Dict[str, Any]:
     children = get_children_from_row(row)
     children_data = get_children_data_from_database(dbin, children)
     data = add_children_data(row.data, children_data)
