@@ -71,6 +71,7 @@ def get_defpot_corrections(strain, defpots, soc: bool=False):
 @option ('--defpots-b')
 @option ('--soc', is_flag=True)
 @option ('--add', is_flag=True)
+@option ('--only-strain', is_flag=True)
 @option ('--layer-info-file')
 def main(info_file: str = 'makemoire-info.json',
          output_file: str='shifts.json', 
@@ -78,11 +79,10 @@ def main(info_file: str = 'makemoire-info.json',
          defpots_b = '/home/niflheim2/steame/moire/testing/deformation-potentials/spec-kpts-only/WS2/0.2/results-asr.moire.defpots.json',
          layer_info_file: str='/home/niflheim2/steame/moire/utils/layer_info.json',
          soc: bool=False,
+         only_strain: bool=False,
          add: bool=False):
 
     info = read_json(info_file)
-    print(np.asarray(info['strain_a']))
-    print(np.asarray(info['strain_b']))
     for key in info.keys():
         info.update({key: np.asarray(info[key])})
     shifts_a, _ = get_shifts_and_defpots(info['uid_a'], layer_info_file)
@@ -91,10 +91,6 @@ def main(info_file: str = 'makemoire-info.json',
     if defpots_a and defpots_b:
         defpot_corr_a_vb, defpot_corr_a_cb = get_defpot_corrections(info['strain_a'], defpots_a, soc=soc)
         defpot_corr_b_vb, defpot_corr_b_cb = get_defpot_corrections(info['strain_b'], defpots_b, soc=soc)
-        print(shifts_a)
-        print(defpot_corr_a_vb, defpot_corr_a_cb)
-        print(shifts_b)
-        print(defpot_corr_b_vb, defpot_corr_b_cb)
         if add:
             shifts = {
                 'shift_v1': shifts_a[0] + defpot_corr_a_vb,
@@ -109,7 +105,6 @@ def main(info_file: str = 'makemoire-info.json',
                 'shift_v2': shifts_b[0] - defpot_corr_b_vb,
                 'shift_c2': shifts_b[1] - defpot_corr_b_cb
             }
-        print(shifts)
         write_json(output_file, shifts)
                 
     elif not defpots_a and not defpots_b:

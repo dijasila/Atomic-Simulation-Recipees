@@ -195,7 +195,7 @@ def filter_dataframe(df, natoms, internal, asym):
     df.reset_index(drop=True, inplace=True)
 
 
-@command('asr.findmoire2')
+@command('asr.findmoire')
 @option('--uid-a', type=str)
 @option('--uid-b', type=str)
 @option('--max-coef', type=int,

@@ -8,7 +8,7 @@ from ase.io.jsonio import read_json
 from ase.build import make_supercell
 from asr.core import command, option, ASRResult, prepare_result
 from asr.utils.moireutils import Bilayer
-from asr.findmoire import angle_between, get_atoms_and_stiffness
+from asr.moire.findmoire import angle_between, get_atoms_and_stiffness
 
 
 def get_parameters(solution, filename):
@@ -188,29 +188,36 @@ def main(solution,
         atoms_a_sc.cell, atoms_b_sc.cell, new_cell)
 
     bilayer = Bilayer(atoms_a_sc + atoms_b_sc)
-    bilayer.set_cell(new_cell, scale_atoms=True)
     bilayer.set_interlayer_distance(3.0)
     bilayer.set_vacuum(15.0)
+    new_cell[2, 2] = bilayer.cell[2, 2]    # This is to correct a stupid bug
+    bilayer.set_cell(new_cell, scale_atoms=True)
+
+    assert np.allclose(bilayer.cell[:2, :2], new_cell[:2, :2])
+    assert new_cell[2, 2] == bilayer.cell[2, 2]
 
     direc = f'{len(bilayer)}_{twist:.1f}_{maxstrain:.2f}'
     Path(direc).mkdir(exist_ok=True)
     bilayer.write(f'{direc}/initial.json')
 
-    results = {'uid_a': uid_a,
-               'uid_b': uid_b,
-               'cell_a_original': atoms_a.cell.tolist(),
-               'cell_b_original': atoms_b.cell.tolist(),
-               'coeffs_a': coeffs_a,
-               'coeffs_b': coeffs_b,
-               'twist_angle': twist,
-               'stacking': stacking,
-               'supercell_a': atoms_a_sc.cell.tolist(),
-               'supercell_b': atoms_b_sc.cell.tolist(),
-               'strain_a': strain_a.tolist(),
-               'strain_b': strain_b.tolist(),
-               'maxstrain': maxstrain}
+    results = {
+        'uid_a': uid_a,
+        'uid_b': uid_b,
+        'cell_a_original': atoms_a.cell.tolist(),
+        'cell_b_original': atoms_b.cell.tolist(),
+        'coeffs_a': coeffs_a,
+        'coeffs_b': coeffs_b,
+        'twist_angle': twist,
+        'stacking': stacking,
+        'supercell_a': atoms_a_sc.cell.tolist(),
+        'supercell_b': atoms_b_sc.cell.tolist(),
+        'final_supercell': bilayer.cell.tolist(),
+        'strain_a': strain_a.tolist(),
+        'strain_b': strain_b.tolist(),
+        'maxstrain': maxstrain
+    }
 
-    with open(f'{direc}/makemoire-info.json', 'w') as f:
+    with open(f'{direc}/bilayer-info.json', 'w') as f:
         json.dump(results, f, indent=2)
 
 

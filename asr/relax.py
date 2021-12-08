@@ -175,7 +175,7 @@ class myBFGS(BFGS):
 
 
 def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
-          fixcell=False, allow_symmetry_breaking=False, dft=None,
+          fixcell=True, allow_symmetry_breaking=True, dft=None,
           fmax=0.01, enforce_symmetry=False):
 
     if dftd3:
@@ -334,12 +334,13 @@ def main(atoms: Atoms,
                              'txt': 'relax.txt',
                              'occupations': {'name': 'fermi-dirac',
                                              'width': 0.05},
-                             'charge': 0},
+                             'charge': 0,
+                             'maxiter': 666},
          tmp_atoms: typing.Optional[Atoms] = None,
          tmp_atoms_file: str = 'relax.traj',
          d3: bool = False,
-         fixcell: bool = False,
-         allow_symmetry_breaking: bool = False,
+         fixcell: bool = True,
+         allow_symmetry_breaking: bool = True,
          fmax: float = 0.01,
          enforce_symmetry: bool = True) -> Result:
     """Relax atomic positions and unit cell.

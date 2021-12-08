@@ -201,6 +201,7 @@ def main(structure: str = 'structure.json',
         SCS = get_scissors_operator(atoms, shifts)
 
     if gs:
+        SCS = get_scissors_operator(atoms, shifts)
         calc = calculate_gs(atoms, kpts, calculator, SCS)
         if no_scs:
             filename = 'gs_pbe.json'
@@ -209,6 +210,7 @@ def main(structure: str = 'structure.json',
         dump_to_json(filename, calc, soc, bs)
 
     if bs:
+        SCS = get_scissors_operator(atoms, shifts)
         calc = calculate_bs(gpw, kptpath, npoints, eps, SCS)
         if no_scs:
             filename = 'bs_pbe.json'
