@@ -17,7 +17,6 @@ from .migrate import Migration, SelectorMigrationGenerator
 from .parameters import Parameters
 from .record import Record
 from .results import decode_object
-from .root import find_root
 from .selector import Selector
 from .serialize import JSONSerializer
 from .specification import RunSpecification, get_new_uuid
@@ -442,7 +441,9 @@ class RecordContext:
     path: typing.Optional[pathlib.Path] = None
 
 
-def get_resultfile_records_in_directory(directory=pathlib.Path(".")) -> typing.List[Record]:
+def get_resultfile_records_in_directory(
+    directory=pathlib.Path(".")
+) -> typing.List[Record]:
     contexts = get_contexts_in_directory(directory)
     contexts = filter_contexts_for_unused_recipe_results(contexts)
     contexts = set_context_dependencies(contexts)
@@ -467,7 +468,9 @@ def get_resultfile_records_from_database_row(row: AtomsRow):
     return records
 
 
-def get_contexts_in_directory(directory=pathlib.Path('.')) -> typing.List[RecordContext]:
+def get_contexts_in_directory(
+    directory=pathlib.Path('.')
+) -> typing.List[RecordContext]:
     resultsfiles = find_results_files(directory=directory)
     uids = generate_uids(resultsfiles)
     contexts = []
