@@ -233,7 +233,7 @@ def fix_asr_gs_record_missing_calculator(record: "Record"):
                 OLD_DEFAULTS['asr.c2db.gs:calculate']['calculator']
 
 
-def get_relevant_resultfile_parameters(path):
+def get_relevant_resultfile_parameters(path, directory):
     from ase.io import read
 
     from asr.core import read_json
@@ -246,8 +246,8 @@ def get_relevant_resultfile_parameters(path):
         if pathlib.Path(folder / atomsfilename).is_file()
     }
     matcher = get_dependency_matcher_from_name(recipename)
-    directory = str(folder.absolute().relative_to(find_root()))
-    return folder, result, recipename, atomic_structures, matcher, directory
+    rel_directory = str(folder.absolute().relative_to(directory))
+    return folder, result, recipename, atomic_structures, matcher, rel_directory
 
 
 def set_context_dependencies(
@@ -442,10 +442,10 @@ class RecordContext:
     path: typing.Optional[pathlib.Path] = None
 
 
-def get_resultsfile_records() -> typing.List[Record]:
-    contexts = get_contexts_in_current_directory()
-    contexts = set_context_dependencies(contexts)
+def get_resultfile_records_in_directory(directory=pathlib.Path(".")) -> typing.List[Record]:
+    contexts = get_contexts_in_directory(directory)
     contexts = filter_contexts_for_unused_recipe_results(contexts)
+    contexts = set_context_dependencies(contexts)
     records = make_records_from_contexts(contexts)
     return records
 
@@ -467,8 +467,8 @@ def get_resultfile_records_from_database_row(row: AtomsRow):
     return records
 
 
-def get_contexts_in_current_directory() -> typing.List[RecordContext]:
-    resultsfiles = find_results_files(directory=pathlib.Path('.'))
+def get_contexts_in_directory(directory=pathlib.Path('.')) -> typing.List[RecordContext]:
+    resultsfiles = find_results_files(directory=directory)
     uids = generate_uids(resultsfiles)
     contexts = []
     for path in resultsfiles:
@@ -479,8 +479,8 @@ def get_contexts_in_current_directory() -> typing.List[RecordContext]:
                 recipename,
                 atomic_structures,
                 matcher,
-                directory,
-            ) = get_relevant_resultfile_parameters(path)
+                rel_directory,
+            ) = get_relevant_resultfile_parameters(path, directory)
             uid = uids[path]
             result = fix_asr_gs_result_missing_calculator(folder, result, recipename)
             context = RecordContext(
@@ -490,7 +490,7 @@ def get_contexts_in_current_directory() -> typing.List[RecordContext]:
                 uid=uid,
                 dependency_matcher=matcher,
                 dependencies=None,
-                directory=directory,
+                directory=rel_directory,
                 path=path,
             )
             contexts.append(context)

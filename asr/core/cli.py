@@ -445,7 +445,7 @@ def add_resultfile_records(directories):
     Search directories (or working directory if not given) for legacy results
     file, adding a Record to the cache for each file.
     """
-    from asr.core.resultfile import get_resultsfile_records
+    from asr.core.resultfile import get_resultfile_records_in_directory
 
     from .utils import chdir
     if not directories:
@@ -454,7 +454,7 @@ def add_resultfile_records(directories):
         with chdir(directory):
             print(directory)
             cache = get_cache()
-            resultfile_records = get_resultsfile_records()
+            resultfile_records = get_resultfile_records_in_directory()
 
             records_to_add = []
             for record in resultfile_records:
