@@ -52,6 +52,8 @@ def database_to_be_migrated(request):
 @pytest.mark.ci
 def test_collapse_database(database_to_be_migrated, asr_tmpdir):
     collapse, database_to_be_migrated = database_to_be_migrated
+    if "defect" in database_to_be_migrated.db.filename:
+        pytest.xfail("Defect databases cannot be migrated yet.")
     if collapse:
         with connect("collapsed.db") as collapsed:
             write_collapsed_database(database_to_be_migrated, collapsed)
