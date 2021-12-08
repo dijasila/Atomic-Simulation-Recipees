@@ -73,6 +73,7 @@ def read_old_data(dct) -> 'ObjectDescription':
             data[key] = value
     asr_name = metadata['asr_name']
     asr_name = fix_recipe_name_if_recipe_has_been_moved(asr_name)
+    asr_name = asr_name.replace("@", ":")
     metadata['asr_name'] = asr_name
     recipe = get_recipe_from_name(asr_name)
     if issubclass(recipe.returns, ASRResult):
