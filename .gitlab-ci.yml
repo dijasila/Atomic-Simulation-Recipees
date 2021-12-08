@@ -49,8 +49,6 @@ python38:
   image: python:3.8
   stage: test
   script:
-    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
-    - export ASR_TEST_DATA="$PWD"/asr-test-data
     - tox -e py38
   artifacts:
     paths:
@@ -61,9 +59,19 @@ python39:
   image: python:3.9
   stage: test
   script:
+    - tox -e py39
+  artifacts:
+    paths:
+      - .tox/.coverage*
+    expire_in: 3 weeks
+
+data-migration:
+  image: python:3.8
+  stage: test
+  script:
     - git clone https://gitlab.com/asr-dev/asr-test-data.git 
     - export ASR_TEST_DATA="$PWD"/asr-test-data
-    - tox -e py39
+    - tox -e py38 -- -k test_database_migrate
   artifacts:
     paths:
       - .tox/.coverage*
