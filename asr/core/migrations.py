@@ -42,13 +42,15 @@ def add_missing_names_in_gpaw_calculators(record):
 
 
 def select_records_that_have_kpts_density_specified(record):
+    if "atoms" not in record.parameters:
+        return False
     for name, value in record.parameters.items():
         if 'calculator' in name and 'kpts' in value and 'density' in value['kpts']:
             return True
     return False
 
 
-@asr.migration(selector=select_records_that_have_kpts_density_specified)
+@asr.migration(selector=select_records_that_have_kpts_density_specified, eagerness=-2)
 def apply_calculator_hook_to_old_records(record):
     """Fix abstract calculator values to more concrete values."""
     parameters = set_calculator_hook(record.parameters)
