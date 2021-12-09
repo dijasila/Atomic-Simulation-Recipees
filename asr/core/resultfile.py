@@ -328,13 +328,13 @@ def get_dependency_matcher_from_name(
     # Some manually implemented dependencies
     if name == 'asr.c2db.piezoelectrictensor:main':
         patterns = [
-            'strains*/results-asr.c2db.relax.json',
-            'strains*/results-asr.c2db.formalpolarization.json'
+            '*strains*/results-asr.relax.json',
+            '*strains*/results-asr.formalpolarization.json'
         ]
         return make_dependency_matcher(patterns, "path")
     elif name == 'asr.c2db.stiffness:main':
         patterns = [
-            'strains*/results-asr.c2db.relax.json',
+            '*strains*/results-asr.relax.json',
         ]
         return make_dependency_matcher(patterns, "path")
 
