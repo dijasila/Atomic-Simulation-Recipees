@@ -447,14 +447,15 @@ def add_resultfile_records(directories):
     """
     from asr.core.resultfile import get_resultfile_records_in_directory
 
-    from .utils import chdir
     if not directories:
-        directories = [Path('.').resolve()]
+        directories = [Path('.')]
+
+    directories = [pth.resolve() for pth in directories]
     for directory in directories:
         with chdir(directory):
             print(directory)
             cache = get_cache()
-            resultfile_records = get_resultfile_records_in_directory()
+            resultfile_records = get_resultfile_records_in_directory(directory)
 
             records_to_add = []
             for record in resultfile_records:
