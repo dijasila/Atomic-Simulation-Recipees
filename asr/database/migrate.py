@@ -194,7 +194,11 @@ def write_converted_database(
         timed_print(f"Treating row.id={row.id}")
         records = get_resultfile_records_from_database_row(row)
         data = get_other_data_files_from_row(row)
-        assert records
+        data = {
+            key: value
+            for key, value in data.items()
+            if not key.startswith("__children")
+        }
         write_row_with_new_data(dbout, row, data=data, records=records)
 
 
@@ -247,4 +251,4 @@ def write_migrated_database(
         for record_migration in report.applicable_migrations:
             record_migration.apply(cache)
         records = cache.select()
-        write_row_with_new_data(dbout, row, records=records)
+        write_row_with_new_data(dbout, row, data=row.data, records=records)

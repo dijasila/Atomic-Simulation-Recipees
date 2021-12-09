@@ -54,10 +54,26 @@ def test_collapse_database(database_to_be_migrated, asr_tmpdir):
     collapse, database_to_be_migrated = database_to_be_migrated
     if "defect" in database_to_be_migrated.db.filename:
         pytest.xfail("Defect databases cannot be migrated yet.")
+    original_metadata = database_to_be_migrated.metadata
+    if collapse:
+        original_row = list(database_to_be_migrated.select(first_class_material=True))[
+            0
+        ]
+    else:
+        original_row = database_to_be_migrated.get(id=1)
+    original_row_extra_data_files = get_extra_data_files(original_row)
+    children_key = set(["__children__"])
+    children_data_key = set(["__children_data__"])
+    record_key = set(["records"])
     if collapse:
         with connect("collapsed.db") as collapsed:
             write_collapsed_database(database_to_be_migrated, collapsed)
         row = collapsed.get(id=1)
+        assert original_metadata == collapsed.metadata
+        assert (
+            original_row_extra_data_files | children_data_key - children_key
+            == get_extra_data_files(row)
+        )
         assert "records" not in row.data
         assert "records" not in row.row.data
         database_to_be_migrated = collapsed
@@ -66,8 +82,13 @@ def test_collapse_database(database_to_be_migrated, asr_tmpdir):
         write_converted_database(database_to_be_migrated, converted)
     row = converted.get(id=1)
     assert "records" in row.data
+    assert (
+        original_row_extra_data_files - children_key | record_key
+        == get_extra_data_files(row)
+    )
 
     records = row.records
+    nrecords = len(records)
     gwrecords = [rec for rec in records if rec.name == "asr.c2db.gw:main"]
     if gwrecords:
         assert len(gwrecords) == 1
@@ -81,6 +102,13 @@ def test_collapse_database(database_to_be_migrated, asr_tmpdir):
         write_migrated_database(converted, migrated)
     row = migrated.get(id=1)
     assert "records" in row.data
+    assert (
+        original_row_extra_data_files - children_key | record_key
+        == get_extra_data_files(row)
+    )
+    assert nrecords == len(row.records)
+
+    assert original_metadata == migrated.metadata
 
     tmpdir = Path("tmp/")
     tmpdir.mkdir()
@@ -91,3 +119,9 @@ def test_collapse_database(database_to_be_migrated, asr_tmpdir):
         tmpdir=tmpdir,
     )
     get_app_row_contents(project)
+
+
+def get_extra_data_files(original_row):
+    return set(
+        key for key in original_row.data.keys() if not key.startswith("results-")
+    )
