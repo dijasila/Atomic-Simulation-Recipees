@@ -23,19 +23,6 @@ from .specification import RunSpecification, get_new_uuid
 from .utils import get_recipe_from_name, parse_mod_func, read_file, write_file
 
 
-def find_directories() -> typing.List[pathlib.Path]:
-    skip_patterns = [
-        '*strains*',
-        '*displacements*',
-    ]
-    directories = [pathlib.Path('.')]
-    for path in pathlib.Path().rglob('*'):
-        if path.is_dir() and path.name not in skip_patterns:
-            directories.append(path)
-
-    return directories
-
-
 def generate_uids(resultfiles) -> typing.Dict[pathlib.Path, str]:
     return {path: get_new_uuid() for path in resultfiles}
 
@@ -442,22 +429,13 @@ class RecordContext:
 
 
 def get_resultfile_records_in_directory(
-    directory=pathlib.Path(".")
+    directory: pathlib.Path
 ) -> typing.List[Record]:
     contexts = get_contexts_in_directory(directory)
     contexts = filter_contexts_for_unused_recipe_results(contexts)
     contexts = set_context_dependencies(contexts)
     records = make_records_from_contexts(contexts)
     return records
-
-
-def deserialize_data(
-    data: typing.Dict[typing.Any, typing.Any]
-) -> typing.Dict[typing.Any, typing.Any]:
-    from .serialize import JSONSerializer
-    ser = JSONSerializer()
-    data = ser.deserialize(ser.serialize(data))
-    return data
 
 
 def get_resultfile_records_from_database_row(row: AtomsRow):
@@ -695,8 +673,7 @@ def update_resultfile_record_to_version_0(record):
             dep_params, key,
         )
         if dep_values:
-            if not all_values_equal(dep_values):
-                raise AssertionError
+            assert all_values_equal(dep_values)
             new_parameters[key] = dep_values[0]
             for dependency in dep_names:
                 remove_dependency_param(unused_dependency_params, key, dependency)
