@@ -88,6 +88,8 @@ python38-gpaw:
   image: python:3.8
   stage: integrationtest
   script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - tox -e py38-gpaw
@@ -100,6 +102,8 @@ python39-gpaw:
   image: python:3.9
   stage: integrationtest
   script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - tox -e py39-gpaw
