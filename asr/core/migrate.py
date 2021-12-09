@@ -517,8 +517,8 @@ def migrate_record(
                 raise
             continue
         applied_migrations.append(candidate_migration)
-#         if not revision:
-#             continue
+        if not revision:
+            continue
         migrated_record = revision.apply(migrated_record)
         revisions.append(revision)
     return RecordMigration(
@@ -553,38 +553,6 @@ def get_migration_generator() -> CollectionMigrationGenerator:
     make_migrations.extend([get_resultfile_migration_generator()])
     make_migrations.extend([get_custom_migrations_generator()])
     return make_migrations
-
-
-def make_migration_generator(
-    type='selector',
-    **kwargs,
-) -> MakeMigrations:
-    if type == 'selector':
-        return make_selector_migration_generator(**kwargs)
-    else:
-        raise NotImplementedError
-
-
-def make_selector_migration_generator(
-    *,
-    selector,
-    uid,
-    function,
-    description=None,
-    eagerness=0,
-):
-    if isinstance(selector, dict):
-        selector = Selector(
-            **{key: Selector.EQ(value) for key, value in selector.items()})
-    if description is None:
-        description = function.__doc__.splitlines()[0]
-    mig = Migration(
-        function=function,
-        uid=uid,
-        description=description,
-        eagerness=eagerness,
-    )
-    return SelectorMigrationGenerator(selector=selector, migration=mig)
 
 
 def migration(
