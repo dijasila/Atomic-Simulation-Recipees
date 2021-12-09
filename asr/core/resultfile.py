@@ -484,22 +484,22 @@ def get_contexts_in_directory(
                 matcher,
                 rel_directory,
             ) = get_relevant_resultfile_parameters(path, directory)
-            uid = uids[path]
-            result = fix_asr_gs_result_missing_calculator(folder, result, recipename)
-            context = RecordContext(
-                result=result,
-                recipename=recipename,
-                atomic_structures=atomic_structures,
-                uid=uid,
-                dependency_matcher=matcher,
-                dependencies=None,
-                directory=rel_directory,
-                path=path,
-            )
-            contexts.append(context)
-        except AssertionError as error:
+        except ModuleNotFoundError as error:
             print(error)
             continue
+        uid = uids[path]
+        result = fix_asr_gs_result_missing_calculator(folder, result, recipename)
+        context = RecordContext(
+            result=result,
+            recipename=recipename,
+            atomic_structures=atomic_structures,
+            uid=uid,
+            dependency_matcher=matcher,
+            dependencies=None,
+            directory=rel_directory,
+            path=path,
+        )
+        contexts.append(context)
     return contexts
 
 
