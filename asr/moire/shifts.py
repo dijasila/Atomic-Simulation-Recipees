@@ -1,7 +1,7 @@
-from asr.core import command, option
-from ase.io.jsonio import read_json, write_json
-#from asr.moire.makemoire import get_parameters, get_atoms_and_stiffness, make_bilayer
 import numpy as np
+from ase.io import read
+from ase.io.jsonio import read_json, write_json
+from asr.core import command, option
 
 
 def get_shifts_and_defpots(uid, info):
@@ -9,41 +9,24 @@ def get_shifts_and_defpots(uid, info):
     dct = info[str(uid)]
     shift_vb = dct['vbm_GW'] - dct['vbm_PBE']
     shift_cb = dct['cbm_GW'] - dct['cbm_PBE']
-    defpot_vb = dct['defpot_vbm']
-    defpot_cb = dct['defpot_cbm']
-    return (shift_vb, shift_cb), (defpot_vb, defpot_cb)
+    defpots = read_json(dct['defpots'])['kwargs']['data']
+    return (shift_vb, shift_cb), defpots
 
 
-def get_defpot_corrections_ref(strain, defpots):
-    defpots_vb_array = [defpots[0], defpots[0], 0.0]
-    defpots_cb_array = [defpots[1], defpots[1], 0.0]
-    strain_asarray = [strain[0, 0], strain[1, 1], 0.0]
-    vb_correction = np.dot(defpots_vb_array, strain_asarray)
-    cb_correction = np.dot(defpots_cb_array, strain_asarray)
-    return vb_correction, cb_correction
+def get_strain_corrections(strain, defpots, subtract: bool=True, soc: bool=False):
 
-
-def get_defpot_corrections(strain, defpots, soc: bool=False):
-    from asr.moire.defpots import Result
-
-    dpresults = Result.fromdict(read_json(defpots))
-    if not soc:
-        defpots_kb = np.asarray(dpresults.deformation_potentials_nosoc)
-        edges_kb = np.asarray(dpresults.edges_nosoc)
+    if soc:
+        defpots_kb = np.asarray(defpots['deformation_potentials_soc'])
+        edges_kb = np.asarray(defpots['edges_soc'])
     else:
-        defpots_kb = np.asarray(dpresults.deformation_potentials_soc)
-        edges_kb = np.asarray(dpresults.edges_soc)
+        defpots_kb = np.asarray(defpots['deformation_potentials_nosoc'])
+        edges_kb = np.asarray(defpots['edges_nosoc'])
 
     # Let's reshape the strain tensor in a way that is compatible with the deformation potentials
     avg_strain = (strain + strain.T) / 2
-    strain_flat = [avg_strain[0, 0],
-                   avg_strain[1, 1],
-                   avg_strain[2, 2],
-                   avg_strain[1, 2],
-                   avg_strain[0, 2],
-                   avg_strain[0, 1]]
+    strain_flat = [avg_strain[i] for i in [(0, 0), (1, 1), (2, 2), (1, 2), (0, 2), (0, 1)]]
 
-    corrections_kb = np.zeros((edges_kb.shape[0], 2))
+    corrections_kb = np.zeros_like(edges_kb)
     for k, defpot_kb in enumerate(defpots_kb):
         for b, band in enumerate(['vb', 'cb']):
             defpot_b = defpot_kb[:, b]
@@ -53,71 +36,64 @@ def get_defpot_corrections(strain, defpots, soc: bool=False):
     whereis_new_vbm = np.argmax(newedges[:, 0])
     whereis_new_cbm = np.argmin(newedges[:, 1])
 
-    return corrections_kb[whereis_new_vbm, 0], corrections_kb[whereis_new_cbm, 1]
+    if not subtract:
+        return corrections_kb[whereis_new_vbm, 0], corrections_kb[whereis_new_cbm, 1]
+    else:
+        return - corrections_kb[whereis_new_vbm, 0], - corrections_kb[whereis_new_cbm, 1]
         
 
-    #defpots_vb_array = [defpots[0], defpots[0], 0.0]
-    #defpots_cb_array = [defpots[1], defpots[1], 0.0]
-    #strain_asarray = [strain[0, 0], strain[1, 1], 0.0]
-    #vb_correction = np.dot(defpots_vb_array, strain_asarray)
-    #cb_correction = np.dot(defpots_cb_array, strain_asarray)
-    #return vb_correction, cb_correction
+def get_shifts(info, layer_info_file, correct_strain, subtract, soc, only_strain):
+    shifts_a, defpots_a = get_shifts_and_defpots(info['uid_a'], layer_info_file)
+    shifts_b, defpots_b = get_shifts_and_defpots(info['uid_b'], layer_info_file)
+    shifts = np.asarray([*shifts_a, *shifts_b])
+
+    if correct_strain:
+        strain_corr_a = get_strain_corrections(info['strain_a'], defpots_a, subtract, soc)
+        strain_corr_b = get_strain_corrections(info['strain_b'], defpots_b, subtract, soc)
+        corrections = np.asarray([*strain_corr_a, *strain_corr_b])
+        if only_strain:
+            return corrections
+        return shifts + corrections
+    return shifts
+
+
+def check(info):
+    atoms = read('structure.json')
+    strain_a_calc = np.dot(np.linalg.inv(info['supercell_a']), atoms.cell) - np.eye(3)
+    strain_b_calc = np.dot(np.linalg.inv(info['supercell_b']), atoms.cell) - np.eye(3)
+    strain_a = info['strain_a']
+    strain_b = info['strain_b']
+    assert np.allclose(strain_a_calc[:2,:2], strain_a[:2, :2]) and \
+           np.allclose(strain_b_calc[:2, :2], strain_b[:2, :2])
 
 
 @command('asr.scs_shifts')
 @option ('--info-file')
-@option ('--output-file')
-@option ('--defpots-a')
-@option ('--defpots-b')
-@option ('--soc', is_flag=True)
-@option ('--add', is_flag=True)
-@option ('--only-strain', is_flag=True)
 @option ('--layer-info-file')
-def main(info_file: str = 'makemoire-info.json',
+@option ('--output-file')
+@option ('--soc', is_flag=True)
+@option ('--correct-strain/--dont-correct-strain', is_flag=True)
+@option ('--subtract/--add', is_flag=True)
+@option ('--only-strain', is_flag=True)
+def main(info_file: str = 'bilayer-info.json',
          output_file: str='shifts.json', 
-         defpots_a = '/home/niflheim2/steame/moire/testing/deformation-potentials/spec-kpts-only/MoSe2/0.2/results-asr.moire.defpots.json',
-         defpots_b = '/home/niflheim2/steame/moire/testing/deformation-potentials/spec-kpts-only/WS2/0.2/results-asr.moire.defpots.json',
+         correct_strain: bool=True,
          layer_info_file: str='/home/niflheim2/steame/moire/utils/layer_info.json',
          soc: bool=False,
          only_strain: bool=False,
-         add: bool=False):
+         subtract: bool=True):
 
     info = read_json(info_file)
     for key in info.keys():
         info.update({key: np.asarray(info[key])})
-    shifts_a, _ = get_shifts_and_defpots(info['uid_a'], layer_info_file)
-    shifts_b, _ = get_shifts_and_defpots(info['uid_b'], layer_info_file)
+    check(info)
 
-    if defpots_a and defpots_b:
-        defpot_corr_a_vb, defpot_corr_a_cb = get_defpot_corrections(info['strain_a'], defpots_a, soc=soc)
-        defpot_corr_b_vb, defpot_corr_b_cb = get_defpot_corrections(info['strain_b'], defpots_b, soc=soc)
-        if add:
-            shifts = {
-                'shift_v1': shifts_a[0] + defpot_corr_a_vb,
-                'shift_c1': shifts_a[1] + defpot_corr_a_cb,
-                'shift_v2': shifts_b[0] + defpot_corr_b_vb,
-                'shift_c2': shifts_b[1] + defpot_corr_b_cb
-            }
-        else:
-            shifts = {
-                'shift_v1': shifts_a[0] - defpot_corr_a_vb,
-                'shift_c1': shifts_a[1] - defpot_corr_a_cb,
-                'shift_v2': shifts_b[0] - defpot_corr_b_vb,
-                'shift_c2': shifts_b[1] - defpot_corr_b_cb
-            }
-        write_json(output_file, shifts)
-                
-    elif not defpots_a and not defpots_b:
-        shifts = {
-            'shift_v1': shifts_a[0],
-            'shift_c1': shifts_a[1],
-            'shift_v2': shifts_b[0],
-            'shift_c2': shifts_b[1]
-        }
-        write_json(output_file, shifts)
+    shifts = get_shifts(info, layer_info_file, correct_strain, subtract, soc, only_strain)
+    shifts_dct = {}
+    for i, key in enumerate(['shift_v1', 'shift_c1', 'shift_v2', 'shift_c2']):
+        shifts_dct.update({key: shifts[i]})
 
-    else:
-        raise ValueError('Either provide deformation potential result files for both layers or provide none.')
+    write_json('shifts.json', shifts_dct)
 
 
 if __name__ == '__main__':
