@@ -439,7 +439,7 @@ def get_resultfile_records_in_directory(
 
 
 def get_resultfile_records_from_database_row(row: AtomsRow):
-    contexts = convert_row_data_to_contexts(row.data, row.folder)
+    contexts = convert_row_data_to_contexts(row.data, row.get("folder", "."))
     contexts = filter_contexts_for_unused_recipe_results(contexts)
     contexts = set_context_dependencies(contexts)
     records = make_records_from_contexts(contexts)
@@ -493,9 +493,9 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
 
     children_data = data.get('__children_data__', {})
     for child_values in children_data.values():
-        directory = child_values['directory']
+        child_directory = child_values['directory']
         child_data = child_values['data']
-        child_contexts = convert_row_data_to_contexts(child_data, directory)
+        child_contexts = convert_row_data_to_contexts(child_data, child_directory)
         contexts.extend(child_contexts)
 
     uids = generate_uids(filenames)
