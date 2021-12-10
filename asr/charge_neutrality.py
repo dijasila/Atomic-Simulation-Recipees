@@ -353,7 +353,7 @@ class ConcentrationResult(ASRResult):
 
     key_descriptions = dict(
         defect_name='Name of the defect ({position}_{type}).',
-        concentrations='List of concentration tuples containing (conc., eform, '
+        concentrations='List of concentration tuples containing (conc., eform @ SCEF, '
                        'chargestate).')
 
 
@@ -891,11 +891,14 @@ def plot_formation_scf(row, fname):
                     def_type = 'V'
                 namestring = f"{def_type}$_\\{'mathrm{'}{def_name}{'}'}$"
                 ax.plot([], [], linestyle='solid', color=f'C{i}', label=namestring)
-                for conc_tuple in defect['concentrations']:
+                array = np.zeros((len(defect['concentrations']), 2))
+                for num, conc_tuple in enumerate(defect['concentrations']):
                     q = conc_tuple[1]
                     eform = conc_tuple[2]
                     y0 = q * (-ef) + eform
                     y1 = q * (gap - ef) + eform
+                    array[num, 0] = conc_tuple[2] + q * (-ef)
+                    array[num, 1] = conc_tuple[1]
                     ax.plot([0, gap], [y0, y1], linestyle='solid', color=f'C{i}')
             ax.axvline(0, color='black')
             ax.axvline(gap, color='black')
@@ -904,7 +907,7 @@ def plot_formation_scf(row, fname):
             ax.axvline(ef, color='red', linestyle='dotted', label=r'$E_\mathrm{F}^{\mathrm{sc}}$')
             ax.set_xlim(0 - gap / 10., gap + gap / 10.)
             # yminold = plt.gca().get_ylim()[0]
-            # ax.set_ylim(yminold, yminold + 4)
+            ax.set_ylim(0, 4)
             ax.set_xlabel(r'$E_\mathrm{F} - E_{\mathrm{VBM}}$ [eV]')
             ax.set_ylabel(f'$E^f$ [eV]')
             title = comparison
