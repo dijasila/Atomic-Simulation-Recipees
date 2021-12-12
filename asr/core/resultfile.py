@@ -247,6 +247,8 @@ def set_context_dependencies(
                     uid=context2.uid, revision=None,
                 )
                 deps.append(dep)
+        if context.recipename == "asr.c2db.stiffness:main":
+            assert deps
         context.dependencies = Dependencies(deps)
     return contexts
 
@@ -510,8 +512,7 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
             continue
         result = fix_result_object_missing_name(recipename, result)
 
-        path = pathlib.Path(directory) / \
-            f'results-{remove_main_in_name(recipename)}.json'
+        path = pathlib.Path(directory) / filename
         atomic_structures = {}
         for name, value in data.items():
             if name in ATOMSFILES:
