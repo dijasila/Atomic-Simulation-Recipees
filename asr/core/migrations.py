@@ -44,6 +44,10 @@ def add_missing_names_in_gpaw_calculators(record):
 def select_records_that_have_kpts_density_specified(record):
     if "atoms" not in record.parameters:
         return False
+    # In some cases the input atoms were unknown
+    # and resultfile.py assigns "Unknown atoms file" to these
+    if record.parameters.atoms == "Unknown atoms file":
+        return False
     for name, value in record.parameters.items():
         if 'calculator' in name and 'kpts' in value and 'density' in value['kpts']:
             return True
