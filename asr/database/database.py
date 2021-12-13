@@ -1,10 +1,15 @@
+import json
 from functools import wraps
-from typing import Generator, Tuple, Dict, Any
+from typing import Any, Dict, Generator, List, Tuple
 
+import numpy as np
 from ase import Atoms
 from ase.db import connect as ase_connect
 from ase.db.core import Database
 from ase.db.row import AtomsRow
+from ase.io.jsonio import create_ase_object
+
+from asr.core.serialize import object_to_dict, dict_to_object
 
 
 class Row:
@@ -57,9 +62,7 @@ class Row:
 
     @property
     def records(self):
-        if self._data is None:
-            self._load_data()
-        return self._data.get("records", [])
+        return self.data.get("records", [])
 
     @property
     def cache(self):
@@ -70,13 +73,10 @@ class Row:
         return mem_cache
 
     def _load_data(self):
-        from .fromtree import serializer
-        rowdata = self.row.data
-        _data = {key: value for key, value in rowdata.items() if key != "records"}
-
-        if "records" in rowdata:
-            records = serializer.deserialize(rowdata["records"])
-            _data["records"] = records
+        rowdata = self.row._data
+        _data = bytes_to_object(rowdata)
+        if "records" in _data:
+            assert isinstance(_data["records"], list)
         self._data = _data
 
     @property
@@ -150,16 +150,17 @@ class ASEDatabaseInterface:
 
     @wraps(Database.write)
     def write(self, *args, data=None, records=None, **kwargs):
-        from .fromtree import serializer
-
         if data is None:
             data = {}
         container = {**data}
 
         if records:
-            container["records"] = serializer.serialize(records)
+            container["records"] = records
 
-        return self.db.write(data=container, *args, **kwargs)
+        bts = object_to_bytes(container)
+
+        assert isinstance(bts, bytes)
+        return self.db.write(data=bts, *args, **kwargs)
 
     @wraps(Database.reserve)
     def reserve(self, *args, **kwargs):
@@ -231,3 +232,100 @@ def connect(dbname: str) -> ASEDatabaseInterface:
     """
     db = ase_connect(dbname, serial=True)
     return ASEDatabaseInterface(db)
+
+
+def object_to_bytes(obj: Any) -> bytes:
+    """Serialize Python object to bytes."""
+    parts = [b'12345678']
+    obj = o2b(obj, parts)
+    offset = sum(len(part) for part in parts)
+    x = np.array(offset, np.int64)
+    if not np.little_endian:
+        x.byteswap(True)
+    parts[0] = x.tobytes()
+    parts.append(json.dumps(obj, separators=(',', ':')).encode())
+    bts =  b''.join(parts)
+    try:
+        ind = bts.index(b"records")
+        print("------------- records")
+        print(bts[ind-20:ind + 300])
+    except ValueError:
+        pass
+    return bts
+
+
+def bytes_to_object(b: bytes) -> Any:
+    """Deserialize bytes to Python object."""
+    x = np.frombuffer(b[:8], np.int64)
+    if not np.little_endian:
+        x = x.byteswap()
+    offset = x.item()
+    obj = json.loads(b[offset:].decode())
+    bts = b2o(obj, b)
+    return bts
+
+
+def o2b(obj: Any, parts: List[bytes]):
+    if isinstance(obj, (int, float, bool, str, type(None))):
+        return obj
+    if isinstance(obj, dict):
+        return {key: o2b(value, parts) for key, value in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [o2b(value, parts) for value in obj]
+    if isinstance(obj, np.ndarray):
+        assert obj.dtype != object, \
+            'Cannot convert ndarray of type "object" to bytes.'
+        offset = sum(len(part) for part in parts)
+        if not np.little_endian:
+            obj = obj.byteswap()
+        parts.append(obj.tobytes())
+        return {'__ndarray__': [obj.shape,
+                                obj.dtype.name,
+                                offset]}
+    if isinstance(obj, complex):
+        return {'__complex__': [obj.real, obj.imag]}
+    try:
+        objtype = getattr(obj, 'ase_objtype')
+        if objtype:
+            dct = o2b(obj.todict(), parts)
+            dct['__ase_objtype__'] = objtype
+            return dct
+    except AttributeError:
+        dct = o2b(object_to_dict(obj), parts)
+        return dct
+    raise ValueError('Objects of type {type} not allowed'
+                     .format(type=type(obj)))
+
+
+def b2o(obj: Any, b: bytes) -> Any:
+    if isinstance(obj, (int, float, bool, str, type(None))):
+        return obj
+
+    if isinstance(obj, list):
+        return [b2o(value, b) for value in obj]
+
+    assert isinstance(obj, dict)
+
+    x = obj.get('__complex__')
+    if x is not None:
+        return complex(*x)
+
+    x = obj.get('__ndarray__')
+    if x is not None:
+        shape, name, offset = x
+        dtype = np.dtype(name)
+        size = dtype.itemsize * np.prod(shape).astype(int)
+        a = np.frombuffer(b[offset:offset + size], dtype)
+        a.shape = shape
+        if not np.little_endian:
+            a = a.byteswap()
+        return a
+
+    dct = {key: b2o(value, b) for key, value in obj.items()}
+    objtype = dct.pop('__ase_objtype__', None)
+    if objtype is not None:
+        return create_ase_object(objtype, dct)
+    try:
+        return dict_to_object(dct)
+    except ValueError:
+        return dct

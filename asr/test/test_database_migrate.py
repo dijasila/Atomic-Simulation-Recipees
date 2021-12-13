@@ -89,6 +89,7 @@ def test_collapse_database(database_to_be_migrated, asr_tmpdir):
 
     records = row.records
     nrecords = len(records)
+    assert nrecords > 0
     gwrecords = [rec for rec in records if rec.name == "asr.c2db.gw:main"]
     if gwrecords:
         assert len(gwrecords) == 1
@@ -109,7 +110,6 @@ def test_collapse_database(database_to_be_migrated, asr_tmpdir):
     assert nrecords == len(row.records)
 
     assert original_metadata == migrated.metadata
-
     tmpdir = Path("tmp/")
     tmpdir.mkdir()
     project = DatabaseProject(
