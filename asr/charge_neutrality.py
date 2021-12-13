@@ -899,14 +899,15 @@ def plot_formation_scf(row, fname):
                     array[num, 0] = eform + q * (-ef)
                     array[num, 1] = q
                 array = array[array[:, 1].argsort()[::-1]]
-                plot_background(ax, array, gap)
+                # plot_background(ax, array)
                 plot_lowest_lying(ax, array, ef, gap, name=namestring, color=f'C{i}')
             draw_band_edges(ax, gap)
             set_limits(ax, gap)
             draw_ef(ax, ef)
             set_labels_and_legend(ax, comparison)
-            plt.tight_layout()
-            plt.savefig(fname)
+
+    plt.tight_layout()
+    plt.savefig(fname)
 
 
 def set_labels_and_legend(ax, title):
@@ -972,6 +973,7 @@ def get_last_element(array, x_axis, y_axis, gap):
 
 def get_line_segment(array, index, x_axis, y_axis, gap):
     xs = []
+    ys = []
     for i in range(len(array)):
         if i > index:
             y1 = array[index, 0]
@@ -980,18 +982,19 @@ def get_line_segment(array, index, x_axis, y_axis, gap):
             q2 = array[i, 1]
             crossing = get_crossing_point(y1, y2, q1, q2)
             xs.append(crossing)
+            ys.append(q1 * crossing + y1)
         else:
             crossing = 1000
             xs.append(gap + 10)
+            ys.append(crossing)
     min_index = index + 1
     for i, x in enumerate(xs):
         q1 = array[index, 1]
-        q2 = array[i, 1]
-        # y_old = get_y(xs[index], array, index)
-        if x == min(xs) and x > 0 and x < gap:
+        y1 = array[index, 0]
+        if x == min(xs) and ys[i] == min(ys) and x > 0 and x < gap:
             min_index = i
             x_axis.append(xs[min_index])
-            y_axis.append(y)
+            y_axis.append(q1 * xs[min_index] + y1)
 
     return min_index, x_axis, y_axis
 
@@ -1003,7 +1006,7 @@ def plot_background(ax, array_in, gap):
         y0 = eform
         y1 = eform + q * gap
         ax.plot([0, gap], [y0, y1], color='grey',
-                alpha=0.5)
+                alpha=0.2)
 
 
 def plot_lowest_lying(ax, array_in, ef, gap, name, color):
@@ -1014,7 +1017,6 @@ def plot_lowest_lying(ax, array_in, ef, gap, name, color):
     index, xs, ys = get_line_segment(array_tmp, 0, xs, ys, gap)
     for i in range(len(array_tmp)):
         index, xs, ys = get_line_segment(array_tmp, index, xs, ys, gap)
-        print(name, index, xs, ys)
         if index == len(array_tmp):
             break
     xs, ys = get_last_element(array_tmp, xs, ys, gap)
