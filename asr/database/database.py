@@ -285,6 +285,7 @@ def o2b(obj: Any, parts: List[bytes]):
             dct["__ase_objtype__"] = objtype
             return dct
     except AttributeError:
+        # Fall back to ASRs other custom serializations
         dct = o2b(object_to_dict(obj), parts)
         return dct
     raise ValueError("Objects of type {type} not allowed".format(type=type(obj)))
@@ -324,6 +325,7 @@ def b2o(obj: Any, b: bytes) -> Any:
     if objtype is not None:
         return create_ase_object(objtype, dct)
     try:
+        # See if this is another custom type
         return dict_to_object(dct)
     except ValueError:
         return dct
