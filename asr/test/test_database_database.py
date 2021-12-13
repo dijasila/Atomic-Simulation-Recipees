@@ -1,10 +1,12 @@
+import pickle
+
 import numpy as np
 import pytest
 from ase.build import bulk
 
 import asr
 from asr.database import connect
-from asr.database.database import bytes_to_object, object_to_bytes
+from asr.database.database import bytes_to_object, object_to_bytes, Row
 
 
 @pytest.mark.ci
@@ -30,3 +32,11 @@ def test_bytes_to_object_and_back(various_object_types):
         assert various_object_types == bytes_to_object(
             object_to_bytes(various_object_types)
         )
+
+
+@pytest.mark.ci
+def test_row_can_be_pickled():
+    row = Row(row="Dummy Object")
+    row2 = pickle.loads(pickle.dumps(row))
+
+    assert row == row2

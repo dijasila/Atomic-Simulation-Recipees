@@ -128,8 +128,21 @@ class Row:
     def pbc(self):
         return self.row.pbc
 
+    def __getstate__(self):
+        return self.row, self._data
+
+    def __setstate__(self, state):
+        self.row = state[0]
+        self._data = state[1]
+
     def __getattr__(self, name):
         return getattr(self.row, name)
+
+    def __eq__(self, other):
+        if not isinstance(other, Row):
+            return False
+
+        return self.row == other.row and self._data == other._data
 
 
 class ASEDatabaseInterface:
