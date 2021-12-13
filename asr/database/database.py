@@ -1,15 +1,15 @@
-import json
 from functools import wraps
 from typing import Any, Dict, Generator, List, Tuple
 
 import numpy as np
+import simplejson as json
 from ase import Atoms
 from ase.db import connect as ase_connect
 from ase.db.core import Database
 from ase.db.row import AtomsRow
 from ase.io.jsonio import create_ase_object
 
-from asr.core.serialize import object_to_dict, dict_to_object
+from asr.core.serialize import dict_to_object, object_to_dict
 
 
 class Row:
@@ -67,6 +67,7 @@ class Row:
     @property
     def cache(self):
         from asr import get_cache
+
         mem_cache = get_cache("memory")
         for record in self.records:
             mem_cache.add(record)
@@ -236,21 +237,15 @@ def connect(dbname: str) -> ASEDatabaseInterface:
 
 def object_to_bytes(obj: Any) -> bytes:
     """Serialize Python object to bytes."""
-    parts = [b'12345678']
+    parts = [b"12345678"]
     obj = o2b(obj, parts)
     offset = sum(len(part) for part in parts)
     x = np.array(offset, np.int64)
     if not np.little_endian:
         x.byteswap(True)
     parts[0] = x.tobytes()
-    parts.append(json.dumps(obj, separators=(',', ':')).encode())
-    bts =  b''.join(parts)
-    try:
-        ind = bts.index(b"records")
-        print("------------- records")
-        print(bts[ind-20:ind + 300])
-    except ValueError:
-        pass
+    parts.append(json.dumps(obj, separators=(",", ":"), tuple_as_array=False).encode())
+    bts = b"".join(parts)
     return bts
 
 
@@ -270,31 +265,29 @@ def o2b(obj: Any, parts: List[bytes]):
         return obj
     if isinstance(obj, dict):
         return {key: o2b(value, parts) for key, value in obj.items()}
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, list):
         return [o2b(value, parts) for value in obj]
+    if isinstance(obj, tuple):
+        return {"__type__": "tuple", "value": [o2b(value, parts) for value in obj]}
     if isinstance(obj, np.ndarray):
-        assert obj.dtype != object, \
-            'Cannot convert ndarray of type "object" to bytes.'
+        assert obj.dtype != object, 'Cannot convert ndarray of type "object" to bytes.'
         offset = sum(len(part) for part in parts)
         if not np.little_endian:
             obj = obj.byteswap()
         parts.append(obj.tobytes())
-        return {'__ndarray__': [obj.shape,
-                                obj.dtype.name,
-                                offset]}
+        return {"__ndarray__": [list(obj.shape), obj.dtype.name, offset]}
     if isinstance(obj, complex):
-        return {'__complex__': [obj.real, obj.imag]}
+        return {"__complex__": [obj.real, obj.imag]}
     try:
-        objtype = getattr(obj, 'ase_objtype')
+        objtype = getattr(obj, "ase_objtype")
         if objtype:
             dct = o2b(obj.todict(), parts)
-            dct['__ase_objtype__'] = objtype
+            dct["__ase_objtype__"] = objtype
             return dct
     except AttributeError:
         dct = o2b(object_to_dict(obj), parts)
         return dct
-    raise ValueError('Objects of type {type} not allowed'
-                     .format(type=type(obj)))
+    raise ValueError("Objects of type {type} not allowed".format(type=type(obj)))
 
 
 def b2o(obj: Any, b: bytes) -> Any:
@@ -306,23 +299,28 @@ def b2o(obj: Any, b: bytes) -> Any:
 
     assert isinstance(obj, dict)
 
-    x = obj.get('__complex__')
+    tp = obj.get("__type__")
+
+    if tp == "tuple":
+        return tuple(b2o(value, b) for value in obj["value"])
+
+    x = obj.get("__complex__")
     if x is not None:
         return complex(*x)
 
-    x = obj.get('__ndarray__')
+    x = obj.get("__ndarray__")
     if x is not None:
         shape, name, offset = x
         dtype = np.dtype(name)
         size = dtype.itemsize * np.prod(shape).astype(int)
-        a = np.frombuffer(b[offset:offset + size], dtype)
+        a = np.frombuffer(b[offset : offset + size], dtype)
         a.shape = shape
         if not np.little_endian:
             a = a.byteswap()
         return a
 
     dct = {key: b2o(value, b) for key, value in obj.items()}
-    objtype = dct.pop('__ase_objtype__', None)
+    objtype = dct.pop("__ase_objtype__", None)
     if objtype is not None:
         return create_ase_object(objtype, dct)
     try:
