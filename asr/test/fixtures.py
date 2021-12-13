@@ -107,6 +107,7 @@ def _get_webcontent(dbname="database.db", row_id=1):
         tmpdir.mkdir()
         project = DatabaseProject.from_database(dbname)
         project.tmpdir = tmpdir
+        project.pool = False
         content = get_app_row_contents(project, ids=[row_id])[0]
     else:
         content = None
