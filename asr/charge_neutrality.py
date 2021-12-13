@@ -28,8 +28,7 @@ until charge neutrality is achieved.
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (fig, WebPanel,
-                                      describe_entry, table,
-                                      dl, code)
+                                      describe_entry)
 
     unit = result.conc_unit
     unitstring = f"cm<sup>{unit.split('^')[-1]}</sup>"
@@ -38,8 +37,8 @@ def webpanel(result, row, key_descriptions):
         condition = scresult.condition
         tables = []
         for element in scresult.defect_concentrations:
-            table = get_conc_table(result, element, unitstring)
-            tables.append(table)
+            conc_table = get_conc_table(result, element, unitstring)
+            tables.append(conc_table)
         scf_overview, scf_summary = get_overview_table(scresult, result, unitstring)
         plotname = f'neutrality-{condition}.png'
         panel = WebPanel(
@@ -48,7 +47,7 @@ def webpanel(result, row, key_descriptions):
             columns=[[fig(f'{plotname}'), scf_overview], tables],
             plot_descriptions=[{'function': plot_formation_scf,
                                 'filenames': [plotname]}],
-            sort=25+i)
+            sort=25 + i)
         panels.append(panel)
 
     # summary = {'title': 'Summary',
@@ -172,7 +171,8 @@ def get_conc_table(result, element, unitstring):
     if def_type == 'v':
         def_type = 'V'
     def_name = name.split('_')[1]
-    scf_table = table(result, f'Eq. concentrations of {def_type}<sub>{def_name}</sub> [{unitstring}]', [])
+    scf_table = table(result, f'Eq. concentrations of '
+                              f'{def_type}<sub>{def_name}</sub> [{unitstring}]', [])
     for altel in element['concentrations']:
         if altel[0] > 1e1:
             scf_table['rows'].extend(
@@ -206,7 +206,8 @@ def oldwebpanel(result, row, key_descriptions):
         if def_type == 'v':
             def_type = 'V'
         def_name = name.split('_')[1]
-        scf_table = table(result, f'Eq. concentrations of {def_type}<sub>{def_name}</sub> [{unitstring}]', [])
+        scf_table = table(result, f'Eq. concentrations of {def_type}'
+                                  f'<sub>{def_name}</sub> [{unitstring}]', [])
         for altel in element['concentrations']:
             if altel[0] > 1e1:
                 scf_table['rows'].extend(
@@ -532,7 +533,8 @@ def main(temp: float = 300,
                                                               temp)
                     conc_def = convert_concentration_units(conc_def, atoms)
                     concentration_tuples.append((conc_def, int(defect[1]), eform))
-                    print(f'      defect concentration for ({defect[1]:2}): {conc_def:.2e} {unit:5}')
+                    print(f'      defect concentration for ({defect[1]:2}): '
+                          f'{conc_def:.2e} {unit:5}')
                 concentration_result = ConcentrationResult.fromdata(
                     defect_name=defecttype,
                     concentrations=concentration_tuples)
@@ -565,7 +567,7 @@ def get_defect_info(defect):
 
 
 def get_chemical_potentials(stoi, element, el_list):
-    from ase.db import connect
+    # from ase.db import connect
     from asr.core import read_json
     from pathlib import Path
 
@@ -573,9 +575,9 @@ def get_chemical_potentials(stoi, element, el_list):
     sj_res = read_json(paths[0])
     hof = sj_res['hof']
     sstates = {}
-    db = connect('/home/niflheim/fafb/db/oqmd12.db')
+    # db = connect('/home/niflheim/fafb/db/oqmd12.db')
     for el in el_list:
-        sstate = obtain_chemical_potential(el, db)
+        # sstate = obtain_chemical_potential(el, db)
         name = el
         if el == element:
             # mu_el = hof / stoi[element] + sstate
@@ -890,32 +892,126 @@ def plot_formation_scf(row, fname):
                 if def_type == 'v':
                     def_type = 'V'
                 namestring = f"{def_type}$_\\{'mathrm{'}{def_name}{'}'}$"
-                ax.plot([], [], linestyle='solid', color=f'C{i}', label=namestring)
                 array = np.zeros((len(defect['concentrations']), 2))
                 for num, conc_tuple in enumerate(defect['concentrations']):
                     q = conc_tuple[1]
                     eform = conc_tuple[2]
-                    y0 = q * (-ef) + eform
-                    y1 = q * (gap - ef) + eform
-                    array[num, 0] = conc_tuple[2] + q * (-ef)
-                    array[num, 1] = conc_tuple[1]
-                    ax.plot([0, gap], [y0, y1], linestyle='solid', color=f'C{i}')
-            ax.axvline(0, color='black')
-            ax.axvline(gap, color='black')
-            ax.axvspan(-100, 0, alpha=0.5, color='grey')
-            ax.axvspan(gap, 100, alpha=0.5, color='grey')
-            ax.axvline(ef, color='red', linestyle='dotted', label=r'$E_\mathrm{F}^{\mathrm{sc}}$')
-            ax.set_xlim(0 - gap / 10., gap + gap / 10.)
-            # yminold = plt.gca().get_ylim()[0]
-            ax.set_ylim(0, 4)
-            ax.set_xlabel(r'$E_\mathrm{F} - E_{\mathrm{VBM}}$ [eV]')
-            ax.set_ylabel(f'$E^f$ [eV]')
-            title = comparison
-            ax.set_title(title)
-            # plt.legend(ncol=2, loc=9)
-            ax.legend(bbox_to_anchor=(0.5, 1.1), ncol=5, loc='lower center')
+                    array[num, 0] = eform + q * (-ef)
+                    array[num, 1] = q
+                array = array[array[:, 1].argsort()[::-1]]
+                plot_lowest_lying(ax, array, ef, gap, name=namestring, color=f'C{i}')
+            draw_band_edges(ax, gap)
+            set_limits(ax, gap)
+            draw_ef(ax, ef)
+            set_labels_and_legend(ax, comparison)
             plt.tight_layout()
             plt.savefig(fname)
+
+
+def set_labels_and_legend(ax, title):
+    ax.set_xlabel(r'$E_\mathrm{F} - E_{\mathrm{VBM}}$ [eV]')
+    ax.set_ylabel(f'$E^f$ [eV]')
+    ax.set_title(title)
+    ax.legend(bbox_to_anchor=(0.5, 1.1), ncol=5, loc='lower center')
+
+
+def draw_ef(ax, ef):
+    ax.axvline(ef, color='red', linestyle='dotted',
+               label=r'$E_\mathrm{F}^{\mathrm{sc}}$')
+
+
+def set_limits(ax, gap):
+    ax.set_xlim(0 - gap / 10., gap + gap / 10.)
+
+
+def get_min_el(array):
+    elements = []
+    for i in range(len(array)):
+        elements.append(array[i, 0])
+    for i, el in enumerate(elements):
+        if el == min(elements):
+            return i
+
+
+def get_crossing_point(y1, y2, q1, q2):
+    """
+    f1 = y1 + x * q1
+    f2 = y2 + x * q2
+
+    x * (q1 - q2) = y2 - y1
+    x = (y2 - y1) / (q1 - q2)
+    """
+    return (y2 - y1) / float(q1 - q2)
+
+
+def clean_array(array):
+    index = get_min_el(array)
+
+    return array[index:, :]
+
+
+def get_y(x, array, index):
+    q = array[index, 1]
+
+    return q * x + array[index, 0]
+
+
+def get_last_element(array, x_axis, y_axis, gap):
+    y_cbms = []
+    for i in range(len(array)):
+        q = array[i, 1]
+        eform = array[i, 0]
+        y_cbms.append(q * gap + eform)
+
+    x_axis.append(gap)
+    y_axis.append(min(y_cbms))
+
+    return x_axis, y_axis
+
+
+def get_line_segment(array, index, x_axis, y_axis, gap):
+    xs = []
+    for i in range(len(array)):
+        if i >= index and i != index:
+            y1 = array[index, 0]
+            q1 = array[index, 1]
+            y2 = array[i, 0]
+            q2 = array[i, 1]
+            crossing = get_crossing_point(y1, y2, q1, q2)
+            xs.append(crossing)
+        else:
+            crossing = 1000
+            xs.append(gap + 10)
+    min_index = index + 1
+    for i, x in enumerate(xs):
+        if x == min(xs) and x > 0 and x < gap:
+            min_index = i
+            x_axis.append(xs[min_index])
+            y_axis.append(get_y(xs[min_index], array, min_index))
+
+    return min_index, x_axis, y_axis
+
+
+def plot_lowest_lying(ax, array_in, ef, gap, name, color):
+    array_tmp = array_in.copy()
+    array_tmp = clean_array(array_tmp)
+    xs = [0]
+    ys = [array_tmp[0, 0]]
+    index, xs, ys = get_line_segment(array_tmp, 0, xs, ys, gap)
+    for i in range(1, len(array_tmp)):
+        index, xs, ys = get_line_segment(array_tmp, index, xs, ys, gap)
+        if index == len(array_tmp):
+            break
+    xs, ys = get_last_element(array_tmp, xs, ys, gap)
+    ax.plot(xs, ys, color=color, label=name)
+    ax.set_xlabel(r'$E_\mathrm{F}$ [eV]')
+
+
+def draw_band_edges(ax, gap):
+    ax.axvline(0, color='black')
+    ax.axvline(gap, color='black')
+    ax.axvspan(-100, 0, alpha=0.5, color='grey')
+    ax.axvspan(gap, 100, alpha=0.5, color='grey')
 
 
 if __name__ == '__main__':
