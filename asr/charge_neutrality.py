@@ -899,6 +899,7 @@ def plot_formation_scf(row, fname):
                     array[num, 0] = eform + q * (-ef)
                     array[num, 1] = q
                 array = array[array[:, 1].argsort()[::-1]]
+                plot_background(ax, array, gap)
                 plot_lowest_lying(ax, array, ef, gap, name=namestring, color=f'C{i}')
             draw_band_edges(ax, gap)
             set_limits(ax, gap)
@@ -972,7 +973,7 @@ def get_last_element(array, x_axis, y_axis, gap):
 def get_line_segment(array, index, x_axis, y_axis, gap):
     xs = []
     for i in range(len(array)):
-        if i >= index and i != index:
+        if i > index:
             y1 = array[index, 0]
             q1 = array[index, 1]
             y2 = array[i, 0]
@@ -984,12 +985,25 @@ def get_line_segment(array, index, x_axis, y_axis, gap):
             xs.append(gap + 10)
     min_index = index + 1
     for i, x in enumerate(xs):
+        q1 = array[index, 1]
+        q2 = array[i, 1]
+        # y_old = get_y(xs[index], array, index)
         if x == min(xs) and x > 0 and x < gap:
             min_index = i
             x_axis.append(xs[min_index])
-            y_axis.append(get_y(xs[min_index], array, min_index))
+            y_axis.append(y)
 
     return min_index, x_axis, y_axis
+
+
+def plot_background(ax, array_in, gap):
+    for i in range(len(array_in)):
+        q = array_in[i, 1]
+        eform = array_in[i, 0]
+        y0 = eform
+        y1 = eform + q * gap
+        ax.plot([0, gap], [y0, y1], color='grey',
+                alpha=0.5)
 
 
 def plot_lowest_lying(ax, array_in, ef, gap, name, color):
@@ -998,8 +1012,9 @@ def plot_lowest_lying(ax, array_in, ef, gap, name, color):
     xs = [0]
     ys = [array_tmp[0, 0]]
     index, xs, ys = get_line_segment(array_tmp, 0, xs, ys, gap)
-    for i in range(1, len(array_tmp)):
+    for i in range(len(array_tmp)):
         index, xs, ys = get_line_segment(array_tmp, index, xs, ys, gap)
+        print(name, index, xs, ys)
         if index == len(array_tmp):
             break
     xs, ys = get_last_element(array_tmp, xs, ys, gap)
