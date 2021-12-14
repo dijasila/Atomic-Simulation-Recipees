@@ -4,8 +4,19 @@ from asr.core import (
     instruction, atomsopt, option,
     argument, ASRResult, prepare_result
 )
-
+from typing import Union
 import numpy as np
+
+# From [acs comb sci 2.011, 13, 383-390, Setyawan et al.]
+UTM = {'Ti': 4.4, 'V': 2.7, 'Cr': 3.5, 'Mn': 4.0, 'Fe': 4.6,
+       'Co': 5.0, 'Ni': 5.1, 'Cu': 4.0, 'Zn': 7.5, 'Ga': 3.9,
+       'Nb': 2.1, 'Mo': 2.4, 'Tc': 2.7, 'Ru': 3.0, 'Rh': 3.3,
+       'Pd': 3.6, 'Cd': 2.1, 'In': 1.9,
+       'Ta': 2.0, 'W': 2.2, 'Re': 2.4, 'Os': 2.6, 'Ir': 2.8, 'Pt': 3.0}
+
+Uvalues = {}
+for key, value in UTM.items():
+    Uvalues[key] = f':d,{value},0'
 
 
 @instruction(module='asr.c2db.spinspiral')
@@ -13,8 +24,9 @@ import numpy as np
 @argument('q_c', type=str)
 @option('--kptdensity', help='Kpoint density', type=float)
 @option('--ecut', help='Energy cutoff', type=float)
-def calculate(atoms: Atoms, q_c: str = "[0 0 0]", ecut: float = 600,
-              kptdensity: float = 4.0) -> ASRResult:
+@option('--hubU', type=bool, help='Toggle hubbard-U on d-orbitals')
+def calculate(atoms: Atoms, q_c: str = "[0 0 0]", ecut: float = 800,
+              kptdensity: float = 12.0, hubU: bool = False) -> ASRResult:
     """Calculate the groundstate of a given spin spiral vector q_c."""
     from gpaw import GPAW, PW
 
@@ -25,14 +37,23 @@ def calculate(atoms: Atoms, q_c: str = "[0 0 0]", ecut: float = 600,
     magmoms = np.zeros((len(atoms), 3))
     magmoms[:, 0] = magmomx
     q_c = [eval(x) for x in filter(None, q_c.strip("[").strip("]").split(" "))]
-    calc = GPAW(mode=PW(ecut, qspiral=q_c),
-                xc='LDA',
-                symmetry='off',
-                experimental={'magmoms': magmoms, 'soc': False},
-                kpts={'density': kptdensity},
-                txt='gsq.txt',
-                parallel={'kpt': 40})
 
+    params = dict(mode=PW(ecut, qspiral=q_c),
+                  xc='LDA',
+                  symmetry='off',
+                  experimental={'magmoms': magmoms, 'soc': False},
+                  kpts={'density': kptdensity},
+                  txt='gsq.txt',
+                  parallel={'domain': 1, 'band': 1})
+
+    if hubU:
+        hubbardU = {atom : Uvalues[atom] for atom in atoms.symbols
+                    if atom in UTM.keys()}
+        params["setups"] = hubbardU
+
+    calc = GPAW(**params)
+
+    calc.log(f'Q_spiral: {q_c}')
     atoms.calc = calc
     energy = atoms.get_potential_energy()
     totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
@@ -80,27 +101,40 @@ class Result(ASRResult):
 @atomsopt
 @option('--q_path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
 @option('--n', type=int)
-def main(atoms: Atoms, q_path: str = None, n: int = 11) -> Result:
+@option('--hubU', type=bool, help='Toggle hubbard-U on d-orbitals')
+def main(atoms: Atoms, n: int = 11, q_path: Union[str, None] = None,
+         hubU: bool = False) -> Result:
     if q_path is None:
-        sp = atoms.cell.get_bravais_lattice().get_special_points()
-        # Prune for special points with kz = 0
-        q_path = ''
-        for k, v in sp.items():
-            if v[2] == 0:
-                q_path += k
-        q_path = q_path + q_path[0]
+        path = atoms.cell.bandpath(npoints=n, pbc=atoms.pbc)
+        Q = np.round(path.kpts, 16)
+    elif q_path.isalpha():
+        # Input: --q_path GKMG
+        path = atoms.cell.bandpath(q_path, npoints=n)
+        Q = np.round(path.kpts, 16)
+    else:
+        # Input: --q_path 111, --n 5
+        from ase.dft.kpoints import (monkhorst_pack, kpoint_convert)
 
-    path = atoms.cell.bandpath(q_path, npoints=n)
-    Q = np.round(path.kpts, 16)
+        plane = [eval(q) for q in q_path]
+        Q = monkhorst_pack([n, n, n])
+        Q = project_to_plane(Q, plane)
+        Qv = kpoint_convert(atoms.get_cell(), skpts_kc=Q) / (2 * np.pi)
+        path = [Q, Qv]
+
     energies = []
     lmagmom_av = []
     Tmagmom_v = []
+    mask = []
     for q_c in Q:
-        result = calculate(atoms, q_c=str(q_c))
-        energies.append(result['en'])
-        lmagmom_av.append(result['ml'])
-        Tmagmom_v.append(result['mT'])
-
+        try:
+            result = calculate(atoms, q_c=str(q_c), hubU=hubU)
+            energies.append(result['en'])
+            lmagmom_av.append(result['ml'])
+            Tmagmom_v.append(result['mT'])
+            mask.append(True)
+        except Exception as e:
+            mask.append(False)
+            print(f'Warning at {q_c} we got error:', e)
     energies = np.asarray(energies)
     lmagmom_av = np.asarray(lmagmom_av)
     Tmagmom_v = np.asarray(Tmagmom_v)
@@ -179,6 +213,14 @@ def streak2(minima):
         else:
             minRuns.append([minima[i]])
     return minRuns
+
+
+def project_to_plane(points, plane, orig=[0, 0, 0]):
+    normal = plane / np.linalg.norm(plane)
+    dist = np.dot(points, normal)[:, np.newaxis]
+    new_points = (points - dist * normal)
+    new_points = np.unique(new_points.round(decimals=15), axis=0)
+    return new_points
 
 
 @prepare_result
@@ -286,20 +328,25 @@ def interpolate_edge(Q, e_min, enh):
         return qL, qR
 
 
-def plot_bandstructure(context, fname, data=None):
+def plot_bandstructure(context, fname, data=None, mask = None):
     from matplotlib import pyplot as plt
     if data is None:
         data = context.get_record('results-asr.spinspiral.json').result
     path = data['path']
     energies = data['energies']
+    q, x, X = path.get_linear_kpoint_axis()
+    kpts_c = path.cartesian_kpts()
 
+    if mask is not None:
+        q = q[mask]
+        kpts_c = kpts_c[mask]
+        
     # If we want to normalize by number of magnetic atoms
     # local_magmoms =  data['local_magmoms'][0]
     # ml = np.linalg.norm(local_magmoms, axis=1)
     # nmagatoms = np.sum(ml > 0.2)
     energies = ((energies - energies[0]) * 1000)  # / nmagatoms
-    q, x, X = path.get_linear_kpoint_axis()
-
+    
     total_magmoms = data['total_magmoms']
 
     fig = plt.figure()
@@ -324,7 +371,7 @@ def plot_bandstructure(context, fname, data=None):
         return [f"{z:.1f}" for z in lmda]
 
     # Non-cumulative length of q-vectors to find wavelength
-    Q = np.linalg.norm(2 * np.pi * path.cartesian_kpts(), axis=-1)
+    Q = np.linalg.norm(2 * np.pi * kpts_c, axis=-1)
     ax2 = ax1.twiny()
     ax2.set_xlim(ax1.get_xlim())
     idx = round(len(Q) / 5)
