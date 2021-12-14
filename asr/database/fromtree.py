@@ -408,7 +408,12 @@ def _collect_folders(folders: List[str],
             identifier_kvp = make_data_identifiers(data.keys())
             key_value_pairs.update(identifier_kvp)
             try:
-                db.write(atoms, data=data, records=records, key_value_pairs=key_value_pairs)
+                db.write(
+                    atoms,
+                    data=data,
+                    records=records,
+                    key_value_pairs=key_value_pairs,
+                )
             except Exception:
                 print(f'folder={folder}')
                 print(f'atoms={atoms}')
