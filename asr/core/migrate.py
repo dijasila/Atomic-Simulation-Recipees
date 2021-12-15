@@ -24,16 +24,48 @@ UID = str
 
 @dataclass
 class Modification:
-    """Class that represents a record modification."""
+    """Class that represents a record modification.
+
+    A modification is basically a collection of differences.
+
+    Attributes
+    ----------
+    differences : List[Difference]
+        A list of difference that together comprises the modification.
+    """
 
     differences: typing.List['Difference'] = field(default_factory=list)
 
     def apply(self, record: Record) -> Record:
+        """Apply modification to record.
+
+        Parameters
+        ----------
+        record : Record
+            Record to be modified.
+
+        Returns
+        -------
+        Record
+            Modified record.
+        """
         for difference in self.differences:
             difference.apply(record)
         return record
 
     def revert(self, record: Record) -> Record:
+        """Revert modification on record.
+
+        Parameters
+        ----------
+        record : Record
+            Record where modification should be reverted.
+
+        Returns
+        -------
+        Record
+            Reverted record.
+        """
         for difference in self.differences:
             difference.revert(record)
         return record
@@ -47,9 +79,15 @@ class Modification:
 
 @dataclass
 class Difference(abc.ABC):
-    """Class that represent a single attribute difference between records."""
+    """Abstract class that represent a single attribute difference between records.
 
-    attribute: 'AttributeSequence'
+    Attributes
+    ----------
+    attribute : ItemAttributeSequence
+        The attribute that was changed.
+    """
+
+    attribute: 'ItemAttributeSequence'
 
     @abc.abstractmethod
     def apply(self, obj: typing.Any):
@@ -62,6 +100,16 @@ class Difference(abc.ABC):
 
 @dataclass
 class NewAttribute(Difference):
+    """Difference object that represents a new attribute.
+
+    Attributes
+    ----------
+    attribute : ItemAttributeSequence
+        The attribute that was changed.
+    value : Any
+        The new value of the attribute.
+
+    """
 
     value: typing.Any
 
@@ -77,6 +125,16 @@ class NewAttribute(Difference):
 
 @dataclass
 class DeletedAttribute(Difference):
+    """Difference object that represents a deleted attribute.
+
+    Attributes
+    ----------
+    attribute : ItemAttributeSequence
+        The attribute that was deleted.
+    value : Any
+        The old value of the deleted attribute.
+
+    """
 
     value: typing.Any
 
@@ -92,6 +150,19 @@ class DeletedAttribute(Difference):
 
 @dataclass
 class ChangedValue(Difference):
+    """Difference object that represents a change value.
+
+    Attributes
+    ----------
+    attribute : ItemAttributeSequence
+        The attribute that was deleted.
+    new_value : Any
+        The new value of the attribute.
+    old_value : Any
+        The old value of the attribute.
+
+    """
+
     new_value: typing.Any
     old_value: typing.Any
 
@@ -110,7 +181,16 @@ class ChangedValue(Difference):
 
 @dataclass
 class Attribute:
-    """Class that represents an object attribute."""
+    """Class that represents an object attribute.
+
+    Represents an attribute like ".name" of an object.
+
+    Attributes
+    ----------
+    name : str
+        The name of the attribute.
+
+    """
 
     name: str
 
@@ -137,7 +217,16 @@ class Attribute:
 
 @dataclass
 class Item:
-    """Class that represents an object item."""
+    """Class that represents an object item.
+
+    Represents an item with "name".
+
+    Attributes
+    ----------
+    name : str
+        The name of the item.
+
+    """
 
     name: str
 
@@ -163,29 +252,44 @@ class Item:
 
 
 @dataclass
-class AttributeSequence:
+class ItemAttributeSequence:
+    """Class the represents a sequence of attributes and items.
+
+    Class that represents something like obj.attribute[item].attribute2[item2]
+    etc.
+
+    Attributes
+    ----------
+    attrs : List[Union[Attribute, Item]]
+        A list of attributes and items to be accessed in that order.
+
+    """
+
     attrs: typing.List[typing.Union['Attribute', 'Item']]
 
-    def set(self, obj, value):
+    def set(self, obj: typing.Any, value: typing.Any):
+        """Assign value on obj of attr/item specified by sequence."""
         for attr in self.attrs[:-1]:
             obj = attr.get(obj)
         self.attrs[-1].set(obj, value)
 
     def get(self, obj):
+        """Get value on object of attr/item specified by sequence."""
         for attr in self.attrs:
             obj = attr.get(obj)
         return obj
 
     def delete(self, obj):
+        """Delete attr/item on object specified by sequence."""
         for attr in self.attrs[:-1]:
             obj = attr.get(obj)
         self.attrs[-1].delete(obj)
 
     def __getitem__(self, item):
-        return AttributeSequence(self.attrs[item])
+        return ItemAttributeSequence(self.attrs[item])
 
     def __add__(self, other):
-        return AttributeSequence(self.attrs + other.attrs)
+        return ItemAttributeSequence(self.attrs + other.attrs)
 
     def __hash__(self):
         return hash(tuple(hash(attr) for attr in self.attrs))
@@ -203,9 +307,31 @@ def make_modification(old_record: Record, new_record: Record):
     return Modification(differences)
 
 
-def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = None):
+def get_differences(
+    obj1: typing.Any,
+    obj2: typing.Any,
+    prepend: typing.Optional[ItemAttributeSequence] = None
+) -> typing.List[Difference]:
+    """Get differences from obj1 to obj2.
+
+    Parameters
+    ----------
+    obj1 : typing.Any
+        An object before changes has been made.
+    obj2 : typing.Any
+        An object after changes has been made.
+    prepend : typing.Optional[ItemAttributeSequence], optional
+        Prepend item/attribute sequences by this, by default None. This is used,
+        internally by the algorithm when recursing into the objects be introspected.
+        Usually you don't need this.
+
+    Returns
+    -------
+    List[Difference]
+        List of difference objects that represents the difference from obj1 to obj2.
+    """
     if prepend is None:
-        prepend = AttributeSequence([])
+        prepend = ItemAttributeSequence([])
     tp1 = type(obj1)
     tp2 = type(obj2)
     if tp1 != tp2:
@@ -229,7 +355,7 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
                     new_value=copy.deepcopy(obj2),
                 )
             ]
-    differences = []
+    differences : typing.List[Difference] = []
     attrs1 = set(attrs_and_values1)
     attrs2 = set(attrs_and_values2)
     deleted_attrs = attrs1 - attrs2
@@ -260,18 +386,32 @@ def get_differences(obj1, obj2, prepend: typing.Optional[AttributeSequence] = No
     return differences
 
 
-def get_attributes_and_values(obj):
+def get_attributes_and_values(
+    obj: typing.Any,
+) -> typing.Dict[ItemAttributeSequence, typing.Any]:
+    """Get dict of attributes and values of obj.
+
+    Parameters
+    ----------
+    obj : Any
+        Object to be introspected
+
+    Returns
+    -------
+    Dict[ItemAttributeSequence, Any]
+        Dictionary that maps attributes to values.
+    """
     attributes_and_values = {}
     if hasattr(obj, '__dict__'):
         for key, value in obj.__dict__.items():
-            attributes_and_values[AttributeSequence([Attribute(key)])] = value
+            attributes_and_values[ItemAttributeSequence([Attribute(key)])] = value
     elif hasattr(obj, '__slots__'):
         for key in obj.__slots__:
             value = getattr(obj, key)
-            attributes_and_values[AttributeSequence([Attribute(key)])] = value
+            attributes_and_values[ItemAttributeSequence([Attribute(key)])] = value
     elif isinstance(obj, dict):
         for key, value in obj.items():
-            attr = AttributeSequence([Item(key)])
+            attr = ItemAttributeSequence([Item(key)])
             attributes_and_values[attr] = value
 
     return attributes_and_values
@@ -279,10 +419,18 @@ def get_attributes_and_values(obj):
 
 @dataclass
 class Revision:
-    """Container for logging migration information."""
+    """Container for logging migration information.
 
-    migration_uid: typing.Optional[UID]
+    The revision object is the main building block of the change history
+    of records. A revision stores a series of modifications
+
+    The revision object can be thought of as an analogue to a git commit.
+    It has a uid that represents the curre
+
+    """
+
     uid: UID
+    migration_uid: typing.Optional[UID]
     description: str
     modification: Modification
 
