@@ -301,122 +301,6 @@ class ItemAttributeSequence:
         return ''.join(str(attr) for attr in self.attrs)
 
 
-def make_modification(old_record: Record, new_record: Record):
-    """Search for differences between objects and make resulting modification."""
-    differences = get_differences(old_record, new_record)
-    return Modification(differences)
-
-
-def get_differences(
-    obj1: typing.Any,
-    obj2: typing.Any,
-    prepend: typing.Optional[ItemAttributeSequence] = None
-) -> typing.List[Difference]:
-    """Get differences from obj1 to obj2.
-
-    Parameters
-    ----------
-    obj1 : typing.Any
-        An object before changes has been made.
-    obj2 : typing.Any
-        An object after changes has been made.
-    prepend : typing.Optional[ItemAttributeSequence], optional
-        Prepend item/attribute sequences by this, by default None. This is used,
-        internally by the algorithm when recursing into the objects be introspected.
-        Usually you don't need this.
-
-    Returns
-    -------
-    List[Difference]
-        List of difference objects that represents the difference from obj1 to obj2.
-    """
-    if prepend is None:
-        prepend = ItemAttributeSequence([])
-    tp1 = type(obj1)
-    tp2 = type(obj2)
-    if tp1 != tp2:
-        return [
-            ChangedValue(
-                attribute=prepend,
-                old_value=copy.deepcopy(obj1),
-                new_value=copy.deepcopy(obj2),
-            )
-        ]
-    attrs_and_values1 = get_attributes_and_values(obj1)
-    attrs_and_values2 = get_attributes_and_values(obj2)
-    if not (attrs_and_values1 or attrs_and_values2):
-        # Then we cannot introspect
-        if not compare_equal(obj1, obj2):
-            assert prepend.attrs[0].name != 'history'
-            return [
-                ChangedValue(
-                    attribute=prepend,
-                    old_value=copy.deepcopy(obj1),
-                    new_value=copy.deepcopy(obj2),
-                )
-            ]
-    differences : typing.List[Difference] = []
-    attrs1 = set(attrs_and_values1)
-    attrs2 = set(attrs_and_values2)
-    deleted_attrs = attrs1 - attrs2
-    new_attrs = attrs2 - attrs1
-
-    for attr in deleted_attrs:
-        differences.append(
-            DeletedAttribute(
-                attribute=prepend + attr,
-                value=copy.deepcopy(attrs_and_values1[attr]),
-            )
-        )
-
-    for attr in new_attrs:
-        differences.append(
-            NewAttribute(
-                attribute=prepend + attr,
-                value=copy.deepcopy(attrs_and_values2[attr]),
-            )
-        )
-    common_attrs = attrs1.intersection(attrs2)
-    for attr in common_attrs:
-        value1 = attrs_and_values1[attr]
-        value2 = attrs_and_values2[attr]
-        diffs_inside_values = get_differences(value1, value2, prepend=prepend + attr)
-        differences.extend(diffs_inside_values)
-
-    return differences
-
-
-def get_attributes_and_values(
-    obj: typing.Any,
-) -> typing.Dict[ItemAttributeSequence, typing.Any]:
-    """Get dict of attributes and values of obj.
-
-    Parameters
-    ----------
-    obj : Any
-        Object to be introspected
-
-    Returns
-    -------
-    Dict[ItemAttributeSequence, Any]
-        Dictionary that maps attributes to values.
-    """
-    attributes_and_values = {}
-    if hasattr(obj, '__dict__'):
-        for key, value in obj.__dict__.items():
-            attributes_and_values[ItemAttributeSequence([Attribute(key)])] = value
-    elif hasattr(obj, '__slots__'):
-        for key in obj.__slots__:
-            value = getattr(obj, key)
-            attributes_and_values[ItemAttributeSequence([Attribute(key)])] = value
-    elif isinstance(obj, dict):
-        for key, value in obj.items():
-            attr = ItemAttributeSequence([Item(key)])
-            attributes_and_values[attr] = value
-
-    return attributes_and_values
-
-
 @dataclass
 class Revision:
     """Container for logging migration information.
@@ -552,18 +436,6 @@ class SelectorMigrationGenerator(MakeMigrations):
 
 
 @dataclass
-class GeneralMigrationGenerator(MakeMigrations):
-
-    applies: typing.Callable
-    migration: Migration
-
-    def make_migrations(self, record: Record) -> typing.List[Migration]:
-        if self.applies(record):
-            return [self.migration]
-        return []
-
-
-@dataclass
 class CollectionMigrationGenerator(MakeMigrations):
     """Generates migrations from a collection of migration generators."""
 
@@ -627,6 +499,122 @@ class RecordMigration:
             )
             items.append(problem_string)
         return '\n'.join(items)
+
+
+def make_modification(old_record: Record, new_record: Record):
+    """Search for differences between objects and make resulting modification."""
+    differences = get_differences(old_record, new_record)
+    return Modification(differences)
+
+
+def get_differences(
+    obj1: typing.Any,
+    obj2: typing.Any,
+    prepend: typing.Optional[ItemAttributeSequence] = None
+) -> typing.List[Difference]:
+    """Get differences from obj1 to obj2.
+
+    Parameters
+    ----------
+    obj1 : typing.Any
+        An object before changes has been made.
+    obj2 : typing.Any
+        An object after changes has been made.
+    prepend : typing.Optional[ItemAttributeSequence], optional
+        Prepend item/attribute sequences by this, by default None. This is used,
+        internally by the algorithm when recursing into the objects be introspected.
+        Usually you don't need this.
+
+    Returns
+    -------
+    List[Difference]
+        List of difference objects that represents the difference from obj1 to obj2.
+    """
+    if prepend is None:
+        prepend = ItemAttributeSequence([])
+    tp1 = type(obj1)
+    tp2 = type(obj2)
+    if tp1 != tp2:
+        return [
+            ChangedValue(
+                attribute=prepend,
+                old_value=copy.deepcopy(obj1),
+                new_value=copy.deepcopy(obj2),
+            )
+        ]
+    attrs_and_values1 = get_attributes_and_values(obj1)
+    attrs_and_values2 = get_attributes_and_values(obj2)
+    if not (attrs_and_values1 or attrs_and_values2):
+        # Then we cannot introspect
+        if not compare_equal(obj1, obj2):
+            assert prepend.attrs[0].name != 'history'
+            return [
+                ChangedValue(
+                    attribute=prepend,
+                    old_value=copy.deepcopy(obj1),
+                    new_value=copy.deepcopy(obj2),
+                )
+            ]
+    differences : typing.List[Difference] = []
+    attrs1 = set(attrs_and_values1)
+    attrs2 = set(attrs_and_values2)
+    deleted_attrs = attrs1 - attrs2
+    new_attrs = attrs2 - attrs1
+
+    for attr in deleted_attrs:
+        differences.append(
+            DeletedAttribute(
+                attribute=prepend + attr,
+                value=copy.deepcopy(attrs_and_values1[attr]),
+            )
+        )
+
+    for attr in new_attrs:
+        differences.append(
+            NewAttribute(
+                attribute=prepend + attr,
+                value=copy.deepcopy(attrs_and_values2[attr]),
+            )
+        )
+    common_attrs = attrs1.intersection(attrs2)
+    for attr in common_attrs:
+        value1 = attrs_and_values1[attr]
+        value2 = attrs_and_values2[attr]
+        diffs_inside_values = get_differences(value1, value2, prepend=prepend + attr)
+        differences.extend(diffs_inside_values)
+
+    return differences
+
+
+def get_attributes_and_values(
+    obj: typing.Any,
+) -> typing.Dict[ItemAttributeSequence, typing.Any]:
+    """Get dict of attributes and values of obj.
+
+    Parameters
+    ----------
+    obj : Any
+        Object to be introspected
+
+    Returns
+    -------
+    Dict[ItemAttributeSequence, Any]
+        Dictionary that maps attributes to values.
+    """
+    attributes_and_values = {}
+    if hasattr(obj, '__dict__'):
+        for key, value in obj.__dict__.items():
+            attributes_and_values[ItemAttributeSequence([Attribute(key)])] = value
+    elif hasattr(obj, '__slots__'):
+        for key in obj.__slots__:
+            value = getattr(obj, key)
+            attributes_and_values[ItemAttributeSequence([Attribute(key)])] = value
+    elif isinstance(obj, dict):
+        for key, value in obj.items():
+            attr = ItemAttributeSequence([Item(key)])
+            attributes_and_values[attr] = value
+
+    return attributes_and_values
 
 
 def migrate_record(
@@ -757,11 +745,19 @@ def migration(
 MIGRATIONS = set()
 
 
-def register_migration(migration) -> None:
+def register_migration(migration: Migration) -> None:
+    """Register a migration.
+
+    Parameters
+    ----------
+    migration : Migration
+        Migration to be registered.
+    """
     MIGRATIONS.add(migration)
 
 
 def get_migrations() -> set:
+    """Get registered migrations."""
     return MIGRATIONS
 
 
