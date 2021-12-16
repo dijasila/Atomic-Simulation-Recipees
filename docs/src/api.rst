@@ -20,9 +20,9 @@ CLI constructors
 
 .. autofunction:: asr.argument
 
-Migration
----------
-.. autofunction:: asr.migration
+Mutation
+--------
+.. autofunction:: asr.mutation
 
 Dataclasses
 ===========

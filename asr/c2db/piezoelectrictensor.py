@@ -128,7 +128,7 @@ sel.name = sel.EQ('asr.c2db.piezoelectrictensor:main')
 sel.parameters = sel.NOT(sel.CONTAINS('relaxcalculator'))
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def add_relaxcalculator_parameter(record):
     """Add relaxcalculator parameter and delete unused dependency parameters."""
     dep_params = record.parameters.dependency_parameters

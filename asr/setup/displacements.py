@@ -27,7 +27,7 @@ sel.version = sel.EQ(-1)
 sel.name = sel.EQ('asr.setup.displacements:main')
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def remove_copy_params_parameter(record):
     """Remove copy_params parameter."""
     del record.parameters.copy_params

@@ -325,7 +325,7 @@ sel.name = sel.OR(
 sel.version = sel.EQ(-1)
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def remove_gs_param(record: asr.Record) -> asr.Record:
     """Remove "gs" parameter from record parameters and de_params."""
     params = record.parameters

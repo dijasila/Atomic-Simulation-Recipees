@@ -440,7 +440,7 @@ sel.name = sel.EQ("asr.c2db.hse:main")
 sel.version = sel.EQ(-1)
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def add_missing_hse_keys(record: asr.Record) -> asr.Record:
     """Add missing keys in old HSE results."""
     res = record.result

@@ -456,7 +456,7 @@ sel.name = sel.EQ('asr.c2db.phonopy:calculate')
 sel.version = sel.EQ(-1)
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def construct_calculator_from_old_parameters(record):
     """Construct calculator from old parameters."""
     params = record.parameters
@@ -502,7 +502,7 @@ sel.version = sel.EQ(-1)
 sel.parameters = sel.CONTAINS('n')
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def make_supercell_argument(record: asr.Record):
     """Make supercell argument from old integer specification."""
     n = record.parameters.n

@@ -300,8 +300,8 @@ From which we can see that the EMT calculator predicts the FCC crystal
 structure to be the most stable crystal structure for all tested
 metals which is also true in reality.
 
-Part 2 - Migrations
-===================
+Part 2 - Migrations and mutations
+=================================
 
 ..
    $ cp $ASRHOME/docs/src/tutorials/getting-started-ver2.py $ASRLIB/tutorial.py
@@ -328,21 +328,21 @@ update the instruction to supply the calculator as an input argument
    :caption: asr/tutorial.py
 
 To update the existing records to be consistent with the new
-implementation we make a migration that adds the `calculator`
+implementation we make a mutation that adds the `calculator`
 parameter to the existing records and sets it to `emt`
 
 .. literalinclude:: getting-started-ver2.py
    :pyobject: add_missing_calculator_parameter
    :caption: asr/tutorial.py
 
-As is appararent, a migration is nothing more than a regular python
-function decorated with the :py:func:`asr.migration` decorator. The
+As is appararent, a mutation is nothing more than a regular python
+function decorated with the :py:func:`asr.mutation` decorator. The
 decorator takes a `selector` argument which is used to select records
 to be migrated. The selector will be applied to all existing records
 and should return a boolean. The function will then be applied for all
 records that fulfill the selector criterion.
 
-The migrations can be applied through the CLI
+The mutations can be applied through the CLI
 
 .. code-block:: console
 
@@ -362,211 +362,211 @@ To apply the migrations we do
    
    record.uid=cb55e8269ef14f11943d7273399f9d4f
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=768c45ede5594333b2d7f8ee76297a31
    
    record.uid=4813f96fdd0447888f96996514e549cb
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=7c920581f365450488910c0f557bc10a
    
    record.uid=736496a649574aa5b51f47261773dcb6
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=5f9652c2319246f98307abbce089b241
    
    record.uid=1ce77b0d881f4fc5a24791f526a70402
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=474eef393aeb448980ffb37ba872d766
    
    record.uid=e04f84d8f9af4294bcd354c2acf2a23e
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=d0cf68a6fc434d30926deed578795cf4
    
    record.uid=3edae22c00b54e3b81f72dfd8f73472f
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=ef9b17889a564a52bd23d6c88b8da1c8
    
    record.uid=5cc5d6f64a0a47fd8915610aaf4e4053
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=56b0883f578f4e9db534491ca262f65b
    
    record.uid=5aaded28bd9e44a1a69ea5f1b07fc90a
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=3405a6725f414a989780e924b5767a3b
    
    record.uid=e4107d7beaf2492ea95384252113be9d
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=b07405e4804a4f0f92601a725e45d0dd
    
    record.uid=3eb6b63e64c74598b8f1634c1acb9472
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=41a58e8f5fc94d5b829e5631cb066f09
    
    record.uid=b02b8bd937bf43ceae63c7d799ab3103
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=4278435cc6ef4c789b4ed4d8fbc3344f
    
    record.uid=9192fd59187c4f06aeb18c4cb9259063
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=93cc43009c8e4ff2954c3cdab47772c3
    
    record.uid=7049fd27fc9d487e86205de52c393e6b
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=696b486931db449a95978dbf7858a942
    
    record.uid=021c5cd741da4f79af1e77b13cd48fb9
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=29e79f37a0674a5abfdecf51e2a39f4b
    
    record.uid=75fe827361c549d18cbf8ef58b6aa5bb
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=39db96406fe24a8f9766e5a8435b9135
    
    record.uid=8379adc2f6624abc89c972637a1be2ea
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=385c1d739df744118f00f3919cd46063
    
    record.uid=ac461e27094549f9bf55e72cd6fae8c0
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=46fd22c29dda484493a8dd0f82949763
    
    record.uid=f3bd89cde5d748168316e786a6bd41e1
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=30fab30f473c4260b9a1c648e76642ab
    
    record.uid=ab5cc9ef9ea8476a89ed9b8b9755224a
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=8e91e092b49d4ee8a274b57f05b1c7e6
    
    record.uid=42fa760fc0d142c5a4c6229ef686dd3d
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=61482d03a755460cbe287be2b7ab6714
    
    record.uid=1498354017164ced90332e937faea740
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=2810b87a3b9f48ce98f688fd03b17649
    
    record.uid=dfde85c49eaa41a1b2f6a4f72cf151b1
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=90f1bcde4b134435bd9d422f885666a8
    
    record.uid=f271c4fd876f48588af523a4f2ba26a2
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=19fbb37cc5734d5783952dc1e00c5ef4
    
    record.uid=b42ccfbe8b2540778575e405c9b2b01a
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=0f8b8d53e8c74bb69910aa364df188e5
    
    record.uid=45c3fcb292e846118da176f2bded709a
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=637c80190ba949239584d5d4d26e26dc
    
    record.uid=cb3a3335d2464c0d913807a9b8d65454
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=65c158935b0f45e1ab38a1bb0da92ff6
    
    record.uid=6b514260e5c546d89e94e1b68e879b8d
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=38734b89c7e44a3bab165e4661f09162
    
    record.uid=d5d66200434d4123891e51cd09c5eeec
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=525f5485db9b4d6cbf6b28761687efdb
    
    record.uid=c291974b137941f8875f0c40cf1b1658
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=b385c5237f3e419884f6c32bdc7e51a8
    
    record.uid=664e7979812c4c618df4138261dc0ce4
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=dc6ba34054fd408a97c5b17de01c1f7f
    
    record.uid=0c2fe18091c94bbc80bd59e481821a31
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=1477d4dd810d4c0181bf071b78810756
    
    record.uid=0bd12e8242fd4f52a7e5f94cae6ef9e3
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=3559b7f4dc2348ddad8810e298bb1c84
    
    record.uid=42dd6573b35f496d938e2b341d2ddb2d
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=59e0816a29e44da0b7ab0dbdb4c77ef8
    
    record.uid=8585e7bbbde44c6cb2049cd7d690cae3
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=8528f37dd45e48e9803f76d66358c55a
    
    record.uid=08ca3f9a4b81440a89c21e777982cdb9
    Revision #0 description=Fix old records that are missing calculator='emt'.
-   migration_uid=None
+   mutation_uid=None
    modification=New attribute=.run_specification.parameters.calculator value=emt
    uid=1d00b5ed62ef4ecc915ad68419cfefd2
    
@@ -586,7 +586,7 @@ of errors. Let's look at the details of one of the updated records
     latest_revision=768c45ede5594333b2d7f8ee76297a31
     revision=
      description=Fix old records that are missing calculator='emt'.
-     migration_uid=None
+     mutation_uid=None
      modification=New attribute=.run_specification.parameters.calculator value=emt
      uid=768c45ede5594333b2d7f8ee76297a31
    metadata=

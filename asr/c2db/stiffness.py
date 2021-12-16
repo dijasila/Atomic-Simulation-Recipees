@@ -201,7 +201,7 @@ sel.version = sel.EQ(-1)
 sel.parameters.dependency_parameters = sel.CONTAINS("asr.c2db.relax:main")
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def transform_stiffness_resultfile_record(record):
     """Remove fixcell and allow_symmetry_breaking from dependency_parameters."""
     dep_params = record.parameters['dependency_parameters']

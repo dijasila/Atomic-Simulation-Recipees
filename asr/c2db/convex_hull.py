@@ -134,7 +134,7 @@ def select_records_with_databases_as_string(record):
     return False
 
 
-@asr.migration(selector=select_records_with_databases_as_string)
+@asr.mutation(selector=select_records_with_databases_as_string)
 def convert_database_parameter_to_file(record):
     """Convert databases represented as strings to File objects."""
     try:

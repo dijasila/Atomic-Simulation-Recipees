@@ -813,9 +813,9 @@ sel.version = sel.EQ(-1)
 sel.name = sel.EQ('asr.c2db.emasses:main')
 
 
-@asr.migration(selector=sel)
-def prepare_parameters_for_version_0_migration(record):
-    """Prepare record for version 0 migration."""
+@asr.mutation(selector=sel)
+def prepare_parameters_for_version_0_mutation(record):
+    """Prepare record for version 0 mutation."""
     if "settings" in record.parameters:
         for dep_params in record.parameters.dependency_parameters.values():
             if 'settings' in dep_params:
@@ -1624,7 +1624,7 @@ sel.name = sel.CONTAINS('asr.c2db.emasses')
 sel.version = sel.EQ(-1)
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def remove_gpwfilename_if_present(record):
     """Remove gpwfilename in emass records if present."""
     if 'gpwfilename' in record.parameters:
@@ -1643,7 +1643,7 @@ sel.version = sel.EQ(-1)
 sel.name = sel.CONTAINS('asr.c2db.emasses')
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def fix_settings_parameters(record):
     """Fix settings parameter.
 

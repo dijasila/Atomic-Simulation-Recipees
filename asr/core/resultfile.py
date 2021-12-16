@@ -13,7 +13,7 @@ from asr.core import ASRResult
 from .command import get_recipes
 from .dependencies import Dependencies, Dependency
 from .metadata import construct_metadata
-from .migrate import Migration, SelectorMigrationGenerator
+from .migrate import mutation
 from .parameters import Parameters
 from .record import Record
 from .results import decode_object
@@ -607,25 +607,6 @@ def get_dependency_parameters(dependencies, records):
     return params
 
 
-def get_resultfile_migration_generator() -> SelectorMigrationGenerator:
-
-    mig = Migration(
-        update_resultfile_record_to_version_0,
-        uid='9269242a035a4731bcd5ac609ff0a086',
-        description='Extract missing parameters from dependencies, '
-        'add those to parameters, '
-        'and increase version to 0.',
-        eagerness=-1,
-    )
-
-    sel = Selector()
-    sel.version = sel.EQ(-1)
-
-    make_migrations = SelectorMigrationGenerator(
-        selector=sel, migration=mig)
-    return make_migrations
-
-
 PATH = pathlib.Path(__file__).parent / 'old_resultfile_defaults.json'
 TMP_DEFAULTS = JSONSerializer().deserialize(read_file(PATH))
 OLD_DEFAULTS: typing.Dict[str, typing.Dict[str, typing.Any]] = {}
@@ -637,7 +618,13 @@ for tmpkey, value in TMP_DEFAULTS.items():
     ] = value
 
 
+sel = Selector()
+sel.version = sel.EQ(-1)
+
+
+@mutation(selector=sel, uid="9269242a035a4731bcd5ac609ff0a086", eagerness=-1)
 def update_resultfile_record_to_version_0(record):
+    """Extract missing parameters from dependencies, add them and set version to 0."""
     default_params = OLD_DEFAULTS[record.name]
     name = record.name
     recipe = get_recipe_from_name(name)
@@ -708,7 +695,7 @@ def update_resultfile_record_to_version_0(record):
                     missing_params_msg if missing_params else '',
                     unused_old_params_msg if unused_old_params else '',
                     unused_dependency_params_msg if unused_dependency_params else '',
-                    f'Please add a migration for {name} that fixes these issues '
+                    f'Please add a mutation for {name} that fixes these issues '
                     'and run migration tool again.',
                 ]
             )

@@ -21,7 +21,7 @@ from .cache import get_cache  # noqa
 from .shortcuts import atomsopt, calcopt  # noqa
 from .selector import Selector  # noqa
 from .migrate import (  # noqa
-    migration, Migration, SelectorMigrationGenerator,
+    mutation, Mutation, MutationCollection,
     RevisionHistory, Revision, NonMigratableRecord,
 )  # noqa
 from .comparators import comparators  # noqa
@@ -31,5 +31,5 @@ from .dependencies import Dependencies  # noqa
 from .metadata import Metadata  # noqa
 
 __all__ = [
-    'command', 'option', 'argument', 'migration', 'Selector', 'comparators',
+    'command', 'option', 'argument', 'mutation', 'Selector', 'comparators',
 ]

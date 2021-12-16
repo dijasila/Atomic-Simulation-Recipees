@@ -162,7 +162,7 @@ sel.name = sel.OR(sel.EQ('asr.c2db.phonons:main'), sel.EQ('asr.c2db.phonons:calc
 sel.version = sel.EQ(-1)
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def construct_calculator_from_old_parameters(record):
     """Construct calculator from old parameters."""
     params = record.parameters

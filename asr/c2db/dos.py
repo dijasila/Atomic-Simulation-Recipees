@@ -114,7 +114,7 @@ sel.name = sel.EQ("asr.c2db.dos:main")
 sel.parameters = sel.CONTAINS("name")
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def remove_name_from_params(record: asr.Record) -> asr.Record:
     """Remove name param from record."""
     del record.parameters.name
@@ -127,7 +127,7 @@ sel.name = sel.EQ("asr.c2db.dos:main")
 sel.parameters = sel.CONTAINS("filename")
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def remove_filename_from_params(record: asr.Record) -> asr.Record:
     """Remove filename param from record."""
     del record.parameters.filename
@@ -140,7 +140,7 @@ sel.name = sel.EQ("asr.c2db.dos:main")
 sel.parameters = sel.NOT(sel.CONTAINS("calculator"))
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def add_calculator_to_params(record: asr.Record) -> asr.Record:
     """Add calculator to parameters."""
     record.parameters.calculator = {

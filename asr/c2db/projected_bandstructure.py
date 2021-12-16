@@ -74,7 +74,7 @@ sel.version = sel.EQ(-1)
 sel.name = sel.EQ('asr.c2db.projected_bandstructure:main')
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def add_bsrestart(record):
     """Add bsrestart parameters."""
     emptybands = (

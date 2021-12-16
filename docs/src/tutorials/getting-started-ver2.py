@@ -5,7 +5,7 @@ from ase.optimize import BFGS
 from ase.constraints import ExpCellFilter
 
 
-@asr.migration(selector=lambda record: 'calculator' not in record.parameters)
+@asr.mutation(selector=lambda record: 'calculator' not in record.parameters)
 def add_missing_calculator_parameter(record):
     """Fix old records that are missing calculator='emt'."""
     record.parameters.calculator = 'emt'

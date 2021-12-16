@@ -326,7 +326,7 @@ sel.name = sel.EQ("asr.c2db.polarizability:main")
 sel.parameters = sel.CONTAINS("gs")
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def remove_gs_parameter(record):
     """Remove "gs" parameter."""
     del record.parameters["gs"]

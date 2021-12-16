@@ -146,9 +146,9 @@ sel.version = sel.EQ(-1)
 sel.name = sel.EQ('asr.c2db.infraredpolarizability:main')
 
 
-@asr.migration(selector=sel)
-def prepare_for_resultfile_migration(record):
-    """Prepare record for resultfile migration."""
+@asr.mutation(selector=sel)
+def prepare_for_resultfile_mutation(record):
+    """Prepare record for resultfile mutation."""
     phononpar = record.parameters.dependency_parameters[
         'asr.c2db.phonons:calculate']
     fconverge = phononpar['fconverge']

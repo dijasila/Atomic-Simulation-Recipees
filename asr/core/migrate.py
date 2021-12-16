@@ -1,4 +1,4 @@
-"""Implements record migration functionality."""
+"""Implements record mutation functionality."""
 import abc
 import copy
 import os
@@ -16,7 +16,7 @@ from .utils import compare_equal
 
 
 class NonMigratableRecord(Exception):
-    """Raise when migration cannot be used to migrate a Record."""
+    """Raise when mutation cannot be used to migrate a Record."""
 
 
 RecordUID = str
@@ -389,7 +389,7 @@ class Mutation:
         return self.selector(record)
 
     def apply(self, record: Record) -> Revision:
-        """Apply migration to record and return record Revision."""
+        """Apply mutation to record and return record Revision."""
         mutated_record = self.function(record.copy())
         changes = make_change_collection(
             record,
@@ -410,6 +410,9 @@ class Mutation:
     def __str__(self):
         return self.description
 
+    def __hash__(self):
+        return hash(id(self))
+
 
 @dataclass
 class MutationCollection:
@@ -425,6 +428,9 @@ class MutationCollection:
             mutation for mutation in self.mutations if mutation.applies(record)
         ]
         return applicable_mutations
+
+    def __contains__(self, mutation: Mutation) -> bool:
+        return mutation in self.mutations
 
 
 @dataclass

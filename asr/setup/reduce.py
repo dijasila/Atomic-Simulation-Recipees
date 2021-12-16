@@ -51,7 +51,7 @@ sel.version = sel.EQ(-1)
 sel.name = sel.EQ('asr.setup.reduce:main')
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def remove_initial_and_final_parameters(record):
     """Remove initial and final parameter. Fix result."""
     atomic_structures = record.parameters.atomic_structures

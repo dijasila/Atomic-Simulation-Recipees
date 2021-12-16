@@ -97,7 +97,7 @@ sel.version = sel.EQ(-1)
 sel.parameters = sel.CONTAINS('gpwname')
 
 
-@asr.migration(selector=sel, uid='f4525d8398b44441821e496195081b86')
+@asr.mutation(selector=sel, uid='f4525d8398b44441821e496195081b86')
 def remove_gpwname_from_parameters(record):
     """Remove 'gpwname' from parameters."""
     del record.parameters.gpwname
