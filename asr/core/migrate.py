@@ -362,7 +362,6 @@ class Revision:
         return "\n".join(lines)
 
     def __bool__(self):
-        """Does the revision have any changes."""
         return bool(self.changes)
 
 
@@ -764,7 +763,6 @@ def migrate_record(
         The mutations that are to be applied during migration.
 
     """
-
     applied_mutations = []
     problematic_mutations = []
     errors: List[Tuple[Mutation, Exception]] = []
