@@ -57,16 +57,6 @@ def get_shifts(info, layer_info_file, correct_strain, subtract, soc, only_strain
     return shifts
 
 
-def check(info):
-    atoms = read('structure.json')
-    strain_a_calc = np.dot(np.linalg.inv(info['supercell_a']), atoms.cell) - np.eye(3)
-    strain_b_calc = np.dot(np.linalg.inv(info['supercell_b']), atoms.cell) - np.eye(3)
-    strain_a = info['strain_a']
-    strain_b = info['strain_b']
-    assert np.allclose(strain_a_calc[:2,:2], strain_a[:2, :2]) and \
-           np.allclose(strain_b_calc[:2, :2], strain_b[:2, :2])
-
-
 @command('asr.scs_shifts')
 @option ('--info-file')
 @option ('--layer-info-file')
@@ -86,7 +76,6 @@ def main(info_file: str = 'bilayer-info.json',
     info = read_json(info_file)
     for key in info.keys():
         info.update({key: np.asarray(info[key])})
-    check(info)
 
     shifts = get_shifts(info, layer_info_file, correct_strain, subtract, soc, only_strain)
     shifts_dct = {}
