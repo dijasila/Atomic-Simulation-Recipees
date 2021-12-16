@@ -1,16 +1,17 @@
 """Implements record migration functionality."""
-import os
-import textwrap
 import abc
 import copy
-import typing
+import os
+import textwrap
 import traceback
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+
 from .command import get_recipes
-from .selector import Selector
-from .record import Record
-from .specification import get_new_uuid
 from .history import History
+from .record import Record
+from .selector import Selector
+from .specification import get_new_uuid
 from .utils import compare_equal
 
 
@@ -20,163 +21,6 @@ class NonMigratableRecord(Exception):
 
 RecordUID = str
 UID = str
-
-
-@dataclass
-class Modification:
-    """Class that represents a record modification.
-
-    A modification is basically a collection of differences.
-
-    Attributes
-    ----------
-    differences : List[Difference]
-        A list of difference that together comprises the modification.
-    """
-
-    differences: typing.List['Difference'] = field(default_factory=list)
-
-    def apply(self, record: Record) -> Record:
-        """Apply modification to record.
-
-        Parameters
-        ----------
-        record : Record
-            Record to be modified.
-
-        Returns
-        -------
-        Record
-            Modified record.
-        """
-        for difference in self.differences:
-            difference.apply(record)
-        return record
-
-    def revert(self, record: Record) -> Record:
-        """Revert modification on record.
-
-        Parameters
-        ----------
-        record : Record
-            Record where modification should be reverted.
-
-        Returns
-        -------
-        Record
-            Reverted record.
-        """
-        for difference in self.differences:
-            difference.revert(record)
-        return record
-
-    def __str__(self):
-        return '\n'.join(str(diff) for diff in self.differences)
-
-    def __bool__(self):
-        return bool(self.differences)
-
-
-@dataclass
-class Difference(abc.ABC):
-    """Abstract class that represent a single attribute difference between records.
-
-    Attributes
-    ----------
-    attribute : ItemAttributeSequence
-        The attribute that was changed.
-    """
-
-    attribute: 'ItemAttributeSequence'
-
-    @abc.abstractmethod
-    def apply(self, obj: typing.Any):
-        ...
-
-    @abc.abstractmethod
-    def revert(self, obj: typing.Any):
-        ...
-
-
-@dataclass
-class NewAttribute(Difference):
-    """Difference object that represents a new attribute.
-
-    Attributes
-    ----------
-    attribute : ItemAttributeSequence
-        The attribute that was changed.
-    value : Any
-        The new value of the attribute.
-
-    """
-
-    value: typing.Any
-
-    def apply(self, obj: typing.Any):
-        self.attribute.set(obj, copy.deepcopy(self.value))
-
-    def revert(self, obj: typing.Any):
-        self.attribute.delete(obj)
-
-    def __str__(self):
-        return f'New attribute={self.attribute} value={self.value}'
-
-
-@dataclass
-class DeletedAttribute(Difference):
-    """Difference object that represents a deleted attribute.
-
-    Attributes
-    ----------
-    attribute : ItemAttributeSequence
-        The attribute that was deleted.
-    value : Any
-        The old value of the deleted attribute.
-
-    """
-
-    value: typing.Any
-
-    def apply(self, obj: typing.Any):
-        self.attribute.delete(obj)
-
-    def revert(self, obj: typing.Any):
-        self.attribute.set(obj, copy.deepcopy(self.value))
-
-    def __str__(self):
-        return f'Delete attribute={self.attribute} value={self.value}'
-
-
-@dataclass
-class ChangedValue(Difference):
-    """Difference object that represents a change value.
-
-    Attributes
-    ----------
-    attribute : ItemAttributeSequence
-        The attribute that was deleted.
-    new_value : Any
-        The new value of the attribute.
-    old_value : Any
-        The old value of the attribute.
-
-    """
-
-    new_value: typing.Any
-    old_value: typing.Any
-
-    def apply(self, obj: typing.Any):
-        self.attribute.set(obj, copy.deepcopy(self.new_value))
-
-    def revert(self, obj: typing.Any):
-        self.attribute.set(obj, copy.deepcopy(self.old_value))
-
-    def __str__(self):
-        return (
-            f'Change attribute={self.attribute} '
-            f'old={self.old_value} new={self.new_value}'
-        )
 
 
 @dataclass
@@ -194,25 +38,25 @@ class Attribute:
 
     name: str
 
-    def set(self, obj, value):
+    def set(self, obj: Any, value: Any) -> None:
         setattr(obj, self.name, value)
 
-    def get(self, obj):
+    def get(self, obj: Any) -> None:
         return getattr(obj, self.name)
 
-    def delete(self, obj):
+    def delete(self, obj: Any) -> None:
         delattr(obj, self.name)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.name)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Attribute):
             return False
         return self.name == other.name
 
-    def __str__(self):
-        return f'.{self.name}'
+    def __str__(self) -> str:
+        return f".{self.name}"
 
 
 @dataclass
@@ -230,24 +74,24 @@ class Item:
 
     name: str
 
-    def set(self, obj, value):
+    def set(self, obj: Any, value: Any) -> None:
         obj[self.name] = value
 
-    def get(self, obj):
+    def get(self, obj: Any) -> None:
         return obj[self.name]
 
-    def delete(self, obj):
+    def delete(self, obj: Any) -> None:
         del obj[self.name]
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.name)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Item):
             return False
         return self.name == other.name
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'["{self.name}"]'
 
 
@@ -265,48 +109,205 @@ class ItemAttributeSequence:
 
     """
 
-    attrs: typing.List[typing.Union['Attribute', 'Item']]
+    attrs: List[Union[Attribute, Item]]
 
-    def set(self, obj: typing.Any, value: typing.Any):
+    def set(self, obj: Any, value: Any) -> None:
         """Assign value on obj of attr/item specified by sequence."""
         for attr in self.attrs[:-1]:
             obj = attr.get(obj)
         self.attrs[-1].set(obj, value)
 
-    def get(self, obj):
+    def get(self, obj: Any) -> Any:
         """Get value on object of attr/item specified by sequence."""
         for attr in self.attrs:
             obj = attr.get(obj)
         return obj
 
-    def delete(self, obj):
+    def delete(self, obj: Any) -> None:
         """Delete attr/item on object specified by sequence."""
         for attr in self.attrs[:-1]:
             obj = attr.get(obj)
         self.attrs[-1].delete(obj)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> "ItemAttributeSequence":
         return ItemAttributeSequence(self.attrs[item])
 
-    def __add__(self, other):
+    def __add__(self, other) -> "ItemAttributeSequence":
         return ItemAttributeSequence(self.attrs + other.attrs)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(tuple(hash(attr) for attr in self.attrs))
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return self.attrs == other.attrs
 
+    def __str__(self) -> str:
+        return "".join(str(attr) for attr in self.attrs)
+
+
+@dataclass  # type: ignore
+class Change(abc.ABC):
+    """Abstract class that represent a change of a single attribute/item between records.
+
+    Attributes
+    ----------
+    attribute : ItemAttributeSequence
+        The attribute that was changed.
+    """
+
+    attribute: ItemAttributeSequence
+
+    @abc.abstractmethod
+    def apply(self, obj: Any) -> None:
+        ...
+
+    @abc.abstractmethod
+    def revert(self, obj: Any) -> None:
+        ...
+
+
+@dataclass
+class NewAttribute(Change):
+    """Change object that represents a new attribute.
+
+    Attributes
+    ----------
+    attribute : ItemAttributeSequence
+        The attribute that was changed.
+    value : Any
+        The new value of the attribute.
+
+    """
+
+    value: Any
+
+    def apply(self, obj: Any) -> None:
+        self.attribute.set(obj, copy.deepcopy(self.value))
+
+    def revert(self, obj: Any) -> None:
+        self.attribute.delete(obj)
+
     def __str__(self):
-        return ''.join(str(attr) for attr in self.attrs)
+        return f"New attribute={self.attribute} value={self.value}"
+
+
+@dataclass
+class DeletedAttribute(Change):
+    """Change object that represents a deleted attribute.
+
+    Attributes
+    ----------
+    attribute : ItemAttributeSequence
+        The attribute that was deleted.
+    value : Any
+        The old value of the deleted attribute.
+
+    """
+
+    value: Any
+
+    def apply(self, obj: Any):
+        self.attribute.delete(obj)
+
+    def revert(self, obj: Any):
+        self.attribute.set(obj, copy.deepcopy(self.value))
+
+    def __str__(self):
+        return f"Delete attribute={self.attribute} value={self.value}"
+
+
+@dataclass
+class ChangedValue(Change):
+    """Change object that represents a change value.
+
+    Attributes
+    ----------
+    attribute : ItemAttributeSequence
+        The attribute that was deleted.
+    new_value : Any
+        The new value of the attribute.
+    old_value : Any
+        The old value of the attribute.
+
+    """
+
+    new_value: Any
+    old_value: Any
+
+    def apply(self, obj: Any):
+        self.attribute.set(obj, copy.deepcopy(self.new_value))
+
+    def revert(self, obj: Any):
+        self.attribute.set(obj, copy.deepcopy(self.old_value))
+
+    def __str__(self):
+        return (
+            f"Change attribute={self.attribute} "
+            f"old={self.old_value} new={self.new_value}"
+        )
+
+
+@dataclass
+class ChangeCollection:
+    """Class that represents multiple differences.
+
+    A modification is basically a collection of differences.
+
+    Attributes
+    ----------
+    changes : List[Changes]
+        A list of difference that together comprises the modification.
+    """
+
+    changes: List[Change] = field(default_factory=list)
+
+    def apply(self, record: Record) -> Record:
+        """Apply modification to record.
+
+        Parameters
+        ----------
+        record : Record
+            Record to be modified.
+
+        Returns
+        -------
+        Record
+            Modified record.
+        """
+        for change in self.changes:
+            change.apply(record)
+        return record
+
+    def revert(self, record: Record) -> Record:
+        """Revert modification on record.
+
+        Parameters
+        ----------
+        record : Record
+            Record where modification should be reverted.
+
+        Returns
+        -------
+        Record
+            Reverted record.
+        """
+        for change in self.changes:
+            change.revert(record)
+        return record
+
+    def __str__(self):
+        return "\n".join(str(diff) for diff in self.changes)
+
+    def __bool__(self):
+        return bool(self.changes)
 
 
 @dataclass
 class Revision:
-    """Container for logging migration information.
+    """Container for logging mutations.
 
-    The revision object is the main building block of the change history
-    of records. A revision stores a series of modifications
+    The revision object is the main building block of the mutation history
+    of records. A revision stores a series of mo
 
     The revision object can be thought of as an analogue to a git commit.
     It has a uid that represents the curre
@@ -314,28 +315,28 @@ class Revision:
     """
 
     uid: UID
-    migration_uid: typing.Optional[UID]
+    mutation_uid: Optional[UID]
     description: str
-    modification: Modification
+    changes: ChangeCollection
 
     def apply(self, record: Record):
         if record.history is None:
             record.history = RevisionHistory()
-        record = self.modification.apply(record.copy())
-        record.history.add(self)
+        record = self.changes.apply(record.copy())
+        record.history.add(self)  # type: ignore
         return record
 
     def __str__(self):
         lines = []
         for key, value in sorted(self.__dict__.items(), key=lambda item: item[0]):
             value = str(value)
-            if '\n' in value:
-                value = '\n' + textwrap.indent(value, ' ')
-            lines.append(f'{key}={value}')
-        return '\n'.join(lines)
+            if "\n" in value:
+                value = "\n" + textwrap.indent(value, " ")
+            lines.append(f"{key}={value}")
+        return "\n".join(lines)
 
     def __bool__(self):
-        return bool(self.modification)
+        return bool(self.changes)
 
 
 @dataclass
@@ -350,14 +351,14 @@ class RevisionHistory(History):
         list.
     """
 
-    history: typing.List[Revision] = field(default_factory=list)
+    history: List[Revision] = field(default_factory=list)
 
     def add(self, revision: Revision):
         """Add revision to history."""
         self.history.append(revision)
 
     @property
-    def latest_revision(self) -> typing.Union[None, UID]:
+    def latest_revision(self) -> Optional[Revision]:
         """Get the latest revision, 'None' if no revisions."""
         if not self.history:
             return None
@@ -365,35 +366,39 @@ class RevisionHistory(History):
         return latest_revision
 
     def __str__(self):
-        lines = [f'latest_revision={self.latest_revision.uid}']
+        lines = [f"latest_revision={self.latest_revision.uid}"]
         for revision in self.history:
             value = str(revision)
-            if '\n' in value:
-                value = '\n' + textwrap.indent(value, ' ')
-            lines.append(f'revision={value}')
-        return '\n'.join(lines)
+            if "\n" in value:
+                value = "\n" + textwrap.indent(value, " ")
+            lines.append(f"revision={value}")
+        return "\n".join(lines)
 
 
 @dataclass
-class Migration:
+class Mutation:
     """A class to update a record to a greater version."""
 
-    function: typing.Callable
+    function: Callable
     description: str
-    uid: typing.Optional[UID] = None
+    uid: Optional[UID] = None
     eagerness: int = 0
+    selector: Callable[[Record], bool] = field(default_factory=Selector)
+
+    def applies(self, record: Record) -> bool:
+        return self.selector(record)
 
     def apply(self, record: Record) -> Revision:
         """Apply migration to record and return record Revision."""
-        migrated_record = self.function(record.copy())
-        modification = make_modification(
+        mutated_record = self.function(record.copy())
+        changes = make_change_collection(
             record,
-            migrated_record,
+            mutated_record,
         )
         revision = Revision(
             description=self.description,
-            modification=modification,
-            migration_uid=self.uid,
+            changes=changes,
+            mutation_uid=self.uid,
             uid=get_new_uuid(),
         )
 
@@ -406,65 +411,30 @@ class Migration:
         return self.description
 
 
-class MakeMigrations(abc.ABC):
-    """Abstract Base class for factory for making migrations."""
-
-    @abc.abstractmethod
-    def make_migrations(self, record: Record) -> typing.List[Migration]:
-        pass
-
-    def __call__(self, record: Record) -> typing.List[Migration]:
-        return self.make_migrations(record)
-
-
 @dataclass
-class SelectorMigrationGenerator(MakeMigrations):
+class MutationCollection:
+    """Generates the applicable mutations from a collection of mutations."""
 
-    migration: Migration
-    selector: Selector = field(default_factory=Selector)
+    mutations: Set[Mutation] = field(default_factory=set)
 
-    def make_migrations(self, record: Record) -> typing.List[Migration]:
-        """Check if migration applies to record."""
-        is_match = self.selector(record)
-        if is_match:
-            return [self.migration]
-        else:
-            return []
+    def add(self, mutations: List[Mutation]) -> None:
+        self.mutations.update(mutations)
 
-    def __hash__(self):
-        return hash(id(self))
-
-
-@dataclass
-class CollectionMigrationGenerator(MakeMigrations):
-    """Generates migrations from a collection of migration generators."""
-
-    migration_generators: typing.List[MakeMigrations]
-
-    def extend(self, migration_generators: typing.List[MakeMigrations]):
-        self.migration_generators = (
-            self.migration_generators
-            + list(migration_generators)
-        )
-
-    def make_migrations(self, record: Record) -> typing.List[Migration]:
-        migrations = [
-            migration
-            for make_migrations in self.migration_generators
-            for migration in make_migrations(record)
+    def get_applicable_mutations(self, record: Record) -> List[Mutation]:
+        applicable_mutations = [
+            mutation for mutation in self.mutations if mutation.applies(record)
         ]
-
-        return migrations
+        return applicable_mutations
 
 
 @dataclass
-class RecordMigration:
+class Migration:
     """A class that represents a record migration."""
 
     initial_record: Record
     migrated_record: Record
-    revisions: typing.List[Revision]
-    errors: typing.List[typing.Tuple[Migration, Exception]]
+    revisions: List[Revision]
+    errors: List[Tuple[Mutation, Exception]]
 
     def has_revisions(self):
         """Has migrations to apply."""
@@ -486,41 +456,79 @@ class RecordMigration:
         nerr = len(self.errors)
 
         items = [
-            f'record.uid={self.initial_record.uid}',
+            f"record.uid={self.initial_record.uid}",
         ]
         if nrev:
-            revisions_string = '\n'.join([
-                f'Revision #{i} {revision}'
-                for i, revision in enumerate(self.revisions)])
+            revisions_string = "\n".join(
+                [
+                    f"Revision #{i} {revision}"
+                    for i, revision in enumerate(self.revisions)
+                ]
+            )
             items.append(revisions_string)
         if nerr:
-            problem_string = (
-                ', '.join(f'{mig} err="{err}"' for mig, err in self.errors)
-            )
+            problem_string = ", ".join(f'{mig} err="{err}"' for mig, err in self.errors)
             items.append(problem_string)
-        return '\n'.join(items)
+        return "\n".join(items)
 
 
-def make_modification(old_record: Record, new_record: Record):
-    """Search for differences between objects and make resulting modification."""
-    differences = get_differences(old_record, new_record)
-    return Modification(differences)
+@dataclass
+class MigrationReport:
+    applicable_migrations: List[Migration]
+    erroneous_migrations: List[Migration]
+    n_up_to_date: int
+    n_applicable_migrations: int
+    n_errors: int
+
+    @property
+    def summary(self) -> str:
+        return "\n".join(
+            [
+                f"There are {self.n_applicable_migrations} unapplied migrations, "
+                f"{self.n_errors} erroneous migrations and "
+                f"{self.n_up_to_date} records are up to date.",
+                "",
+            ]
+        )
+
+    def print_errors(self) -> None:
+        for record_migration in self.erroneous_migrations:
+            print(f"Error for: {record_migration}")
+            for migration, error in record_migration.errors:
+                print(f"Error in: {migration}")
+                traceback.print_exception(
+                    type(error),
+                    error,
+                    error.__traceback__,
+                )
+                print()
+
+    @property
+    def verbose(self) -> str:
+        strs = []
+        for i, migration in enumerate(self.applicable_migrations):
+            strs.append(f"#{i} {migration}")
+        return "\n\n".join(strs)
 
 
-def get_differences(
-    obj1: typing.Any,
-    obj2: typing.Any,
-    prepend: typing.Optional[ItemAttributeSequence] = None
-) -> typing.List[Difference]:
+def make_change_collection(old_record: Record, new_record: Record) -> ChangeCollection:
+    """Search for changes between objects and make resulting modification."""
+    changes = get_changes(old_record, new_record)
+    return ChangeCollection(changes)
+
+
+def get_changes(
+    obj1: Any, obj2: Any, prepend: Optional[ItemAttributeSequence] = None
+) -> List[Change]:
     """Get differences from obj1 to obj2.
 
     Parameters
     ----------
-    obj1 : typing.Any
+    obj1 : Any
         An object before changes has been made.
-    obj2 : typing.Any
+    obj2 : Any
         An object after changes has been made.
-    prepend : typing.Optional[ItemAttributeSequence], optional
+    prepend : Optional[ItemAttributeSequence], optional
         Prepend item/attribute sequences by this, by default None. This is used,
         internally by the algorithm when recursing into the objects be introspected.
         Usually you don't need this.
@@ -547,7 +555,7 @@ def get_differences(
     if not (attrs_and_values1 or attrs_and_values2):
         # Then we cannot introspect
         if not compare_equal(obj1, obj2):
-            assert prepend.attrs[0].name != 'history'
+            assert prepend.attrs[0].name != "history"
             return [
                 ChangedValue(
                     attribute=prepend,
@@ -555,7 +563,7 @@ def get_differences(
                     new_value=copy.deepcopy(obj2),
                 )
             ]
-    differences : typing.List[Difference] = []
+    differences: List[Change] = []
     attrs1 = set(attrs_and_values1)
     attrs2 = set(attrs_and_values2)
     deleted_attrs = attrs1 - attrs2
@@ -580,15 +588,15 @@ def get_differences(
     for attr in common_attrs:
         value1 = attrs_and_values1[attr]
         value2 = attrs_and_values2[attr]
-        diffs_inside_values = get_differences(value1, value2, prepend=prepend + attr)
+        diffs_inside_values = get_changes(value1, value2, prepend=prepend + attr)
         differences.extend(diffs_inside_values)
 
     return differences
 
 
 def get_attributes_and_values(
-    obj: typing.Any,
-) -> typing.Dict[ItemAttributeSequence, typing.Any]:
+    obj: Any,
+) -> Dict[ItemAttributeSequence, Any]:
     """Get dict of attributes and values of obj.
 
     Parameters
@@ -602,10 +610,10 @@ def get_attributes_and_values(
         Dictionary that maps attributes to values.
     """
     attributes_and_values = {}
-    if hasattr(obj, '__dict__'):
+    if hasattr(obj, "__dict__"):
         for key, value in obj.__dict__.items():
             attributes_and_values[ItemAttributeSequence([Attribute(key)])] = value
-    elif hasattr(obj, '__slots__'):
+    elif hasattr(obj, "__slots__"):
         for key in obj.__slots__:
             value = getattr(obj, key)
             attributes_and_values[ItemAttributeSequence([Attribute(key)])] = value
@@ -619,45 +627,43 @@ def get_attributes_and_values(
 
 def migrate_record(
     record: Record,
-    migration_generator: MakeMigrations,
-) -> RecordMigration:
+    mutations: MutationCollection,
+) -> Migration:
     """Construct a record migration."""
     migrated_record = record.copy()
-    applied_migrations = []
-    problematic_migrations = []
-    errors: typing.List[typing.Tuple[Migration, Exception]] = []
+    applied_mutations = []
+    problematic_mutations = []
+    errors: List[Tuple[Mutation, Exception]] = []
     revisions = []
     while True:
-        applicable_migrations = migration_generator(migrated_record)
-        candidate_migrations = [
-            mig for mig in applicable_migrations
-            if (
-                mig not in problematic_migrations
-                and mig not in applied_migrations
-            )
+        applicable_mutations = mutations.get_applicable_mutations(migrated_record)
+        candidate_mutations = [
+            mut
+            for mut in applicable_mutations
+            if (mut not in problematic_mutations and mut not in applied_mutations)
         ]
-        if not candidate_migrations:
+        if not candidate_mutations:
             break
 
-        candidate_migration = max(candidate_migrations, key=lambda mig: mig.eagerness)
+        candidate_mutation = max(candidate_mutations, key=lambda mig: mig.eagerness)
         try:
-            revision = candidate_migration(migrated_record)
+            revision = candidate_mutation(migrated_record)
         except NonMigratableRecord as err:
-            problematic_migrations.append(candidate_migration)
-            errors.append((candidate_migration, err))
+            problematic_mutations.append(candidate_mutation)
+            errors.append((candidate_mutation, err))
             continue
-        except Exception as err:
-            problematic_migrations.append(candidate_migration)
-            errors.append((candidate_migration, err))
+        except Exception as err:  # pylint: disable=broad-except
+            problematic_mutations.append(candidate_mutation)
+            errors.append((candidate_mutation, err))
             if os.environ.get("ASR_DEBUG", False):
                 raise
             continue
-        applied_migrations.append(candidate_migration)
+        applied_mutations.append(candidate_mutation)
         if not revision:
             continue
         migrated_record = revision.apply(migrated_record)
         revisions.append(revision)
-    return RecordMigration(
+    return Migration(
         initial_record=record,
         revisions=revisions,
         migrated_record=migrated_record,
@@ -665,33 +671,7 @@ def migrate_record(
     )
 
 
-def get_instruction_migration_generator() -> CollectionMigrationGenerator:
-    """Collect record migrations from all recipes."""
-    # Import all recipes to make sure that migrations are registered
-    get_recipes()
-    migrations = CollectionMigrationGenerator(migration_generators=[])
-    migrations.extend(get_migrations())
-    return migrations
-
-
-def get_custom_migrations_generator() -> CollectionMigrationGenerator:
-    from .migrations import custom_migrations
-    make_migrations = CollectionMigrationGenerator(
-        migration_generators=custom_migrations,
-    )
-    return make_migrations
-
-
-def get_migration_generator() -> CollectionMigrationGenerator:
-    """Return a migration generator that yields all migrations."""
-    from asr.core.resultfile import get_resultfile_migration_generator
-    make_migrations = get_instruction_migration_generator()
-    make_migrations.extend([get_resultfile_migration_generator()])
-    make_migrations.extend([get_custom_migrations_generator()])
-    return make_migrations
-
-
-def migration(
+def mutation(
     function=None,
     *,
     selector=None,
@@ -699,7 +679,7 @@ def migration(
     eagerness=0,
     description=None,
 ):
-    """Migration decorator.
+    """Mutation decorator.
 
     Parameters
     ----------
@@ -713,7 +693,7 @@ def migration(
         with higher eagerness will take priority over other migrations with lower
         values. Default is 0.
     description
-        (optional) Description of the migration. Default is to use the
+        (optional) Description of the mutation. Default is to use the
         docstring of the decorated function.
     """
     if selector is None:
@@ -721,85 +701,75 @@ def migration(
 
     def wrap(wrappedfunction):
         if description is None:
-            assert wrappedfunction.__doc__, 'Missing function docstring!'
+            assert wrappedfunction.__doc__, "Missing function docstring!"
             desc = wrappedfunction.__doc__.splitlines()[0]
         else:
             desc = description
-        migration = Migration(
+        mut = Mutation(
             function=wrappedfunction,
             uid=uid,
             description=desc,
             eagerness=eagerness,
+            selector=selector,
         )
-        mig = SelectorMigrationGenerator(migration=migration, selector=selector)
-        register_migration(mig)
-        return mig
+        register_mutation(mut)
+        return mut
 
     if function is not None:
-        migration = wrap(function)
+        mut = wrap(function)
     else:
-        migration = wrap
-    return migration
+        mut = wrap
+    return mut
 
 
-MIGRATIONS = set()
+MUTATIONS: MutationCollection = MutationCollection()
 
 
-def register_migration(migration: Migration) -> None:
-    """Register a migration.
+def register_mutation(mutation_to_be_registered: Mutation) -> None:
+    """Register a mutation.
 
     Parameters
     ----------
-    migration : Migration
-        Migration to be registered.
+    mutation : Mutation
+        Mutation to be registered.
     """
-    MIGRATIONS.add(migration)
+    MUTATIONS.add([mutation_to_be_registered])
 
 
-def get_migrations() -> set:
+def get_mutations() -> MutationCollection:
     """Get registered migrations."""
-    return MIGRATIONS
+    # We import all recipes to make sure the Mutations have been registered.
+    get_recipes()
+    return MUTATIONS
 
 
-def records_to_migration_report(records: typing.List[Record]) -> "MigrationReport":
-    record_migrations = make_record_migrations(records)
-    report = make_migration_report(record_migrations)
-    return report
-
-
-def make_record_migrations(
-    records: typing.List[Record],
-    make_migrations: typing.Optional[MakeMigrations] = None
-) -> typing.List["RecordMigration"]:
-    # from asr.core.migrate import get_migration_generator, migrate_record
-    if make_migrations is None:
-        make_migrations = get_migration_generator()
-    record_migrations = []
+def make_migrations(
+    records: List[Record],
+    mutations: MutationCollection,
+) -> List[Migration]:
+    migrations = []
     for record in records:
-        record_migration = migrate_record(record, make_migrations)
-        record_migrations.append(record_migration)
-    return record_migrations
+        migration = migrate_record(record, mutations)
+        migrations.append(migration)
+    return migrations
 
 
-def make_migration_report(
-    record_migrations: typing.List["RecordMigration"]
-) -> "MigrationReport":
+def make_migration_report(migrations: List[Migration]) -> MigrationReport:
     erroneous_migrations = []
     n_up_to_date = 0
     n_applicable_migrations = 0
     n_errors = 0
     applicable_migrations = []
-    for record_migration in record_migrations:
-        if record_migration:
+    for migration in migrations:
+        if migration:
             n_applicable_migrations += 1
-            applicable_migrations.append(record_migration)
+            applicable_migrations.append(migration)
 
-        if record_migration.has_errors():
+        if migration.has_errors():
             n_errors += 1
-            erroneous_migrations.append(record_migration)
+            erroneous_migrations.append(migration)
 
-        if not (record_migration
-                or record_migration.has_errors()):
+        if not (migration or migration.has_errors()):
             n_up_to_date += 1
 
     return MigrationReport(
@@ -811,38 +781,8 @@ def make_migration_report(
     )
 
 
-@dataclass
-class MigrationReport:
-    applicable_migrations: typing.List[RecordMigration]
-    erroneous_migrations: typing.List[RecordMigration]
-    n_up_to_date: int
-    n_applicable_migrations: int
-    n_errors: int
-
-    @property
-    def summary(self):
-        return '\n'.join(
-            [
-                f'There are {self.n_applicable_migrations} unapplied migrations, '
-                f'{self.n_errors} erroneous migrations and '
-                f'{self.n_up_to_date} records are up to date.',
-                '',
-            ]
-        )
-
-    def print_errors(self):
-        for record_migration in self.erroneous_migrations:
-            print(f'Error for: {record_migration}')
-            for migration, error in record_migration.errors:
-                print(f'Error in: {migration}')
-                traceback.print_exception(
-                    type(error), error, error.__traceback__,
-                )
-                print()
-
-    @property
-    def verbose(self):
-        strs = []
-        for i, migration in enumerate(self.applicable_migrations):
-            strs.append(f'#{i} {migration}')
-        return '\n\n'.join(strs)
+def records_to_migration_report(records: List[Record]) -> MigrationReport:
+    mutations = get_mutations()
+    record_migrations = make_migrations(records, mutations)
+    report = make_migration_report(record_migrations)
+    return report
