@@ -95,7 +95,7 @@ specified simultaneously by using
 
 .. code-block:: console
 
-   $ asr params asr.relax d3=True fmax=1e-3
+   $ asr params asr.c2db.relax:main d3=True fmax=1e-3
 
 
 In this way all default parameters exposed through the CLI of an instruction
