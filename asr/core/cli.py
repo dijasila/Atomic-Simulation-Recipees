@@ -474,7 +474,7 @@ def add_resultfile_records(directories):
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 @click.option('-v', '--verbose', is_flag=True, help='Apply migrations.')
 @click.option('-e', '--show-errors', is_flag=True,
-              help='Show tracebacks for migration errors.')
+              help='Show tracebacks for mutation errors.')
 def migrate(selection, apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
     from asr.core.migrate import records_to_migration_report
@@ -485,7 +485,7 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
     records = cache.select(selector=sel)
     report = records_to_migration_report(records)
 
-    if report.n_applicable_migrations == 0 and report.n_errors == 0:
+    if report.n_applicable_migrations == 0 and report.n_erroneous_migrations == 0:
         print('All records up to date. No migrations to apply.')
         return
 
@@ -494,7 +494,7 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
         print()
 
     if show_errors:
-        print('Showing errors for migrations:')
+        print('Showing errors for mutations:')
         print(report.print_errors())
 
     print(report.summary)
@@ -511,10 +511,10 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
         )
 
     if apply:
-        for record_migration in report.applicable_migrations:
-            print(record_migration)
+        for migration in report.applicable_migrations:
+            print(migration)
             print()
-            record_migration.apply(cache)
+            migration.apply(cache)
 
 
 @cache.command()

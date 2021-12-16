@@ -27,8 +27,6 @@ UID = str
 class Attribute:
     """Class that represents an object attribute.
 
-    Represents an attribute like ".name" of an object.
-
     Attributes
     ----------
     name : str
@@ -62,8 +60,6 @@ class Attribute:
 @dataclass
 class Item:
     """Class that represents an object item.
-
-    Represents an item with "name".
 
     Attributes
     ----------
@@ -168,7 +164,7 @@ class Change(abc.ABC):
 
 @dataclass
 class NewAttribute(Change):
-    """Change object that represents a new attribute.
+    """Change that represents a new attribute.
 
     Attributes
     ----------
@@ -182,9 +178,11 @@ class NewAttribute(Change):
     value: Any
 
     def apply(self, obj: Any) -> None:
+        """Apply change."""
         self.attribute.set(obj, copy.deepcopy(self.value))
 
     def revert(self, obj: Any) -> None:
+        """Revert change."""
         self.attribute.delete(obj)
 
     def __str__(self):
@@ -193,7 +191,7 @@ class NewAttribute(Change):
 
 @dataclass
 class DeletedAttribute(Change):
-    """Change object that represents a deleted attribute.
+    """Change that represents a deleted attribute.
 
     Attributes
     ----------
@@ -207,9 +205,11 @@ class DeletedAttribute(Change):
     value: Any
 
     def apply(self, obj: Any):
+        """Apply change."""
         self.attribute.delete(obj)
 
     def revert(self, obj: Any):
+        """Revert change."""
         self.attribute.set(obj, copy.deepcopy(self.value))
 
     def __str__(self):
@@ -218,7 +218,7 @@ class DeletedAttribute(Change):
 
 @dataclass
 class ChangedValue(Change):
-    """Change object that represents a change value.
+    """Change that represents a changed value.
 
     Attributes
     ----------
@@ -235,9 +235,11 @@ class ChangedValue(Change):
     old_value: Any
 
     def apply(self, obj: Any):
+        """Apply change."""
         self.attribute.set(obj, copy.deepcopy(self.new_value))
 
     def revert(self, obj: Any):
+        """Revert change."""
         self.attribute.set(obj, copy.deepcopy(self.old_value))
 
     def __str__(self):
@@ -249,9 +251,7 @@ class ChangedValue(Change):
 
 @dataclass
 class ChangeCollection:
-    """Class that represents multiple differences.
-
-    A modification is basically a collection of differences.
+    """Class that represents multiple changes.
 
     Attributes
     ----------
@@ -262,7 +262,7 @@ class ChangeCollection:
     changes: List[Change] = field(default_factory=list)
 
     def apply(self, record: Record) -> Record:
-        """Apply modification to record.
+        """Apply changes to record.
 
         Parameters
         ----------
@@ -279,7 +279,7 @@ class ChangeCollection:
         return record
 
     def revert(self, record: Record) -> Record:
-        """Revert modification on record.
+        """Revert changes on record.
 
         Parameters
         ----------
@@ -306,20 +306,46 @@ class ChangeCollection:
 class Revision:
     """Container for logging mutations.
 
-    The revision object is the main building block of the mutation history
-    of records. A revision stores a series of mo
+    The revision object is the main building block of the change history of
+    records. Revisions are created by mutations and as such go hand in hand.
+    Where the mutation is an abstract implementation of a change, the Revision
+    encodes the concrete changes to the record.
+
+    A revision is assigned a random unique UID it stores a human readable
+    summary of the changes that were made, which is obtained from the
+    corresponding mutation. In some cases the mutation can be assigned a unique
+    UID, which is also stored.
 
     The revision object can be thought of as an analogue to a git commit.
-    It has a uid that represents the curre
+
+    Attributes
+    ----------
+    uid : UID
+        The unique revision ID.
+    description : str
+        Human readable description of the changes made in this revision.
+    changes : ChangeCollection
+        The concrete changes that were made in this revision.
+    mutation_uid : Optional[UID]
+        The mutation uid (if any was assigned to the mutation), by default None.
 
     """
 
     uid: UID
-    mutation_uid: Optional[UID]
     description: str
     changes: ChangeCollection
+    mutation_uid: Optional[UID]
 
     def apply(self, record: Record):
+        """Apply revision to record.
+
+        Applies changes in revision to record and updates the record history.
+
+        Parameters
+        ----------
+        record : Record
+            Record where revision changes are to be applied.
+        """
         if record.history is None:
             record.history = RevisionHistory()
         record = self.changes.apply(record.copy())
@@ -336,6 +362,7 @@ class Revision:
         return "\n".join(lines)
 
     def __bool__(self):
+        """Does the revision have any changes."""
         return bool(self.changes)
 
 
@@ -377,19 +404,38 @@ class RevisionHistory(History):
 
 @dataclass
 class Mutation:
-    """A class to update a record to a greater version."""
+    """A class that represents functionality to change a record.
 
-    function: Callable
+    Attributes
+    ----------
+    function : Callable[[Record], Record]
+        A function that changes a record in some way and returns a new record.
+    description : str
+        Human readable description of the change that this mutation performs.
+    eagerness : int
+        The eagerness of a mutation is used when figuring which
+        order to apply multiple mutations. Higher means more likely to
+        be applied first. By default 0.
+    selector : Callable[[Record], bool]
+        Callable that is applied to a record and returns a bool to indicate
+        if this mutation is meant to be applied to said record.
+    uid : Optional[UID]
+        A manually assigned unique ID that can be used to identify a particular
+        mutation. By default None.
+    """
+
+    function: Callable[[Record], Record]
     description: str
-    uid: Optional[UID] = None
     eagerness: int = 0
     selector: Callable[[Record], bool] = field(default_factory=Selector)
+    uid: Optional[UID] = None
 
     def applies(self, record: Record) -> bool:
+        """Determine if the mutation applies to record."""
         return self.selector(record)
 
     def apply(self, record: Record) -> Revision:
-        """Apply mutation to record and return record Revision."""
+        """Apply mutation to record and return a concrete Revision."""
         mutated_record = self.function(record.copy())
         changes = make_change_collection(
             record,
@@ -416,7 +462,16 @@ class Mutation:
 
 @dataclass
 class MutationCollection:
-    """Generates the applicable mutations from a collection of mutations."""
+    """A class that represents a set of mutations.
+
+    Contains convenience methods that can be used to filter mutations according
+    to their selectors.
+
+    Attributes
+    ----------
+    mutations : set[Mutation]
+        The contained mutations.
+    """
 
     mutations: Set[Mutation] = field(default_factory=set)
 
@@ -424,6 +479,7 @@ class MutationCollection:
         self.mutations.update(mutations)
 
     def get_applicable_mutations(self, record: Record) -> List[Mutation]:
+        """Get applicable mutations for record."""
         applicable_mutations = [
             mutation for mutation in self.mutations if mutation.applies(record)
         ]
@@ -435,7 +491,12 @@ class MutationCollection:
 
 @dataclass
 class Migration:
-    """A class that represents a record migration."""
+    """A class that represents a migration.
+
+    A migration represents the complete journey from initial to final record
+    through a series of revisions. If the construction of a migration
+    encountered any errors in particular mutations, those are logged as well.
+    """
 
     initial_record: Record
     migrated_record: Record
@@ -443,15 +504,15 @@ class Migration:
     errors: List[Tuple[Mutation, Exception]]
 
     def has_revisions(self):
-        """Has migrations to apply."""
+        """Has revisions to apply."""
         return bool(self.revisions)
 
     def has_errors(self):
-        """Has failed migrations."""
+        """Has failed mutations."""
         return bool(self.errors)
 
     def apply(self, cache):
-        """Apply record migration to a cache."""
+        """Update record in cache."""
         cache.update(self.migrated_record)
 
     def __bool__(self):
@@ -480,28 +541,80 @@ class Migration:
 
 @dataclass
 class MigrationReport:
-    applicable_migrations: List[Migration]
-    erroneous_migrations: List[Migration]
-    n_up_to_date: int
-    n_applicable_migrations: int
-    n_errors: int
+    """Class that represents a summary of multiple migrations.
+
+    Attributes
+    ----------
+    migrations: List[Migration]
+        Migrations from which to construct report.
+    """
+
+    migrations: List[Migration]
+
+    @property
+    def successful_migrations(self) -> List[Migration]:
+        tmp = []
+        for migration in self.migrations:
+            if migration.has_revisions() and not migration.has_errors():
+                tmp.append(migration)
+        return tmp
+
+    @property
+    def applicable_migrations(self) -> List[Migration]:
+        tmp = []
+        for migration in self.migrations:
+            if migration.has_revisions():
+                tmp.append(migration)
+        return tmp
+
+    @property
+    def erroneous_migrations(self) -> List[Migration]:
+        tmp = []
+        for migration in self.migrations:
+            if migration.has_errors():
+                tmp.append(migration)
+        return tmp
+
+    @property
+    def empty_migrations(self) -> List[Migration]:
+        tmp = []
+        for migration in self.migrations:
+            if not migration.has_revisions() and not migration.has_errors():
+                tmp.append(migration)
+        return tmp
+
+    @property
+    def n_applicable_migrations(self) -> int:
+        return len(self.applicable_migrations)
+
+    @property
+    def n_successful_migrations(self) -> int:
+        return len(self.successful_migrations)
+
+    @property
+    def n_erroneous_migrations(self) -> int:
+        return len(self.erroneous_migrations)
+
+    @property
+    def n_records_up_to_date(self) -> int:
+        return len(self.empty_migrations)
 
     @property
     def summary(self) -> str:
         return "\n".join(
             [
-                f"There are {self.n_applicable_migrations} unapplied migrations, "
-                f"{self.n_errors} erroneous migrations and "
-                f"{self.n_up_to_date} records are up to date.",
+                f"There are {self.n_successful_migrations} unapplied migrations, "
+                f"{self.n_erroneous_migrations} erroneous migrations and "
+                f"{self.n_records_up_to_date} records are up to date.",
                 "",
             ]
         )
 
     def print_errors(self) -> None:
-        for record_migration in self.erroneous_migrations:
-            print(f"Error for: {record_migration}")
-            for migration, error in record_migration.errors:
-                print(f"Error in: {migration}")
+        for migration in self.erroneous_migrations:
+            print(f"Error for: {migration}")
+            for mutation, error in migration.errors:
+                print(f"Error in: {mutation}")
                 traceback.print_exception(
                     type(error),
                     error,
@@ -512,7 +625,7 @@ class MigrationReport:
     @property
     def verbose(self) -> str:
         strs = []
-        for i, migration in enumerate(self.applicable_migrations):
+        for i, migration in enumerate(self.successful_migrations):
             strs.append(f"#{i} {migration}")
         return "\n\n".join(strs)
 
@@ -635,12 +748,29 @@ def migrate_record(
     record: Record,
     mutations: MutationCollection,
 ) -> Migration:
-    """Construct a record migration."""
-    migrated_record = record.copy()
+    """Construct a record migration based on mutations.
+
+    Finds a migration strategy by selecting applicable mutations and
+    prioritizing mutations according to their eagerness. A mutation is not
+    allowed to be applied twice in a single migration to avoid runaway recursive
+    behaviour. During the construction of the strategy, log any erroneous
+    mutations and their error messages.
+
+    Parameters
+    ----------
+    record : Record
+        The record to be migrated.
+    mutations : MutationCollection
+        The mutations that are to be applied during migration.
+
+    """
+
     applied_mutations = []
     problematic_mutations = []
     errors: List[Tuple[Mutation, Exception]] = []
     revisions = []
+
+    migrated_record = record.copy()
     while True:
         applicable_mutations = mutations.get_applicable_mutations(migrated_record)
         candidate_mutations = [
@@ -753,6 +883,20 @@ def make_migrations(
     records: List[Record],
     mutations: MutationCollection,
 ) -> List[Migration]:
+    """Get migrations for a set of records and a set of mutations.
+
+    Parameters
+    ----------
+    records : List[Record]
+        The records that potentially requires migrations.
+    mutations : MutationCollection
+        The mutations to be used in the migrations.
+
+    Returns
+    -------
+    List[Migration]
+        The resulting migrations.
+    """
     migrations = []
     for record in records:
         migration = migrate_record(record, mutations)
@@ -760,35 +904,20 @@ def make_migrations(
     return migrations
 
 
-def make_migration_report(migrations: List[Migration]) -> MigrationReport:
-    erroneous_migrations = []
-    n_up_to_date = 0
-    n_applicable_migrations = 0
-    n_errors = 0
-    applicable_migrations = []
-    for migration in migrations:
-        if migration:
-            n_applicable_migrations += 1
-            applicable_migrations.append(migration)
-
-        if migration.has_errors():
-            n_errors += 1
-            erroneous_migrations.append(migration)
-
-        if not (migration or migration.has_errors()):
-            n_up_to_date += 1
-
-    return MigrationReport(
-        applicable_migrations=applicable_migrations,
-        erroneous_migrations=erroneous_migrations,
-        n_up_to_date=n_up_to_date,
-        n_applicable_migrations=n_applicable_migrations,
-        n_errors=n_errors,
-    )
-
-
 def records_to_migration_report(records: List[Record]) -> MigrationReport:
+    """Make migrations for a set of records and return migration report.
+
+    Parameters
+    ----------
+    record : List[Record]
+        The records to be migrated.
+
+    Returns
+    -------
+    MigrationReport
+        A report summarizing the result.
+    """
     mutations = get_mutations()
-    record_migrations = make_migrations(records, mutations)
-    report = make_migration_report(record_migrations)
+    migrations = make_migrations(records, mutations)
+    report = MigrationReport(migrations)
     return report

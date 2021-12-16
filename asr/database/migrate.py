@@ -12,8 +12,9 @@ Significant functions in this module:
 
 
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
+from asr.core.cache import Cache, MemoryBackend
 from asr.core.migrate import records_to_migration_report
 from asr.core.resultfile import get_resultfile_records_from_database_row
 from asr.database import ASEDatabaseInterface, Row, connect
@@ -238,17 +239,15 @@ def write_migrated_database(
     for row in dbin.select():
         timed_print(f"Treating row.id={row.id}")
         records = row.records
-        report = records_to_migration_report(records)
-        if report.n_errors == 0 and report.n_applicable_migrations == 0:
-            continue
-        if report.n_errors > 0:
-            report.print_errors()
-        from asr.core.cache import Cache, MemoryBackend
-
         cache = Cache(backend=MemoryBackend())
         for record in records:
             cache.add(record)
-        for record_migration in report.applicable_migrations:
-            record_migration.apply(cache)
+
+        report = records_to_migration_report(records)
+        if report.n_erroneous_migrations > 0:
+            report.print_errors()
+
+        for migration in report.applicable_migrations:
+            migration.apply(cache)
         records = cache.select()
         write_row_with_new_data(dbout, row, data=row.data, records=records)
