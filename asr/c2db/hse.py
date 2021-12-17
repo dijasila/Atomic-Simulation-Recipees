@@ -67,7 +67,6 @@ def calculate(
         emptybands: int = 20,
 ) -> HSECalculationResult:
     """Calculate HSE06 corrections."""
-
     mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
     eigs, calc, hse_nowfs = hse(
         atoms=atoms,
