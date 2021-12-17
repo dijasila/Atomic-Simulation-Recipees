@@ -1043,11 +1043,13 @@ def calculate_bs_along_emass_vecs(
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.c2db.magnetic_anisotropy import main as mag_ani_main
     from asr.core import file_barrier
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     cell_cv = calc.get_atoms().get_cell()
+
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
 
     results_dicts = []
     for u, mass in enumerate(masses_dict['mass_u']):
@@ -1083,11 +1085,11 @@ def calculate_bs_along_emass_vecs(
 
         calc_serial = GPAW(name, txt=None, communicator=serial_comm)
         k_kc = calc_serial.get_bz_k_points()
-        theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+        theta, phi = mag_ani.spin_angles()
         e_km, _, s_kvm = calc2eigs(calc_serial, soc=soc, return_spin=True,
                                    theta=theta, phi=phi)
 
-        sz_km = s_kvm[:, get_spin_index(atoms=atoms, calculator=calculator), :]
+        sz_km = s_kvm[:, mag_ani.spin_index(), :]
 
         dct = dict(bt=bt,
                    kpts_kc=k_kc,

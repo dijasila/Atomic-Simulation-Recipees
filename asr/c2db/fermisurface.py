@@ -125,7 +125,9 @@ def main(
 ) -> Result:
     from asr.utils.gpw2eigs import calc2eigs
     from gpaw.kpt_descriptor import to1bz
-    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.c2db.magnetic_anisotropy import main as mag_ani_main
+
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
 
     ndim = sum(atoms.pbc)
     assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'
@@ -133,10 +135,7 @@ def main(
         atoms=atoms,
         calculator=calculator,
     )
-    theta, phi = get_spin_axis(
-        atoms=atoms,
-        calculator=calculator,
-    )
+    theta, phi = mag_ani.spin_angles()
     calc = res.calculation.load(parallel=False)
     eigs_km, ef, s_kvm = calc2eigs(
         calc,
@@ -147,7 +146,7 @@ def main(
     eigs_mk = eigs_km.T
     eigs_mk = eigs_mk - ef
     calc = res.calculation.load()
-    s_mk = s_kvm[:, get_spin_index(atoms=atoms, calculator=calculator)].T
+    s_mk = s_kvm[:, mag_ani.spin_index()].T
 
     A_cv = calc.atoms.get_cell()
     B_cv = np.linalg.inv(A_cv).T * 2 * np.pi
