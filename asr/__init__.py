@@ -1,10 +1,13 @@
 """Top-level package for Atomic Simulation Recipes."""
 from asr.core import (  # noqa
+    ASRResult,
     Dependencies,
     Metadata,
+    Mutation,
     NonMigratableRecord,
     Record,
     Resources,
+    Revision,
     RevisionHistory,
     RunSpecification,
     Selector,
@@ -17,7 +20,6 @@ from asr.core import (  # noqa
     instruction,
     mutation,
     option,
-    ASRResult,
     prepare_result,
 )
 
