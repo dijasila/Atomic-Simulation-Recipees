@@ -194,14 +194,13 @@ def preliminary_refine(atoms, calculator, calc, mag_ani, soc=True, bandtype=None
 
 
 def get_gapskn(
-        atoms, calculator, calculation, fallback_calculation=None, soc=True):
+        atoms, calculator, calculation, mag_ani, fallback_calculation=None, soc=True):
     from ase.dft.bandgap import bandgap
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
     from asr.utils.gpw2eigs import calc2eigs
     from ase.parallel import parprint
 
     calc = calculation.load()
-    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+    theta, phi = mag_ani.spin_angles()
     e_skn, efermi = calc2eigs(calc, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis, :, :]
@@ -211,7 +210,6 @@ def get_gapskn(
 
     if np.allclose(gap, 0) and fallback_calculation is not None:
         parprint("Something went wrong. Using fallback calc.")
-        theta, phi = get_spin_axis()
         e_skn, efermi = calc2eigs(
             fallback_calculation.load(), soc=soc, theta=theta, phi=phi)
         if e_skn.ndim == 2:
@@ -254,6 +252,8 @@ def nonsc_sphere(
     calc = calculation.load()
     ndim = calc.atoms.pbc.sum()
 
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+
     # Check that 1D: Only z-axis, 2D: Only x- and y-axis
     if ndim == 1:
         pbc = calc.atoms.pbc
@@ -273,7 +273,7 @@ def nonsc_sphere(
     gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(
         atoms, calculator,
         calculation,
-        fallback_calculation, soc=soc)
+        fallback_calculation=fallback_calculation, soc=soc, mag_ani=mag_ani)
 
     k1_c = k_kc[k1]
     k2_c = k_kc[k2]
@@ -899,6 +899,7 @@ def main(
                 masses = embands(
                     atoms=atoms,
                     calculator=calculator,
+                    mag_ani=mag_ani,
                     gpw=gpw2,
                     soc=soc,
                     bandtype=bt)
@@ -968,7 +969,7 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + 'wideareaMAE'] = out_dict['wideareaMAE']
 
 
-def embands(atoms, calculator, gpw, soc, bandtype, delta=0.1):
+def embands(atoms, calculator, gpw, soc, bandtype, mag_ani, delta=0.1):
     """Effective masses for bands within delta of extrema.
 
     Parameters
@@ -990,11 +991,10 @@ def embands(atoms, calculator, gpw, soc, bandtype, delta=0.1):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Bohr, Hartree
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
 
-    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+    theta, phi = mag_ani.spin_angles()
     e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
