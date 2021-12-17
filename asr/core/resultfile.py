@@ -7,8 +7,9 @@ from dataclasses import dataclass
 
 from ase import Atoms
 from ase.db.core import AtomsRow
+from ase.io import read
 
-from asr.core import ASRResult
+from asr.core import ASRResult, read_json
 
 from .dependencies import Dependencies, Dependency
 from .metadata import construct_metadata
@@ -25,39 +26,54 @@ from .utils import (
 from .old_defaults import get_old_defaults
 
 
-def generate_uids(resultfiles) -> typing.Dict[pathlib.Path, str]:
-    return {path: get_new_uuid() for path in resultfiles}
+@dataclass
+class RecordContext:
+    """Class that contain the contextual data to create a record."""
+
+    result: typing.Any
+    recipename: str
+    atomic_structures: typing.Dict[str, Atoms]
+    uid: str
+    dependency_matcher: typing.Callable[["RecordContext"], bool]
+    dependencies: typing.Optional[Dependencies]
+    directory: str
+    path: typing.Optional[pathlib.Path] = None
+
+
+def generate_uids(
+    filenames: typing.Union[typing.List[str], typing.List[pathlib.Path]],
+) -> typing.Dict[typing.Union[str, pathlib.Path], str]:
+    return {filename: get_new_uuid() for filename in filenames}
 
 
 def find_results_files(directory: pathlib.Path) -> typing.List[pathlib.Path]:
     filenames = [
         str(filename)
-        for filename in pathlib.Path(directory).rglob('results-asr.*.json')
+        for filename in pathlib.Path(directory).rglob("results-asr.*.json")
     ]
     filenames = filter_filenames_for_unused_recipe_results(filenames)
     return [pathlib.Path(filename) for filename in filenames]
 
 
 def filter_filenames_for_unused_recipe_results(
-    filenames
+    filenames: typing.List[str],
 ) -> typing.List[str]:
     skip_patterns = [
-        '*results-asr.database.fromtree.json',
-        '*results-asr.database.app.json',
-        '*results-asr.database.key_descriptions.json',
-        '*results-asr.setup.strains*.json',
-        '*displacements*/*/results-asr.database.material_fingerprint.json',
-        '*strains*/results-asr.database.material_fingerprint.json',
-        '*asr.setinfo*',
-        '*asr.setup.params.json',
-        '*asr.c2db.exchange@calculate*',
-        '*asr.c2db.exchange:calculate*',
+        "*results-asr.database.fromtree.json",
+        "*results-asr.database.app.json",
+        "*results-asr.database.key_descriptions.json",
+        "*results-asr.setup.strains*.json",
+        "*displacements*/*/results-asr.database.material_fingerprint.json",
+        "*strains*/results-asr.database.material_fingerprint.json",
+        "*asr.setinfo*",
+        "*asr.setup.params.json",
+        "*asr.c2db.exchange@calculate*",
+        "*asr.c2db.exchange:calculate*",
     ]
 
     paths = []
     for path in filenames:
-        if any(fnmatch.fnmatch(path, skip_pattern)
-               for skip_pattern in skip_patterns):
+        if any(fnmatch.fnmatch(path, skip_pattern) for skip_pattern in skip_patterns):
             continue
         paths.append(path)
 
@@ -65,35 +81,36 @@ def filter_filenames_for_unused_recipe_results(
 
 
 def filter_contexts_for_unused_recipe_results(
-    contexts: typing.List["RecordContext"]
+    contexts: typing.List["RecordContext"],
 ) -> typing.List["RecordContext"]:
     skip_patterns = [
-        '*asr.database.fromtree*',
-        '*asr.database.app*',
-        '*asr.database.key_descriptions*',
-        '*asr.setup.strains*',
-        '*asr.database.material_fingerprint*',
-        '*asr.setinfo*',
-        '*asr.setup.params*',
-        '*asr.c2db.exchange:calculate*',
-        '*asr.c2db.plasmafrequency:calculate*'
+        "*asr.database.fromtree*",
+        "*asr.database.app*",
+        "*asr.database.key_descriptions*",
+        "*asr.setup.strains*",
+        "*asr.database.material_fingerprint*",
+        "*asr.setinfo*",
+        "*asr.setup.params*",
+        "*asr.c2db.exchange:calculate*",
+        "*asr.c2db.plasmafrequency:calculate*",
     ]
     filtered = []
     for context in contexts:
-        if any(fnmatch.fnmatch(context.recipename, skip_pattern)
-               for skip_pattern in skip_patterns):
+        if any(
+            fnmatch.fnmatch(context.recipename, skip_pattern)
+            for skip_pattern in skip_patterns
+        ):
             continue
         filtered.append(context)
     return filtered
 
 
-ATOMSFILES = [
-    'structure.json', 'original.json', 'start.json', 'unrelaxed.json']
+ATOMSFILES = ["structure.json", "original.json", "start.json", "unrelaxed.json"]
 
 
 def construct_record_from_context(
-        record_context: "RecordContext",
-):
+    record_context: RecordContext,
+) -> Record:
     from asr.core.codes import Code, Codes
     from asr.core.results import MetaDataNotSetError
 
@@ -105,7 +122,7 @@ def construct_record_from_context(
     directory = record_context.directory
 
     mod, func = parse_mod_func(recipename)
-    recipename = ':'.join([mod, func])
+    recipename = ":".join([mod, func])
     if isinstance(result, ASRResult):
         data = result.data
         metadata = result.metadata.todict()
@@ -114,8 +131,8 @@ def construct_record_from_context(
         data = result
         params: typing.Dict[str, typing.Any] = {}
         metadata = {
-            'asr_name': recipename,
-            'params': params,
+            "asr_name": recipename,
+            "params": params,
         }
 
     recipe = get_recipe_from_name(recipename)
@@ -131,16 +148,15 @@ def construct_record_from_context(
 
     try:
         parameters = result.metadata.params
-        if recipename == 'asr.c2db.gs:calculate' and 'name' in parameters:
-            del parameters['name']
+        if recipename == "asr.c2db.gs:calculate" and "name" in parameters:
+            del parameters["name"]
     except MetaDataNotSetError:
         parameters = {}
 
     parameters = Parameters(parameters)
     params = recipe.get_argument_descriptors()
-    atomsparam = [param for name, param in params.items()
-                  if name == 'atoms'][0]
-    atomsfilename = atomsparam['default']
+    atomsparam = [param for name, param in params.items() if name == "atoms"][0]
+    atomsfilename = atomsparam["default"]
     if atomsfilename not in atomic_structures:
         atomic_structures[atomsfilename] = "Unknown atoms file"
 
@@ -150,7 +166,7 @@ def construct_record_from_context(
         code_versions = result.metadata.code_versions
         lst_codes = []
         for package, codestr in code_versions.items():
-            version, githash = codestr.split('-')
+            version, githash = codestr.split("-")
             code = Code(package, version, githash)
             lst_codes.append(code)
         codes = Codes(lst_codes)
@@ -158,13 +174,14 @@ def construct_record_from_context(
         codes = Codes([])
 
     from asr.core.resources import Resources
+
     try:
         resources = result.metadata.resources
         resources = Resources(
-            execution_start=resources.get('tstart'),
-            execution_end=resources.get('tend'),
-            execution_duration=resources['time'],
-            ncores=resources['ncores'],
+            execution_start=resources.get("tstart"),
+            execution_end=resources.get("tend"),
+            execution_duration=resources["time"],
+            ncores=resources["ncores"],
         )
     except MetaDataNotSetError:
         resources = Resources()
@@ -182,47 +199,60 @@ def construct_record_from_context(
         ),
         resources=resources,
         result=result,
-        tags=['resultfile'],
+        tags=["resultfile"],
         dependencies=dependencies,
     )
 
     return record
 
 
-def fix_asr_gs_result_missing_calculator(folder, result, recipename):
-    if isinstance(result, dict) and recipename == 'asr.c2db.gs:calculate':
+def fix_asr_gs_result_missing_calculator(
+    folder: pathlib.Path,
+    result: typing.Any,
+    recipename: str,
+) -> typing.Any:
+    if isinstance(result, dict) and recipename == "asr.c2db.gs:calculate":
         from asr.c2db.gs import GroundStateCalculationResult
         from asr.calculators import Calculation
+
         calculation = Calculation(
-            id='gs',
-            cls_name='gpaw',
-            paths=[folder / 'gs.gpw'],
+            id="gs",
+            cls_name="gpaw",
+            paths=[folder / "gs.gpw"],
         )
-        result = GroundStateCalculationResult.fromdata(
-            calculation=calculation)
+        result = GroundStateCalculationResult.fromdata(calculation=calculation)
         calc = calculation.load()
         calculator = calc.parameters
-        calculator['name'] = 'gpaw'
-        params = {'calculator': calculator}
+        calculator["name"] = "gpaw"
+        params = {"calculator": calculator}
         metadata = {
-            'asr_name': recipename,
-            'params': params,
+            "asr_name": recipename,
+            "params": params,
         }
         result.metadata = metadata
     return result
 
 
-def fix_asr_gs_record_missing_calculator(record: "Record"):
-    if record.name == 'asr.c2db.gs:calculate':
-        if 'calculator' not in record.parameters:
-            record.parameters.calculator = \
-                get_old_defaults()['asr.c2db.gs:calculate']['calculator']
+def fix_asr_gs_record_missing_calculator(record: Record) -> None:
+    if record.name == "asr.c2db.gs:calculate":
+        if "calculator" not in record.parameters:
+            record.parameters.calculator = get_old_defaults()["asr.c2db.gs:calculate"][
+                "calculator"
+            ]
 
 
-def get_relevant_resultfile_parameters(path, directory):
-    from ase.io import read
+def get_relevant_resultfile_parameters(
+    path: pathlib.Path,
+    directory: pathlib.Path,
+) -> typing.Tuple[
+    pathlib.Path,
+    typing.Any,
+    str,
+    typing.Dict[str, Atoms],
+    typing.Callable[[RecordContext], bool],
+    str,
+]:
 
-    from asr.core import read_json
     folder = path.parent
     result = read_json(path)
     recipename = get_recipe_name_from_filename(path.name)
@@ -237,14 +267,15 @@ def get_relevant_resultfile_parameters(path, directory):
 
 
 def set_context_dependencies(
-    contexts: typing.List["RecordContext"],
-) -> typing.List["RecordContext"]:
+    contexts: typing.List[RecordContext],
+) -> typing.List[RecordContext]:
     for context in contexts:
         deps = []
         for context2 in contexts:
             if context.dependency_matcher(context2):
                 dep = Dependency(
-                    uid=context2.uid, revision=None,
+                    uid=context2.uid,
+                    revision=None,
                 )
                 deps.append(dep)
         if context.recipename == "asr.c2db.stiffness:main":
@@ -253,26 +284,10 @@ def set_context_dependencies(
     return contexts
 
 
-def make_concrete_dependencies(
-    dependencies,
-    uids
-) -> typing.Optional[Dependencies]:
-    if dependencies:
-        dep_list = []
-        for dependency in dependencies:
-            if dependency in uids:
-                dep_list.append(
-                    Dependency(
-                        uid=uids[dependency], revision=None
-                    )
-                )
-        return Dependencies(dep_list)
-    return None
-
-
-def get_recipe_name_from_filename(filename):
+def get_recipe_name_from_filename(filename: str) -> str:
     from os.path import splitext
-    name = splitext(filename.split('-')[1])[0]
+
+    name = splitext(filename.split("-")[1])[0]
     name = name.replace("@", ":")
     name = add_main_to_name_if_missing(name)
     name = fix_recipe_name_if_recipe_has_been_moved(name)
@@ -282,14 +297,10 @@ def get_recipe_name_from_filename(filename):
 def make_dependency_matcher(
     patterns: typing.List[str],
     attribute: str = "recipename",
-) -> typing.Callable[["RecordContext"], bool]:
-
-    def dependency_matcher(context: "RecordContext") -> bool:
+) -> typing.Callable[[RecordContext], bool]:
+    def dependency_matcher(context: RecordContext) -> bool:
         return any(
-            fnmatch.fnmatch(
-                str(getattr(context, attribute)),
-                pattern
-            )
+            fnmatch.fnmatch(str(getattr(context, attribute)), pattern)
             for pattern in patterns
         )
 
@@ -298,108 +309,106 @@ def make_dependency_matcher(
 
 def get_dependency_matcher_from_name(
     name: str,
-) -> typing.Callable[["RecordContext"], bool]:
+) -> typing.Callable[[RecordContext], bool]:
 
     # Some manually implemented dependencies
-    if name == 'asr.c2db.piezoelectrictensor:main':
+    if name == "asr.c2db.piezoelectrictensor:main":
         patterns = [
-            '*strains*/results-asr.relax.json',
-            '*strains*/results-asr.formalpolarization.json'
+            "*strains*/results-asr.relax.json",
+            "*strains*/results-asr.formalpolarization.json",
         ]
         return make_dependency_matcher(patterns, "path")
-    elif name == 'asr.c2db.stiffness:main':
+    elif name == "asr.c2db.stiffness:main":
         patterns = [
-            '*strains*/results-asr.relax.json',
+            "*strains*/results-asr.relax.json",
         ]
         return make_dependency_matcher(patterns, "path")
 
-    deps : typing.Dict[str, typing.List[str]] = {
-        'asr.c2db.infraredpolarizability': [
-            'asr.c2db.phonons', 'asr.c2db.borncharges',
-            'asr.c2db.polarizability'],
-        'asr.c2db.emasses:refine': [
-            'asr.structureinfo', 'asr.c2db.magnetic_anisotropy', 'asr.c2db.gs'],
-        'asr.c2db.emasses': [
-            'asr.c2db.emasses:refine', 'asr.c2db.gs:calculate',
-            'asr.c2db.gs', 'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
-        'asr.c2db.emasses:validate': ['asr.c2db.emasses'],
-        'asr.c2db.berry:calculate': ['asr.c2db.gs'],
-        'asr.c2db.berry': ['asr.c2db.berry:calculate', 'asr.c2db.gs'],
-        'asr.c2db.gw:gs': ['asr.c2db.gs:calculate'],
-        'asr.c2db.gw:gw': ['asr.c2db.gw:gs'],
-        'asr.c2db.gw:empirical_mean_z': ['asr.c2db.gw:gw'],
-        'asr.c2db.gw': ['asr.c2db.bandstructure',
-                        'asr.c2db.gw:empirical_mean_z'],
-        'asr.c2db.pdos:calculate': ['asr.c2db.gs'],
-        'asr.c2db.pdos': ['asr.c2db.gs', 'asr.c2db.pdos:calculate'],
-        'asr.c2db.phonons:calculate': [],
-        'asr.c2db.phonons': ['asr.c2db.phonons:calculate'],
-        'asr.c2db.push': ['asr.structureinfo', 'asr.c2db.phonons'],
-        'asr.c2db.phonopy:calculate': ['asr.c2db.gs:calculate'],
-        'asr.c2db.phonopy': ['asr.c2db.phonopy:calculate'],
-        'asr.c2db.hse:calculate': [
-            'asr.structureinfo', 'asr.c2db.gs:calculate', 'asr.c2db.gs'],
-        'asr.c2db.hse': ['asr.c2db.hse:calculate', 'asr.c2db.bandstructure'],
-        'asr.c2db.exchange:calculate': ['asr.c2db.gs:calculate'],
-        'asr.c2db.exchange': ['asr.c2db.gs:main'],
-        'asr.c2db.plasmafrequency:calculate': ['asr.c2db.gs:calculate'],
-        'asr.c2db.plasmafrequency': [
-            'asr.c2db.plasmafrequency:calculate',
-            'asr.c2db.gs',
+    deps: typing.Dict[str, typing.List[str]] = {
+        "asr.c2db.infraredpolarizability": [
+            "asr.c2db.phonons",
+            "asr.c2db.borncharges",
+            "asr.c2db.polarizability",
         ],
-        'asr.c2db.shg': ['asr.c2db.gs:calculate', 'asr.c2db.gs'],
-        'asr.c2db.magstate': ['asr.c2db.gs:calculate'],
-        'asr.c2db.fermisurface': ['asr.c2db.gs', 'asr.structureinfo'],
-        'asr.c2db.magnetic_anisotropy': ['asr.c2db.gs:calculate',
-                                         'asr.c2db.magstate'],
-        'asr.c2db.convex_hull': [
-            'asr.structureinfo', 'asr.database.material_fingerprint'],
-        'asr.c2db.borncharges': ['asr.c2db.gs:calculate'],
-        'asr.c2db.gs': [
-            'asr.c2db.gs:calculate',
-            'asr.c2db.magnetic_anisotropy', 'asr.structureinfo'],
-        'asr.c2db.bandstructure:calculate': ['asr.c2db.gs:calculate'],
-        'asr.c2db.bandstructure': [
-            'asr.c2db.bandstructure:calculate', 'asr.c2db.gs',
-            'asr.structureinfo', 'asr.c2db.magnetic_anisotropy'],
-        'asr.defectformation': ['asr.setup.defects', 'asr.c2db.gs'],
-        'asr.c2db.deformationpotentials': ['asr.c2db.gs'],
-        'asr.c2db.bader': ['asr.c2db.gs'],
-        'asr.bse:calculate': ['asr.c2db.gs:calculate'],
-        'asr.bse': ['asr.bse:calculate', 'asr.c2db.gs'],
-        'asr.c2db.projected_bandstructure': ['asr.c2db.gs',
-                                             'asr.c2db.bandstructure'],
-        'asr.c2db.shift': ['asr.c2db.gs:calculate'],
-        'asr.c2db.polarizability': ['asr.structureinfo',
-                                    'asr.c2db.gs:calculate'],
+        "asr.c2db.emasses:refine": [
+            "asr.structureinfo",
+            "asr.c2db.magnetic_anisotropy",
+            "asr.c2db.gs",
+        ],
+        "asr.c2db.emasses": [
+            "asr.c2db.emasses:refine",
+            "asr.c2db.gs:calculate",
+            "asr.c2db.gs",
+            "asr.structureinfo",
+            "asr.c2db.magnetic_anisotropy",
+        ],
+        "asr.c2db.emasses:validate": ["asr.c2db.emasses"],
+        "asr.c2db.berry:calculate": ["asr.c2db.gs"],
+        "asr.c2db.berry": ["asr.c2db.berry:calculate", "asr.c2db.gs"],
+        "asr.c2db.gw:gs": ["asr.c2db.gs:calculate"],
+        "asr.c2db.gw:gw": ["asr.c2db.gw:gs"],
+        "asr.c2db.gw:empirical_mean_z": ["asr.c2db.gw:gw"],
+        "asr.c2db.gw": ["asr.c2db.bandstructure", "asr.c2db.gw:empirical_mean_z"],
+        "asr.c2db.pdos:calculate": ["asr.c2db.gs"],
+        "asr.c2db.pdos": ["asr.c2db.gs", "asr.c2db.pdos:calculate"],
+        "asr.c2db.phonons:calculate": [],
+        "asr.c2db.phonons": ["asr.c2db.phonons:calculate"],
+        "asr.c2db.push": ["asr.structureinfo", "asr.c2db.phonons"],
+        "asr.c2db.phonopy:calculate": ["asr.c2db.gs:calculate"],
+        "asr.c2db.phonopy": ["asr.c2db.phonopy:calculate"],
+        "asr.c2db.hse:calculate": [
+            "asr.structureinfo",
+            "asr.c2db.gs:calculate",
+            "asr.c2db.gs",
+        ],
+        "asr.c2db.hse": ["asr.c2db.hse:calculate", "asr.c2db.bandstructure"],
+        "asr.c2db.exchange:calculate": ["asr.c2db.gs:calculate"],
+        "asr.c2db.exchange": ["asr.c2db.gs:main"],
+        "asr.c2db.plasmafrequency:calculate": ["asr.c2db.gs:calculate"],
+        "asr.c2db.plasmafrequency": [
+            "asr.c2db.plasmafrequency:calculate",
+            "asr.c2db.gs",
+        ],
+        "asr.c2db.shg": ["asr.c2db.gs:calculate", "asr.c2db.gs"],
+        "asr.c2db.magstate": ["asr.c2db.gs:calculate"],
+        "asr.c2db.fermisurface": ["asr.c2db.gs", "asr.structureinfo"],
+        "asr.c2db.magnetic_anisotropy": ["asr.c2db.gs:calculate", "asr.c2db.magstate"],
+        "asr.c2db.convex_hull": [
+            "asr.structureinfo",
+            "asr.database.material_fingerprint",
+        ],
+        "asr.c2db.borncharges": ["asr.c2db.gs:calculate"],
+        "asr.c2db.gs": [
+            "asr.c2db.gs:calculate",
+            "asr.c2db.magnetic_anisotropy",
+            "asr.structureinfo",
+        ],
+        "asr.c2db.bandstructure:calculate": ["asr.c2db.gs:calculate"],
+        "asr.c2db.bandstructure": [
+            "asr.c2db.bandstructure:calculate",
+            "asr.c2db.gs",
+            "asr.structureinfo",
+            "asr.c2db.magnetic_anisotropy",
+        ],
+        "asr.defectformation": ["asr.setup.defects", "asr.c2db.gs"],
+        "asr.c2db.deformationpotentials": ["asr.c2db.gs"],
+        "asr.c2db.bader": ["asr.c2db.gs"],
+        "asr.bse:calculate": ["asr.c2db.gs:calculate"],
+        "asr.bse": ["asr.bse:calculate", "asr.c2db.gs"],
+        "asr.c2db.projected_bandstructure": ["asr.c2db.gs", "asr.c2db.bandstructure"],
+        "asr.c2db.shift": ["asr.c2db.gs:calculate"],
+        "asr.c2db.polarizability": ["asr.structureinfo", "asr.c2db.gs:calculate"],
     }
     deps = {add_main_to_name_if_missing(key): value for key, value in deps.items()}
     dependencies = []
     for dep in deps.get(name, []):
-        dep = fix_recipe_name_if_recipe_has_been_moved(
-            add_main_to_name_if_missing(dep))
+        dep = fix_recipe_name_if_recipe_has_been_moved(add_main_to_name_if_missing(dep))
         dependencies.append(dep)
 
     return make_dependency_matcher(dependencies, "recipename")
 
 
-@dataclass
-class RecordContext:
-    """Class that contain the contextual data to create a record."""
-
-    result: typing.Any
-    recipename: str
-    atomic_structures: typing.Dict[str, Atoms]
-    uid: str
-    dependency_matcher: typing.Callable[["RecordContext"], bool]
-    dependencies: typing.Optional[Dependencies]
-    directory: str
-    path: typing.Optional[pathlib.Path] = None
-
-
-def get_resultfile_records_in_directory(
-    directory: pathlib.Path
-) -> typing.List[Record]:
+def get_resultfile_records_in_directory(directory: pathlib.Path) -> typing.List[Record]:
     contexts = get_contexts_in_directory(directory)
     contexts = filter_contexts_for_unused_recipe_results(contexts)
     contexts = set_context_dependencies(contexts)
@@ -416,7 +425,7 @@ def get_resultfile_records_from_database_row(row: AtomsRow):
 
 
 def get_contexts_in_directory(
-    directory=pathlib.Path('.')
+    directory=pathlib.Path("."),
 ) -> typing.List[RecordContext]:
     resultsfiles = find_results_files(directory=directory)
     uids = generate_uids(resultsfiles)
@@ -450,20 +459,22 @@ def get_contexts_in_directory(
     return contexts
 
 
-def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
+def convert_row_data_to_contexts(
+    data: typing.Dict[str, typing.Any], directory: str
+) -> typing.List[RecordContext]:
     filenames = []
     for filename in data:
-        is_results_file = filename.startswith('results-') and filename.endswith('.json')
+        is_results_file = filename.startswith("results-") and filename.endswith(".json")
         if not is_results_file:
             continue
         filenames.append(filename)
 
     contexts = []
 
-    children_data = data.get('__children_data__', {})
+    children_data = data.get("__children_data__", {})
     for child_values in children_data.values():
-        child_directory = child_values['directory']
-        child_data = child_values['data']
+        child_directory = child_values["directory"]
+        child_data = child_values["data"]
         child_contexts = convert_row_data_to_contexts(child_data, child_directory)
         contexts.extend(child_contexts)
 
@@ -483,17 +494,17 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
         atomic_structures = {}
         for name, value in data.items():
             if name in ATOMSFILES:
-                dct = value['1']
+                dct = value["1"]
                 atoms = Atoms(
                     numbers=dct.get("numbers"),
                     positions=dct.get("positions"),
                     cell=dct.get("cell"),
                     pbc=dct.get("pbc"),
-                    magmoms=dct.get('initial_magmoms'),
-                    charges=dct.get('initial_charges'),
-                    tags=dct.get('tags'),
-                    masses=dct.get('masses'),
-                    momenta=dct.get('momenta'),
+                    magmoms=dct.get("initial_magmoms"),
+                    charges=dct.get("initial_charges"),
+                    tags=dct.get("tags"),
+                    masses=dct.get("masses"),
+                    momenta=dct.get("momenta"),
                     constraint=dct.get("constraints"),
                 )
                 atomic_structures[name] = atoms
@@ -515,14 +526,16 @@ def convert_row_data_to_contexts(data, directory) -> typing.List[RecordContext]:
     return contexts
 
 
-def fix_result_object_missing_name(recipename, result):
-    if isinstance(result, dict) and '__asr_name__' not in result:
-        result['__asr_name__'] = recipename
+def fix_result_object_missing_name(recipename: str, result: typing.Any) -> typing.Any:
+    if isinstance(result, dict) and "__asr_name__" not in result:
+        result["__asr_name__"] = recipename
         result = decode_object(result)
     return result
 
 
-def make_records_from_contexts(contexts):
+def make_records_from_contexts(
+    contexts: typing.List[RecordContext],
+) -> typing.List[Record]:
     records = []
     for context in contexts:
         record = construct_record_from_context(context)
@@ -532,19 +545,20 @@ def make_records_from_contexts(contexts):
     return records
 
 
-def inherit_dependency_parameters(records):
+def inherit_dependency_parameters(records: typing.List[Record]) -> typing.List[Record]:
 
     for record in records:
-        deps = record.dependencies or []  # [record.uid for record in records]
+        deps = record.dependencies
         dep_params = get_dependency_parameters(deps, records)
-        dep_params = Parameters({
-            'dependency_parameters': Parameters(dep_params)})
+        dep_params = Parameters({"dependency_parameters": dep_params})
         record.parameters.update(dep_params)
 
     return records
 
 
-def get_dependency_parameters(dependencies, records):
+def get_dependency_parameters(
+    dependencies: typing.Optional[Dependencies], records: typing.List[Record]
+) -> Parameters:
     params = Parameters({})
     if dependencies is None:
         return params
@@ -557,8 +571,9 @@ def get_dependency_parameters(dependencies, records):
         depparams = Parameters(
             {
                 dep.name: {
-                    key: value for key, value in dep.parameters.items()
-                    if key != 'dependency_parameters'
+                    key: value
+                    for key, value in dep.parameters.items()
+                    if key != "dependency_parameters"
                 }
             }
         )
