@@ -5,6 +5,7 @@ from asr.core import (  # noqa
     Metadata,
     Mutation,
     NonMigratableRecord,
+    Parameters,
     Record,
     Resources,
     Revision,
