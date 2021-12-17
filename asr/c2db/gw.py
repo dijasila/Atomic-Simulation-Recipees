@@ -8,6 +8,7 @@ from asr.core import (
 )
 from asr.c2db.gs import calculate as calculategs
 from asr.c2db.bandstructure import main as bsmain
+from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
 import typing
@@ -365,6 +366,8 @@ def main(
     from asr.c2db.hse import MP_interpolate
     from types import SimpleNamespace
 
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+
     gsres = gs(
         atoms=atoms,
         calculator=calculator,
@@ -399,6 +402,7 @@ def main(
         delta_skn,
         lb,
         ub,
+        mag_ani=mag_ani,
     )
 
     # First get stuff without SOC
@@ -434,8 +438,8 @@ def main(
 
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import soc_eigenstates
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
-    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+
+    theta, phi = mag_ani_main(atoms=atoms, calculator=calculator).spin_angles()
     soc = soc_eigenstates(calc, eigenvalues=eps_skn,
                           n1=lb, n2=ub,
                           theta=theta, phi=phi)
