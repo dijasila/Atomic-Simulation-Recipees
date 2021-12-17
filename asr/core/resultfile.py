@@ -28,10 +28,37 @@ from .old_defaults import get_old_defaults
 
 @dataclass
 class RecordContext:
-    """Class that contain the contextual data to create a record."""
+    """Class that contain the contextual data to create a record.
+
+    The record context is an intermediate data format that can be used to
+    construct the final records.
+
+    Attributes
+    ----------
+    result : Any
+        The result of the record to be constructed.
+    instruction_name : str
+        The name of the instruction that was used to construct the record.
+    atomic_structures : Dict[str, Atoms]
+        Mapping that maps a filename to an atoms object, ie.
+        dict("structure.json"=Atoms(...)).
+    uid : str
+        The UID to be assigned to the record to be constructed.
+    dependency_matcher: Callable[[RecordContext], bool]
+        A function that can determine if another context is a dependency
+        of this context.
+    dependencies : Optional[Dependencies]
+        The dependencies of the record to be constructed. The dependency
+        matcher is typically used to set this attribute after all contexts
+        has been created.
+    directory : str
+        The directory that the record is constructed in (relative to the cache).
+    path : Path
+        The path to the actual resultfile.
+    """
 
     result: typing.Any
-    recipename: str
+    instruction_name: str
     atomic_structures: typing.Dict[str, Atoms]
     uid: str
     dependency_matcher: typing.Callable[["RecordContext"], bool]
@@ -43,10 +70,12 @@ class RecordContext:
 def generate_uids(
     filenames: typing.Union[typing.List[str], typing.List[pathlib.Path]],
 ) -> typing.Dict[typing.Union[str, pathlib.Path], str]:
+    """Generate new uids for a set of files."""
     return {filename: get_new_uuid() for filename in filenames}
 
 
 def find_results_files(directory: pathlib.Path) -> typing.List[pathlib.Path]:
+    """Find all resultfiles in directory (recursively)."""
     filenames = [
         str(filename)
         for filename in pathlib.Path(directory).rglob("results-asr.*.json")
@@ -58,6 +87,7 @@ def find_results_files(directory: pathlib.Path) -> typing.List[pathlib.Path]:
 def filter_filenames_for_unused_recipe_results(
     filenames: typing.List[str],
 ) -> typing.List[str]:
+    """Filter filenames for files from instructions that no longer exist."""
     skip_patterns = [
         "*results-asr.database.fromtree.json",
         "*results-asr.database.app.json",
@@ -81,8 +111,9 @@ def filter_filenames_for_unused_recipe_results(
 
 
 def filter_contexts_for_unused_recipe_results(
-    contexts: typing.List["RecordContext"],
-) -> typing.List["RecordContext"]:
+    contexts: typing.List[RecordContext],
+) -> typing.List[RecordContext]:
+    """Filter contexts for instructions that no longer exist."""
     skip_patterns = [
         "*asr.database.fromtree*",
         "*asr.database.app*",
@@ -97,7 +128,7 @@ def filter_contexts_for_unused_recipe_results(
     filtered = []
     for context in contexts:
         if any(
-            fnmatch.fnmatch(context.recipename, skip_pattern)
+            fnmatch.fnmatch(context.instruction_name, skip_pattern)
             for skip_pattern in skip_patterns
         ):
             continue
@@ -111,18 +142,19 @@ ATOMSFILES = ["structure.json", "original.json", "start.json", "unrelaxed.json"]
 def construct_record_from_context(
     record_context: RecordContext,
 ) -> Record:
+    """Construct a Record from a context."""
     from asr.core.codes import Code, Codes
     from asr.core.results import MetaDataNotSetError
 
     result = record_context.result
-    recipename = record_context.recipename
+    instruction_name = record_context.instruction_name
     atomic_structures = record_context.atomic_structures
     uid = record_context.uid
     dependencies = record_context.dependencies
     directory = record_context.directory
 
-    mod, func = parse_mod_func(recipename)
-    recipename = ":".join([mod, func])
+    mod, func = parse_mod_func(instruction_name)
+    instruction_name = ":".join([mod, func])
     if isinstance(result, ASRResult):
         data = result.data
         metadata = result.metadata.todict()
@@ -131,11 +163,11 @@ def construct_record_from_context(
         data = result
         params: typing.Dict[str, typing.Any] = {}
         metadata = {
-            "asr_name": recipename,
+            "asr_name": instruction_name,
             "params": params,
         }
 
-    recipe = get_recipe_from_name(recipename)
+    recipe = get_recipe_from_name(instruction_name)
     if not issubclass(recipe.returns, ASRResult):
         returns = ASRResult
     else:
@@ -148,7 +180,7 @@ def construct_record_from_context(
 
     try:
         parameters = result.metadata.params
-        if recipename == "asr.c2db.gs:calculate" and "name" in parameters:
+        if instruction_name == "asr.c2db.gs:calculate" and "name" in parameters:
             del parameters["name"]
     except MetaDataNotSetError:
         parameters = {}
@@ -188,7 +220,7 @@ def construct_record_from_context(
 
     record = Record(
         run_specification=RunSpecification(
-            name=recipename,
+            name=instruction_name,
             parameters=parameters,
             version=-1,
             codes=codes,
@@ -209,9 +241,25 @@ def construct_record_from_context(
 def fix_asr_gs_result_missing_calculator(
     folder: pathlib.Path,
     result: typing.Any,
-    recipename: str,
+    instruction_name: str,
 ) -> typing.Any:
-    if isinstance(result, dict) and recipename == "asr.c2db.gs:calculate":
+    """Fix ground state "calculate" results that didn't log the calculation result.
+
+    Parameters
+    ----------
+    folder : pathlib.Path
+        The folder where the corresponding gs.gpw exists.
+    result : typing.Any
+        The result that might have to be fixed.
+    instruction_name : str
+        The instruction name of the result.
+
+    Returns
+    -------
+    typing.Any
+        A potentially fixed result object.
+    """
+    if isinstance(result, dict) and instruction_name == "asr.c2db.gs:calculate":
         from asr.c2db.gs import GroundStateCalculationResult
         from asr.calculators import Calculation
 
@@ -226,7 +274,7 @@ def fix_asr_gs_result_missing_calculator(
         calculator["name"] = "gpaw"
         params = {"calculator": calculator}
         metadata = {
-            "asr_name": recipename,
+            "asr_name": instruction_name,
             "params": params,
         }
         result.metadata = metadata
@@ -234,6 +282,7 @@ def fix_asr_gs_result_missing_calculator(
 
 
 def fix_asr_gs_record_missing_calculator(record: Record) -> None:
+    """Fix asr gs calculate records that are missing calculator parameters."""
     if record.name == "asr.c2db.gs:calculate":
         if "calculator" not in record.parameters:
             record.parameters.calculator = get_old_defaults()["asr.c2db.gs:calculate"][
@@ -252,18 +301,17 @@ def get_relevant_resultfile_parameters(
     typing.Callable[[RecordContext], bool],
     str,
 ]:
-
     folder = path.parent
     result = read_json(path)
-    recipename = get_recipe_name_from_filename(path.name)
+    instruction_name = get_recipe_name_from_filename(path.name)
     atomic_structures = {
         atomsfilename: read(folder / atomsfilename).copy()
         for atomsfilename in ATOMSFILES
         if pathlib.Path(folder / atomsfilename).is_file()
     }
-    matcher = get_dependency_matcher_from_name(recipename)
+    matcher = get_dependency_matcher_from_name(instruction_name)
     rel_directory = str(folder.absolute().relative_to(directory))
-    return folder, result, recipename, atomic_structures, matcher, rel_directory
+    return folder, result, instruction_name, atomic_structures, matcher, rel_directory
 
 
 def set_context_dependencies(
@@ -278,7 +326,7 @@ def set_context_dependencies(
                     revision=None,
                 )
                 deps.append(dep)
-        if context.recipename == "asr.c2db.stiffness:main":
+        if context.instruction_name == "asr.c2db.stiffness:main":
             assert deps
         context.dependencies = Dependencies(deps)
     return contexts
@@ -296,7 +344,7 @@ def get_recipe_name_from_filename(filename: str) -> str:
 
 def make_dependency_matcher(
     patterns: typing.List[str],
-    attribute: str = "recipename",
+    attribute: str = "instruction_name",
 ) -> typing.Callable[[RecordContext], bool]:
     def dependency_matcher(context: RecordContext) -> bool:
         return any(
@@ -405,7 +453,7 @@ def get_dependency_matcher_from_name(
         dep = fix_recipe_name_if_recipe_has_been_moved(add_main_to_name_if_missing(dep))
         dependencies.append(dep)
 
-    return make_dependency_matcher(dependencies, "recipename")
+    return make_dependency_matcher(dependencies, "instruction_name")
 
 
 def get_resultfile_records_in_directory(directory: pathlib.Path) -> typing.List[Record]:
@@ -435,7 +483,7 @@ def get_contexts_in_directory(
             (
                 folder,
                 result,
-                recipename,
+                instruction_name,
                 atomic_structures,
                 matcher,
                 rel_directory,
@@ -444,10 +492,10 @@ def get_contexts_in_directory(
             print(error)
             continue
         uid = uids[path]
-        result = fix_asr_gs_result_missing_calculator(folder, result, recipename)
+        result = fix_asr_gs_result_missing_calculator(folder, result, instruction_name)
         context = RecordContext(
             result=result,
-            recipename=recipename,
+            instruction_name=instruction_name,
             atomic_structures=atomic_structures,
             uid=uid,
             dependency_matcher=matcher,
@@ -480,7 +528,7 @@ def convert_row_data_to_contexts(
 
     uids = generate_uids(filenames)
     for filename in filenames:
-        recipename = get_recipe_name_from_filename(filename)
+        instruction_name = get_recipe_name_from_filename(filename)
         result = data[filename]
 
         try:
@@ -488,7 +536,7 @@ def convert_row_data_to_contexts(
         except ModuleNotFoundError as err:
             print(err)
             continue
-        result = fix_result_object_missing_name(recipename, result)
+        result = fix_result_object_missing_name(instruction_name, result)
 
         path = pathlib.Path(directory) / filename
         atomic_structures = {}
@@ -510,10 +558,10 @@ def convert_row_data_to_contexts(
                 atomic_structures[name] = atoms
 
         uid = uids[filename]
-        matcher = get_dependency_matcher_from_name(recipename)
+        matcher = get_dependency_matcher_from_name(instruction_name)
         context = RecordContext(
             result=result,
-            recipename=recipename,
+            instruction_name=instruction_name,
             atomic_structures=atomic_structures,
             uid=uid,
             dependency_matcher=matcher,
@@ -526,9 +574,11 @@ def convert_row_data_to_contexts(
     return contexts
 
 
-def fix_result_object_missing_name(recipename: str, result: typing.Any) -> typing.Any:
+def fix_result_object_missing_name(
+    instruction_name: str, result: typing.Any
+) -> typing.Any:
     if isinstance(result, dict) and "__asr_name__" not in result:
-        result["__asr_name__"] = recipename
+        result["__asr_name__"] = instruction_name
         result = decode_object(result)
     return result
 
