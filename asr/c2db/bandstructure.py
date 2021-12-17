@@ -528,7 +528,7 @@ def main(
     from ase.dft.kpoints import BandPath
     import copy
     from asr.utils.gpw2eigs import gpw2eigs
-    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from asr.c2db.magnetic_anisotropy import main as mag_ani_main, get_spin_axis
 
     bsresult = calculate(
         atoms=atoms,
@@ -587,11 +587,12 @@ def main(
     npoints = len(path.kpts)
     s_mvk = np.array(s_kvm.transpose(2, 1, 0))
 
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+
     if s_mvk.ndim == 3:
         sz_mk = s_mvk[
             :,
-            get_spin_index(atoms=atoms,
-                           calculator=calculator),
+            mag_ani.spin_index(),
             :]  # take x, y or z component
     else:
         sz_mk = s_mvk
