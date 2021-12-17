@@ -24,6 +24,7 @@ from .migrate import (  # noqa
     mutation, Mutation, MutationCollection,
     RevisionHistory, Revision, NonMigratableRecord,
 )  # noqa
+from . import mutations  # noqa
 from .comparators import comparators  # noqa
 
 from .resources import Resources  # noqa
