@@ -528,7 +528,7 @@ def main(
     from ase.dft.kpoints import BandPath
     import copy
     from asr.utils.gpw2eigs import gpw2eigs
-    from asr.c2db.magnetic_anisotropy import main as mag_ani_main, get_spin_axis
+    from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 
     bsresult = calculate(
         atoms=atoms,
@@ -568,7 +568,8 @@ def main(
     # Add spin orbit correction
     bsresults = bs.todict()
 
-    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+    theta, phi = mag_ani.spin_angles()
 
     # We use a larger symmetry tolerance because we want to correctly
     # color spins which doesn't always happen due to slightly broken
@@ -586,8 +587,6 @@ def main(
     path = bsresults['path']
     npoints = len(path.kpts)
     s_mvk = np.array(s_kvm.transpose(2, 1, 0))
-
-    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
 
     if s_mvk.ndim == 3:
         sz_mk = s_mvk[
