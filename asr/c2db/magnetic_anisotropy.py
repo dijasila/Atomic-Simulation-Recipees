@@ -51,14 +51,6 @@ correlations, 2D Mater. 6 045018 (2019)""",
 )
 
 
-def get_spin_axis(atoms, calculator):
-    return main(atoms=atoms, calculator=calculator).spin_angles()
-
-
-def get_spin_index(atoms, calculator):
-    return main(atoms=atoms, calculator=calculator).spin_index()
-
-
 def spin_axis(theta, phi):
     if theta == 0:
         return 'z'
