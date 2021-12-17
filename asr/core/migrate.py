@@ -1,4 +1,32 @@
-"""Implements record mutation functionality."""
+"""Implements record mutation and migration functionality.
+
+This module implement the functionality that takes care of updating/changing
+records to be compatible with newer implementations of the accompanying
+instructions.
+
+The core functionality that takes care of changing the records is the `Mutation`
+object. The users implement mutations and the system takes care of the rest.
+This object is basically just a wrapper around a function that takes and input
+record and returns a "mutated" output record. The mutation object returns a new
+`Revision`.
+
+The `Revision` object contains a new randomly generated UID, together with the
+concrete changes that was made to a particular record. These changes are
+determined by introspecting the differences between the record before and after
+mutation.
+
+When a record is to be migrated it often happens that multiple mutations has to
+be applied in succession. This migration "strategy" is constructed by
+`migrate_record` which returns a `Migration` which stores the particular
+migrations and revisions along with the initial and migrated record that are
+needed to bring that particular record up to date.
+
+Finally, given multiple records you can use `make_migrations` to construct
+migrations for all of the input records. This returns a `MigrationReport` which
+contains summarizing information about all the migrations. The report also
+implements functionality to apply those migrations to an existing cache.
+
+"""
 import abc
 import copy
 import os
