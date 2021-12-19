@@ -48,7 +48,11 @@ doctest:
 python38:
   image: python:3.8
   stage: test
-  script: tox -e py38
+  timeout: 20m
+  script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
+    - tox -e py38
   artifacts:
     paths:
       - .tox/.coverage*
@@ -57,11 +61,16 @@ python38:
 python39:
   image: python:3.9
   stage: test
-  script: tox -e py39
+  timeout: 20m
+  script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
+    - tox -e py39
   artifacts:
     paths:
       - .tox/.coverage*
     expire_in: 3 weeks
+
 # -------------- Parallel tests --------------
 
 python39-mpi:
@@ -79,6 +88,8 @@ python38-gpaw:
   image: python:3.8
   stage: integrationtest
   script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - tox -e py38-gpaw
@@ -91,6 +102,8 @@ python39-gpaw:
   image: python:3.9
   stage: integrationtest
   script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - tox -e py39-gpaw

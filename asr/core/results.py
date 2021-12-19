@@ -30,6 +30,7 @@ import warnings
 
 def read_hacked_data(dct) -> 'ObjectDescription':
     """Fix hacked results files to contain necessary metadata."""
+    from .resultfile import fix_recipe_name_if_recipe_has_been_moved
     data = {}
     metadata = {}
     for key, value in dct.items():
@@ -39,7 +40,10 @@ def read_hacked_data(dct) -> 'ObjectDescription':
                 metadata[key_name] = value
         else:
             data[key] = value
-    recipe = get_recipe_from_name(dct['__asr_hacked__'])
+    asr_name = dct['__asr_hacked__']
+    asr_name = fix_recipe_name_if_recipe_has_been_moved(asr_name)
+    metadata['asr_name'] = asr_name
+    recipe = get_recipe_from_name(asr_name)
     if issubclass(recipe.returns, ASRResult):
         returns = recipe.returns
     else:
@@ -57,6 +61,7 @@ def read_hacked_data(dct) -> 'ObjectDescription':
 
 def read_old_data(dct) -> 'ObjectDescription':
     """Parse an old style result dictionary."""
+    from .resultfile import fix_recipe_name_if_recipe_has_been_moved
     metadata = {}
     data = {}
     for key, value in dct.items():
@@ -67,6 +72,9 @@ def read_old_data(dct) -> 'ObjectDescription':
         else:
             data[key] = value
     asr_name = metadata['asr_name']
+    asr_name = fix_recipe_name_if_recipe_has_been_moved(asr_name)
+    asr_name = asr_name.replace("@", ":")
+    metadata['asr_name'] = asr_name
     recipe = get_recipe_from_name(asr_name)
     if issubclass(recipe.returns, ASRResult):
         returns = recipe.returns
@@ -160,10 +168,13 @@ class ModuleNameIsCorrupt(Exception):
 
 
 def get_object_matching_obj_id(asr_obj_id):
+    from .resultfile import fix_recipe_name_if_recipe_has_been_moved
     try:
         module, name = asr_obj_id.split('::')
     except ValueError:
         module, name = asr_obj_id.split(':')
+
+    module = fix_recipe_name_if_recipe_has_been_moved(module)
 
     if module in {'None.None', '__main__'}:
         raise ModuleNameIsCorrupt(

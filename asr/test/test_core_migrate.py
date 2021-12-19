@@ -1,7 +1,7 @@
 import pytest
 import asr
 from asr.core.migrate import (
-    get_migrations, get_migration_generator, migrate_record
+    get_mutations, migrate_record
 )
 
 
@@ -11,24 +11,28 @@ def some_instruction():
     return 2
 
 
-@asr.migration
-def a_migration(record):
+sel = asr.Selector()
+sel.name = sel.EQ("asr.test.test_core_migrate:some_instruction")
+
+
+@asr.mutation(selector=sel)
+def a_mutation(record):
     """Set a_parameter to 2."""
     record.parameters.a_parameter = 2
     return record
 
 
 @pytest.mark.ci
-def test_migration_is_registered(asr_tmpdir):
-    migrations = get_migrations()
-    print(migrations)
-    assert a_migration in migrations
+def test_mutation_is_registered(asr_tmpdir):
+    mutations = get_mutations()
+    print(mutations)
+    assert a_mutation in mutations
 
 
 @pytest.mark.ci
 def test_migrate_record(asr_tmpdir):
-    make_migrations = get_migration_generator()
+    mutations = get_mutations()
     record = some_instruction.get()
-    record_migration = migrate_record(record, make_migrations)
-    assert record_migration
-    assert not record_migration.has_errors()
+    migration = migrate_record(record, mutations)
+    assert migration
+    assert not migration.has_errors()

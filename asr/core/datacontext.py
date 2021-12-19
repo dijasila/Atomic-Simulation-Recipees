@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from ase.utils import lazymethod, lazyproperty
+from .parameters import Parameters
 
 
 class RecordNotFound(LookupError):
@@ -34,7 +35,10 @@ class DataContext:
 
     @property
     def name(self):
-        return self.record.name
+        name = self.record.name
+        if ':' not in name:
+            name += ':main'
+        return name
 
     @property
     def result(self):
@@ -51,6 +55,8 @@ class DataContext:
         return self.get_record('asr.c2db.gs:calculate').parameters
 
     def get_record(self, name):
+        if ':' not in name:
+            name += ':main'
         records = self._dependencies()
         matches = [record for record in records if record.name == name]
 
@@ -124,7 +130,10 @@ class DataContext:
 
     def parameter_description(self, recipename, exclude=tuple()):
         from asr.database.browser import format_parameter_description
-        parameters = self.get_record(recipename).parameters
+        try:
+            parameters = self.get_record(recipename).parameters
+        except RecordNotFound:
+            parameters = Parameters({})
         desc = format_parameter_description(
             recipename,
             parameters,

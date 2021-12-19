@@ -1,21 +1,44 @@
 """ASR command line interface."""
+import importlib
+import os
+import pickle
+import sys
 from ast import literal_eval
 from contextlib import contextmanager
 from functools import partial
-import importlib
-import os
 from pathlib import Path
-import pickle
-import sys
-import traceback
-from typing import Union, Dict, Any, List, Tuple
-import asr
-from asr.core import (
-    chdir, ASRCommand, ASRResult, DictStr, set_defaults, get_cache, CommaStr,
-    get_recipes,
-)
+from typing import Any, Dict, List, Tuple, Union
+
 import click
 from ase.parallel import parprint
+
+import asr
+from asr.core import (ASRCommand, ASRResult, CommaStr, DictStr, chdir,
+                      get_cache, get_recipes, set_defaults)
+from asr.core.cache import MemoryBackend, Cache
+
+
+selection_argument = click.argument('selection', required=False, nargs=-1)
+
+formatting_option = click.option(
+    '-f', '--formatting',
+    default='run_specification.name run_specification.parameters result ',
+    type=str,
+)
+
+sorting_option = click.option(
+    '-s', '--sort',
+    default='run_specification.name',
+    type=str,
+)
+
+
+width_option = click.option(
+    '-w', '--width',
+    default=40, type=int,
+    help='Maximum width of column.',
+)
+
 
 prt = partial(parprint, flush=True)
 
@@ -322,10 +345,10 @@ def params(recipe, params: Union[str, None] = None):
 
 
 def _params(name: str, params: str):
-    from collections.abc import Sequence
-    from asr.core import read_json, write_json
     import copy
-    from asr.core import recursive_update
+    from collections.abc import Sequence
+
+    from asr.core import read_json, recursive_update, write_json
 
     all_recipes = recipes_as_dict()
     defparamdict = {recipe.name: recipe.defaults
@@ -390,13 +413,22 @@ def cache():
 
 
 def get_item(attrs: List[str], obj):
-
     for attr in attrs:
+        if attr.endswith("()"):
+            method = True
+            attr = attr[:-2]
+        else:
+            method = False
+
         if hasattr(obj, attr):
             obj = getattr(obj, attr)
+            if method:
+                obj = obj()
         else:
             try:
                 obj = obj[attr]
+                if method:
+                    obj = obj()
             except TypeError:
                 obj = None
 
@@ -413,15 +445,17 @@ def add_resultfile_records(directories):
     Search directories (or working directory if not given) for legacy results
     file, adding a Record to the cache for each file.
     """
-    from asr.core.resultfile import get_resultsfile_records
-    from .utils import chdir
+    from asr.core.resultfile import get_resultfile_records_in_directory
+
     if not directories:
-        directories = [Path('.').resolve()]
+        directories = [Path('.')]
+
+    directories = [pth.resolve() for pth in directories]
     for directory in directories:
         with chdir(directory):
             print(directory)
             cache = get_cache()
-            resultfile_records = get_resultsfile_records()
+            resultfile_records = get_resultfile_records_in_directory(directory)
 
             records_to_add = []
             for record in resultfile_records:
@@ -436,76 +470,36 @@ def add_resultfile_records(directories):
 
 
 @cache.command()
-@click.argument('selection', required=False, nargs=-1)
+@selection_argument
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 @click.option('-v', '--verbose', is_flag=True, help='Apply migrations.')
 @click.option('-e', '--show-errors', is_flag=True,
-              help='Show tracebacks for migration errors.')
+              help='Show tracebacks for mutation errors.')
 def migrate(selection, apply=False, verbose=False, show_errors=False):
     """Look for cache migrations."""
-    from asr.core.migrate import (
-        migrate_record,
-        get_migration_generator,
-    )
+    from asr.core.migrate import records_to_migration_report
 
     cache = get_cache()
     sel = make_selector_from_selection(cache, selection)
-    make_migrations = get_migration_generator()
-    record_migrations = []
-    erroneous_migrations = []
-    nup_to_date = 0
-    nmigrations = 0
-    nerrors = 0
 
-    for record in cache.select(selector=sel):
-        record_migration = migrate_record(record, make_migrations)
-        if record_migration:
-            nmigrations += 1
-            record_migrations.append(record_migration)
+    records = cache.select(selector=sel)
+    report = records_to_migration_report(records)
 
-        if record_migration.has_errors():
-            nerrors += 1
-            erroneous_migrations.append(record_migration)
-
-        if not (record_migration
-                or record_migration.has_errors()):
-            nup_to_date += 1
-
-    if nmigrations == 0 and nerrors == 0:
+    if report.n_applicable_migrations == 0 and report.n_erroneous_migrations == 0:
         print('All records up to date. No migrations to apply.')
         return
 
     if verbose:
-        nmigrations = len(record_migrations)
-        strs = []
-        for i, migration in enumerate(record_migrations):
-            strs.append(f'#{i} {migration}')
-        print('\n\n'.join(strs))
+        print(report.verbose)
         print()
 
     if show_errors:
-        print('Showing errors for migrations:')
-        for record_migration in erroneous_migrations:
-            print(f'Error for: {record_migration}')
-            for migration, error in record_migration.errors:
-                print(f'Error in: {migration}')
-                traceback.print_exception(
-                    type(error), error, error.__traceback__,
-                )
-                print()
+        print('Showing errors for mutations:')
+        print(report.print_errors())
 
-    print(
-        '\n'.join(
-            [
-                f'There are {nmigrations} unapplied migrations, '
-                f'{nerrors} erroneous migrations and '
-                f'{nup_to_date} records are up to date.',
-                '',
-            ]
-        )
-    )
+    print(report.summary)
 
-    if not apply and nmigrations > 0:
+    if not apply and report.n_applicable_migrations > 0:
         print(
             '\n'.join(
                 [
@@ -517,10 +511,10 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
         )
 
     if apply:
-        for record_migration in record_migrations:
-            print(record_migration)
+        for migration in report.applicable_migrations:
+            print(migration)
             print()
-            record_migration.apply(cache)
+            migration.apply(cache)
 
 
 @cache.command()
@@ -544,24 +538,19 @@ def make_selector_from_selection(cache, selection):
 
 
 @cache.command()
-@click.argument('selection', required=False, nargs=-1)
-@click.option('-f', '--formatting',
-              default=('run_specification.name '
-                       'run_specification.parameters '
-                       'result '
-                       ), type=str)
-@click.option('-s', '--sort',
-              default='run_specification.name', type=str)
-@click.option('-w', '--width', default=40, type=int,
-              help='Maximum width of column.')
-@click.option('-i', '--include-migrated', is_flag=True,
-              help='Also include migrated records.')
-def ls(selection, formatting, sort, width, include_migrated):
+@selection_argument
+@formatting_option
+@sorting_option
+@width_option
+def ls(selection, formatting, sort, width):
     """List records in cache."""
     cache = get_cache()
     selector = make_selector_from_selection(cache, selection)
-
     records = cache.select(selector=selector)
+    print_record_listing(formatting, sort, width, records)
+
+
+def print_record_listing(formatting, sort, width, records):
     records = sorted(records, key=lambda x: get_item(sort.split('.'), x))
     items = formatting.split()
     formats = []
@@ -582,7 +571,7 @@ def ls(selection, formatting, sort, width, include_migrated):
             if not fmt:
                 fmt = ''
             text = format(obj, fmt)
-            if len(text) > width:
+            if width > 0 and len(text) > width:
                 text = text[:width] + '...'
             row.append(text)
         rows.append(row)
@@ -599,7 +588,7 @@ def ls(selection, formatting, sort, width, include_migrated):
 
 
 @cache.command()
-@click.argument('selection', required=False, nargs=-1)
+@selection_argument
 @click.option('-z', '--dry-run', is_flag=True,
               help='Print what will happen without doing anything.')
 def rm(selection, dry_run):
@@ -622,7 +611,7 @@ def rm(selection, dry_run):
 
 
 @cache.command()
-@click.argument('selection', required=False, nargs=-1)
+@selection_argument
 def detail(selection):
     """Detail records."""
     cache = get_cache()
@@ -788,8 +777,8 @@ def graph(draw=False, labels=False, saveto=None):
 
 
 def make_panels(record, cache):
-    from asr.core.material import make_panel_figures
     from asr.core.datacontext import DataContext
+    from asr.core.material import make_panel_figures
     result = record.result
     formats = result.get_formats()
 
@@ -848,7 +837,118 @@ def results(selection, show):
 @cli.group()
 def database():
     """ASR material project database."""
+
+
+@database.group(name="cache")
+def db_cache():
+    """Inspect caches in database rows."""
     pass
+
+
+@db_cache.command(name="ls")
+@click.argument("database")
+@click.option("--db-selection", help="ASE DB query.")
+@selection_argument
+@formatting_option
+@width_option
+@sorting_option
+def db_cache_ls(database, db_selection, selection, formatting, width, sort):
+    from asr.database import connect
+    db = connect(database)
+    rows = db.select(db_selection)
+    found_anything = False
+    for row in rows:
+        records = get_record_selection_from_row(selection, row)
+        if records:
+            found_anything = True
+            print(f"Showing records for row.id={row.id}")
+            print_record_listing(
+                formatting, sort, width, records,
+            )
+    if not found_anything:
+        print("Found no records matching query in any rows.")
+
+
+def get_record_selection_from_row(selection, row):
+    records = row.records
+    cache = Cache(backend=MemoryBackend())
+    for record in records:
+        cache.add(record)
+    selector = make_selector_from_selection(cache, selection)
+    records = cache.select(selector=selector)
+    return records
+
+
+@db_cache.command(name="detail")
+@click.argument("database")
+@click.option("--db-selection", help="ASE DB query.")
+@selection_argument
+def db_cache_detail(database, db_selection, selection):
+    from asr.database import connect
+    db = connect(database)
+    rows = db.select(db_selection)
+    for row in rows:
+        print(f"Showing records for row.id={row.id}")
+        records = get_record_selection_from_row(selection, row)
+        for record in records:
+            print(record)
+
+
+@database.command()
+@click.argument("databasein", type=str)
+@click.argument("databaseout", type=str)
+def collapse(databasein: str, databaseout: str) -> None:
+    """Collapse database and remove second class materials.
+
+    Takes a database that contains both first and second class materials and
+    produces a database that contain only the first class material rows but has
+    added the data from all child materials to the first class materials rows to
+    make a later migration possible.
+
+    This is done by considering the __children__ data entry of the first class
+    material rows which contains the directories and UIDs of child materials
+    which could be either a first class or a second class material (but
+    typically second class materials). The children UIDS are used to find the
+    corresponding database rows in the input database. The data of the children
+    rows are then saved into a dictionary where keys are the children material
+    UIDS and the values are dict(directory=child_directory, data=child_data)
+    dictionaries under the key __children_data__ in each data attribute of every row.
+
+    """
+    from asr.database.migrate import collapse_database
+    collapse_database(databasein, databaseout)
+
+
+@database.command()
+@click.argument("databasein", type=str)
+@click.argument("databaseout", type=str)
+def convert(databasein: str, databaseout: str) -> None:
+    """Convert resultfile-based DATABASEIN to record-based database DATABASEOUT.
+
+    A resultfile based database is a database where resultfiles are stored in
+    the data object of each row and the keys are the filenames and the values
+    are the actual results, ie. row.data = {"results-asr.gs.json": Result(...),
+    "results-asr.bandstructure.json": ..., ...}
+
+    This row is then converted into a database where the resultfiles has been
+    converted to records and stored under the records key in the data object of
+    the database, ie. row.data = {"records": [record1, record2, ...], ...}.
+
+    Any other files that were associated with the row like info.json,
+    params.json, links.json etc, will not be touched by this tool.
+
+    """
+    from asr.database.migrate import convert_database
+    convert_database(databasein, databaseout)
+
+
+@database.command(name="migrate")
+@click.argument("databasein", type=str)
+@click.argument("databaseout", type=str)
+def migrate_database_cli(databasein: str, databaseout: str) -> None:
+    """Migrate records in DATABASEIN and output migrated database in DATABASEOUT."""
+    from asr.database.migrate import migrate_database
+    migrate_database(databasein, databaseout)
 
 
 @database.command()

@@ -40,7 +40,7 @@ sel.parameters = sel.AND(
 )
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def remove_emptybands_and_make_bsrestart(record):
     """Remove param="emptybands" and make param='bsrestart'."""
     record.parameters.bsrestart = {
@@ -478,12 +478,12 @@ class Result(ASRResult):
 
 
 sel = Selector()
-sel.name = sel.EQ('asr.c2db.bandstructure')
+sel.name = sel.EQ('asr.c2db.bandstructure:main')
 sel.version = sel.EQ(-1)
 sel.parameters = sel.NOT(sel.CONTAINS('bsrestart'))
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def set_bsrestart_from_dependencies(record):
     """Construct "bsrestart" parameters from "emptybands" parameter."""
     emptybands = (

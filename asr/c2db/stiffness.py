@@ -198,16 +198,28 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
+sel.parameters.dependency_parameters = sel.CONTAINS("asr.c2db.relax:main")
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def transform_stiffness_resultfile_record(record):
     """Remove fixcell and allow_symmetry_breaking from dependency_parameters."""
     dep_params = record.parameters['dependency_parameters']
-    relax_dep_params = dep_params['asr.c2db.relax']
-    delparams = {'fixcell', 'allow_symmetry_breaking'}
+    relax_dep_params = dep_params['asr.c2db.relax:main']
+    delparams = {
+        'fixcell',
+        'allow_symmetry_breaking',
+        'atoms',
+        'tmp_atoms',
+        'tmp_atoms_file',
+    }
     for param in delparams:
-        del relax_dep_params[param]
+        if param in relax_dep_params:
+            del relax_dep_params[param]
+    if "fmax" not in relax_dep_params:
+        record.parameters.fmax = 0.01  # 0.01 is a historical constant
+    if "enforce_symmetry" not in relax_dep_params:
+        record.parameters.enforce_symmetry = True  # True because of history
     return record
 
 
@@ -219,10 +231,15 @@ def transform_stiffness_resultfile_record(record):
 @asr.calcopt
 @option('--strain-percent', help='Magnitude of applied strain.', type=float)
 @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
+@option('--fmax', help='Maximum force allowed.', type=float)
+@option('--enforce-symmetry/--dont-enforce-symmetry',
+        help='Symmetrize forces and stresses.', is_flag=True)
 def main(atoms: Atoms,
          calculator: dict = relax.defaults.calculator,
          strain_percent: float = 1.0,
-         d3: bool = False) -> Result:
+         d3: bool = False,
+         fmax: float = relax.defaults.fmax,
+         enforce_symmetry: bool = True) -> Result:
     """Calculate stiffness tensor."""
     from asr.setup.strains import main as make_strained_atoms
     from asr.setup.strains import get_relevant_strains
@@ -247,6 +264,9 @@ def main(atoms: Atoms,
                 calculator=calculator,
                 fixcell=True,
                 allow_symmetry_breaking=True,
+                d3=d3,
+                fmax=fmax,
+                enforce_symmetry=enforce_symmetry,
             )
             stress = relaxresult.stress
             dstress += stress * sign

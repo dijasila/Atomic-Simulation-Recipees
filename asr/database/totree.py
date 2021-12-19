@@ -33,13 +33,7 @@ def make_folder_tree(*, folders, chunks,
                 makedirs(folder)
             write(folder / atomsfile, row.toatoms())
 
-        from asr.database.fromtree import serializer
-        records = row.data.get('records')
-
-        if records is not None:
-            records = serializer.deserialize(records)
-        else:
-            records = []
+        records = row.records
 
         from asr.core import get_cache, chdir
 
@@ -137,7 +131,7 @@ def main(
         chunks: int = 1, copy: bool = False,
         patterns: str = '*', update_tree: bool = False) -> ASRResult:
     from pathlib import Path
-    from ase.db import connect
+    from asr.database import connect
 
     if selection:
         print(f'Selecting {selection}')

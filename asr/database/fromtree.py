@@ -5,7 +5,7 @@ import numbers
 import numpy as np
 from ase import Atoms
 from ase.io import read
-from ase.db import connect
+from asr.database import connect
 from asr.core import chdir, read_json, ASRResult
 from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import get_uid_of_atoms, \
@@ -277,13 +277,15 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
         Key-value-pairs.
     data: dict
         Dictionary containing data files and links.
+    records: List[Record]
+        Record assigned to row.
 
     """
     from fnmatch import fnmatch
 
     with chdir(folder.resolve()):
         if not Path(atomsname).is_file():
-            return None, None, None
+            return None, None, None, None
 
         atoms = read(atomsname, parallel=False)
 
@@ -300,8 +302,8 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
             records = cache.select(selector=sel)
             for record in records:
                 kvp.update(get_key_value_pairs(record.result))
-            if records:
-                data['records'] = serializer.serialize(records)
+        else:
+            records = []
 
         for name in Path().glob('*'):
             if name.is_dir() and any(fnmatch(name, pattern)
@@ -338,7 +340,7 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
         if not data['__children__']:
             del data['__children__']
 
-    return atoms, kvp, data
+    return atoms, kvp, data, records
 
 
 def make_data_identifiers(filenames: List[str]):
@@ -386,7 +388,7 @@ def _collect_folders(folders: List[str],
                      jobid: int = None):
     """Collect `myfolders` to `mydbname`."""
     nfolders = len(folders)
-    with connect(dbname, serial=True) as db:
+    with connect(dbname) as db:
         for ifol, folder in enumerate(folders):
             string = f'Collecting folder {folder} ({ifol + 1}/{nfolders})'
             if jobid is not None:
@@ -394,7 +396,7 @@ def _collect_folders(folders: List[str],
             else:
                 print(string)
 
-            atoms, key_value_pairs, data = collect_folder(
+            atoms, key_value_pairs, data, records = collect_folder(
                 Path(folder),
                 atomsname,
                 patterns,
@@ -406,7 +408,12 @@ def _collect_folders(folders: List[str],
             identifier_kvp = make_data_identifiers(data.keys())
             key_value_pairs.update(identifier_kvp)
             try:
-                db.write(atoms, data=data, **key_value_pairs)
+                db.write(
+                    atoms,
+                    data=data,
+                    records=records,
+                    key_value_pairs=key_value_pairs,
+                )
             except Exception:
                 print(f'folder={folder}')
                 print(f'atoms={atoms}')
@@ -466,16 +473,22 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
     print(f'Merging separate database files to {dbname}',
           flush=True)
     nmat = 0
-    with connect(dbname, serial=True) as db2:
+    with connect(dbname) as db2:
         for jobid in range(njobs):
             jobdbname = f'{dbname}.{jobid}.db'
             assert Path(jobdbname).is_file()
             print(f'Merging {jobdbname} into {dbname}', flush=True)
-            with connect(f'{jobdbname}', serial=True) as db:
+            with connect(f'{jobdbname}') as db:
                 for row in db.select():
                     kvp = row.get('key_value_pairs', {})
-                    data = row.get('data')
-                    db2.write(row.toatoms(), data=data, **kvp)
+                    data = row.data
+                    records = row.records
+                    db2.write(
+                        row.toatoms(),
+                        data=data,
+                        records=records,
+                        key_value_pairs=kvp,
+                    )
                     nmat += 1
     print('Done.', flush=True)
     nmatdb = len(db2)

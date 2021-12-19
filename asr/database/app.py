@@ -100,12 +100,13 @@ class App(DBApp):
                 ),
             )
 
-        @route("/<project>/file/<uid>/<name>")
-        def file(project, uid, name):
-            assert project in self.projects
+        @route("/<project_name>/file/<uid>/<name>")
+        def file(project_name, uid, name):
+            assert project_name in self.projects
+            project = self.projects[project_name]
             if project.tmpdir is None:
                 abort(Response("Project has no tmpdir, cannot locate file."))
-            path = project.tmpdir / f"{project}/{uid}-{name}"
+            path = project.tmpdir / f"{project_name}/{uid}-{name}"
             return send_file(str(path))
 
         @self.flask.template_filter()
@@ -322,6 +323,7 @@ def main(
 def set_tmpdir_on_projects_if_missing(tmpdir, projects):
     for project in projects:
         if project.tmpdir is None:
+            print(f"Setting tmpdir={tmpdir} for project.name={project.name}")
             project.tmpdir = tmpdir
 
 
@@ -396,6 +398,7 @@ def get_key_descriptions_from_file(extra_kvp_descriptions_file):
 def check_rows_of_all_projects(dbapp):
     import traceback
 
+    dbapp.initialize()
     flask = dbapp.flask
     projects = dbapp.projects
 

@@ -1,8 +1,8 @@
 from pathlib import Path
-import pytest
-from ase.db import connect
 
-from asr.database.app import App
+import pytest
+
+from asr.database import App, connect
 from asr.database.project import DatabaseProject
 from asr.test.materials import Ag
 
@@ -74,7 +74,7 @@ def test_add_extra_kvp_descriptions(project):
 
 @pytest.mark.ci
 def test_app_running(project, mocker):
-    from asr.database.app import run_app, App
+    from asr.database.app import App, run_app
 
     # app.run blocks, so we patch it to check the other logic of the function.
     mocker.patch.object(App, "run")
