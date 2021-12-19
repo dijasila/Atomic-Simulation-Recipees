@@ -51,23 +51,6 @@ correlations, 2D Mater. 6 045018 (2019)""",
 )
 
 
-def get_spin_axis(atoms, calculator):
-    anis = main(atoms=atoms, calculator=calculator)
-    return anis['theta'] * 180 / pi, anis['phi'] * 180 / pi
-
-
-def get_spin_index(atoms, calculator):
-    anis = main(atoms=atoms, calculator=calculator)
-    axis = anis['spin_axis']
-    if axis == 'z':
-        index = 2
-    elif axis == 'y':
-        index = 1
-    else:
-        index = 0
-    return index
-
-
 def spin_axis(theta, phi):
     if theta == 0:
         return 'z'
@@ -121,6 +104,19 @@ class Result(ASRResult):
     }
 
     formats = {"webpanel2": webpanel}
+
+    def spin_index(self):
+        axis = self['spin_axis']
+        if axis == 'z':
+            index = 2
+        elif axis == 'y':
+            index = 1
+        else:
+            index = 0
+        return index
+
+    def spin_angles(self):
+        return self['theta'] * 180 / pi, self['phi'] * 180 / pi
 
 
 @command('asr.c2db.magnetic_anisotropy')

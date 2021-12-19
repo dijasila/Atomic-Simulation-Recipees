@@ -8,6 +8,7 @@ from asr.core import (
 )
 from asr.database.browser import make_panel_description, describe_entry
 from asr.c2db.gs import calculate as gscalculate
+from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 
 panel_description = make_panel_description(
     """
@@ -67,13 +68,15 @@ def refine(
     """Take a bandstructure and calculate more kpts around the vbm and cbm."""
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
     import os.path
     set_default(settings)
     socs = [True]
     res = gscalculate(atoms=atoms, calculator=calculator)
+
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+
     for soc in socs:
-        theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+        theta, phi = mag_ani.spin_angles()
         eigenvalues, efermi = calc2eigs(
             res.calculation.load(parallel=False),
             soc=soc,
@@ -95,6 +98,7 @@ def refine(
             refined_calculation = preliminary_refine(
                 atoms,
                 calculator,
+                mag_ani=mag_ani,
                 calc=res.calculation.load(),
                 soc=soc,
                 bandtype=bt,
@@ -118,11 +122,11 @@ def get_name(soc, bt):
     return 'em_circle_{}_{}'.format(bt, ['nosoc', 'soc'][soc])
 
 
-def preliminary_refine(atoms, calculator, calc, soc=True, bandtype=None,
+def preliminary_refine(atoms, calculator, calc, mag_ani, soc=True, bandtype=None,
                        settings=None):
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
+
     # Get calc and current kpts
     ndim = calc.atoms.pbc.sum()
 
@@ -130,10 +134,7 @@ def preliminary_refine(atoms, calculator, calc, soc=True, bandtype=None,
     cell_cv = calc.atoms.get_cell()
 
     # Find energies and VBM/CBM
-    theta, phi = get_spin_axis(
-        atoms=atoms,
-        calculator=calculator,
-    )
+    theta, phi = mag_ani.spin_angles()
     e_skn, efermi = calc2eigs(calc, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
@@ -171,14 +172,13 @@ def preliminary_refine(atoms, calculator, calc, soc=True, bandtype=None,
 
 
 def get_gapskn(
-        atoms, calculator, calculation, fallback_calculation=None, soc=True):
+        atoms, calculator, calculation, mag_ani, fallback_calculation=None, soc=True):
     from ase.dft.bandgap import bandgap
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
     from asr.utils.gpw2eigs import calc2eigs
     from ase.parallel import parprint
 
     calc = calculation.load()
-    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+    theta, phi = mag_ani.spin_angles()
     e_skn, efermi = calc2eigs(calc, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis, :, :]
@@ -188,7 +188,6 @@ def get_gapskn(
 
     if np.allclose(gap, 0) and fallback_calculation is not None:
         parprint("Something went wrong. Using fallback calc.")
-        theta, phi = get_spin_axis()
         e_skn, efermi = calc2eigs(
             fallback_calculation.load(), soc=soc, theta=theta, phi=phi)
         if e_skn.ndim == 2:
@@ -231,6 +230,8 @@ def nonsc_sphere(
     calc = calculation.load()
     ndim = calc.atoms.pbc.sum()
 
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+
     # Check that 1D: Only z-axis, 2D: Only x- and y-axis
     if ndim == 1:
         pbc = calc.atoms.pbc
@@ -250,7 +251,7 @@ def nonsc_sphere(
     gap, (s1, k1, n1), (s2, k2, n2) = get_gapskn(
         atoms, calculator,
         calculation,
-        fallback_calculation, soc=soc)
+        fallback_calculation=fallback_calculation, soc=soc, mag_ani=mag_ani)
 
     k1_c = k_kc[k1]
     k2_c = k_kc[k2]
@@ -858,8 +859,10 @@ def main(
 ) -> ASRResult:
     from asr.utils.gpw2eigs import calc2eigs
     from ase.dft.bandgap import bandgap
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
     import traceback
+
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+
     res = gscalculate(atoms=atoms, calculator=calculator)
 
     calculations = refine(atoms=atoms, calculator=calculator, settings=settings)
@@ -867,7 +870,7 @@ def main(
 
     good_results = {}
     for soc in socs:
-        theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+        theta, phi = mag_ani.spin_angles()
         eigenvalues, efermi = calc2eigs(
             res.calculation.load(),
             soc=soc,
@@ -886,6 +889,7 @@ def main(
                 masses = embands(
                     atoms=atoms,
                     calculator=calculator,
+                    mag_ani=mag_ani,
                     gpw=gpw2,
                     soc=soc,
                     bandtype=bt)
@@ -955,7 +959,7 @@ def unpack_masses(masses, soc, bt, results_dict):
         results_dict[index][prefix + 'wideareaMAE'] = out_dict['wideareaMAE']
 
 
-def embands(atoms, calculator, gpw, soc, bandtype, delta=0.1):
+def embands(atoms, calculator, gpw, soc, bandtype, mag_ani, delta=0.1):
     """Effective masses for bands within delta of extrema.
 
     Parameters
@@ -977,11 +981,10 @@ def embands(atoms, calculator, gpw, soc, bandtype, delta=0.1):
     from asr.utils.gpw2eigs import gpw2eigs
     from ase.dft.kpoints import kpoint_convert
     from ase.units import Bohr, Hartree
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
     calc = GPAW(gpw, txt=None)
     ndim = calc.atoms.pbc.sum()
 
-    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+    theta, phi = mag_ani.spin_angles()
     e_skn, efermi = gpw2eigs(gpw, soc=soc, theta=theta, phi=phi)
     if e_skn.ndim == 2:
         e_skn = e_skn[np.newaxis]
@@ -1033,11 +1036,12 @@ def calculate_bs_along_emass_vecs(
     from ase.units import Hartree, Bohr
     from ase.dft.kpoints import kpoint_convert
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
     from asr.core import file_barrier
     from gpaw import GPAW
     from gpaw.mpi import serial_comm
     cell_cv = calc.get_atoms().get_cell()
+
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
 
     results_dicts = []
     for u, mass in enumerate(masses_dict['mass_u']):
@@ -1073,11 +1077,11 @@ def calculate_bs_along_emass_vecs(
 
         calc_serial = GPAW(name, txt=None, communicator=serial_comm)
         k_kc = calc_serial.get_bz_k_points()
-        theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+        theta, phi = mag_ani.spin_angles()
         e_km, _, s_kvm = calc2eigs(calc_serial, soc=soc, return_spin=True,
                                    theta=theta, phi=phi)
 
-        sz_km = s_kvm[:, get_spin_index(atoms=atoms, calculator=calculator), :]
+        sz_km = s_kvm[:, mag_ani.spin_index(), :]
 
         dct = dict(bt=bt,
                    kpts_kc=k_kc,

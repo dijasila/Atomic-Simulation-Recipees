@@ -77,12 +77,12 @@ def calculate(
     import os
     from gpaw.berryphase import parallel_transport
     from gpaw.mpi import world
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
+    from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 
     nd = sum(atoms.pbc)
 
     """Find the easy axis of magnetic materials"""
-    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+    theta, phi = mag_ani_main(atoms=atoms, calculator=calculator).spin_angles()
 
     results = {}
     results['phi0_km'] = None
