@@ -243,7 +243,7 @@ def fix_asr_gs_result_missing_calculator(
     result: typing.Any,
     instruction_name: str,
 ) -> typing.Any:
-    """Fix ground state "calculate" results that didn't log the calculation result.
+    """Fix ground state "calculate" results that didn't store the result as an ASRResult.
 
     Parameters
     ----------
@@ -282,7 +282,10 @@ def fix_asr_gs_result_missing_calculator(
 
 
 def fix_asr_gs_record_missing_calculator(record: Record) -> None:
-    """Fix asr gs calculate records that are missing calculator parameters."""
+    """Fix asr gs calculate records that are missing calculator parameters.
+
+    Assumes that the missing calculator is given by the old default value.
+    """
     if record.name == "asr.c2db.gs:calculate":
         if "calculator" not in record.parameters:
             record.parameters.calculator = get_old_defaults()["asr.c2db.gs:calculate"][
@@ -290,33 +293,21 @@ def fix_asr_gs_record_missing_calculator(record: Record) -> None:
             ]
 
 
-def get_relevant_resultfile_parameters(
-    path: pathlib.Path,
-    directory: pathlib.Path,
-) -> typing.Tuple[
-    pathlib.Path,
-    typing.Any,
-    str,
-    typing.Dict[str, Atoms],
-    typing.Callable[[RecordContext], bool],
-    str,
-]:
-    folder = path.parent
-    result = read_json(path)
-    instruction_name = get_recipe_name_from_filename(path.name)
-    atomic_structures = {
-        atomsfilename: read(folder / atomsfilename).copy()
-        for atomsfilename in ATOMSFILES
-        if pathlib.Path(folder / atomsfilename).is_file()
-    }
-    matcher = get_dependency_matcher_from_name(instruction_name)
-    rel_directory = str(folder.absolute().relative_to(directory))
-    return folder, result, instruction_name, atomic_structures, matcher, rel_directory
-
-
 def set_context_dependencies(
     contexts: typing.List[RecordContext],
 ) -> typing.List[RecordContext]:
+    """Use dependency matchers on contexts to set context.dependencies attributes.
+
+    Parameters
+    ----------
+    contexts : typing.List[RecordContext]
+        Input context where dependencies haven't been set yet.
+
+    Returns
+    -------
+    typing.List[RecordContext]
+        Output contexts where the concrete dependencies attribute has been set.
+    """
     for context in contexts:
         deps = []
         for context2 in contexts:
@@ -333,6 +324,12 @@ def set_context_dependencies(
 
 
 def get_recipe_name_from_filename(filename: str) -> str:
+    """Get recipe/instruction name from resultsfile filename.
+
+    Takes core of old files with @ and add "main" to name if missing. Also
+    takes care of adding c2db to names that represent instructions that were
+    moved to the c2db sub-package.
+    """
     from os.path import splitext
 
     name = splitext(filename.split("-")[1])[0]
@@ -346,6 +343,26 @@ def make_dependency_matcher(
     patterns: typing.List[str],
     attribute: str = "instruction_name",
 ) -> typing.Callable[[RecordContext], bool]:
+    """Make dependency matcher.
+
+    Helper function for making callables that can be used as dependency
+    matchers for contexts. The callable will use get `attribute` from another
+    context and see if it matches with any of the `patterns`.
+
+    Parameters
+    ----------
+    patterns : typing.List[str]
+        fnmatch patterns to match to "attribute" on other context.
+        E.g. ["*asr.gs*", "asr.magnetic_anis*"].
+    attribute : str, optional
+        Try matching patterns with this attribute, by default "instruction_name".
+
+    Returns
+    -------
+    typing.Callable[[RecordContext], bool]
+        A callable that can be used as dependency matcher.
+    """
+
     def dependency_matcher(context: RecordContext) -> bool:
         return any(
             fnmatch.fnmatch(str(getattr(context, attribute)), pattern)
@@ -358,7 +375,18 @@ def make_dependency_matcher(
 def get_dependency_matcher_from_name(
     name: str,
 ) -> typing.Callable[[RecordContext], bool]:
+    """Map instruction name to a dependency matcher.
 
+    Parameters
+    ----------
+    name : str
+        The instruction name.
+
+    Returns
+    -------
+    typing.Callable[[RecordContext], bool]
+        The associated dependency matcher.
+    """
     # Some manually implemented dependencies
     if name == "asr.c2db.piezoelectrictensor:main":
         patterns = [
@@ -479,37 +507,63 @@ def get_contexts_in_directory(
     uids = generate_uids(resultsfiles)
     contexts = []
     for path in resultsfiles:
+        uid = uids[path]
         try:
-            (
-                folder,
-                result,
-                instruction_name,
-                atomic_structures,
-                matcher,
-                rel_directory,
-            ) = get_relevant_resultfile_parameters(path, directory)
+            context = get_context_from_path_to_resultfile(path, uid, directory)
         except ModuleNotFoundError as error:
             print(error)
             continue
-        uid = uids[path]
-        result = fix_asr_gs_result_missing_calculator(folder, result, instruction_name)
-        context = RecordContext(
-            result=result,
-            instruction_name=instruction_name,
-            atomic_structures=atomic_structures,
-            uid=uid,
-            dependency_matcher=matcher,
-            dependencies=None,
-            directory=rel_directory,
-            path=path,
-        )
         contexts.append(context)
     return contexts
+
+
+def get_context_from_path_to_resultfile(
+    path: pathlib.Path, uid: str, directory: pathlib.Path
+) -> RecordContext:
+    result = read_json(path)
+    instruction_name = get_recipe_name_from_filename(path.name)
+    folder = path.parent
+    atomic_structures = {
+        atomsfilename: read(folder / atomsfilename).copy()
+        for atomsfilename in ATOMSFILES
+        if pathlib.Path(folder / atomsfilename).is_file()
+    }
+    matcher = get_dependency_matcher_from_name(instruction_name)
+    rel_directory = str(folder.absolute().relative_to(directory))
+    result = fix_asr_gs_result_missing_calculator(folder, result, instruction_name)
+    context = RecordContext(
+        result=result,
+        instruction_name=instruction_name,
+        atomic_structures=atomic_structures,
+        uid=uid,
+        dependency_matcher=matcher,
+        dependencies=None,
+        directory=rel_directory,
+        path=path,
+    )
+    return context
 
 
 def convert_row_data_to_contexts(
     data: typing.Dict[str, typing.Any], directory: str
 ) -> typing.List[RecordContext]:
+    """Convert row data to contexts.
+
+    If it exists, utilizes __children_data__ set by the collapse tool to also construct
+    contexts from child materials.
+
+    Parameters
+    ----------
+    data : typing.Dict[str, typing.Any]
+        A row data object.
+    directory : str
+        The directory that the row originally was collected from.
+
+    Returns
+    -------
+    typing.List[RecordContext]
+        The collected set of contexts.
+    """
     filenames = []
     for filename in data:
         is_results_file = filename.startswith("results-") and filename.endswith(".json")
@@ -577,6 +631,20 @@ def convert_row_data_to_contexts(
 def fix_result_object_missing_name(
     instruction_name: str, result: typing.Any
 ) -> typing.Any:
+    """Check if result is dict and missing name, if yes, fix.
+
+    Parameters
+    ----------
+    instruction_name : str
+        The name of the instruction
+    result : typing.Any
+        The result.
+
+    Returns
+    -------
+    typing.Any
+        A potentially fixed name.
+    """
     if isinstance(result, dict) and "__asr_name__" not in result:
         result["__asr_name__"] = instruction_name
         result = decode_object(result)
@@ -586,6 +654,18 @@ def fix_result_object_missing_name(
 def make_records_from_contexts(
     contexts: typing.List[RecordContext],
 ) -> typing.List[Record]:
+    """Convert record contexts to records.
+
+    Parameters
+    ----------
+    contexts : typing.List[RecordContext]
+        Input contexts.
+
+    Returns
+    -------
+    typing.List[Record]
+        Output records.
+    """
     records = []
     for context in contexts:
         record = construct_record_from_context(context)
@@ -596,7 +676,20 @@ def make_records_from_contexts(
 
 
 def inherit_dependency_parameters(records: typing.List[Record]) -> typing.List[Record]:
+    """Add a parameter 'dependency_parameters' with parameters of dependencies.
 
+    Uses context.dependencies and stores all dependency parameters (recursively).
+
+    Parameters
+    ----------
+    records : typing.List[Record]
+        Input records where dependencies have been set.
+
+    Returns
+    -------
+    typing.List[Record]
+        Output records where a the new parameter 'dependency_parameters' has been set.
+    """
     for record in records:
         deps = record.dependencies
         dep_params = get_dependency_parameters(deps, records)
@@ -609,6 +702,25 @@ def inherit_dependency_parameters(records: typing.List[Record]) -> typing.List[R
 def get_dependency_parameters(
     dependencies: typing.Optional[Dependencies], records: typing.List[Record]
 ) -> Parameters:
+    """Get parameters of dependencies (recursively).
+
+    Returns a new parameters object with key equalling the dependency
+    instruction names like 'asr.c2db.gs:calculate' and values being the
+    dependency parameters.
+
+    Parameters
+    ----------
+    dependencies : typing.Optional[Dependencies]
+        Find parameters for these dependencies.
+    records : typing.List[Record]
+        Look for the parameters in these records.
+
+    Returns
+    -------
+    "Parameters"
+        Dependency parameters where key=instruction_name and values
+        are the dependency parameters.
+    """
     params = Parameters({})
     if dependencies is None:
         return params
