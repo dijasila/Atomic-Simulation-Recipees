@@ -24,6 +24,12 @@ class SelectorSetter:
             value,
         )
 
+    def __getitem__(self, item):
+        return self.__getattr__(item)
+
+    def __setitem__(self, item, value):
+        return self.__setattr__(item, value)
+
 
 class Selector:
 

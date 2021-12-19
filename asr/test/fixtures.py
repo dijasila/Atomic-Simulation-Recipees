@@ -1,17 +1,21 @@
 """Module containing the implementations of all ASR pytest fixtures."""
-import numpy as np
-from ase.parallel import world, broadcast
-from asr.core import write_json
-from .materials import std_test_materials, BN
-import pytest
 import datetime
-from _pytest.tmpdir import _mk_tmp
 from pathlib import Path
-from asr.core import get_cache
-from asr.core.specification import construct_run_spec
-from asr.core.root import Repository
-from asr.core.record import Record
+from typing import List, Optional
+
+import numpy as np
+import pytest
+from _pytest.tmpdir import _mk_tmp
+from ase.parallel import broadcast, world
+
+from asr.core import get_cache, write_json
 from asr.core.dependencies import Dependencies
+from asr.core.record import Record
+from asr.core.root import Repository
+from asr.core.specification import construct_run_spec
+from asr.database import App, DatabaseProject
+
+from .materials import BN, std_test_materials
 
 
 @pytest.fixture()
@@ -91,37 +95,48 @@ def asr_tmpdir(request, tmp_path_factory):
         yield path
 
 
-def _get_webcontent(dbname="database.db"):
+def _get_webcontent(dbname="database.db", row_id=1):
     from asr.database.fromtree import main as fromtree
-    # from asr.database.material_fingerprint import main as mf
 
+    # from asr.database.material_fingerprint import main as mf
     # mf()
     fromtree(recursive=True)
     content = ""
-    from asr.database import DatabaseProject, App
     if world.rank == 0:
-        dbapp = App()
         tmpdir = Path("tmp/")
         tmpdir.mkdir()
         project = DatabaseProject.from_database(dbname)
         project.tmpdir = tmpdir
-        dbapp.add_project(project)
-        dbapp.initialize()
-        flask = dbapp.flask
-        flask.testing = True
-        with flask.test_client() as c:
-            project = dbapp.projects["database.db"]
-            db = project["database"]
-            uid_key = project["uid_key"]
-            row = db.get(id=1)
-            uid = row.get(uid_key)
-            url = f"/database.db/row/{uid}"
-            content = c.get(url).data.decode()
-            content = content.replace("\n", "").replace(" ", "")
+        project.pool = False
+        content = get_app_row_contents(project, ids=[row_id])[0]
     else:
         content = None
     content = broadcast(content)
     return content
+
+
+def get_app_row_contents(
+    project: DatabaseProject,
+    ids: Optional[List[int]] = None,
+) -> List[str]:
+    dbapp = App()
+    dbapp.add_project(project)
+    dbapp.initialize()
+    flask = dbapp.flask
+    flask.testing = True
+    contents = []
+    with flask.test_client() as c:
+        db = project["database"]
+        uid_key = project["uid_key"]
+        for row in db.select():
+            if ids is not None and row.id not in ids:
+                continue
+            uid = row.get(uid_key)
+            url = f"/{project.name}/row/{uid}"
+            content = c.get(url).data.decode()
+            content = content.replace("\n", "").replace(" ", "")
+            contents.append(content)
+    return contents
 
 
 @pytest.fixture(autouse=True)
@@ -254,12 +269,13 @@ def fscache(asr_tmpdir):
 @pytest.fixture()
 def crosslinks_test_dbs(asr_tmpdir):
     """Set up database for testing the crosslinks recipe."""
-    from ase.io import write, read
     from ase.db import connect
+    from ase.io import read, write
+
     from asr.core import chdir
+    from asr.database.fromtree import main as fromtree
     from asr.database.material_fingerprint import main as material_fingerprint
     from asr.database.treelinks import main as treelinks
-    from asr.database.fromtree import main as fromtree
 
     write('structure.json', std_test_materials[0])
     p = Path('.')
@@ -301,6 +317,7 @@ def crosslinks_test_dbs(asr_tmpdir):
 @pytest.fixture
 def database_with_one_row(asr_tmpdir):
     from ase.db import connect
+
     from asr.test.materials import Ag
     database = connect("test_database.db")
     database.write(Ag)

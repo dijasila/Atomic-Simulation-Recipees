@@ -13,7 +13,7 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    'pyparsing==2.4.7',
+    'pyparsing>=3.0.6',
     'Click==7.1.2',
     'ase', 'matplotlib',
     'simplejson',

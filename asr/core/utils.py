@@ -133,7 +133,7 @@ def dct_to_object(dct):
         return dct
 
 
-def read_file(filename: str) -> str:
+def read_file(filename: typing.Union[Path, str]) -> str:
     return Path(filename).read_text()
 
 
@@ -254,7 +254,7 @@ def singleprec_dict(dct):
 
 
 def get_recipe_from_name(name):
-    # Get a recipe from a name like asr.gs@postprocessing
+    # Get a recipe from a name like asr.gs:postprocessing
     import importlib
     assert name.startswith('asr.'), \
         'Not allowed to load recipe from outside of ASR.'
@@ -357,3 +357,36 @@ def compare_equal(value1: typing.Any, value2: typing.Any) -> bool:
 
 def link_file(path1, path2):
     os.link(path1, path2)
+
+
+def fix_recipe_name_if_recipe_has_been_moved(name: str) -> str:
+    if is_recipe_that_was_moved_to_c2db_subpackage(name):
+        name = extend_name_with_c2db_subpackage(name)
+    return name
+
+
+def is_recipe_that_was_moved_to_c2db_subpackage(name: str) -> bool:
+    count = name.count(".")
+    RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY = [
+        "asr.structureinfo", "asr.setinfo",
+        "asr.structureinfo:main", "asr.setinfo:main",
+    ]
+    if (
+        name.startswith("asr")
+        and count == 1
+        and name not in RECIPES_THAT_WASNT_MOVED_TO_C2DB_DIRECTORY
+    ):
+        return True
+    return False
+
+
+def extend_name_with_c2db_subpackage(name: str) -> str:
+    first, *rest = name.split(".")
+    name = ".".join([first, "c2db", *rest])
+    return name
+
+
+def add_main_to_name_if_missing(dep: str) -> str:
+    if ':' not in dep:
+        dep = dep + ':main'
+    return dep

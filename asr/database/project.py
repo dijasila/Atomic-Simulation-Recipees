@@ -5,8 +5,8 @@ import typing
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ase.db import connect
 from ase.db.core import Database
+from asr.database import connect
 
 
 KeyDescriptions = typing.Dict[str, typing.Tuple[str, str, str]]
@@ -88,8 +88,8 @@ class DatabaseProject:
         Function used by the defuault row_to_dict_function to create columns,
         figures, tables etc.
     pool
-        Processes used for generating figures. If None, then figures are produced
-        by the main process.
+        Processes used for generating figures. If False, then figures are produced
+        by the main process. If None, then a pool is created by automatically.
     template_search_path
         Path that will be added to flask's template search paths where the row, search
         and/or table template should be located. If None, ASR/ASE assumes the templates
@@ -113,7 +113,7 @@ class DatabaseProject:
     row_template: str = "asr/database/templates/row.html"
     search_template: str = "asr/database/templates/search.html"
     layout_function: typing.Callable = field(default_factory=make_layout_function)
-    pool: typing.Optional[multiprocessing.pool.Pool] = None
+    pool: typing.Union[bool, None, multiprocessing.pool.Pool] = None
     template_search_path: typing.Optional[str] = None
 
     # ASE project handling requires that the project is indexable,
@@ -202,7 +202,7 @@ class DatabaseProject:
             }
 
         """
-        db = connect(path, serial=True)
+        db = connect(path)
         metadata = db.metadata
         name = metadata.get("name", Path(path).name)
         key_descriptions = make_default_key_descriptions(db)

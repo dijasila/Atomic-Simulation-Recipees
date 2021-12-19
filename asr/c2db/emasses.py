@@ -47,28 +47,6 @@ def set_default(settings):
         settings['nkpts2'] = 9
 
 
-sel = asr.Selector()
-sel.name = sel.EQ('asr.c2db.emasses:refine')
-sel.version = sel.EQ(-1)
-sel.parameters = sel.AND(
-    sel.NOT(sel.CONTAINS('settings')),
-    sel.CONTAINS('gpwfilename')
-)
-
-
-@asr.migration(selector=sel)
-def add_settings_parameter_remove_gpwfilename(record):
-    """Add settings parameter and remove gpwfilename."""
-    record.parameters.settings = {
-        'erange1': 250e-3,
-        'nkpts1': 19,
-        'erange2': 1e-3,
-        'nkpts2': 9,
-    }
-    del record.parameters.gpwfilename
-    return record
-
-
 @command(
     module='asr.c2db.emasses',
 )
@@ -386,7 +364,7 @@ def get_emass_dict_from_context(context, has_mae=False):
     ordered_cb_indices = sorted(cb_indices, key=lambda el: el[1])
     ordered_vb_indices = sorted(vb_indices, key=lambda el: -el[1])
 
-    def get_the_dict(ordered_indices, name, offset_sym):
+    def get_the_dict(ordered_indices, name, offset_sym, has_mae):
         # Write a dictionary that will be turned into a table
         # The dict keys are the table row name
         # and the dict values are the effective masses
@@ -400,7 +378,10 @@ def get_emass_dict_from_context(context, has_mae=False):
             direction = 0
             marekey = name.lower() + '_soc_wideareaPARAMARE'
             if marekey not in data:
-                print(f'WARNING: Your data is outdated. Please rerun emasses@validate.')
+                print(
+                    'WARNING: Your data is outdated. '
+                    'Please rerun asr.c2db.emasses:validate.'
+                )
                 mares = None
                 has_mae = False
             else:
@@ -443,8 +424,8 @@ def get_emass_dict_from_context(context, has_mae=False):
 
         return my_dict
 
-    electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+')
-    hole_dict = get_the_dict(ordered_vb_indices, 'VB', '-')
+    electron_dict = get_the_dict(ordered_cb_indices, 'CB', '+', has_mae)
+    hole_dict = get_the_dict(ordered_vb_indices, 'VB', '-', has_mae)
 
     return electron_dict, hole_dict
 
@@ -829,18 +810,27 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.c2db.emasses')
+sel.name = sel.EQ('asr.c2db.emasses:main')
 
 
-@asr.migration(selector=sel)
-def prepare_parameters_for_version_0_migration(record):
-    """Prepare record for version 0 migration."""
-    record.parameters.settings = {
-        'erange1': 250e-3,
-        'nkpts1': 19,
-        'erange2': 1e-3,
-        'nkpts2': 9,
-    }
+@asr.mutation(selector=sel)
+def prepare_parameters_for_version_0_mutation(record):
+    """Prepare record for version 0 mutation."""
+    if "settings" in record.parameters:
+        for dep_params in record.parameters.dependency_parameters.values():
+            if 'settings' in dep_params:
+                del dep_params['settings']
+    else:
+        for dep_params in record.parameters.dependency_parameters.values():
+            if 'settings' in dep_params:
+                break
+        else:
+            record.parameters.settings = {
+                'erange1': 250e-3,
+                'nkpts1': 19,
+                'erange2': 1e-3,
+                'nkpts2': 9,
+            }
 
     if 'gpwfilename' in record.parameters:
         del record.parameters.gpwfilename
@@ -1566,42 +1556,6 @@ class ValidateResult(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-sel = asr.Selector()
-sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.c2db.emasses:validate')
-sel.parameters = sel.NOT(sel.CONTAINS('settings'))
-
-
-@asr.migration(selector=sel)
-def add_settings_parameter(record):
-    """Add settings parameter."""
-    record.parameters.settings = {
-        'erange1': 250e-3,
-        'nkpts1': 19,
-        'erange2': 1e-3,
-        'nkpts2': 9,
-    }
-    return record
-
-
-sel = asr.Selector()
-sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.c2db.emasses:validate')
-sel.parameters.dependency_parameters = \
-    lambda value: bool(val for val in value.values()
-                       if 'gpwname' in val)
-
-
-@asr.migration(selector=sel)
-def remove_gpwname_from_dependency_parameters(record):
-    """Remove gpwfilename from dependency parameters."""
-    dep_params = record.parameters.dependency_parameters
-    for name, params in dep_params.items():
-        if 'gpwfilename' in params:
-            del params['gpwfilename']
-    return record
-
-
 @command(
     module='asr.c2db.emasses',
 )
@@ -1663,6 +1617,65 @@ def validate(
         myresults[f'({sindex}, {kindex})'][prefix + 'wideareaMAE'] = maes
 
     return ValidateResult(myresults, strict=False)
+
+
+sel = asr.Selector()
+sel.name = sel.CONTAINS('asr.c2db.emasses')
+sel.version = sel.EQ(-1)
+
+
+@asr.mutation(selector=sel)
+def remove_gpwfilename_if_present(record):
+    """Remove gpwfilename in emass records if present."""
+    if 'gpwfilename' in record.parameters:
+        del record.parameters.gpwfilename
+
+    dep_params = record.parameters.dependency_parameters
+    for name, params in dep_params.items():
+        if 'gpwfilename' in params:
+            del params['gpwfilename']
+
+    return record
+
+
+sel = asr.Selector()
+sel.version = sel.EQ(-1)
+sel.name = sel.CONTAINS('asr.c2db.emasses')
+
+
+@asr.mutation(selector=sel)
+def fix_settings_parameters(record):
+    """Fix settings parameter.
+
+    If settings parameter already exists then remove it from
+    dependency parameters.
+
+    If it is not set, then check if it is avaliable from dependency
+    parameters and if not, set it.
+    """
+    params = record.parameters
+    dep_params = params.dependency_parameters
+    if 'settings' not in params:
+        # If settings is found in dependencies
+        for value in dep_params.values():
+            if 'settings' in value:
+                # Then all good
+                break
+        else:
+            # Else we set the settings parameter
+            # ourselves
+            params.settings = {
+                'erange1': 250e-3,
+                'nkpts1': 19,
+                'erange2': 1e-3,
+                'nkpts2': 9,
+            }
+    else:
+        for values in dep_params.values():
+            if 'settings' in values:
+                del values['settings']
+
+    return record
 
 
 if __name__ == '__main__':
