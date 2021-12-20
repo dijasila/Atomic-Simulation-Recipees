@@ -13,6 +13,8 @@ from asr.database.browser import (
     make_panel_description,
 )
 
+from asr.c2db.magnetic_anisotropy import main as mag_ani_main
+
 import numpy as np
 import typing
 
@@ -269,12 +271,11 @@ class GapsResult(ASRResult):
     )
 
 
-def gaps(atoms, calc, calculator, soc=True) -> GapsResult:
+def gaps(atoms, calc, calculator, mag_ani, soc=True) -> GapsResult:
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
 
     if soc:
         ibzkpts = calc.get_bz_k_points()
@@ -283,12 +284,13 @@ def gaps(atoms, calc, calculator, soc=True) -> GapsResult:
 
     (evbm_ecbm_gap,
      skn_vbm, skn_cbm) = get_gap_info(atoms,
-                                      soc=soc, direct=False,
+                                      soc=soc, direct=False, mag_ani=mag_ani,
                                       calc=calc, calculator=calculator)
     (evbm_ecbm_direct_gap,
      direct_skn_vbm, direct_skn_cbm) = get_gap_info(atoms,
                                                     soc=soc,
                                                     direct=True,
+                                                    mag_ani=mag_ani,
                                                     calc=calc,
                                                     calculator=calculator)
 
@@ -303,7 +305,7 @@ def gaps(atoms, calc, calculator, soc=True) -> GapsResult:
     direct_k_cbm_c = get_kc(direct_k_cbm)
 
     if soc:
-        theta, phi = get_spin_axis(atoms, calculator=calculator)
+        theta, phi = mag_ani.spin_angles()
         _, efermi = calc2eigs(calc, soc=True,
                               theta=theta, phi=phi)
     else:
@@ -336,13 +338,12 @@ def get_1bz_k(ibzkpts, calc, k_index):
     return k_c
 
 
-def get_gap_info(atoms, soc, direct, calc, calculator):
+def get_gap_info(atoms, soc, direct, calc, calculator, mag_ani):
     from ase.dft.bandgap import bandgap
     from asr.utils.gpw2eigs import calc2eigs
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
     # e1 is VBM, e2 is CBM
     if soc:
-        theta, phi = get_spin_axis(atoms, calculator=calculator)
+        theta, phi = mag_ani.spin_angles()
         e_km, efermi = calc2eigs(calc,
                                  soc=True, theta=theta, phi=phi)
         # km1 is VBM index tuple: (s, k, n), km2 is CBM index tuple: (s, k, n)
@@ -554,13 +555,15 @@ def main(atoms: Atoms,
     calc = calculateresult.calculation.load(parallel=False)
     calc.atoms.calc = calc
 
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+
     # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)
     stresses = calc.get_property('stress', allow_calculation=False)
     etot = calc.get_potential_energy()
 
-    gaps_nosoc = gaps(atoms, calc, soc=False, calculator=calculator)
-    gaps_soc = gaps(atoms, calc, soc=True, calculator=calculator)
+    gaps_nosoc = gaps(atoms, calc, soc=False, mag_ani=mag_ani, calculator=calculator)
+    gaps_soc = gaps(atoms, calc, soc=True, mag_ani=mag_ani, calculator=calculator)
     vac = vacuumlevels(atoms, calc)
     workfunction = vac.evacmean - gaps_soc.efermi if vac.evacmean else None
     return Result.fromdata(

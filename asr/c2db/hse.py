@@ -8,6 +8,7 @@ from ase.spectrum.band_structure import BandStructure
 from asr.c2db.gs import calculate as calculategs
 from asr.c2db.bandstructure import (calculate as bscalculate, main as bsmain,
                                     legend_on_top)
+from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 from asr.database.browser import make_panel_description
 from asr.utils.gw_hse import GWHSEInfo
 from asr.utils.kpts import get_kpts_size
@@ -66,13 +67,14 @@ def calculate(
         emptybands: int = 20,
 ) -> HSECalculationResult:
     """Calculate HSE06 corrections."""
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
     eigs, calc, hse_nowfs = hse(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
         emptybands=emptybands,
     )
-    eigs_soc = hse_spinorbit(atoms, calculator, eigs, calc)
+    eigs_soc = hse_spinorbit(atoms, calculator, eigs, calc, mag_ani=mag_ani)
     results = {
         'hse_eigenvalues': eigs,
         'hse_eigenvalues_soc': eigs_soc,
@@ -118,13 +120,12 @@ def hse(atoms, calculator, kptdensity, emptybands):
     return dct, calc, hse_nowfs
 
 
-def hse_spinorbit(atoms, calculator, dct, calc):
+def hse_spinorbit(atoms, calculator, dct, calc, mag_ani):
     from gpaw.spinorbit import soc_eigenstates
-    from asr.c2db.magnetic_anisotropy import get_spin_axis, get_spin_index
 
     e_skn = dct.get('e_hse_skn')
     dct_soc = {}
-    theta, phi = get_spin_axis(atoms=atoms, calculator=calculator)
+    theta, phi = mag_ani.spin_angles()
 
     soc = soc_eigenstates(calc,
                           eigenvalues=e_skn,
@@ -132,7 +133,7 @@ def hse_spinorbit(atoms, calculator, dct, calc):
     dct_soc['e_hse_mk'] = soc.eigenvalues().T
     dct_soc['s_hse_mk'] = soc.spin_projections()[
         :, :,
-        get_spin_index(atoms=atoms, calculator=calculator)].T
+        mag_ani.spin_index()].T
     return dct_soc
 
 
@@ -145,7 +146,8 @@ def MP_interpolate(
         calc,
         delta_skn,
         lb,
-        ub
+        ub,
+        mag_ani,
 ):
     """Interpolate corrections to band patch.
 
@@ -157,7 +159,6 @@ def MP_interpolate(
     from ase.dft.kpoints import (get_monkhorst_pack_size_and_offset,
                                  monkhorst_pack_interpolate)
     from asr.core import singleprec_dict
-    from asr.c2db.magnetic_anisotropy import get_spin_axis
 
     bandrange = np.arange(lb, ub)
     # read SCF (without SOC)
@@ -189,10 +190,7 @@ def MP_interpolate(
         npoints=npoints,
     )
     calc = bscalculateres.calculation.load()
-    theta, phi = get_spin_axis(
-        atoms=atoms,
-        calculator=calculator,
-    )
+    theta, phi = mag_ani.spin_angles()
     soc = soc_eigenstates(calc, eigenvalues=e_int_skn,
                           n1=lb, n2=ub,
                           theta=theta, phi=phi)
@@ -348,6 +346,8 @@ def main(
     from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
 
+    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+
     # interpolate band structure
     results_hse = calculate(
         atoms=atoms,
@@ -369,7 +369,8 @@ def main(
         calc,
         delta_skn,
         0,
-        nbands)
+        nbands,
+        mag_ani=mag_ani)
 
     # get gap, cbm, vbm, etc...
     eps_skn = results_hse['hse_eigenvalues']['e_hse_skn']
