@@ -181,7 +181,7 @@ def webpanel(result, context):
 def bz_with_band_extrema(context, fname):
     from matplotlib import pyplot as plt
 
-    assert context.name == 'asr.c2db.gs', context.name
+    assert context.name == 'asr.c2db.gs:main', context.name
     gsresults = context.result
 
     atoms = context.atoms

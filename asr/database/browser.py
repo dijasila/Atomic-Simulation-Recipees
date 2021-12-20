@@ -1,20 +1,16 @@
-import multiprocessing
-import os
 import re
+import os
 import traceback
-from collections.abc import Mapping
+import multiprocessing
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
-from ase.db.core import float_to_time_string, now
-from ase.db.row import AtomsRow
-
-from asr.core import ASRResult, decode_object
-from asr.core.cache import Cache, MemoryBackend
+import matplotlib.pyplot as plt
+from asr.core import decode_object, ASRResult
 from asr.core.datacontext import DataContext
 
+from ase.db.core import float_to_time_string, now, AtomsRow
 from .webpanel import WebPanel, Figure, Panel, Table, TwoColumns, DescribedContent  # noqa
 
 
@@ -430,53 +426,6 @@ class DataFilenameTranslator:
         return self.cache.has(selector=selector)
 
 
-class RowWrapper(Mapping):
-
-    def __init__(self, row):
-        from asr.database.fromtree import serializer
-        cache = Cache(backend=MemoryBackend())
-        if 'records' in row.data:
-            records = serializer.deserialize(row.data['records'])
-        else:
-            records = []
-        self.records = records
-        for record in records:
-            cache.add(record)
-        self._row = row
-        self.cache = cache
-        self.data = DataFilenameTranslator(cache, data=row.data)
-
-    def __getstate__(self):
-        return vars(self).copy()
-
-    def __setstate__(self, dct):
-        vars(self).update(dct)
-
-    def __getattr__(self, key):
-        """Wrap attribute lookup of AtomsRow."""
-        return getattr(self._row, key)
-
-    def __getitem__(self, key):
-        try:
-            return getattr(self, key)
-        except AttributeError:
-            raise KeyError(key)
-
-    def __iter__(self):
-        return iter(self._row)
-
-    def __len__(self):
-        return len(self._row)
-
-    @property
-    def ctime(self):
-        return self._row.ctime
-
-    @property
-    def key_value_pairs(self):
-        return self._row.key_value_pairs
-
-
 def parse_row_data(data: dict):
     newdata = {}
     for key, value in data.items():
@@ -519,7 +468,7 @@ def generate_plots(context, prefix, plot_descriptions, pool):
                 args = [function, context] + strpaths
 
                 try:
-                    if pool is None:
+                    if pool in [False, None]:
                         runplot_clean(*args)
                     else:
                         # The app uses threads, and we cannot call matplotlib
@@ -565,7 +514,6 @@ def _layout(row, key_descriptions, prefix, pool):
     page = {}
     exclude = set()
 
-    row = RowWrapper(row)
     panel_data_sources = {}
     # Locate all webpanels
 

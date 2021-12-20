@@ -126,7 +126,7 @@ def convert_database_strings_to_files(parameters):
 
 
 def select_records_with_databases_as_string(record):
-    if record.name != 'asr.c2db.convex_hull':
+    if record.name != 'asr.c2db.convex_hull:main':
         return False
     for database in record.parameters.databases:
         if isinstance(database, str):
@@ -134,10 +134,13 @@ def select_records_with_databases_as_string(record):
     return False
 
 
-@asr.migration(selector=select_records_with_databases_as_string)
+@asr.mutation(selector=select_records_with_databases_as_string)
 def convert_database_parameter_to_file(record):
     """Convert databases represented as strings to File objects."""
-    parameters = convert_database_strings_to_files(record.parameters)
+    try:
+        parameters = convert_database_strings_to_files(record.parameters)
+    except FileNotFoundError:
+        raise asr.NonMigratableRecord
     record.parameters = parameters
     return record
 
@@ -505,13 +508,17 @@ def plot(context, fname):
         hull = np.array(hull)
         hull = np.array(hull_energies) < 0.05
         names = [ref['label'] for ref in references]
-        latexnames = [
-            format(
-                Formula(name.split(' ')[0]).reduce()[0],
-                'latex'
-            )
-            for name in names
-        ]
+        latexnames = []
+        for name in names:
+            try:
+                pretty = format(
+                    Formula(name.split(' ')[0]).reduce()[0],
+                    'latex'
+                )
+            except ValueError:
+                pretty = name
+            latexnames.append(pretty)
+
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
         edgecolors = ['C2' if hull_energy < 0.05 else 'C3'

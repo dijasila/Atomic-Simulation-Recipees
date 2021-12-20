@@ -30,7 +30,7 @@ def run_shell_command(command, env=None):
     )
     try:
         output = completed_process.stdout.decode()
-        assert not completed_process.returncode
+        assert not completed_process.returncode, command
     except UnicodeDecodeError:
         output = completed_process.stderr.decode()
     output = output.split('\n')

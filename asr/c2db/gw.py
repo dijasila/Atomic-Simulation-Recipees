@@ -302,12 +302,12 @@ class Result(ASRResult):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.c2db.gw')
+sel.name = sel.EQ('asr.c2db.gw:main')
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def migrate_1(record):
-    """Prepare record for resultfile migration."""
+    """Prepare record for resultfile mutation."""
     emptybands = (
         record.parameters.dependency_parameters[
             'asr.c2db.bandstructure:calculate']['emptybands']

@@ -5,7 +5,7 @@ from .parameters import Parameters
 import dataclasses
 
 UID = str
-
+REVISION = typing.Union[UID, None]
 # class Dependant:
 
 #     def __init__(self, obj, dependencies: typing.List[str]):
@@ -38,7 +38,7 @@ UID = str
 class Dependency:
 
     uid: UID
-    revision: UID
+    revision: REVISION
 
     def __str__(self):
         return f'uid={self.uid} revision={self.revision}'

@@ -48,19 +48,22 @@ def check_if_supercell(spos_ac, Z_a):
 
 sel = asr.Selector()
 sel.version = sel.EQ(-1)
-sel.name = sel.EQ('asr.setup.reduce')
+sel.name = sel.EQ('asr.setup.reduce:main')
 
 
-@asr.migration(selector=sel)
+@asr.mutation(selector=sel)
 def remove_initial_and_final_parameters(record):
     """Remove initial and final parameter. Fix result."""
     atomic_structures = record.parameters.atomic_structures
-    atoms = atomic_structures[record.parameters.initial]
-    record.parameters.atoms = atoms
-    del record.parameters.initial
+    initial = record.parameters.initial
+    final = record.parameters.final
+    initial_atoms = atomic_structures.get(initial, initial)
+    final_atoms = atomic_structures.get(final, final)
 
-    final_atoms = atomic_structures[record.parameters.final]
+    record.parameters.atoms = initial_atoms
     record.result = final_atoms
+
+    del record.parameters.initial
     del record.parameters.final
     return record
 

@@ -57,10 +57,7 @@ class ASRCommand:
         self.package_dependencies = self.package_dependencies
 
         funcname = wrapped_function.__name__
-        if funcname == 'main':
-            self.name = module
-        else:
-            self.name = f'{module}:{funcname}'
+        self.name = f'{module}:{funcname}'
 
         hints = typing.get_type_hints(wrapped_function)
 
@@ -73,7 +70,6 @@ class ASRCommand:
         if not hasattr(self._wrapped_function, '__asr_params__'):
             self._wrapped_function.__asr_params__ = {}
 
-        import copy
         self.myparams = copy.deepcopy(self._wrapped_function.__asr_params__)
 
         sig = inspect.signature(self._wrapped_function)

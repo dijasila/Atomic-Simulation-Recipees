@@ -48,7 +48,7 @@ def test_database_fromtree_totree(folder_tree, njobs):
     """Make sure a database can be packed and unpacked faithfully."""
     from asr.database.fromtree import main as fromtree
     from asr.database.totree import main as totree
-    from ase.db import connect
+    from asr.database import connect
 
     folders = [folder[0] for folder in folder_tree]
     fromtree(folders=['materials'], recursive=True, njobs=njobs)
