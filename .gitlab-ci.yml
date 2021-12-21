@@ -72,7 +72,7 @@ python39-mpi:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
     - useradd -m user
-    - su user -c 'tox -e py36-mpi'
+    - su user -c 'tox -e py39-mpi'
 
 # -------------- Integration tests --------------
 python38-gpaw:
@@ -81,7 +81,7 @@ python38-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py36-gpaw
+    - tox -e py38-gpaw
   artifacts:
     paths:
       - .tox/.coverage*
@@ -93,7 +93,7 @@ python39-gpaw:
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py37-gpaw
+    - tox -e py39-gpaw
   artifacts:
     paths:
       - .tox/.coverage*
