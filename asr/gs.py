@@ -108,10 +108,12 @@ def webpanel(result, row, key_descriptions):
 
     explained_keys = []
 
-    explained_keys += [
-        _explain_bandgap(row, 'gap'),
-        _explain_bandgap(row, 'gap_dir'),
-    ]
+    def make_gap_row(name):
+        value = result[name]
+        description = _explain_bandgap(row, name)
+        return [description, f'{value:0.2f} eV']
+
+    gap_rows = [make_gap_row('gap'), make_gap_row('gap_dir')]
 
     for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
         if key in result.key_descriptions:
@@ -128,9 +130,9 @@ def webpanel(result, row, key_descriptions):
               explained_keys,
               key_descriptions)
 
-    gap = result.gap
+    t['rows'].extend(gap_rows)
 
-    if gap > 0:
+    if result.gap > 0:
         if result.get('evac'):
             eref = result.evac
             vbm_title = 'Valence band maximum wrt. vacuum level'
@@ -155,9 +157,6 @@ def webpanel(result, row, key_descriptions):
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    description = _explain_bandgap(row, 'gap')
-    datarow = [description, f'{result.gap:0.2f} eV']
-
     summary = WebPanel(
         title=describe_entry(
             'Summary',
@@ -166,7 +165,7 @@ def webpanel(result, row, key_descriptions):
         columns=[[{
             'type': 'table',
             'header': ['Electronic properties', ''],
-            'rows': [datarow],
+            'rows': gap_rows,
             'columnwidth': 3,
         }]],
         plot_descriptions=[{'function': bz_with_band_extremums,
