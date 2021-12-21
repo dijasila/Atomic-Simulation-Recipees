@@ -113,7 +113,8 @@ def webpanel(result, row, key_descriptions):
         description = _explain_bandgap(row, name)
         return [description, f'{value:0.2f} eV']
 
-    gap_rows = [make_gap_row('gap'), make_gap_row('gap_dir')]
+    gap_row = make_gap_row('gap')
+    direct_gap_row = make_gap_row('gap_dir')
 
     for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
         if key in result.key_descriptions:
@@ -130,7 +131,7 @@ def webpanel(result, row, key_descriptions):
               explained_keys,
               key_descriptions)
 
-    t['rows'].extend(gap_rows)
+    t['rows'] += [gap_row, direct_gap_row]
 
     if result.gap > 0:
         if result.get('evac'):
@@ -165,7 +166,7 @@ def webpanel(result, row, key_descriptions):
         columns=[[{
             'type': 'table',
             'header': ['Electronic properties', ''],
-            'rows': gap_rows,
+            'rows': [gap_row],
             'columnwidth': 3,
         }]],
         plot_descriptions=[{'function': bz_with_band_extremums,
