@@ -168,16 +168,20 @@ class EnergyReference:
     value: float
     prose_name: str
     abbreviation: str
+    prose_desc: str
 
     @classmethod
     def _evac(cls, value):
         assert value is not None
-        return cls('evac', value, 'vacuum level', 'vac')
+        return cls('evac', value, 'vacuum level', 'vac',
+                   prose_desc=('the asymptotic value of the electrostatic '
+                               'potential in the vacuum region'))
 
     @classmethod
     def _efermi(cls, value):
         assert value is not None
-        return cls('efermi', value, 'Fermi level', 'F')
+        return cls('efermi', value, 'Fermi level', 'F',
+                   prose_desc='the Fermi level')
 
     def mpl_plotlabel(self):
         return rf'$E - E_\mathrm{{{self.abbreviation}}}$ [eV]'
