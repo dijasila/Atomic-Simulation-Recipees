@@ -25,43 +25,25 @@ build:
 
 # -------------- Style tests --------------
 flake8:
-  image: python:3.7
+  image: python:3.9
   stage: style
   script: tox -e flake8
 
 readme:
-  image: python:3.7
+  image: python:3.9
   stage: style
   script: tox -e readme
 
 docs:
-  image: python:3.7
+  image: python:3.9
   stage: style
   script: tox -e docs
 
 # -------------- Unit tests --------------
 doctest:
-  image: python:3.7
+  image: python:3.9
   stage: test
   script: tox -e doctest
-
-python36:
-  image: python:3.6
-  stage: test
-  script: tox -e py36
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
-
-python37:
-  image: python:3.7
-  stage: test
-  script: tox -e py37
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
 
 python38:
   image: python:3.8
@@ -72,10 +54,19 @@ python38:
       - .tox/.coverage*
     expire_in: 3 weeks
 
+python39:
+  image: python:3.9
+  stage: test
+  script: tox -e py39
+  artifacts:
+    paths:
+      - .tox/.coverage*
+    expire_in: 3 weeks
+
 # -------------- Parallel tests --------------
 
-python36-mpi:
-  image: python:3.6
+python39-mpi:
+  image: python:3.9
   stage: test
   script:
     - apt-get update -qy
@@ -84,8 +75,8 @@ python36-mpi:
     - su user -c 'tox -e py36-mpi'
 
 # -------------- Integration tests --------------
-python36-gpaw:
-  image: python:3.6
+python38-gpaw:
+  image: python:3.8
   stage: integrationtest
   script:
     - apt-get update -qy
@@ -96,8 +87,8 @@ python36-gpaw:
       - .tox/.coverage*
     expire_in: 3 weeks
 
-python37-gpaw:
-  image: python:3.7
+python39-gpaw:
+  image: python:3.9
   stage: integrationtest
   script:
     - apt-get update -qy
@@ -108,22 +99,10 @@ python37-gpaw:
       - .tox/.coverage*
     expire_in: 3 weeks
 
-python38-gpaw:
-  image: python:3.8
-  stage: integrationtest
-  script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py38-gpaw
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
-
 
 # -------------- Coverage --------------
 coverage:
-  image: python:3.7
+  image: python:3.9
   stage: coverage
   script:
     - tox -e coverage-report
