@@ -256,8 +256,11 @@ def get_material_uid(atoms: Atoms):
     return get_uid_of_atoms(atoms, hash)
 
 
-def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
-                   children_patterns=[]):
+def collect_folder(
+    folder: Path, atomsname: str, patterns: List[str] = [''],
+    exclude_patterns: List[str] = [],
+    children_patterns=[],
+):
     """Collect data from a material folder.
 
     Parameters
@@ -268,6 +271,8 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
         Name of file containing atoms, i.e. 'structure.json'.
     patterns: List[str]
         List of patterns marking which files to include.
+    exclude_patterns: List[str]
+        List of patterns to exlude, takes precedence over patterns.
 
     Returns
     -------
@@ -282,6 +287,10 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
 
     """
     from fnmatch import fnmatch
+
+    # XXX Someone passes None from somewhere.
+    if exclude_patterns is None:
+        exclude_patterns = []
 
     with chdir(folder.resolve()):
         if not Path(atomsname).is_file():
@@ -313,6 +322,9 @@ def collect_folder(folder: Path, atomsname: str, patterns: List[str] = [''],
             else:
                 if name.is_file() and name.name == 'info.json':
                     tmpkvp, tmpdata = collect_info(name)
+                elif name.is_file() and any(fnmatch(name, pattern)
+                                            for pattern in exclude_patterns):
+                    continue
                 elif name.is_file() and any(fnmatch(name, pattern)
                                             for pattern in patterns):
                     tmpkvp, tmpdata = collect_file(name)
@@ -383,6 +395,7 @@ def recurse_through_folders(folder, atomsname):
 def _collect_folders(folders: List[str],
                      atomsname: str = None,
                      patterns: List[str] = None,
+                     exclude_patterns: List[str] = None,
                      children_patterns: List[str] = None,
                      dbname: str = None,
                      jobid: int = None):
@@ -400,6 +413,7 @@ def _collect_folders(folders: List[str],
                 Path(folder),
                 atomsname,
                 patterns,
+                exclude_patterns,
                 children_patterns=children_patterns)
 
             if atoms is None:
@@ -425,6 +439,7 @@ def _collect_folders(folders: List[str],
 def collect_folders(folders: List[str],
                     atomsname: str = None,
                     patterns: List[str] = None,
+                    exclude_patterns: List[str] = None,
                     children_patterns: List[str] = None,
                     dbname: str = None,
                     jobid: int = None):
@@ -437,6 +452,7 @@ def collect_folders(folders: List[str],
     try:
         return _collect_folders(folders=folders, atomsname=atomsname,
                                 patterns=patterns,
+                                exclude_patterns=exclude_patterns,
                                 children_patterns=children_patterns,
                                 dbname=dbname,
                                 jobid=jobid)
@@ -446,7 +462,7 @@ def collect_folders(folders: List[str],
 
 
 def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
-                      patterns, children_patterns, dbname):
+                      patterns, exclude_patterns, children_patterns, dbname):
     print(f'Delegating database collection to {njobs} subprocesses.')
     processes = []
     for jobid in range(njobs):
@@ -459,7 +475,8 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
                 'dbname': jobdbname,
                 'atomsname': atomsname,
                 'patterns': patterns,
-                'children_patterns': children_patterns
+                'children_patterns': children_patterns,
+                'exclude_patterns': exclude_patterns,
             })
         processes.append(proc)
         proc.start()
@@ -504,6 +521,7 @@ def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
          patterns: str = 'info.json,links.json,params.json',
+         exclude_patterns: str = '',
          dbname: str = 'database.db',
          njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""
@@ -531,6 +549,7 @@ def main(folders: Union[str, None] = None,
 
     folders.sort()
     patterns = patterns.split(',')
+    exclude_patterns = exclude_patterns.split(',')
     children_patterns = children_patterns.split(',')
 
     # We use absolute path because of chdir in collect_folder()!
@@ -540,13 +559,14 @@ def main(folders: Union[str, None] = None,
     # Delegate collection of database to subprocesses to reduce I/O time.
     if njobs > 1:
         delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
-                          patterns, children_patterns, dbname)
+                          patterns, exclude_patterns, children_patterns, dbname)
     else:
         _collect_folders(folders,
                          jobid=None,
                          dbname=dbname,
                          atomsname=atomsname,
                          patterns=patterns,
+                         exclude_patterns=exclude_patterns,
                          children_patterns=children_patterns)
 
     set_key_descriptions(dbname)
