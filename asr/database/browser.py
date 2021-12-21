@@ -609,6 +609,8 @@ def _layout(row, key_descriptions, prefix, pool):
             return False
         if isinstance(block, Table):
             return block.rows
+        if not isinstance(block, dict):
+            return True
         if isinstance(block, Figure) or block['type'] != 'figure':
             return True
         if block['type'] == 'table':
