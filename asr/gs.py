@@ -103,6 +103,13 @@ def _explain_bandgap(row, gap_name):
     return describe_entry(name, description=description)
 
 
+def vbm_or_cbm_row(title, quantity_name, reference_explanation, value):
+    description = (f'Energy of the {quantity_name} relative to the '
+                   f'{reference_explanation}. '
+                   'Spin–orbit coupling is included.')
+    return [describe_entry(title, description=description), f'{value:.2f} eV']
+
+
 def webpanel(result, row, key_descriptions):
     parameter_description = _get_parameter_description(row)
 
@@ -138,15 +145,24 @@ def webpanel(result, row, key_descriptions):
             eref = result.evac
             vbm_title = 'Valence band maximum wrt. vacuum level'
             cbm_title = 'Conduction band minimum wrt. vacuum level'
+            reference_explanation = (
+                'the asymptotic value of the '
+                'electrostatic potential in the vacuum region')
         else:
             eref = result.efermi
             vbm_title = 'Valence band maximum wrt. Fermi level'
             cbm_title = 'Conduction band minimum wrt. Fermi level'
+            reference_explanation = 'the Fermi level'
 
         vbm_displayvalue = result.vbm - eref
         cbm_displayvalue = result.cbm - eref
-        info = [[vbm_title, f'{vbm_displayvalue:.3f} eV'],
-                [cbm_title, f'{cbm_displayvalue:.3f} eV']]
+        info = [
+            vbm_or_cbm_row(vbm_title, 'valence band maximum (VBM)',
+                           reference_explanation, vbm_displayvalue),
+            vbm_or_cbm_row(cbm_title, 'conduction band minimum (CBM)',
+                           reference_explanation, cbm_displayvalue)
+        ]
+
         t['rows'].extend(info)
 
     from asr.utils.hacks import gs_xcname_from_row
