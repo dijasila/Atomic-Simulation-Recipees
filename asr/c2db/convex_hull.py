@@ -448,7 +448,6 @@ def plot(context, fname):
             hull = hull[mask]
             sizes = sizes[mask]
             names = [name for name, m in zip(names, mask) if m]
-            sizes = sizes[mask]
 
         xcoord0 = xcoord[~hull]
         energy0 = energy[~hull]
