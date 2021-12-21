@@ -103,17 +103,26 @@ def _explain_bandgap(gap_name, parameter_description):
     return describe_entry(name, description=description)
 
 
+def vbm_or_cbm_row(title, quantity_name, reference_explanation, value):
+    description = (f'Energy of the {quantity_name} relative to the '
+                   f'{reference_explanation}. '
+                   'Spin–orbit coupling is included.')
+    return [describe_entry(title, description=description), f'{value:.2f} eV']
+
+
 def webpanel(result, context):
     key_descriptions = context.descriptions
     parameter_description = context.parameter_description_picky('asr.c2db.gs')
 
+    def make_gap_row(name):
+        value = result[name]
+        description = _explain_bandgap(name, parameter_description)
+        return [description, f'{value:0.2f} eV']
+
+    gap_row = make_gap_row('gap')
+    direct_gap_row = make_gap_row('gap_dir')
+
     explained_keys = []
-
-    explained_keys += [
-        _explain_bandgap('gap', parameter_description),
-        _explain_bandgap('gap_dir', parameter_description),
-    ]
-
     for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
         if key in result.key_descriptions:
             key_description = result.key_descriptions[key]
@@ -129,16 +138,22 @@ def webpanel(result, context):
                 explained_keys,
                 key_descriptions)
 
-    gap = result.gap
+    tab['rows'] += [gap_row, direct_gap_row]
 
-    if gap > 0:
+    if result.gap > 0:
         ref = context.energy_reference()
-        vbm_title = f'Valence band maximum wrt. {ref.prose_name}'
-        cbm_title = f'Conduction band minimum wrt. {ref.prose_name}'
+        vbm_title = f'Valence band maximum relative to {ref.prose_name}'
+        cbm_title = f'Conduction band minimum relative to {ref.prose_name}'
         vbm_displayvalue = result.vbm - ref.value
         cbm_displayvalue = result.cbm - ref.value
-        info = [[vbm_title, f'{vbm_displayvalue:.3f} eV'],
-                [cbm_title, f'{cbm_displayvalue:.3f} eV']]
+
+        info = [
+            vbm_or_cbm_row(vbm_title, 'valence band maximum (VBM)',
+                           ref.prose_desc, vbm_displayvalue),
+            vbm_or_cbm_row(cbm_title, 'conduction band minimum (CBM)',
+                           ref.prose_desc, cbm_displayvalue)
+        ]
+
         tab['rows'].extend(info)
 
     xcname = context.xcname
@@ -149,9 +164,6 @@ def webpanel(result, context):
         columns=[[tab], [fig('bz-with-gaps.png')]],
         sort=10)
 
-    description = _explain_bandgap('gap', parameter_description)
-    datarow = [description, f'{result.gap:0.2f} eV']
-
     summary = WebPanel(
         title=describe_entry(
             'Summary',
@@ -160,7 +172,7 @@ def webpanel(result, context):
         columns=[[{
             'type': 'table',
             'header': ['Electronic properties', ''],
-            'rows': [datarow],
+            'rows': [gap_row],
             'columnwidth': 3,
         }]],
         plot_descriptions=[{'function': bz_with_band_extrema,
