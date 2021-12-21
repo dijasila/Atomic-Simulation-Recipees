@@ -288,6 +288,11 @@ def collect_folder(
     """
     from fnmatch import fnmatch
 
+    # XXX Someone passes None from somewhere.
+    if exclude_patterns is None:
+        exclude_patterns = []
+
+
     with chdir(folder.resolve()):
         if not Path(atomsname).is_file():
             return None, None, None, None
