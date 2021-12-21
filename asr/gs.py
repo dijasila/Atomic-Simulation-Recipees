@@ -143,15 +143,15 @@ def webpanel(result, row, key_descriptions):
     if result.gap > 0:
         if result.get('evac'):
             eref = result.evac
-            vbm_title = 'Valence band maximum wrt. vacuum level'
-            cbm_title = 'Conduction band minimum wrt. vacuum level'
+            vbm_title = 'Valence band maximum relative to vacuum level'
+            cbm_title = 'Conduction band minimum relative to vacuum level'
             reference_explanation = (
                 'the asymptotic value of the '
                 'electrostatic potential in the vacuum region')
         else:
             eref = result.efermi
-            vbm_title = 'Valence band maximum wrt. Fermi level'
-            cbm_title = 'Conduction band minimum wrt. Fermi level'
+            vbm_title = 'Valence band maximum relative to Fermi level'
+            cbm_title = 'Conduction band minimum relative to Fermi level'
             reference_explanation = 'the Fermi level'
 
         vbm_displayvalue = result.vbm - eref
