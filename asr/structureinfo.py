@@ -78,7 +78,7 @@ def webpanel(result, context):
     basictable = table(result, 'Structure info', [
         crystal_type, cls, spacegroup, spgnum, pointgroup,
         # icsd_id, cod_id
-    ], context.descriptions, 2)
+    ], result.key_descriptions, 2)
     basictable['columnwidth'] = 4
     # rows = basictable['rows']
 

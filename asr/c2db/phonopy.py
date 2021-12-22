@@ -179,7 +179,7 @@ def webpanel(result, context):
     from asr.database.browser import table, fig
 
     phonontable = table(result, "Property", ["minhessianeig"],
-                        context.descriptions)
+                        result.key_descriptions)
 
     panel = {
         "title": "Phonon bandstructure",

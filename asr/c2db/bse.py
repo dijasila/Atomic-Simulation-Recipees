@@ -286,7 +286,7 @@ def absorption(context, filename, direction='x'):
 def webpanel(result, context):
     from functools import partial
 
-    E_B = table(result, 'Property', ['E_B'], context.descriptions)
+    E_B = table(result, 'Property', ['E_B'], result.key_descriptions)
 
     if context.ndim == 2:
         funcx = partial(absorption, direction='x')

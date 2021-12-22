@@ -184,58 +184,6 @@ class App(DBApp):
             return jsonify(row.data.get(filename))
 
 
-def create_default_key_descriptions(db: Database = None):
-    from asr.database.key_descriptions import key_descriptions
-
-    flatten = {
-        key: value
-        for recipe, dct in key_descriptions.items()
-        for key, value in dct.items()
-    }
-
-    if db is not None:
-        keys = get_db_keys(db)
-        flatten = pick_subset_of_keys(keys, flatten)
-
-    return convert_to_ase_compatible_key_descriptions(flatten)
-
-
-def get_db_keys(db):
-    metadata = db.metadata
-    if "keys" not in metadata:
-        raise KeyError(
-            "Missing list of keys for database. "
-            "To fix this either: run database.fromtree again. "
-            "or python -m asr.database.set_metadata DATABASEFILE."
-        )
-    keys = metadata.get("keys")
-    return keys
-
-
-def convert_to_ase_compatible_key_descriptions(key_descriptions):
-    from ase.db.web import create_key_descriptions
-
-    from asr.database.fromtree import parse_key_descriptions
-
-    kd = {
-        key: (desc["shortdesc"], desc["longdesc"], desc["units"])
-        for key, desc in parse_key_descriptions(key_descriptions).items()
-    }
-
-    return create_key_descriptions(kd)
-
-
-def pick_subset_of_keys(keys, key_descriptions):
-    kd = {}
-    for key in keys:
-        description = key_descriptions.get(key)
-        if description is None:
-            warnings.warn(f"Missing key description for {key}")
-            continue
-        kd[key] = description
-    return kd
-
-
 class Summary:
     def __init__(self, row, key_descriptions, create_layout, prefix=""):
         self.row = row
@@ -283,7 +231,6 @@ def main(
     filenames: List[str],
     host: str = "0.0.0.0",
     test: bool = False,
-    extra_kvp_descriptions_file: str = "key_descriptions.json",
 ):
     """Start database app.
 
@@ -306,7 +253,6 @@ def main(
     """
     pool = multiprocessing.Pool(1)
     projects = convert_files_to_projects(filenames, pool=pool)
-    extras = get_key_descriptions_from_file(extra_kvp_descriptions_file)
 
     with tempfile.TemporaryDirectory(prefix='asr-app-') as tmpdir:
         # For some reason MyPy complains about giving a string argument
@@ -314,7 +260,7 @@ def main(
         tmpdir = Path(tmpdir)  # type: ignore
         set_tmpdir_on_projects_if_missing(tmpdir, projects)
         try:
-            run_app(projects, extras, host, test)
+            run_app(projects, host, test)
         finally:
             pool.close()
             pool.join()
@@ -335,7 +281,6 @@ def set_pool_on_projects_if_missing(pool, projects: List["DatabaseProject"]):
 
 def run_app(
     projects: List["DatabaseProject"],
-    extra_key_descriptions: Optional[dict] = None,
     host: str = "0.0.0.0",
     test: bool = False,
 ):
@@ -357,8 +302,6 @@ def run_app(
     test : bool, optional
         Whether to query all rows of all input projects/databases, by default False
     """
-    if extra_key_descriptions:
-        add_extra_kvp_descriptions(projects, extra_key_descriptions)
 
     dbapp = App()
     dbapp.add_projects(projects)

@@ -1,13 +1,12 @@
 """Convert a folder tree to an ASE database."""
 
-from typing import Union, List
+from typing import Any, Dict, Mapping, Union, List
 import numbers
 import numpy as np
 from ase import Atoms
 from ase.io import read
 from asr.database import connect
 from asr.core import chdir, read_json, ASRResult
-from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import get_uid_of_atoms, \
     get_hash_of_atoms
 from asr.database.check import main as check_database
@@ -20,89 +19,13 @@ import traceback
 from asr.core.serialize import JSONSerializer
 from ase.db.core import reserved_keys
 
-serializer = JSONSerializer()
-
-
-class MissingUIDS(Exception):
-    pass
-
-
-def parse_key_descriptions(key_descriptions):
-    """Parse key descriptions.
-
-    This function parses a dictionary of key descriptions. A valid key
-    description looks like::
-
-        `KVP: Long description !short description! [unit]`
-
-    - KVP: marks a key as a key-value-pair.
-    - !short description!: gives a short description of the key.
-    - [unit]: Marks the unit of the key.
-    - The rest of the text will be interpreted as the long description
-      of the key.
-
-    """
-    import re
-
-    tmpkd = {}
-
-    for key, desc in key_descriptions.items():
-        descdict = {'type': None,
-                    'iskvp': False,
-                    'shortdesc': '',
-                    'longdesc': '',
-                    'units': ''}
-        if isinstance(desc, dict):
-            descdict.update(desc)
-            tmpkd[key] = desc
-            continue
-
-        assert isinstance(desc, str), \
-            f'Key description has to be dict or str. ({desc})'
-        # Get key type
-        desc, *keytype = desc.split('->')
-        if keytype:
-            descdict['type'] = keytype
-
-        # Is this a kvp?
-        iskvp = desc.startswith('KVP:')
-        descdict['iskvp'] = iskvp
-        desc = desc.replace('KVP:', '').strip()
-
-        # Find units
-        m = re.search(r"\[(.*)\]", desc)
-        unit = m.group(1) if m else ''
-        if unit:
-            descdict['units'] = unit
-        desc = desc.replace(f'[{unit}]', '').strip()
-
-        # Find short description
-        m = re.search(r"\!(.*)\!", desc)
-        shortdesc = m.group(1) if m else ''
-        if shortdesc:
-            descdict['shortdesc'] = shortdesc
-
-        # Everything remaining is the long description
-        longdesc = desc.replace(f'!{shortdesc}!', '').strip()
-        if longdesc:
-            descdict['longdesc'] = longdesc
-            if not shortdesc:
-                descdict['shortdesc'] = descdict['longdesc']
-        tmpkd[key] = descdict
-
-    return tmpkd
-
-
-tmpkd = parse_key_descriptions(
-    {key: value
-     for dct in asr_kd.values()
-     for key, value in dct.items()})
-
+def is_reserved(key):
+    return key in reserved_keys
 
 def remove_bad_keys(kvp):
     delete = []
     for key, value in kvp.items():
-        if key in reserved_keys:
+        if is_reserved(key):
             delete.append(key)
         elif not isinstance(value, (numbers.Real, str, np.bool_)):
             delete.append(key)
@@ -113,35 +36,40 @@ def remove_bad_keys(kvp):
     return kvp
 
 
-def get_key_value_pairs(resultsdct: dict):
-    """Extract key-value-pairs from results dictionary.
+serializer = JSONSerializer()
 
-    Note to determine which key in the results dictionary is a
-    key-value-pair we parse the data in `asr.database.key_descriptions`.
+
+class MissingUIDS(Exception):
+    pass
+
+
+def is_kvp(value: Any) -> bool:
+    return isinstance(value, (numbers.Real, str, np.bool_))
+
+
+def get_key_value_pairs(
+    mapping: Mapping
+) -> Dict[str, Union[numbers.Real, str, np.bool_]]:
+    """Extract key-value-pairs from dictionary.
+
+    Uses the heuristic that anything that can be a key-value-pair, is a
+    key-value-pair.  This mains that the any value that is a number or a string
+    becomes a KVP.
 
     Parameters
     ----------
-    resultsdct: dict
-        Dictionary containing asr results file.
+    mapping: Mapping
+        Some dictionary containing key value pairs.
 
     Returns
     -------
-    kvp: dict
+    kvp: Dict[str, Union[numbers.Real, str, np.bool_]]
         key-value-pairs.
     """
     kvp = {}
-    for key, desc in tmpkd.items():
-        try:
-            if (
-                    key in resultsdct and desc['iskvp']
-                    and resultsdct[key] is not None
-            ):
-                kvp[key] = resultsdct[key]
-        except TypeError:
-            # Not iterable
-            pass
-
-    kvp = remove_bad_keys(kvp)
+    for key, value in mapping.items():
+        if is_kvp(value) and not is_reserved(key):
+            kvp[key] = value
     return kvp
 
 
@@ -525,10 +453,6 @@ def main(folders: Union[str, None] = None,
          dbname: str = 'database.db',
          njobs: int = 1):
     """Collect ASR data from folder tree into an ASE database."""
-    from asr.database.key_descriptions import main as set_key_descriptions
-
-    def item_show_func(item):
-        return str(item)
 
     atomsname = 'structure.json'
     if not folders:
@@ -569,7 +493,6 @@ def main(folders: Union[str, None] = None,
                          exclude_patterns=exclude_patterns,
                          children_patterns=children_patterns)
 
-    set_key_descriptions(dbname)
     results = check_database(dbname)
     missing_child_uids = results['missing_child_uids']
     duplicate_uids = results['duplicate_uids']

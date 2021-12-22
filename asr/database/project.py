@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ase.db.core import Database
+from ase.db.web import create_key_descriptions
 from asr.database import connect
 
 
@@ -38,12 +39,6 @@ def row_to_dict(row, project):
         prefix=prefix,
     )
     return s
-
-
-def make_default_key_descriptions(db=None):
-    from asr.database.app import create_default_key_descriptions
-
-    return create_default_key_descriptions(db=db)
 
 
 @dataclass
@@ -101,7 +96,7 @@ class DatabaseProject:
     database: Database
     uid_key: str = "uid"
     key_descriptions: "KeyDescriptions" = field(
-        default_factory=make_default_key_descriptions
+        default_factory=lambda: create_key_descriptions({})
     )
     tmpdir: typing.Optional[Path] = None
     row_to_dict_function: typing.Callable = row_to_dict
@@ -205,7 +200,6 @@ class DatabaseProject:
         db = connect(path)
         metadata = db.metadata
         name = metadata.get("name", Path(path).name)
-        key_descriptions = make_default_key_descriptions(db)
 
         extract_keys = {
             "uid",
@@ -215,7 +209,7 @@ class DatabaseProject:
             "row_template",
         }
         kwargs_for_constructor = dict(
-            name=name, database=db, key_descriptions=key_descriptions,
+            name=name, database=db,
         )
         for key in extract_keys:
             if key in metadata:

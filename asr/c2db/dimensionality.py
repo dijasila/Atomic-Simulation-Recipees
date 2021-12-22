@@ -18,7 +18,7 @@ def webpanel(result, context):
     from asr.database.browser import table, fig
     dimtable = table(result, 'Dimensionality scores',
                      [f'dim_score_{dimtype}' for dimtype in get_dimtypes()],
-                     context.descriptions, 2)
+                     result.key_descriptions, 2)
     panel = {'title': 'Dimensionality analysis',
              'columns': [[dimtable], [fig('dimensionality-histogram.png')]]}
     return [panel]

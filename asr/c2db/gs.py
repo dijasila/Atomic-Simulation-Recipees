@@ -8,7 +8,7 @@ from asr.calculators import (
     set_calculator_hook, Calculation, get_calculator_class)
 
 from asr.database.browser import (
-    table, fig,
+    convert_result_key_descriptions_to_key_descriptions, table, fig,
     describe_entry, WebPanel,
     make_panel_description,
 )
@@ -111,7 +111,9 @@ def vbm_or_cbm_row(title, quantity_name, reference_explanation, value):
 
 
 def webpanel(result, context):
-    key_descriptions = context.descriptions
+    key_descriptions = convert_result_key_descriptions_to_key_descriptions(
+        result.key_descriptions
+    )
     parameter_description = context.parameter_description_picky('asr.c2db.gs')
 
     def make_gap_row(name):

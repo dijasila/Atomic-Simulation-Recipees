@@ -51,7 +51,7 @@ def webpanel(result, context):
         alphax_el, alphay_el, alphaz_el,
         alphax_lat, alphay_lat, alphaz_lat,
         alphax, alphay, alphaz,
-    ], context.descriptions)
+    ], result.key_descriptions)
 
     panel = {'title': describe_entry('Optical polarizability (RPA)',
                                      panel_description),

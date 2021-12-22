@@ -101,7 +101,7 @@ def calculate(
 
 def webpanel(result, context):
     phonontable = table(result, 'Property', ['minhessianeig'],
-                        context.descriptions)
+                        result.key_descriptions)
 
     panel = {'title': describe_entry('Phonons', panel_description),
              'columns': [[fig('phonon_bs.png')], [phonontable]],

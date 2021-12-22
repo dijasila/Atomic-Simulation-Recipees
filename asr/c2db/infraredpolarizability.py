@@ -37,7 +37,7 @@ def webpanel(result, context):
 
     opt = table(
         result, "Property", ["alphax_lat", "alphay_lat", "alphaz_lat"],
-        context.descriptions,
+        result.key_descriptions,
     )
 
     panel = {

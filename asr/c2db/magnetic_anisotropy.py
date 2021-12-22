@@ -67,7 +67,7 @@ def webpanel(result, context):
 
     magtable = table(result, 'Property',
                      ['magstate', 'magmom',
-                      'dE_zx', 'dE_zy'], kd=context.descriptions)
+                      'dE_zx', 'dE_zy'], kd=result.key_descriptions)
 
     panel = {'title':
              describe_entry(

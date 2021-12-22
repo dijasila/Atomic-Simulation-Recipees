@@ -58,7 +58,7 @@ def webpanel(result, context):
 
     assert 'plasmafrequency_x' in result
     plasmatable = table(result, 'Property', [
-        'plasmafrequency_x', 'plasmafrequency_y'], context.descriptions)
+        'plasmafrequency_x', 'plasmafrequency_y'], result.key_descriptions)
 
     panel = {'title': 'Optical polarizability (RPA)',
              'columns': [[], [plasmatable]]}

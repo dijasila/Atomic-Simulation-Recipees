@@ -57,7 +57,7 @@ def webpanel(result, context):
     hulltable1 = table(result,
                        'Stability',
                        ['hform', 'ehull'],
-                       context.descriptions)
+                       result.key_descriptions)
     hulltables = convex_hull_tables(context.record)
     panel = {
         'title': describe_entry(

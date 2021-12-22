@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import List, Dict, Tuple, Any, Optional
+from typing import List, Dict, Tuple, Any, Optional, Union
 import traceback
 import os
 import multiprocessing
@@ -12,12 +12,13 @@ from asr.core.datacontext import DataContext
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
 from .webpanel import WebPanel
+from .key_descriptions import KeyDescription, make_key_description
 
 
 def create_table(row,  # AtomsRow
                  header,  # List[str]
                  keys,  # List[str]
-                 key_descriptions,  # Dict[str, Tuple[str, str, str]]
+                 key_descriptions: Dict[str, KeyDescription],
                  digits=3  # int
                  ):  # -> Dict[str, Any]
     """Create table-dict from row."""
@@ -37,10 +38,11 @@ def create_table(row,  # AtomsRow
             elif not isinstance(value, str):
                 value = str(value)
 
-            longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
+            key_desc = key_descriptions.get(key, make_key_description(short=key))
+            desc, unit = key_desc.long, key_desc.unit
             if hasattr(key, '__explanation__'):
                 desc = describe_entry(desc, key.__explanation__)
-            if unit:
+            if key_desc.unit:
                 value += ' ' + unit
             table.append([desc, value])
     return {'type': 'table',
@@ -55,7 +57,11 @@ def miscellaneous_section(row, key_descriptions, exclude):
     """
     misckeys = (set(key_descriptions)
                 | set(row.key_value_pairs)) - set(exclude)
-    misc = create_table(row, ['Items', ''], sorted(misckeys), key_descriptions)
+    misc = create_table(
+        row, ['Items', ''],
+        sorted(misckeys),
+        convert_result_key_descriptions_to_key_descriptions(key_descriptions),
+    )
     return ('Miscellaneous', [[misc]])
 
 
@@ -303,8 +309,36 @@ def fig(filename: str, link: str = None,
     return dct
 
 
-def table(row, title, keys, kd={}, digits=2):
-    return create_table(row, [title, 'Value'], keys, kd, digits)
+def table(row, title, keys, kd: Dict[str, Union[KeyDescription, str]] = {}, digits=2):
+    converted_kd = convert_result_key_descriptions_to_key_descriptions(kd)
+    return create_table(row, [title, 'Value'], keys, converted_kd, digits)
+
+
+def convert_result_key_descriptions_to_key_descriptions(
+    key_descriptions: Dict[str, Union[str, KeyDescription]],
+) -> Dict[str, KeyDescription]:
+    """Convert result type key descriptions to (short, long, unit) format."""
+    kd = dict()
+    for key, value in key_descriptions.items():
+        if isinstance(value, KeyDescription):
+            kd[key] = value
+        elif isinstance(value, tuple):
+            kd[key] = KeyDescription(*value)
+        elif isinstance(value, str):
+            desc, *units = value.split("[")
+            if units:
+                unit = units[0]
+                unit = unit.strip(".[] ")
+            else:
+                unit = ''
+            kd[key] = KeyDescription(short=desc, long=desc, unit=unit)
+        else:
+            raise ValueError("Bad key description: key={key} value={value}")
+        if key == "gap":
+            assert kd[key].unit == "eV"
+
+    return kd
+
 
 
 def make_bold(text: str) -> str:

@@ -23,12 +23,6 @@ class DataContext:
         self.record = record
         self.cache = cache
 
-    @lazyproperty
-    def descriptions(self):
-        from asr.database.app import create_default_key_descriptions
-
-        return create_default_key_descriptions()
-
     @property
     def parameters(self):
         return self.record.parameters
