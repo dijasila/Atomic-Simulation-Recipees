@@ -259,7 +259,7 @@ def create_vacancies(temp_dict, structure, pristine, eq_pos, finished_list,
     for i in range(len(structure)):
         if not eq_pos[i] in finished_list:
             vacancy = pristine.copy()
-            sitename = vacancy.get_chemical_symbols()[i]
+            sitename = vacancy.symbols[i]
             vacancy.pop(i)
             vacancy.rattle()
             string = f'defects.{base}.v_{sitename}'
@@ -302,8 +302,8 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
         if not eq_pos[i] in finished_list:
             for j in range(len(structure)):
                 vacancy = pristine.copy()
-                site1 = f'v_{vacancy.get_chemical_symbols()[i]}'
-                site2 = f'v_{vacancy.get_chemical_symbols()[j]}'
+                site1 = f'v_{vacancy.symbols[i]}'
+                site2 = f'v_{vacancy.symbols[j]}'
                 if not j == i and is_new_complex(site1, site2, complex_list):
                     complex_list.append(f'{site1}.{site2}')
                     if i > j:
@@ -342,8 +342,8 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                 for element2 in defect_list:
                     for j in range(len(structure)):
                         defect = pristine.copy()
-                        site1 = f'{element}_{defect.get_chemical_symbols()[i]}'
-                        site2 = f'{element2}_{defect.get_chemical_symbols()[j]}'
+                        site1 = f'{element}_{defect.symbols[i]}'
+                        site2 = f'{element2}_{defect.symbols[j]}'
                         if (not j == i and is_new_complex(site1, site2, complex_list)
                            and not structure[i].symbol == element
                            and not structure[j].symbol == element2):
@@ -383,8 +383,8 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
             for element in defect_list:
                 for j in range(len(structure)):
                     defect = pristine.copy()
-                    site1 = f'v_{defect.get_chemical_symbols()[i]}'
-                    site2 = f'{element}_{defect.get_chemical_symbols()[j]}'
+                    site1 = f'v_{defect.symbols[i]}'
+                    site2 = f'{element}_{defect.symbols[j]}'
                     if (not j == i and is_new_complex(site1, site2, complex_list)
                        and not structure[j].symbol == element):
                         complex_list.append(f'{site1}.{site2}')
@@ -429,7 +429,7 @@ def create_substitutional(temp_dict, structure, pristine, eq_pos, finished_list,
             for element in defect_list:
                 if not structure[i].symbol == element:
                     defect = pristine.copy()
-                    sitename = defect.get_chemical_symbols()[i]
+                    sitename = defect.symbols[i]
                     defect[i].symbol = element
                     defect.rattle()
                     string = f'defects.{base}.{element}_{sitename}'
