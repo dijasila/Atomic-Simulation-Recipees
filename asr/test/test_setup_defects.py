@@ -45,9 +45,12 @@ def test_setup_defects(asr_tmpdir):
 
     pathlist = list(Path('.').glob('defects.BN_331*/charge_*/'))
     for path in pathlist:
+        print(Path(path / 'params.json'))
         assert Path(path / 'params.json').is_file()
-        assert (Path(path / 'unrelaxed.json').is_file()
-                or Path(path / 'unrelaxed.json').is_symlink())
+        if str(path.absolute()).endswith('charge_0'):
+            assert Path(path / 'unrelaxed.json').is_file()
+        else:
+            assert Path(path / 'unrelaxed.json').is_symlink()
 
     assert Path('defects.pristine_sc.331/structure.json').is_file()
 
@@ -58,17 +61,20 @@ def test_vacuum(asr_tmpdir):
     from pathlib import Path
     from asr.setup.defects import main
     from ase.io import read, write
+    from asr.core import chdir
     from .materials import std_test_materials
 
     atoms = std_test_materials[1]
-    write('unrelaxed.json', atoms)
     for vac in np.arange(20, 30, 1):
-        main(general_algorithm=15., uniform_vacuum=vac)
-        pathlist = list(Path('.').glob('defects.BN_*/charge_0/'))
-        for path in pathlist:
-            structure = read(path / 'unrelaxed.json')
-            cell = structure.get_cell()
-            assert cell[2, 2] == vac
+        Path(f'{int(vac)}').mkdir()
+        with chdir(f'{int(vac)}'):
+            write('unrelaxed.json', atoms)
+            main(general_algorithm=15., uniform_vacuum=vac)
+            pathlist = list(Path('.').glob('defects.BN_*/charge_0/'))
+            for path in pathlist:
+                structure = read(path / 'unrelaxed.json')
+                cell = structure.get_cell()
+                assert cell[2, 2] == vac
 
 
 @pytest.mark.ci

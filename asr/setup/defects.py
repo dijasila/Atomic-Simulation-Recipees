@@ -575,6 +575,9 @@ def create_folder_structure(structure, structure_dict, chargestates,
     # create a seperate folder for each possible defect
     # configuration of this parent folder, as well as the pristine
     # supercell system
+
+    # create undelying folder structure, write params.json and
+    # unrelaxed.json for the neutral defect
     for element in structure_dict:
         folder_name = element
         try:
@@ -622,14 +625,27 @@ def create_folder_structure(structure, structure_dict, chargestates,
                     write_json(charge_folder_name + '/params.json', params)
                     if i == 0:
                         write(charge_folder_name + '/unrelaxed.json', struc)
-                    elif i < 0:
-                        os.system(
-                            'ln -s ../charge_{}/structure.json {}'
-                            '/unrelaxed.json'.format(i + 1, charge_folder_name))
+
+    # create symbolic links for higher charge states
+    for element in structure_dict:
+        folder_name = element
+        if folder_name == 'defects':
+            sub_dict = structure_dict[element]
+            j = 0
+            for sub_element in sub_dict:
+                defect_name = [key for key in sub_dict.keys()]
+                defect_folder_name = defect_name[j]
+                j = j + 1
+                for i in range((-1) * chargestates, chargestates + 1):
+                    charge_name = 'charge_{}'.format(i)
+                    if i < 0:
+                        folderno = i + 1
                     elif i > 0:
-                        os.system(
-                            'ln -s ../charge_{}/structure.json {}'
-                            '/unrelaxed.json'.format(i - 1, charge_folder_name))
+                        folderno = i - 1
+                    dstpath = f'{defect_folder_name}/charge_{i}/unrelaxed.json'
+                    srcpath = f'{defect_folder_name}/charge_{folderno}/structure.json'
+                    if i != 0:
+                        os.symlink(srcpath, dstpath)
 
     return None
 
