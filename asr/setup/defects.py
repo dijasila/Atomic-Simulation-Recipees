@@ -575,18 +575,16 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
                                             base_id)
         defects_dict.update(defect_dict)
 
-    # # incorporate extrinsic defects
-    # finished_list = []
-    # if extrinsic != ['NO']:
-    #     defect_list = extrinsic
-    #     temp_dict, finished_list = create_substitutional(temp_dict,
-    #                                                      structure,
-    #                                                      pristine,
-    #                                                      eq_pos,
-    #                                                      finished_list,
-    #                                                      charge_states,
-    #                                                      base_id,
-    #                                                      defect_list)
+    # incorporate extrinsic defects
+    if extrinsic != ['NO']:
+        defect_list = extrinsic
+        defect_dict = create_substitutional(structure,
+                                            pristine,
+                                            eq_pos,
+                                            charge_states,
+                                            base_id,
+                                            defect_list)
+        defects_dict.update(defect_dict)
 
     # # create double defects
     # if double:
