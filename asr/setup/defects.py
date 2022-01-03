@@ -391,7 +391,7 @@ def create_double(structure, pristine, eq_pos, charge_states,
     return defect_dict
 
 
-def add_intrinsic_elements(atoms, elements=[]):
+def add_intrinsic_elements(atoms, elements):
     """Return list of intrinsic elements of a given structure."""
     for i in range(len(atoms)):
         symbol = atoms[i].symbol
@@ -409,7 +409,7 @@ def create_substitutional(structure, pristine, eq_pos,
 
     # get intrinsic doping chemical elements if no input list is given
     if defect_list is None:
-        defect_list = add_intrinsic_elements(structure)
+        defect_list = add_intrinsic_elements(structure, elements=[])
 
     for i in range(len(structure)):
         if not eq_pos[i] in finished_list:

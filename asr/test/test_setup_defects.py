@@ -112,6 +112,26 @@ def test_intrinsic_single_defects(asr_tmpdir):
 
 
 @pytest.mark.ci
+def test_chemical_elements(asr_tmpdir):
+    from pathlib import Path
+    from asr.core import chdir
+    from .materials import std_test_materials
+    from asr.setup.defects import add_intrinsic_elements
+    results = {'Si2': ['Si'],
+               'BN': ['B', 'N'],
+               'Ag': ['Ag'],
+               'Fe': ['Fe']}
+    for i, atoms in enumerate(std_test_materials):
+        name = atoms.get_chemical_formula()
+        Path(name).mkdir()
+        with chdir(name):
+            elements = add_intrinsic_elements(atoms, elements=[])
+            for element in elements:
+                assert element in results[name]
+                assert len(elements) == len(results[name])
+
+
+@pytest.mark.ci
 def test_extrinsic_single_defects(asr_tmpdir):
     from pathlib import Path
     from asr.core import chdir
@@ -154,7 +174,7 @@ def test_extrinsic_double_defects(asr_tmpdir):
 
 @pytest.mark.ci
 def test_new_double():
-    from asr.setup.defects import is_new_complex
+    from asr.setup.defects import is_new_double_defect
 
     complex_list = ['v_N.v_B', 'Cr_N.N_B', 'N_B.B_N', 'Nb_B.F_N']
     newlist = ['N_B.Cr_N', 'Cr_N.N_B', 'v_N.v_B', 'F_N.I_B', 'V_N.v_B']
@@ -162,7 +182,7 @@ def test_new_double():
     for i, new in enumerate(newlist):
         el1 = new.split('.')[0]
         el2 = new.split('.')[1]
-        assert is_new_complex(el1, el2, complex_list) == refs[i]
+        assert is_new_double_defect(el1, el2, complex_list) == refs[i]
 
 
 @pytest.mark.ci
