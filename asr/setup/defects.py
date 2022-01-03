@@ -306,12 +306,18 @@ def is_new_complex(el1, el2, doubles):
     return new
 
 
-def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_states,
+def create_double(structure, pristine, eq_pos, charge_states,
                   base_id, defect_list=None):
     """Create double defects."""
-    print('INFO: create vacancy-vacancy pairs.')
+    defect_dict = {}
     complex_list = []
     finished_list = []
+
+    # set up list of all defects considered (intrinsic and extrinsic)
+    defect_list = add_intrinsic_elements(structure, defect_list)
+
+    print('INFO: create vacancy-vacancy pairs.')
+    # vacancy-vacancy pairs
     for i in range(len(structure)):
         if not eq_pos[i] in finished_list:
             for j in range(len(structure)):
@@ -328,28 +334,13 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                         vacancy.pop(i)
                     vacancy.rattle()
                     string = f'defects.{base_id}.{site1}.{site2}'
-                    charge_dict = {}
-                    for q in range((-1) * charge_states, charge_states + 1):
-                        parameters = {}
-                        calculator_relax = relax_calc_dict.copy()
-                        calculator_gs = gs_calc_dict.copy()
-                        parameters['asr.gs@calculate'] = {
-                            'calculator': calculator_gs}
-                        parameters['asr.gs@calculate']['calculator']['charge'] = q
-                        parameters['asr.relax'] = {'calculator': calculator_relax}
-                        parameters['asr.relax']['calculator']['charge'] = q
-                        charge_string = 'charge_{}'.format(q)
-                        charge_dict[charge_string] = {
-                            'structure': vacancy, 'parameters': parameters}
-                    temp_dict[string] = charge_dict
+                    charge_dict = get_charge_dict(charge_states, defect=vacancy)
+                    defect_dict[string] = charge_dict
                 finished_list.append(eq_pos[i])
 
     print('INFO: create substitutional-substitutional pairs.')
+    # substitutional-substitutional pairs
     finished_list = []
-    for i in range(len(structure)):
-        symbol = structure[i].symbol
-        if symbol not in defect_list:
-            defect_list.append(symbol)
     for i in range(len(structure)):
         if not eq_pos[i] in finished_list:
             for element in defect_list:
@@ -366,32 +357,13 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                             defect[j].symbol = element2
                             defect.rattle()
                             string = f'defects.{base_id}.{site1}.{site2}'
-                            charge_dict = {}
-                            for q in range(
-                                    (-1) * charge_states,
-                                    charge_states + 1):
-                                parameters = {}
-                                calculator_relax = relax_calc_dict.copy()
-                                calculator_gs = gs_calc_dict.copy()
-                                parameters['asr.gs@calculate'] = {
-                                    'calculator': calculator_gs}
-                                parameters['asr.gs@calculate']['calculator'
-                                                               ]['charge'] = q
-                                parameters['asr.relax'] = {
-                                    'calculator': calculator_relax}
-                                parameters['asr.relax']['calculator']['charge'] = q
-                                charge_string = 'charge_{}'.format(q)
-                                charge_dict[charge_string] = {
-                                    'structure': defect, 'parameters': parameters}
-                            temp_dict[string] = charge_dict
+                            charge_dict = get_charge_dict(charge_states, defect=defect)
+                            defect_dict[string] = charge_dict
                         finished_list.append(eq_pos[i])
 
     print('INFO: create vacancy-substitutional pairs.')
+    # vacancy-substitutional pairs
     finished_list = []
-    for i in range(len(structure)):
-        symbol = structure[i].symbol
-        if symbol not in defect_list:
-            defect_list.append(symbol)
     for i in range(len(structure)):
         if not eq_pos[i] in finished_list:
             for element in defect_list:
@@ -406,32 +378,15 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                         defect.pop(i)
                         defect.rattle()
                         string = f'defects.{base_id}.{site1}.{site2}'
-                        charge_dict = {}
-                        for q in range(
-                                (-1) * charge_states,
-                                charge_states + 1):
-                            parameters = {}
-                            calculator_relax = relax_calc_dict.copy()
-                            calculator_gs = gs_calc_dict.copy()
-                            parameters['asr.gs@calculate'] = {
-                                'calculator': calculator_gs}
-                            parameters['asr.gs@calculate']['calculator'
-                                                           ]['charge'] = q
-                            parameters['asr.relax'] = {
-                                'calculator': calculator_relax}
-                            parameters['asr.relax']['calculator']['charge'] = q
-                            charge_string = 'charge_{}'.format(q)
-                            charge_dict[charge_string] = {
-                                'structure': defect, 'parameters': parameters}
-                        temp_dict[string] = charge_dict
+                        charge_dict = get_charge_dict(charge_states, defect=defect)
+                        defect_dict[string] = charge_dict
                     finished_list.append(eq_pos[i])
 
-    return temp_dict, finished_list
+    return defect_dict
 
 
-def get_dopants(atoms):
+def add_intrinsic_elements(atoms, elements=[]):
     """Return list of intrinsic elements of a given structure."""
-    elements = []
     for i in range(len(atoms)):
         symbol = atoms[i].symbol
         if symbol not in elements:
@@ -448,7 +403,7 @@ def create_substitutional(structure, pristine, eq_pos,
 
     # get intrinsic doping chemical elements if no input list is given
     if defect_list is None:
-        defect_list = get_dopants(structure)
+        defect_list = add_intrinsic_elements(structure)
 
     for i in range(len(structure)):
         if not eq_pos[i] in finished_list:
@@ -461,24 +416,6 @@ def create_substitutional(structure, pristine, eq_pos,
                     string = f'defects.{base_id}.{element}_{sitename}'
                     charge_dict = get_charge_dict(charge_states, defect=defect)
                     defect_dict[string] = charge_dict
-                    # charge_dict = {}
-                    # for q in range(
-                    #         (-1) * charge_states,
-                    #         charge_states + 1):
-                    #     parameters = {}
-                    #     calculator_relax = relax_calc_dict.copy()
-                    #     calculator_gs = gs_calc_dict.copy()
-                    #     parameters['asr.gs@calculate'] = {
-                    #         'calculator': calculator_gs}
-                    #     parameters['asr.gs@calculate']['calculator'
-                    #                                    ]['charge'] = q
-                    #     parameters['asr.relax'] = {
-                    #         'calculator': calculator_relax}
-                    #     parameters['asr.relax']['calculator']['charge'] = q
-                    #     charge_string = 'charge_{}'.format(q)
-                    #     charge_dict[charge_string] = {
-                    #         'structure': defect, 'parameters': parameters}
-                    # temp_dict[string] = charge_dict
             finished_list.append(eq_pos[i])
 
     return defect_dict
@@ -586,20 +523,19 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
                                             defect_list)
         defects_dict.update(defect_dict)
 
-    # # create double defects
-    # if double:
-    #     if extrinsic != ['NO']:
-    #         defect_list = extrinsic
-    #     else:
-    #         defect_list = None
-    #     temp_dict, finished_list = create_double(temp_dict,
-    #                                              structure,
-    #                                              pristine,
-    #                                              eq_pos,
-    #                                              finished_list,
-    #                                              charge_states,
-    #                                              base_id,
-    #                                              defect_list)
+    # create double defects
+    if double:
+        if extrinsic != ['NO']:
+            defect_list = extrinsic
+        else:
+            defect_list = None
+        defect_dict = create_double(structure,
+                                    pristine,
+                                    eq_pos,
+                                    charge_states,
+                                    base_id,
+                                    defect_list)
+        defects_dict.update(defect_dict)
 
     # put together structure dict
     structure_dict['defects'] = defects_dict
