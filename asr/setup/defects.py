@@ -430,7 +430,7 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
 
 
 def get_dopants(atoms):
-    """Returns list of intrinsic elements of a given structure."""
+    """Return list of intrinsic elements of a given structure."""
     elements = []
     for i in range(len(atoms)):
         symbol = atoms[i].symbol
