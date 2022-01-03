@@ -62,10 +62,6 @@ gs_calc_dict = {'name': 'gpaw',
         ' it will be chosen automatically otherwise.')
 @option('--extrinsic', type=str,
         help='Comma separated string of extrinsic point defect elements.')
-@option('--nopbc', type=bool,
-        help='Keep the periodic boundary conditions as they are. If this '
-        'option is not used, pbc will be enforced for correct defect '
-        'calculations')
 @option('--halfinteger', type=bool,
         help='Sets up half integer folders within one full integer folder. '
         'It has to be launched within the specific charge folders and needs '
@@ -79,7 +75,6 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: bool = False, uniform_vacuum: bool = False,
-         nopbc: bool = True,
          halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
     """Set up defect structures for a given host.
 
@@ -152,7 +147,7 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
                                        double=double,
                                        sc=supercell,
                                        max_lattice=maxsize, is_2D=is2d,
-                                       vacuum=uniform_vacuum, nopbc=nopbc,
+                                       vacuum=uniform_vacuum,
                                        general_algorithm=general_algorithm)
 
         # based on this dictionary, create a folder structure for all defects
@@ -218,7 +213,7 @@ def setup_supercell(structure, max_lattice, is_2D):
     return structure_sc, x_size, y_size, z_size
 
 
-def apply_vacuum(structure_sc, vacuum, nopbc):
+def apply_vacuum(structure_sc, vacuum):
     """
     Apply vacuum to 2D structures.
 
@@ -253,11 +248,6 @@ def apply_vacuum(structure_sc, vacuum, nopbc):
     pos[:, 2] = pos[:, 2] - oldvac / 2. + vacuum / 2.
     structure_sc.set_cell(cell)
     structure_sc.set_positions(pos)
-
-    if nopbc is False:
-        structure_sc.set_pbc([True, True, True])
-        print('INFO: overwrite pbc and apply them in all three directions for'
-              ' subsequent defect calculations.')
 
     return structure_sc
 
@@ -467,7 +457,7 @@ def create_substitutional(temp_dict, structure, pristine, eq_pos, finished_list,
 
 
 def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, double, sc,
-                  max_lattice, is_2D, vacuum, nopbc, general_algorithm):
+                  max_lattice, is_2D, vacuum, general_algorithm):
     """
     Set up defects for a particular input structure.
 
@@ -523,7 +513,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
 
     # for 2D structures, adjust vacuum size according to given input
     if is_2D:
-        pristine = apply_vacuum(pristine, vacuum, nopbc)
+        pristine = apply_vacuum(pristine, vacuum)
 
     parameters = {}
     string = 'defects.pristine_sc.{}{}{}'.format(N_x, N_y, N_z)
