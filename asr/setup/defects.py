@@ -253,7 +253,7 @@ def apply_vacuum(structure_sc, vacuum):
 
 
 def create_vacancies(temp_dict, structure, pristine, eq_pos, finished_list,
-                     charge_states, base):
+                     charge_states, base_id):
     """Create vacancy defects."""
     finished_list = []
     for i in range(len(structure)):
@@ -262,7 +262,7 @@ def create_vacancies(temp_dict, structure, pristine, eq_pos, finished_list,
             sitename = vacancy.symbols[i]
             vacancy.pop(i)
             vacancy.rattle()
-            string = f'defects.{base}.v_{sitename}'
+            string = f'defects.{base_id}.v_{sitename}'
             charge_dict = {}
             for q in range((-1) * charge_states, charge_states + 1):
                 parameters = {}
@@ -293,7 +293,7 @@ def is_new_complex(el1, el2, doubles):
 
 
 def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_states,
-                  base, defect_list=None):
+                  base_id, defect_list=None):
     """Create double defects."""
     print('INFO: create vacancy-vacancy pairs.')
     complex_list = []
@@ -313,7 +313,7 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                         vacancy.pop(j)
                         vacancy.pop(i)
                     vacancy.rattle()
-                    string = f'defects.{base}.{site1}.{site2}'
+                    string = f'defects.{base_id}.{site1}.{site2}'
                     charge_dict = {}
                     for q in range((-1) * charge_states, charge_states + 1):
                         parameters = {}
@@ -351,7 +351,7 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                             defect[i].symbol = element
                             defect[j].symbol = element2
                             defect.rattle()
-                            string = f'defects.{base}.{site1}.{site2}'
+                            string = f'defects.{base_id}.{site1}.{site2}'
                             charge_dict = {}
                             for q in range(
                                     (-1) * charge_states,
@@ -391,7 +391,7 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
                         defect[j].symbol = element
                         defect.pop(i)
                         defect.rattle()
-                        string = f'defects.{base}.{site1}.{site2}'
+                        string = f'defects.{base_id}.{site1}.{site2}'
                         charge_dict = {}
                         for q in range(
                                 (-1) * charge_states,
@@ -416,7 +416,7 @@ def create_double(temp_dict, structure, pristine, eq_pos, finished_list, charge_
 
 
 def create_substitutional(temp_dict, structure, pristine, eq_pos, finished_list,
-                          charge_states, base, defect_list=None):
+                          charge_states, base_id, defect_list=None):
     """Create substitutional defects."""
     if defect_list is None:
         defect_list = []
@@ -432,7 +432,7 @@ def create_substitutional(temp_dict, structure, pristine, eq_pos, finished_list,
                     sitename = defect.symbols[i]
                     defect[i].symbol = element
                     defect.rattle()
-                    string = f'defects.{base}.{element}_{sitename}'
+                    string = f'defects.{base_id}.{element}_{sitename}'
                     charge_dict = {}
                     for q in range(
                             (-1) * charge_states,
@@ -527,7 +527,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
     # incorporate the possible vacancies
     dataset = spglib.get_symmetry_dataset(cell)
     eq_pos = dataset.get('equivalent_atoms')
-    base = f'{formula}_{N_x}{N_y}{N_z}'
+    base_id = f'{formula}_{N_x}{N_y}{N_z}'
 
     finished_list = []
     temp_dict = {}
@@ -538,7 +538,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
                                                     eq_pos,
                                                     finished_list,
                                                     charge_states,
-                                                    base)
+                                                    base_id)
 
     # incorporate substitutional defects
     finished_list = []
@@ -549,7 +549,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
                                                          eq_pos,
                                                          finished_list,
                                                          charge_states,
-                                                         base)
+                                                         base_id)
 
     # incorporate extrinsic defects
     finished_list = []
@@ -561,7 +561,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
                                                          eq_pos,
                                                          finished_list,
                                                          charge_states,
-                                                         base,
+                                                         base_id,
                                                          defect_list)
 
     # create double defects
@@ -576,7 +576,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
                                                  eq_pos,
                                                  finished_list,
                                                  charge_states,
-                                                 base,
+                                                 base_id,
                                                  defect_list)
 
     # put together structure dict
