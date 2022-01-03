@@ -991,7 +991,7 @@ def get_line_segment(array, index, x_axis, y_axis, gap):
     for i, x in enumerate(xs):
         q1 = array[index, 1]
         y1 = array[index, 0]
-        if x == min(xs) and ys[i] == min(ys) and x > 0 and x < gap:
+        if x == min(xs) and x > 0 and x < gap:
             min_index = i
             x_axis.append(xs[min_index])
             y_axis.append(q1 * xs[min_index] + y1)
