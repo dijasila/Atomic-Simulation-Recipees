@@ -297,10 +297,10 @@ def get_default_parameters(q):
     return parameters
 
 
-def is_new_complex(el1, el2, doubles):
+def is_new_double_defect(el1, el2, double_defects):
     """Check whether a new double defect exists already."""
     new = True
-    for double in doubles:
+    for double in double_defects:
         if el1 in double.split('.') and el2 in double.split('.'):
             new = False
 
@@ -325,7 +325,7 @@ def create_double(structure, pristine, eq_pos, charge_states,
                 vacancy = pristine.copy()
                 site1 = f'v_{vacancy.symbols[i]}'
                 site2 = f'v_{vacancy.symbols[j]}'
-                if not j == i and is_new_complex(site1, site2, complex_list):
+                if not j == i and is_new_double_defect(site1, site2, complex_list):
                     complex_list.append(f'{site1}.{site2}')
                     if i > j:
                         vacancy.pop(i)
@@ -351,7 +351,9 @@ def create_double(structure, pristine, eq_pos, charge_states,
                         defect = pristine.copy()
                         site1 = f'{element}_{defect.symbols[i]}'
                         site2 = f'{element2}_{defect.symbols[j]}'
-                        if (not j == i and is_new_complex(site1, site2, complex_list)
+                        if (not j == i and is_new_double_defect(site1,
+                                                                site2,
+                                                                complex_list)
                            and not structure[i].symbol == element
                            and not structure[j].symbol == element2):
                             complex_list.append(f'{site1}.{site2}')
@@ -374,7 +376,7 @@ def create_double(structure, pristine, eq_pos, charge_states,
                     defect = pristine.copy()
                     site1 = f'v_{defect.symbols[i]}'
                     site2 = f'{element}_{defect.symbols[j]}'
-                    if (not j == i and is_new_complex(site1, site2, complex_list)
+                    if (not j == i and is_new_double_defect(site1, site2, complex_list)
                        and not structure[j].symbol == element):
                         complex_list.append(f'{site1}.{site2}')
                         defect[j].symbol = element
