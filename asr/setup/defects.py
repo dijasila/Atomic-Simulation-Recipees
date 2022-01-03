@@ -218,7 +218,7 @@ def setup_supercell(structure, max_lattice, is_2D):
     return structure_sc, x_size, y_size, z_size
 
 
-def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
+def apply_vacuum(structure_sc, vacuum, nopbc):
     """
     Apply vacuum to 2D structures.
 
@@ -230,33 +230,30 @@ def apply_vacuum(structure_sc, vacuum, is_2D, nopbc):
     :param vacuum: either None (automatic adjustment of the vacuum size) or
                    some float value for manual adjustment of the vacuum for
                    2D structure
-    :param is_2D: dimensionality of the structure
 
     :return supercell_final: supercell structure with suitable vacuum size
                              applied
     """
     import numpy as np
-    if is_2D:
-        cell = structure_sc.get_cell()
-        oldvac = cell[2][2]
-        pos = structure_sc.get_positions()
-        a1 = np.sqrt(cell[0][0]**2 + cell[0][1]**2)
-        a2 = np.sqrt(cell[1][0]**2 + cell[1][1]**2)
-        a = (a1 + a2) / 2.
-        if vacuum is True:
-            vacuum = a
-            print('INFO: apply vacuum size to the supercell of the 2D structure '
-                  'with {} Å.'.format(vacuum))
-        elif vacuum is False:
-            vacuum = oldvac
-            print('INFO: keep vacuum according to the initial 2D structure '
-                  'with {} Å.'.format(vacuum))
-        cell[2][2] = vacuum
-        pos[:, 2] = pos[:, 2] - oldvac / 2. + vacuum / 2.
-        structure_sc.set_cell(cell)
-        structure_sc.set_positions(pos)
-    elif not is_2D:
-        print('INFO: no vacuum to be applied since this is a 3D structure.')
+    cell = structure_sc.get_cell()
+    oldvac = cell[2][2]
+    pos = structure_sc.get_positions()
+    a1 = np.sqrt(cell[0][0]**2 + cell[0][1]**2)
+    a2 = np.sqrt(cell[1][0]**2 + cell[1][1]**2)
+    a = (a1 + a2) / 2.
+    if vacuum is True:
+        vacuum = a
+        print('INFO: apply vacuum size to the supercell of the 2D structure '
+              'with {} Å.'.format(vacuum))
+    elif vacuum is False:
+        vacuum = oldvac
+        print('INFO: keep vacuum according to the initial 2D structure '
+              'with {} Å.'.format(vacuum))
+    cell[2][2] = vacuum
+    pos[:, 2] = pos[:, 2] - oldvac / 2. + vacuum / 2.
+    structure_sc.set_cell(cell)
+    structure_sc.set_positions(pos)
+
     if nopbc is False:
         structure_sc.set_pbc([True, True, True])
         print('INFO: overwrite pbc and apply them in all three directions for'
@@ -508,10 +505,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
     if max_lattice is not None and general_algorithm is False:
         pristine, N_x, N_y, N_z = setup_supercell(
             structure, max_lattice, is_2D)
-        pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
     elif general_algorithm is not None:
         pristine = create_general_supercell(structure, size=float(general_algorithm))
-        pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
         N_x = 0
         N_y = 0
         N_z = 0
@@ -525,7 +520,11 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
         print('INFO: setting up supercell: ({0}, {1}, {2})'.format(
               N_x, N_y, N_z))
         pristine = structure.repeat((N_x, N_y, N_z))
-        pristine = apply_vacuum(pristine, vacuum, is_2D, nopbc)
+
+    # for 2D structures, adjust vacuum size according to given input
+    if is_2D:
+        pristine = apply_vacuum(pristine, vacuum, nopbc)
+
     parameters = {}
     string = 'defects.pristine_sc.{}{}{}'.format(N_x, N_y, N_z)
     calculator_relax = relax_calc_dict.copy()
