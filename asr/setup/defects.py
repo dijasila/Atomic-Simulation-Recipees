@@ -261,6 +261,7 @@ def create_vacancies(structure, pristine, eq_pos, charge_states, base_id):
             vacancy = pristine.copy()
             sitename = vacancy.symbols[i]
             vacancy.pop(i)
+            # rattle defect structure to not get stuck in a saddle point
             vacancy.rattle()
             string = f'defects.{base_id}.v_{sitename}'
             charge_dict = get_charge_dict(charge_states, defect=vacancy)
@@ -332,6 +333,7 @@ def create_double(structure, pristine, eq_pos, charge_states,
                     elif j > i:
                         vacancy.pop(j)
                         vacancy.pop(i)
+                    # rattle defect structure to not get stuck in a saddle point
                     vacancy.rattle()
                     string = f'defects.{base_id}.{site1}.{site2}'
                     charge_dict = get_charge_dict(charge_states, defect=vacancy)
@@ -355,6 +357,7 @@ def create_double(structure, pristine, eq_pos, charge_states,
                             complex_list.append(f'{site1}.{site2}')
                             defect[i].symbol = element
                             defect[j].symbol = element2
+                            # rattle defect structure to not get stuck in a saddle point
                             defect.rattle()
                             string = f'defects.{base_id}.{site1}.{site2}'
                             charge_dict = get_charge_dict(charge_states, defect=defect)
@@ -376,6 +379,7 @@ def create_double(structure, pristine, eq_pos, charge_states,
                         complex_list.append(f'{site1}.{site2}')
                         defect[j].symbol = element
                         defect.pop(i)
+                        # rattle defect structure to not get stuck in a saddle point
                         defect.rattle()
                         string = f'defects.{base_id}.{site1}.{site2}'
                         charge_dict = get_charge_dict(charge_states, defect=defect)
@@ -412,6 +416,7 @@ def create_substitutional(structure, pristine, eq_pos,
                     defect = pristine.copy()
                     sitename = defect.symbols[i]
                     defect[i].symbol = element
+                    # rattle defect structure to not get stuck in a saddle point
                     defect.rattle()
                     string = f'defects.{base_id}.{element}_{sitename}'
                     charge_dict = get_charge_dict(charge_states, defect=defect)
@@ -539,9 +544,6 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
 
     # put together structure dict
     structure_dict['defects'] = defects_dict
-
-    print('INFO: rattled atoms to make sure defect systems do not get stuck at'
-          ' a saddle point.')
 
     print('INFO: setting up {0} different defect supercell systems in '
           'charge states -{1}, ..., +{1}, as well as the pristine supercell '
