@@ -7,7 +7,9 @@ import os
 
 
 # Define calculators that are needed for the params.json file
-# of each individual defect and charge folder
+# of each individual defect and charge folder.
+# Note, that the only real change to the default relax and gs
+# parameters is 'spinpol' here. Should be changed in 'master'.
 relax_calc_dict = {'name': 'gpaw',
                    'mode': {
                        'name': 'pw',
