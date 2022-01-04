@@ -754,10 +754,6 @@ def create_general_supercell(structure, size=12.5):
         sc_structuredict[element]['stdev'] = stdev
         minsize = min(distances)
         sc_structuredict[element]['suitable'] = minsize > size
-        # if min(distances) <= size:
-        #     sc_structuredict[element]['suitable'] = False
-        # elif min(distances) > size:
-        #     sc_structuredict[element]['suitable'] = True
         if minsize > size:
             indexlist.append(i)
             stdev_list.append(stdev)
