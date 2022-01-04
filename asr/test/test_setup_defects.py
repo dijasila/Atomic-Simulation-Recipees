@@ -76,7 +76,7 @@ def test_vacuum(asr_tmpdir):
             for path in pathlist:
                 structure = read(path / 'unrelaxed.json')
                 cell = structure.get_cell()
-                assert cell[2, 2] == vac
+                assert cell[2, 2] == pytest.approx(vac)
 
 
 @pytest.mark.ci
