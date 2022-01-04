@@ -752,10 +752,13 @@ def create_general_supercell(structure, size=12.5):
         stdev = np.std(distances)
         sc_structuredict[element]['distances'] = distances
         sc_structuredict[element]['stdev'] = stdev
-        if min(distances) <= size:
-            sc_structuredict[element]['suitable'] = False
-        elif min(distances) > size:
-            sc_structuredict[element]['suitable'] = True
+        minsize = min(distances)
+        sc_structuredict[element]['suitable'] = minsize > size
+        # if min(distances) <= size:
+        #     sc_structuredict[element]['suitable'] = False
+        # elif min(distances) > size:
+        #     sc_structuredict[element]['suitable'] = True
+        if minsize > size:
             indexlist.append(i)
             stdev_list.append(stdev)
             numatoms_list.append(len(sc_structuredict[element]['structure']))

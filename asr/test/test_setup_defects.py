@@ -106,8 +106,9 @@ def test_intrinsic_single_defects(asr_tmpdir):
     from .materials import std_test_materials
 
     lengths = [1, 4, 1]
-    std_test_materials.pop(2)
-    for i, atoms in enumerate(std_test_materials):
+    materials = std_test_materials.copy()
+    materials.pop(2)
+    for i, atoms in enumerate(materials):
         name = atoms.get_chemical_formula()
         Path(name).mkdir()
         write(f'{name}/unrelaxed.json', atoms)
@@ -212,3 +213,34 @@ def test_setup_halfinteger(asr_tmpdir):
             minus = Path('sj_-0.5/params.json')
             assert plus.is_file()
             assert minus.is_file()
+
+
+@pytest.mark.ci
+def test_setup_halfinteger(asr_tmpdir):
+    from pathlib import Path
+    from asr.core import chdir, read_json
+    from asr.setup.defects import main, write_halfinteger_files
+    from ase.io import write
+    from .materials import std_test_materials
+
+    materials = std_test_materials.copy()
+    materials.pop(2)
+    for atoms in materials:
+        Path(f'{atoms.get_chemical_formula()}').mkdir()
+        write(f'{atoms.get_chemical_formula()}/unrelaxed.json', atoms)
+        with chdir(f'{atoms.get_chemical_formula()}'):
+            main()
+            p = Path('.')
+            pathlist = list(p.glob('defects.*/charge_*'))
+            for path in pathlist:
+                with chdir(path):
+                    write('structure.json', atoms)
+                    params = read_json('params.json')
+                    charge = int(str(path.absolute()).split('/')[-1].split('_')[-1])
+                    write_halfinteger_files(0.5, '+0.5', params, charge, '.')
+                    write_halfinteger_files(-0.5, '-0.5', params, charge, '.')
+                    params_p = read_json('sj_+0.5/params.json')
+                    params_m = read_json('sj_-0.5/params.json')
+                    deltas = [0.5, -0.5]
+                    for i, par in enumerate([params_p, params_m]):
+                        assert par['asr.gs@calculate']['calculator']['charge'] == charge + deltas[i]
