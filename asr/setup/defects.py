@@ -657,43 +657,44 @@ def setup_halfinteger():
     Sets up halfinteger folder which copies params.json and changes the q
     keyword as well as copying the relaxed structure into those folders.
     """
-    from asr.core import read_json, write_json
-    import shutil
+    from asr.core import read_json
 
     charge = int(str(Path('.').absolute()).split('/')[-1].split('_')[-1])
 
     folderpath = Path('.')
     foldername = str(folderpath)
     print('INFO: set up half integer folders and parameter sets for '
-          'a subsequent Slater-Janach calculation')
-    if charge <= 0:
-        print('INFO: charge = {} -> set up negative half integer folder.'.format(
-            charge))
-        Path('sj_-0.5').mkdir()
-        params = read_json('params.json')
-        params_m05 = params.copy()
-        params_m05['asr.gs@calculate']['calculator']['charge'] = charge - 0.5
-        params_m05['asr.relax']['calculator']['charge'] = charge - 0.5
-        write_json('sj_-0.5/params.json', params_m05)
-        print('INFO: changed parameters m: {}'.format(params_m05))
-        shutil.copyfile(foldername + '/structure.json',
-                        foldername + '/sj_-0.5/structure.json')
-    if charge >= 0:
-        print('INFO: charge = {} -> set up positive half integer folder.'.format(
-            charge))
-        Path('sj_+0.5').mkdir()
-        params = read_json('params.json')
-        params_p05 = params.copy()
-        charge = params.get('asr.gs@calculate').get('calculator').get('charge')
-        print('INFO: initial charge {}'.format(charge))
-        params_p05['asr.gs@calculate']['calculator']['charge'] = charge + 0.5
-        params_p05['asr.relax']['calculator']['charge'] = charge + 0.5
-        write_json('sj_+0.5/params.json', params_p05)
-        print('INFO: changed parameters p: {}'.format(params_p05))
-        shutil.copyfile(foldername + '/structure.json',
-                        foldername + '/sj_+0.5/structure.json')
+          'a subsequent Slater-Janach calculation.')
+    paramsfile = read_json('params.json')
+    if charge < 0:
+        print(f'INFO: charge = {charge} -> set up negative half integer folder.')
+        write_halfinteger_files(deltacharge=-0.5, identifier='-0.5', params=paramsfile,
+                                charge=charge, foldername=foldername)
+    elif charge > 0:
+        print(f'INFO: charge = {charge} -> set up positive half integer folder.')
+        write_halfinteger_files(deltacharge=0.5, identifier='+0.5', params=paramsfile,
+                                charge=charge, foldername=foldername)
+    elif charge == 0:
+        print(f'INFO: charge = {charge} -> set up positive and negative half '
+              'integer folder.')
+        write_halfinteger_files(deltacharge=0.5, identifier='+0.5', params=paramsfile,
+                                charge=charge, foldername=foldername)
+        write_halfinteger_files(deltacharge=-0.5, identifier='-0.5', params=paramsfile,
+                                charge=charge, foldername=foldername)
 
-    return None
+
+def write_halfinteger_files(deltacharge, identifier, params, charge, foldername):
+    """Write params.json, structure.json and folder for halfinteger calculation."""
+    import shutil
+    from asr.core import write_json
+
+    Path(f'sj_{identifier}').mkdir()
+    paramsfile = params.copy()
+    paramsfile['asr.gs@calculate']['calculator']['charge'] = charge + deltacharge
+    paramsfile['asr.relax']['calculator']['charge'] = charge + deltacharge
+    write_json(f'sj_{identifier}/params.json', paramsfile)
+    shutil.copyfile(foldername + '/structure.json',
+                    foldername + f'/sj_{identifier}/structure.json')
 
 
 def create_general_supercell(structure, size=12.5):
