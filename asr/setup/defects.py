@@ -123,7 +123,14 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
 
     # only run SJ setup if halfinteger is True
     if halfinteger:
-        setup_halfinteger()
+        try:
+            charge = int(str(Path('.').absolute()).split('/')[-1].split('_')[-1])
+        except ValueError:
+            charge = 0
+            print('WARNING: no charge for the current folder has been read out '
+                  'by the recipe! Set it to one and create both positive and '
+                  'negative half integer folders, structures and params.')
+        setup_halfinteger(charge)
     # otherwise, run complete setup of defect structures
     elif not halfinteger:
         # first, read input atomic structure and store it in ase's atoms object
@@ -650,7 +657,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
     return None
 
 
-def setup_halfinteger():
+def setup_halfinteger(charge):
     """
     Set up folders for SJ calculations.
 
@@ -658,8 +665,6 @@ def setup_halfinteger():
     keyword as well as copying the relaxed structure into those folders.
     """
     from asr.core import read_json
-
-    charge = int(str(Path('.').absolute()).split('/')[-1].split('_')[-1])
 
     folderpath = Path('.')
     foldername = str(folderpath)
