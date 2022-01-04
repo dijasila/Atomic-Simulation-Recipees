@@ -218,7 +218,7 @@ def test_setup_halfinteger(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_setup_halfinteger(asr_tmpdir):
+def test_write_halfinteger(asr_tmpdir):
     from pathlib import Path
     from asr.core import chdir, read_json
     from asr.setup.defects import main, write_halfinteger_files
@@ -245,4 +245,5 @@ def test_setup_halfinteger(asr_tmpdir):
                     params_m = read_json('sj_-0.5/params.json')
                     deltas = [0.5, -0.5]
                     for i, par in enumerate([params_p, params_m]):
-                        assert par['asr.gs@calculate']['calculator']['charge'] == charge + deltas[i]
+                        assert (par['asr.gs@calculate']['calculator']['charge']
+                                == charge + deltas[i])
