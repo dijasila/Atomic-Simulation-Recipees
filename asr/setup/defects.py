@@ -665,7 +665,6 @@ def setup_halfinteger(charge, paramsfile):
     Sets up halfinteger folder which copies params.json and changes the q
     keyword as well as copying the relaxed structure into those folders.
     """
-    from asr.core import read_json
 
     folderpath = Path('.')
     foldername = str(folderpath)
