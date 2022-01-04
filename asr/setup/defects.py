@@ -130,7 +130,8 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
             print('WARNING: no charge for the current folder has been read out '
                   'by the recipe! Set it to one and create both positive and '
                   'negative half integer folders, structures and params.')
-        setup_halfinteger(charge)
+        paramsfile = read_json('params.json')
+        setup_halfinteger(charge, paramsfile)
     # otherwise, run complete setup of defect structures
     elif not halfinteger:
         # first, read input atomic structure and store it in ase's atoms object
@@ -657,7 +658,7 @@ def create_folder_structure(structure, structure_dict, chargestates,
     return None
 
 
-def setup_halfinteger(charge):
+def setup_halfinteger(charge, paramsfile):
     """
     Set up folders for SJ calculations.
 
@@ -670,7 +671,6 @@ def setup_halfinteger(charge):
     foldername = str(folderpath)
     print('INFO: set up half integer folders and parameter sets for '
           'a subsequent Slater-Janach calculation.')
-    paramsfile = read_json('params.json')
     if charge < 0:
         print(f'INFO: charge = {charge} -> set up negative half integer folder.')
         write_halfinteger_files(deltacharge=-0.5, identifier='-0.5', params=paramsfile,
@@ -719,7 +719,7 @@ def create_general_supercell(structure, size=12.5):
     """
     from ase.build import make_supercell
     import numpy as np
-    assert np.sum(structure.get_pbc()) == 2, 'Symmetry breaking only in 2D!'
+    assert all(structure.pbc == [1, 1, 0]), 'Symmetry breaking only in 2D!'
 
     # b1 = n1*a1 + m1*a2
     # b2 = n2*a1 + m2*a2
