@@ -36,8 +36,9 @@ class Result(ASRResult):
 
 
 @command(module='asr.get_wfs',
-         requires=['gs.gpw', 'structure.json'],
-         dependencies=['asr.gs@calculate'],
+         requires=['gs.gpw', 'structure.json',
+                   'results-asr.gs.json'],
+         dependencies=['asr.gs@calculate', 'asr.gs'],
          resources='1:10m',
          returns=Result)
 @option('--state', help='Specify state index that you want to '
@@ -67,7 +68,6 @@ def main(state: int = 0,
     "--get-gapstates" is given, "--state" will be ignored.
     """
     from gpaw import restart
-    from ase.io import write
     from asr.core import read_json
 
     # read in converged gs.gpw file and run fixed density calculation
@@ -79,17 +79,21 @@ def main(state: int = 0,
     # evaluate states in the gap (if '--get-gapstates' is active)
     if get_gapstates:
         print('INFO: evaluate gapstates.')
-        states, above_below, eref = return_gapstates_new(calc)
+        states, above_below, eref = return_gapstates(calc)
     # get energy reference and convert given input state to correct format
     elif not get_gapstates:
+        # for 2D systems, use the vacuum level as energy reference point
         if np.sum(atoms.get_pbc()) == 2:
             eref = read_json('results-asr.gs.json')['evac']
         else:
             eref = 0
+        # if no 'erange' is given, just use the input state to write out wfs
         if erange == (0, 0):
             states = [state]
+        # otherwise, return all of the states in a particular energy range
         elif erange != (0, 0):
             states = return_erange_states(calc, erange)
+        # specific to the defect project result (will be removed in 'master')
         above_below = (None, None)
 
     print(f'INFO: states to write to file: {states}.')
@@ -98,28 +102,35 @@ def main(state: int = 0,
     # set up WaveFunctionResults
     wfs_results = []
     for state in states:
-        wf = calc.get_pseudo_wave_function(band=state, spin=0)
-        energy = calc.get_eigenvalues(spin=0)[state] - eref
-        fname = f'wf.{state}_0.cube'
-        write(fname, atoms, data=wf)
-        wfs_results.append(WaveFunctionResult.fromdata(
-            state=state,
-            spin=0,
-            energy=energy))
+        wfs_result = get_wfs_results(calc, state, 0, eref)
+        wfs_results.append(wfs_result)
         if calc.get_number_of_spins() == 2:
-            wf = calc.get_pseudo_wave_function(band=state, spin=1)
-            energy = calc.get_eigenvalues(spin=1)[state] - eref
-            fname = f'wf.{state}_1.cube'
-            write(fname, atoms, data=wf)
-            wfs_results.append(WaveFunctionResult.fromdata(
-                state=state,
-                spin=1,
-                energy=energy))
+            wfs_result = get_wfs_results(calc, state, 1, eref)
+            wfs_results.append(wfs_result)
 
     return Result.fromdata(
         wfs=wfs_results,
         above_below=above_below,
         eref=eref)
+
+
+def get_wfs_results(calc, state, spin, eref):
+    """
+    Return WaveFunctionResults for specific state, spin, energy reference.
+
+    Write corresponding wavefunction cube file.
+    """
+    from ase.io import write
+
+    wf = calc.get_pseudo_wave_function(band=state, spin=spin)
+    energy = calc.get_eigenvalues(spin=spin)[state] - eref
+    fname = f'wf.{state}_{spin}.cube'
+    write(fname, calc.atoms, data=wf)
+
+    return WaveFunctionResult.fromdata(
+        state=state,
+        spin=spin,
+        energy=energy)
 
 
 def return_defect_index(path=None):
@@ -128,6 +139,7 @@ def return_defect_index(path=None):
     from asr.defect_symmetry import (get_defect_info,
                                      check_and_return_input,
                                      is_vacancy)
+    from asr.core import chdir
 
     if path is None:
         defectpath = Path('.')
@@ -172,9 +184,7 @@ def get_reference_index(def_index, struc_def, struc_pris):
 
 
 def extract_atomic_potentials(calc_def, calc_pris, ref_index, is_vacancy):
-    """
-    Evaluate atomic potentials far away from the defect for pristine and defect.
-    """
+    """Evaluate atomic potentials far away from the defect for pristine and defect."""
     struc_def = calc_def.atoms
     struc_pris = calc_pris.atoms
 
@@ -195,7 +205,7 @@ def extract_atomic_potentials(calc_def, calc_pris, ref_index, is_vacancy):
     return pot_def, pot_pris
 
 
-def return_gapstates_new(calc_def):
+def return_gapstates(calc_def):
     """
     Evaluate states within the pristine band gap and return band indices.
 
@@ -209,7 +219,6 @@ def return_gapstates_new(calc_def):
     Note, that this function only works for defect systems where the folder
     structure has been created with asr.setup.defects!
     """
-    from pathlib import Path
     from asr.core import read_json
 
     # return index of the point defect in the defect structure
@@ -263,7 +272,8 @@ def return_gapstates_new(calc_def):
 
     # check whether difference in atomic electrostatic potentials is
     # not too large
-    # assert abs(pot_def - pot_pris) < 0.4
+    assert abs(pot_def - pot_pris) < 0.1, ("large potential difference "
+                                           "in energy referencing")
 
     # evaluate states within the gap
     statelist = []
@@ -273,72 +283,8 @@ def return_gapstates_new(calc_def):
     return statelist, above_below, dif
 
 
-def return_gapstates(calc):
-    """
-    Evaluate states within the pristine bandgap and return band indices.
-
-    This function compares a defect calculation to a pristine one and
-    evaluates the gap states by aligning semi-core states of pristine and
-    defect system and afterwards comparing their eigenvalues. Note, that this
-    function only works for defect systems where the folder structure has
-    been created with asr.setup.defects!
-    """
-    import numpy as np
-    from asr.core import read_json
-
-    try:
-        p = Path('.')
-        # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-        pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
-        pris_folder = pristinelist[0]
-        _, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
-        res_pris = read_json(pris_folder / 'results-asr.gs.json')
-        # res_def = read_json('results-asr.gs.json')
-    except FileNotFoundError:
-        print('ERROR: does not find pristine gs, pristine results, or defect'
-              ' results. Did you run setup.defects and calculate the ground'
-              ' state for defect and pristine system?')
-
-    # for 2D systems, get pristine vacuum level
-    if np.sum(calc.get_atoms().get_pbc()) == 2:
-        eref_pris = res_pris['evac']
-    # for 3D systems, set reference to zero (vacuum level doesn't make sense)
-    else:
-        eref_pris = 0
-
-    # evaluate pristine VBM and CBM
-    vbm = res_pris['vbm'] - eref_pris
-    cbm = res_pris['cbm'] - eref_pris
-
-    # reference pristine eigenvalues, get defect eigenvalues, align lowest
-    # lying state of defect and pristine system
-    es_pris = calc_pris.get_eigenvalues() - eref_pris
-    es_def = calc.get_eigenvalues()
-    dif = es_def[0] - es_pris[0]
-    es_def = es_def - dif
-    ef_def = calc.get_fermi_level() - dif
-
-    # evaluate whether there are states above or below the fermi level
-    # and within the bandgap
-    above = False
-    below = False
-    for state in es_def:
-        if state < cbm and state > vbm and state > ef_def:
-            above = True
-        elif state < cbm and state > vbm and state < ef_def:
-            below = True
-    above_below = (above, below)
-
-    # evaluate states within the gap
-    statelist = []
-    [statelist.append(i) for i, state in enumerate(es_def) if (
-        state < cbm and state > vbm)]
-
-    return statelist, above_below, dif
-
-
 def return_erange_states(calc, erange):
-    """Evaluate states within a certain energy range wrt. the Fermi level."""
+    """Return states within a certain energy range wrt. the Fermi level."""
     es = calc.get_eigenvalues()
     ef = calc.get_fermi_level()
 
