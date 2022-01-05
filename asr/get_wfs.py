@@ -102,11 +102,10 @@ def main(state: int = 0,
     # loop over all states and write the wavefunctions to file,
     # set up WaveFunctionResults
     wfs_results = []
+    nspins = calc.get_number_of_spins()
     for state in states:
-        wfs_result = get_wfs_results(calc, state, 0, eref)
-        wfs_results.append(wfs_result)
-        if calc.get_number_of_spins() == 2:
-            wfs_result = get_wfs_results(calc, state, 1, eref)
+        for spin in range(nspins):
+            wfs_result = get_wfs_results(calc, state, spin, eref)
             wfs_results.append(wfs_result)
 
     return Result.fromdata(
