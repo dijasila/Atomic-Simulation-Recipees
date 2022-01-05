@@ -39,3 +39,28 @@ def test_get_supercell_shape(asr_tmpdir):
             pristine = atoms.repeat((i, j, 1))
             N = get_supercell_shape(atoms, pristine)
             assert N == min(i, j)
+
+
+@pytest.mark.parametrize('is_vacancy', [True, False])
+@pytest.mark.ci
+def test_conserved_atoms(is_vacancy):
+    from asr.defect_symmetry import conserved_atoms
+    from .materials import BN
+
+    atoms = BN.copy()
+    for i in range(2, 10):
+        for j in range(len(atoms) * i):
+            supercell = atoms.repeat((i, i, 1))
+            if is_vacancy:
+                supercell.pop(j)
+                print(len(supercell), len(atoms), i)
+                assert conserved_atoms(supercell,
+                                       atoms,
+                                       i,
+                                       is_vacancy)
+            else:
+                supercell.symbols[j] = 'X'
+                assert conserved_atoms(supercell,
+                                       atoms,
+                                       i,
+                                       is_vacancy)

@@ -697,7 +697,7 @@ def get_spg_symmetry(structure, symprec=0.1):
 def conserved_atoms(ref_struc, primitive, N, is_vacancy):
     """Return whether number of atoms is correct after the mapping or not."""
     if is_vacancy:
-        removed = -1
+        removed = 1
     else:
         removed = 0
 
@@ -706,14 +706,6 @@ def conserved_atoms(ref_struc, primitive, N, is_vacancy):
     else:
         print('INFO: number of atoms correct after mapping.')
         return True
-
-
-def remove_atoms(structure, indexlist):
-    indices = np.array(indexlist)
-    indices = np.sort(indices)[::-1]
-    for element in indices:
-        structure.pop(element)
-    return structure
 
 
 def indexlist_cut_atoms(structure, threshold):
