@@ -91,7 +91,9 @@ def main(state: int = 0,
             states = [state]
         # otherwise, return all of the states in a particular energy range
         elif erange != (0, 0):
-            states = return_erange_states(calc, erange)
+            evs = calc.get_eigenvalues()
+            ef = calc.get_fermi_level()
+            states = return_erange_states(evs, ef, erange)
         # specific to the defect project result (will be removed in 'master')
         above_below = (None, None)
 
@@ -283,13 +285,10 @@ def return_gapstates(calc_def):
     return statelist, above_below, dif
 
 
-def return_erange_states(calc, erange):
+def return_erange_states(evs, ef, erange):
     """Return states within a certain energy range wrt. the Fermi level."""
-    es = calc.get_eigenvalues()
-    ef = calc.get_fermi_level()
-
     statelist = []
-    [statelist.append(i) for i, state in enumerate(es) if (
+    [statelist.append(i) for i, state in enumerate(evs) if (
         state >= (ef + erange[0]) and state <= (ef + erange[1]))]
 
     return statelist
