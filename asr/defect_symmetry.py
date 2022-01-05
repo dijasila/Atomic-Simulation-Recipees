@@ -475,13 +475,13 @@ def main(mapping: bool = False,
     point_group = get_spg_symmetry(mapped_structure)
 
     # evaluate coordinates of defect in the supercell
-    defecttype, defectpos = get_defect_info(primitive, defect)
+    defecttype, defectpos = get_defect_info(defect)
     defectname = defecttype + '_' + defectpos
+    vac = is_vacancy(defect)
     center = return_defect_coordinates(structure,
-                                       unrelaxed,
                                        primitive,
                                        pristine,
-                                       defect)
+                                       vac)
     print(f'INFO: defect position: {center}, structural symmetry: {point_group}')
 
     # return pristine results to visualise wavefunctions within the gap
@@ -652,11 +652,12 @@ def find_wf_result(state, spin):
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
     """Return centered and mapped structure."""
     import numpy as np
+    vac = is_vacancy(defect)
     for delta in [0, 0.03, 0.05, 0.1, -0.03, -0.05, -0.1]:
         for cutoff in np.arange(0.1, 0.8, 0.04):
             threshold = 0.99
-            translation = return_defect_coordinates(structure, unrelaxed, primitive,
-                                                    pristine, defect)
+            translation = return_defect_coordinates(structure, primitive,
+                                                    pristine, vac)
             rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(
                 structure,
                 unrelaxed,
@@ -836,8 +837,11 @@ def is_vacancy(defectpath):
         return False
 
 
-def get_defect_info(primitive, defectpath):
+def get_defect_info(defectpath=None):
     """Return defecttype, and kind."""
+    from pathlib import Path
+    if defectpath is None:
+        defectpath = Path('.')
     defecttype = str(defectpath.absolute()).split(
         '/')[-2].split('_')[-2].split('.')[-1]
     defectpos = str(defectpath.absolute()).split(
@@ -846,22 +850,24 @@ def get_defect_info(primitive, defectpath):
     return defecttype, defectpos
 
 
-def return_defect_coordinates(structure, unrelaxed, primitive, pristine,
-                              defectpath):
+def return_defect_coordinates(structure, primitive, pristine,
+                              is_vacancy):
     """Return the coordinates of the present defect."""
-    deftype, defpos = get_defect_info(primitive, defectpath)
-    if not is_vacancy(defectpath):
+    from pathlib import Path
+    defectpath = Path('.')
+    deftype, defpos = get_defect_info(defectpath)
+    if not is_vacancy:
         for i in range(len(primitive)):
-            if not (primitive.get_chemical_symbols()[i]
-                    == structure.get_chemical_symbols()[i]):
+            if not (primitive.symbols[i]
+                    == structure.symbols[i]):
                 label = i
                 break
             else:
                 label = 0
-    elif is_vacancy(defectpath):
+    elif is_vacancy:
         for i in range(len(primitive)):
-            if not (primitive.get_chemical_symbols()[i]
-                    == structure.get_chemical_symbols()[i]):
+            if not (primitive.symbols[i]
+                    == structure.symbols[i]):
                 label = i
                 break
             else:
