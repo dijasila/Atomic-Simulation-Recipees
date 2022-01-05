@@ -20,7 +20,7 @@ def test_get_defect_info(asr_tmpdir, extrinsic, intrinsic, vacancies):
     p = Path('.')
     pathlist = list(p.glob('defects.BN*/charge_0'))
     for path in pathlist:
-        defecttype, defectpos = get_defect_info(atoms, path)
+        defecttype, defectpos = get_defect_info(path)
         string = str(path.absolute()).split('/')[-2].split('.')[-1]
         assert defecttype == string.split('_')[0]
         assert defectpos == string.split('_')[1]

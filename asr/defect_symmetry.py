@@ -655,25 +655,10 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
     vac = is_vacancy(defect)
     for delta in [0, 0.03, 0.05, 0.1, -0.03, -0.05, -0.1]:
         for cutoff in np.arange(0.1, 0.8, 0.04):
-            threshold = 0.99
-            translation = return_defect_coordinates(structure, primitive,
-                                                    pristine, vac)
-            rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(
-                structure,
-                unrelaxed,
-                primitive,
-                pristine,
-                translation,
-                delta)
-            indexlist = compare_structures(artificial, ref_struc, cutoff)
-            ref_struc = remove_atoms(ref_struc, indexlist)
-            rel_struc = remove_atoms(rel_struc, indexlist)
-            indexlist = indexlist_cut_atoms(ref_struc, threshold)
-            ref_struc = remove_atoms(ref_struc, indexlist)
-            rel_struc = remove_atoms(rel_struc, indexlist)
-            if not conserved_atoms(ref_struc, primitive, N, defect):
-                threshold = 1.01
-                rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(
+            for threshold in [0.99, 1.01]:
+                translation = return_defect_coordinates(structure, primitive,
+                                                        pristine, vac)
+                rel_struc, ref_struc, artificial, N = recreate_symmetric_cell(
                     structure,
                     unrelaxed,
                     primitive,
@@ -681,16 +666,19 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
                     translation,
                     delta)
                 indexlist = compare_structures(artificial, ref_struc, cutoff)
-                ref_struc = remove_atoms(ref_struc, indexlist)
-                rel_struc = remove_atoms(rel_struc, indexlist)
+                del ref_struc[indexlist]
+                del rel_struc[indexlist]
                 indexlist = indexlist_cut_atoms(ref_struc, threshold)
-                ref_struc = remove_atoms(ref_struc, indexlist)
-                rel_struc = remove_atoms(rel_struc, indexlist)
-            if conserved_atoms(ref_struc, primitive, N, defect):
+                del ref_struc[indexlist]
+                del rel_struc[indexlist]
+                if conserved_atoms(ref_struc, primitive, N, defect):
+                    done = True
+                    break
+            if done:
                 break
-        if conserved_atoms(ref_struc, primitive, N, defect):
+        if done:
             break
-    if not conserved_atoms(ref_struc, primitive, N, defect):
+    if not done:
         raise ValueError('number of atoms wrong in {}! Mapping not correct!'.format(
             defect.absolute()))
 
@@ -706,15 +694,17 @@ def get_spg_symmetry(structure, symprec=0.1):
     return spg_sym.split('^')[0]
 
 
-def conserved_atoms(ref_struc, primitive, N, defectpath):
+def conserved_atoms(ref_struc, primitive, N, is_vacancy):
     """Return whether number of atoms is correct after the mapping or not."""
-    if (is_vacancy(defectpath) and len(ref_struc) != (N * N * len(primitive) - 1)):
-        return False
-    elif (not is_vacancy(defectpath) and len(ref_struc) != (N * N * len(primitive))):
+    if is_vacancy:
+        removed = -1
+    else:
+        removed = 0
+
+    if len(ref_struc) != (N * N * len(primitive) - removed):
         return False
     else:
-        print('INFO: number of atoms correct in {}'.format(
-            defectpath.absolute()))
+        print('INFO: number of atoms correct after mapping.')
         return True
 
 
@@ -794,7 +784,7 @@ def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
     reference.set_positions(refpos)
     reference.wrap()
 
-    return rel_struc, ref_struc, reference, cell, N
+    return rel_struc, ref_struc, reference, N
 
 
 def get_supercell_shape(primitive, pristine):
