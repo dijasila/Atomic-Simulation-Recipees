@@ -2,7 +2,6 @@ import typing
 import click
 import numpy as np
 from pathlib import Path
-from gpaw import restart
 from asr.core import command, option, ASRResult, prepare_result
 
 
@@ -220,6 +219,7 @@ def return_gapstates(calc_def):
     structure has been created with asr.setup.defects!
     """
     from asr.core import read_json
+    from gpaw import restart
 
     # return index of the point defect in the defect structure
     def_index, is_vacancy = return_defect_index()
