@@ -23,10 +23,8 @@ of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)""",
 
 def get_symmetry_table(state_results, vbm, cbm, row):
     import numpy as np
-    from asr.database.browser import (matrixtable, table,
-        describe_entry)
+    from asr.database.browser import matrixtable
 
-    data = row.data.get('results-asr.defect_symmetry.json')
     gsdata = row.data.get('results-asr.gs.json')
     eref = row.data.get('results-asr.get_wfs.json')['eref']
     ef = gsdata['efermi'] - eref
@@ -150,9 +148,8 @@ def get_symmetry_table(state_results, vbm, cbm, row):
 def get_state_table(state_results, vbm, cbm, row):
     import numpy as np
     from asr.database.browser import (matrixtable, table,
-        describe_entry)
+                                      describe_entry)
 
-    data = row.data.get('results-asr.defect_symmetry.json')
     gsdata = row.data.get('results-asr.gs.json')
     eref = row.data.get('results-asr.get_wfs.json')['eref']
     ef = gsdata['efermi'] - eref
@@ -268,15 +265,10 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import (WebPanel,
                                       describe_entry,
                                       table,
-                                      matrixtable,
                                       fig,
                                       href)
 
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
-
-    eref = row.data.get('results-asr.get_wfs.json')['eref']
-    gsdata = row.data.get('results-asr.gs.json')
-    ef = gsdata['efermi'] - eref
 
     basictable = table(row, 'Defect properties', [])
     pg_string = result.defect_pointgroup
@@ -292,9 +284,6 @@ def webpanel(result, row, key_descriptions):
 
     vbm = result.pristine['vbm']
     cbm = result.pristine['cbm']
-    # adjust = compute_offset(result.symmetries, vbm, cbm, ef)
-    # vbm = vbm + adjust
-    # cbm = cbm + adjust
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
               'gapstates!')
@@ -302,8 +291,8 @@ def webpanel(result, row, key_descriptions):
             result.symmetries, vbm, cbm, row)
         if len(state_table_0['rows']) > 1 and len(state_table_1['rows']) > 1:
             panel = WebPanel(description,
-                             columns=[[state_table_0, fig('ks_gap.png')], [state_table_1,
-                                                            transition_table]],
+                             columns=[[state_table_0, fig('ks_gap.png')],
+                                      [state_table_1, transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
                              sort=30)
@@ -316,7 +305,8 @@ def webpanel(result, row, key_descriptions):
                              sort=30)
         elif len(state_table_1['rows']) == 1 and len(state_table_0['rows']) > 1:
             panel = WebPanel(description,
-                             columns=[[state_table_0, fig('ks_gap.png')], [transition_table]],
+                             columns=[[state_table_0, fig('ks_gap.png')],
+                                      [transition_table]],
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
                              sort=30)
@@ -362,7 +352,6 @@ def webpanel(result, row, key_descriptions):
                              plot_descriptions=[{'function': plot_gapstates,
                                                  'filenames': ['ks_gap.png']}],
                              sort=30)
-
 
     summary = {'title': 'Summary',
                'columns': [[basictable], []],
@@ -819,9 +808,19 @@ def get_supercell_shape(primitive, pristine):
     reconstruct = reconstruct.repeat((N, N, 1))
     rcell = reconstruct.get_cell()
     pcell = pristine.get_cell()
-    if rcell[1, 1] > pcell[1, 1]:
-        N -= 1
-    return N
+
+    for size in range(N, 0, -1):
+        suits = True
+        reconstruct = primitive.repeat((size, size, 1))
+        rcell = reconstruct.get_cell()
+        for i in range(3):
+            if rcell[i, i] > pcell[i, i]:
+                suits = False
+                break
+        if suits:
+            return size
+
+    return size
 
 
 def is_vacancy(defectpath):
@@ -937,7 +936,7 @@ class Level:
     def add_label(self, label, static=None):
         """Add symmetry label of the irrep of the point group."""
         shift = self.size / 5
-        labelcolor ='C3'
+        labelcolor = 'C3'
         if static is None:
             labelstr = label.lower()
             splitstr = split(labelstr)
@@ -975,58 +974,6 @@ class Level:
                          color=labelcolor)
 
 
-def compute_offset(symmetrydata, evbm, ecbm, ef):
-    closelist = []
-    energylist_0 = []
-    energylist_1 = []
-    for sym in symmetrydata:
-        if int(sym.spin) == 0:
-            energylist_0.append(sym.energy)
-        elif int(sym.spin) == 1:
-            energylist_1.append(sym.energy)
-    energylist_0.sort()
-    energylist_1.sort()
-    energy = 0
-    for i, en in enumerate(energylist_0):
-        try:
-            if abs(en - energylist_0[i + 4]) < 0.3:
-                energy = energylist_0[i + 4]
-            else:
-                break
-        except:
-            continue
-    abovelist = []
-    belowlist = []
-    for element in energylist_0:
-        if element > ef:
-            abovelist.append(element)
-        elif element < ef:
-            belowlist.append(element)
-    if len(abovelist) == 0:
-        above = ecbm
-    else:
-        above = min(abovelist)
-    if len(belowlist) == 0:
-        below = evbm
-    else:
-        below = max(belowlist)
-    # if ef < ecbm and ef > evbm:
-    if energy != 0:
-        return energy - evbm
-    #     return 0
-    # else:
-    elif ef < evbm:
-        shift = evbm - ef + (above - ef) / 2
-        return energy - shift
-    elif ef > ecbm:
-        shift = ecbm - ef - (ef - below) / 2
-        return energy + shift
-    else:
-        return energy
-
-    # return 0
-
-
 def plot_gapstates(row, fname):
     from matplotlib import pyplot as plt
 
@@ -1041,9 +988,6 @@ def plot_gapstates(row, fname):
     gap = data.pristine.gap
     eref = row.data.get('results-asr.get_wfs.json')['eref']
     ef = gsdata['efermi'] - eref
-    # adjust = compute_offset(data.data['symmetries'], evbm, ecbm, ef)
-    # evbm = evbm + adjust
-    # ecbm = ecbm + adjust
 
     # Draw band edges
     draw_band_edge(evbm, 'vbm', 'C0', offset=gap / 5, ax=ax)
