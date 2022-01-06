@@ -222,7 +222,7 @@ def setup_supercell(structure, max_lattice, is_2D):
     return structure_sc, x_size, y_size, z_size
 
 
-def apply_vacuum(structure_sc, vacuum):
+def apply_vacuum(atoms, vacuum):
     """
     Apply vacuum to 2D structures.
 
@@ -230,18 +230,19 @@ def apply_vacuum(structure_sc, vacuum):
     L_z ~ L_xy, sets it accordingly to the given input vacuum value, or just
     passes in case one is dealing with a 3D structure.
 
-    :param structure_sc: supercell structure without defects incorporated
+    :param atoms: input atomic structure
     :param vacuum: either None (automatic adjustment of the vacuum size) or
                    some float value for manual adjustment of the vacuum for
                    2D structure
 
-    :return supercell_final: supercell structure with suitable vacuum size
-                             applied
+    :return atoms_vac: output atomic structure with changed vacuum size
     """
     import numpy as np
-    cell = structure_sc.get_cell()
+
+    atoms_vac = atoms.copy()
+    cell = atoms_vac.get_cell()
     oldvac = cell[2][2]
-    pos = structure_sc.get_positions()
+    pos = atoms_vac.get_positions()
     a1 = np.sqrt(cell[0][0]**2 + cell[0][1]**2)
     a2 = np.sqrt(cell[1][0]**2 + cell[1][1]**2)
     a = (a1 + a2) / 2.
@@ -255,10 +256,10 @@ def apply_vacuum(structure_sc, vacuum):
               'with {} Å.'.format(vacuum))
     cell[2][2] = vacuum
     pos[:, 2] = pos[:, 2] - oldvac / 2. + vacuum / 2.
-    structure_sc.set_cell(cell)
-    structure_sc.set_positions(pos)
+    atoms_vac.set_cell(cell)
+    atoms_vac.set_positions(pos)
 
-    return structure_sc
+    return atoms_vac
 
 
 def create_vacancies(structure, pristine, eq_pos, charge_states, base_id):
