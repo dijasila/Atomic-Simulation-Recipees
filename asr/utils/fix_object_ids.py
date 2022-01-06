@@ -9,7 +9,7 @@ import re
 
 def extract_recipe_from_filename(filename: str):
     """Parse filename and return recipe name."""
-    pattern = re.compile('results-(.*)\.json')  # noqa
+    pattern = re.compile(r'results-(.*)\.json')  # noqa
     m = pattern.match(filename)
     return m.group(1)
 
