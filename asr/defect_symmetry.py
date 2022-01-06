@@ -500,10 +500,11 @@ def main(mapping: bool = False,
         print(f'WARNING: point group {point_group} not implemented in GPAW. '
               'Return results without symmetry analysis of the wavefunctions.')
         for wf_file in cubefiles:
-            spin = str(wf_file)[str(wf_file).find('_') + 1]
-            band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
+            spin, band = get_spin_and_band(wf_file)
             res_wf = find_wf_result(band, spin)
             energy = res_wf['energy']
+
+            # calculate localization ratio
             wf, atoms = read_cube_data(str(wf_file))
             localization = get_localization_ratio(atoms, wf)
             irrep_results = [IrrepResult.fromdata(
@@ -538,11 +539,11 @@ def main(mapping: bool = False,
 
     symmetry_results = []
     for wf_file in cubefiles:
-        spin = str(wf_file)[str(wf_file).find('_') + 1]
-        band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
+        spin, band = get_spin_and_band(wf_file)
         res_wf = find_wf_result(band, spin)
         energy = res_wf['energy']
 
+        # calculate localization ratio
         wf, atoms = read_cube_data(str(wf_file))
         localization = get_localization_ratio(atoms, wf)
 
@@ -579,6 +580,14 @@ def main(mapping: bool = False,
         defect_name=defectname,
         symmetries=symmetry_results,
         pristine=pris_result)
+
+
+def get_spin_and_band(wf_file):
+    """Extract spin and band index from cube file name."""
+    spin = str(wf_file)[str(wf_file).find('_') + 1]
+    band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
+
+    return spin, band
 
 
 def get_pristine_result():
