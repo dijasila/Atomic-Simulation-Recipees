@@ -64,3 +64,20 @@ def test_conserved_atoms(is_vacancy):
                                        atoms,
                                        i,
                                        is_vacancy)
+
+@pytest.mark.parametrize('sc_size', [1, 2, 3, 4, 5])
+@pytest.mark.ci
+def test_compare_structures(sc_size):
+    from ase.geometry import get_distances
+    from asr.defect_symmetry import compare_structures
+    from .materials import BN
+
+    atoms = BN.copy()
+
+    indices = compare_structures(atoms, atoms, 0.1)
+    assert indices == []
+
+    reference = atoms.repeat((sc_size, sc_size, 1))
+    indices = compare_structures(atoms, reference, 0.1)
+
+    assert len(indices) == sc_size * sc_size * len(atoms) - 2

@@ -719,18 +719,24 @@ def indexlist_cut_atoms(structure, threshold):
     return indexlist
 
 
-def compare_structures(artificial, unrelaxed_rattled, cutoff):
+def compare_structures(ref_structure, structure, cutoff):
+    from ase.geometry import get_distances
     indexlist = []
     rmindexlist = []
-    for i in range(len(unrelaxed_rattled)):
-        for j in range(len(artificial)):
-            if (abs(max((artificial.get_positions()[j]
-                         - unrelaxed_rattled.get_positions()[i]))) < cutoff
-               and i not in indexlist):
+    # find atom indices that are equivalent
+    for i in range(len(structure)):
+        pos_i = structure.get_positions()[i]
+        for j in range(len(ref_structure)):
+            pos_j = ref_structure.get_positions()[j]
+            distance = get_distances(pos_i, pos_j)[1][0]
+            if distance < cutoff and i not in indexlist:
                 indexlist.append(i)
-    for i in range(len(unrelaxed_rattled)):
+
+    # collect non-equivalent atom indices
+    for i in range(len(structure)):
         if i not in indexlist:
             rmindexlist.append(i)
+
     return rmindexlist
 
 
