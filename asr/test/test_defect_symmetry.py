@@ -81,3 +81,42 @@ def test_compare_structures(sc_size):
     indices = compare_structures(atoms, reference, 0.1)
 
     assert len(indices) == sc_size * sc_size * len(atoms) - 2
+
+
+@pytest.mark.parametrize('defect', ['v_N', 'B_N',
+                                     'v_B', 'N_B'])
+@pytest.mark.ci
+def test_return_defect_coordinates(defect):
+    from .materials import BN
+    from pathlib import Path
+    from asr.defect_symmetry import return_defect_coordinates
+
+    atoms = BN.copy()
+    supercell = atoms.repeat((3, 3, 1))
+
+    for i in range(len(supercell)):
+        path = Path(f'defects.BN_331.{defect}/charge_0/')
+        system = supercell.copy()
+        ref_position = supercell.get_positions()[i]
+        if defect.startswith('v'):
+            system.pop(i)
+            is_vacancy = True
+        else:
+            system.symbols[i] = 'X'
+            is_vacancy = False
+        position = return_defect_coordinates(
+            system, atoms, supercell, is_vacancy,
+            defectpath=path)
+
+        assert pytest.approx(position, ref_position)
+
+
+@pytest.mark.ci
+def test_get_spg_symmetry():
+    from .materials import BN, Ag
+    from asr.defect_symmetry import get_spg_symmetry
+
+    results = ['D3h', 'Oh']
+    for i, atoms in enumerate([BN, Ag]):
+        sym = get_spg_symmetry(atoms)
+        assert sym == results[i]

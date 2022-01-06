@@ -839,10 +839,11 @@ def get_defect_info(defectpath=None):
 
 
 def return_defect_coordinates(structure, primitive, pristine,
-                              is_vacancy):
+                              is_vacancy, defectpath=None):
     """Return the coordinates of the present defect."""
     from pathlib import Path
-    defectpath = Path('.')
+    if defectpath is None:
+        defectpath = Path('.')
     deftype, defpos = get_defect_info(defectpath)
     if not is_vacancy:
         for i in range(len(primitive)):
