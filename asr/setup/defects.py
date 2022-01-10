@@ -308,20 +308,23 @@ def is_new_double_defect(el1, el2, double_defects):
     return new
 
 
-def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-3):
+def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-1):
     """Check whether a new double defect exists already."""
     from math import isclose
 
     new = True
     for double in double_defects:
         name = double[0]
-        # ref1 = name.split('.')[0]
-        # ref2 = name.split('.')[1]
+        ref1 = name.split('.')[0]
+        ref2 = name.split('.')[1]
         # elements = name.split('.')
+        def_name = f'{ref1}.{ref2}'
         distance_ref = double[1]
-        if (el1 in name.split('.')
-           and el2 in name.split('.')
+        if (el1 != el2 and el1 in name.split('.') and el2 in name.split('.')
            and isclose(distance_ref, distance, rel_tol=rel_tol)):
+            new = False
+        elif (el1 == el2 and f'{el1}.{el2}' == def_name
+              and isclose(distance_ref, distance, rel_tol=rel_tol)):
             new = False
 
     return new
@@ -362,7 +365,7 @@ def get_maximum_distance(atoms, i, j, scaling_factor):
 
 
 def create_double_new(structure, pristine, eq_pos, charge_states,
-                      base_id, defect_list=None, scaling_factor=1.5):
+                      base_id, defect_list=None, scaling_factor=3):
     """Create double defects based on distance criterion."""
     defect_dict = {}
     complex_list = []
@@ -379,7 +382,6 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
     double_elements = double_defect_species_generator(defect_list)
     for _ in range(max_iter_elements):
         el1, el2 = next(double_elements)
-        print(el1, el2)
         double_indices = double_defect_index_generator(pristine)
         for __ in range(max_iter_indices):
             i, j = next(double_indices)
@@ -388,20 +390,28 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
             site2 = f'{el2}_{defect.symbols[j]}'
             distance = get_distance(pristine, i, j)
             R_max = get_maximum_distance(pristine, i, j, scaling_factor)
-            print(site1, site2, R_max, distance)
             if (is_new_double_defect_2(site1, site2,
                                        complex_list, distance)
                and distance < R_max
                and not (el1 == defect.symbols[i] or el2 == defect.symbols[j])):
                 defect_string = f'{site1}.{site2}.{i}-{j}'
+                print(distance, R_max, defect_string)
                 complex_list.append((defect_string, distance))
-                if el1 == 'v':
+                if el1 == 'v' and el2 == 'v':
+                    if i < j:
+                        defect.pop(j)
+                        defect.pop(i)
+                    else:
+                        defect.pop(i)
+                        defect.pop(j)
+                elif el1 == 'v' and el2 != 'v':
+                    defect.symbols[j] = el2
                     defect.pop(i)
-                else:
+                elif el2 == 'v' and el1 != 'v':
                     defect.symbols[i] = el1
-                if el2 == 'v':
                     defect.pop(j)
-                else:
+                elif el1 != 'v' and el2 != 'v':
+                    defect.symbols[i] = el1
                     defect.symbols[j] = el2
                 defect.rattle()
                 string = f'defects.{base_id}.{defect_string}'
