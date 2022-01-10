@@ -346,14 +346,27 @@ def double_defect_species_generator(element_list):
             yield (el1, el2)
 
 
+def get_maximum_distance(atoms, i, j, scaling_factor):
+    from ase.data import atomic_numbers, covalent_radii
+    el1 = atoms.symbols[i]
+    el2 = atoms.symbols[j]
+    an1 = atomic_numbers[el1]
+    an2 = atomic_numbers[el2]
+
+    R_max = (covalent_radii[an1] + covalent_radii[an2]) * scaling_factor
+
+    return R_max
+
+
 def create_double_new(structure, pristine, eq_pos, charge_states,
-                      base_id, defect_list=None):
+                      base_id, defect_list=None, scaling_factor=1.5):
     """Create double defects based on distance criterion."""
     defect_dict = {}
     complex_list = []
 
     # set up list of all defects considered (intrinsic and extrinsic)
     defect_list = add_intrinsic_elements(structure, defect_list)
+    defect_list.append('v')
 
     # set up the defects
     max_iter_indices = len(pristine) ** 2 - len(pristine)
@@ -368,9 +381,11 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
             site1 = f'{el1}_{defect.symbols[i]}'
             site2 = f'{el2}_{defect.symbols[j]}'
             distance = get_distance(pristine, i, j)
+            R_max = get_maximum_distance(pristine, i, j, scaling_factor)
             if (not i == j
                and is_new_double_defect_2(site1, site2,
-                                          complex_list, distance)):
+                                          complex_list, distance)
+               and distance < R_max):
                 defect_string = f'{site1}.{site2}.{i}-{j}'
                 complex_list.append((defect_string, distance))
                 if el1 == 'v':
