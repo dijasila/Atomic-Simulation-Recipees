@@ -308,6 +308,87 @@ def is_new_double_defect(el1, el2, double_defects):
     return new
 
 
+def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-3):
+    """Check whether a new double defect exists already."""
+    from math import isclose
+
+    new = True
+    for double in double_defects:
+        name = double[0]
+        distance_ref = double[1]
+        if (el1 in name.split('.')
+           and el2 in name.split('.')
+           and isclose(distance_ref, distance, rel_tol=rel_tol)):
+            new = False
+
+    return new
+
+
+def get_distance(atoms, i, j):
+    from ase.geometry import get_distances
+    pos1 = atoms.get_positions()[i]
+    pos2 = atoms.get_positions()[j]
+    cell = atoms.get_cell()
+
+    return get_distances(pos1, pos2, cell=cell, pbc=True)[1][0, 0]
+
+
+def double_defect_index_generator(atoms):
+    for i in range(len(atoms)):
+        for j in range(len(atoms)):
+            if i != j:
+                yield (i, j)
+
+
+def double_defect_species_generator(element_list):
+    for el1 in element_list:
+        for el2 in element_list:
+            yield (el1, el2)
+
+
+def create_double_new(structure, pristine, eq_pos, charge_states,
+                      base_id, defect_list=None):
+    """Create double defects based on distance criterion."""
+    defect_dict = {}
+    complex_list = []
+
+    # set up list of all defects considered (intrinsic and extrinsic)
+    defect_list = add_intrinsic_elements(structure, defect_list)
+
+    # set up the defects
+    max_iter_indices = len(pristine) ** 2 - len(pristine)
+    max_iter_elements = len(defect_list) ** 2
+    double_elements = double_defect_species_generator(defect_list)
+    for _ in range(max_iter_elements):
+        el1, el2 = next(double_elements)
+        double_indices = double_defect_index_generator(pristine)
+        for __ in range(max_iter_indices):
+            i, j = next(double_indices)
+            defect = pristine.copy()
+            site1 = f'{el1}_{defect.symbols[i]}'
+            site2 = f'{el2}_{defect.symbols[j]}'
+            distance = get_distance(pristine, i, j)
+            if (not i == j
+               and is_new_double_defect_2(site1, site2,
+                                          complex_list, distance)):
+                defect_string = f'{site1}.{site2}.{i}-{j}'
+                complex_list.append((defect_string, distance))
+                if el1 == 'v':
+                    defect.pop(i)
+                else:
+                    defect.symbols[i] = el1
+                if el2 == 'v':
+                    defect.pop(j)
+                else:
+                    defect.symbols[j] = el2
+                defect.rattle()
+                string = f'defects.{base_id}.{defect_string}'
+                charge_dict = get_charge_dict(charge_states, defect=defect)
+                defect_dict[string] = charge_dict
+
+    return defect_dict
+
+
 def create_double(structure, pristine, eq_pos, charge_states,
                   base_id, defect_list=None):
     """Create double defects."""
@@ -537,12 +618,12 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
             defect_list = extrinsic
         else:
             defect_list = None
-        defect_dict = create_double(structure,
-                                    pristine,
-                                    eq_pos,
-                                    charge_states,
-                                    base_id,
-                                    defect_list)
+        defect_dict = create_double_new(structure,
+                                        pristine,
+                                        eq_pos,
+                                        charge_states,
+                                        base_id,
+                                        defect_list)
         defects_dict.update(defect_dict)
 
     # put together structure dict
