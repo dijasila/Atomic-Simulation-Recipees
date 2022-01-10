@@ -160,15 +160,21 @@ def test_extrinsic_single_defects(asr_tmpdir):
             assert len(pathlist) == lengths[i]
 
 
+@pytest.mark.parametrize('double_type', ['vac-vac',
+                                         'vac-sub',
+                                         'sub-sub'])
+@pytest.mark.parametrize('scaling', [0, 1.5])
 @pytest.mark.ci
-def test_extrinsic_double_defects(asr_tmpdir):
+def test_extrinsic_double_defects(double_type, scaling, asr_tmpdir):
     from pathlib import Path
     from asr.core import chdir
     from asr.setup.defects import main
     from ase.io import write
     from .materials import std_test_materials
 
-    lengths = [15]
+    lengths = {'vac-vac': 8,
+               'vac-sub': 12,
+               'sub-sub': 13}
     std_test_materials = [std_test_materials[1]]
     for i, atoms in enumerate(std_test_materials):
         name = atoms.get_chemical_formula()
@@ -176,9 +182,12 @@ def test_extrinsic_double_defects(asr_tmpdir):
         write(f'{name}/unrelaxed.json', atoms)
         with chdir(name):
             main(general_algorithm=16., extrinsic='Nb',
-                 double=True)
+                 double=double_type, scaling_double=scaling)
             pathlist = list(Path('.').glob('defects.*/charge_0'))
-            assert len(pathlist) == lengths[i]
+            if scaling == 0:
+                assert len(pathlist) == 6
+            else:
+                assert len(pathlist) == lengths[double_type]
 
 
 @pytest.mark.ci
