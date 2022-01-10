@@ -315,6 +315,9 @@ def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-3):
     new = True
     for double in double_defects:
         name = double[0]
+        # ref1 = name.split('.')[0]
+        # ref2 = name.split('.')[1]
+        # elements = name.split('.')
         distance_ref = double[1]
         if (el1 in name.split('.')
            and el2 in name.split('.')
@@ -365,6 +368,8 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
     complex_list = []
 
     # set up list of all defects considered (intrinsic and extrinsic)
+    if defect_list is None:
+        defect_list = []
     defect_list = add_intrinsic_elements(structure, defect_list)
     defect_list.append('v')
 
@@ -374,6 +379,7 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
     double_elements = double_defect_species_generator(defect_list)
     for _ in range(max_iter_elements):
         el1, el2 = next(double_elements)
+        print(el1, el2)
         double_indices = double_defect_index_generator(pristine)
         for __ in range(max_iter_indices):
             i, j = next(double_indices)
@@ -382,10 +388,11 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
             site2 = f'{el2}_{defect.symbols[j]}'
             distance = get_distance(pristine, i, j)
             R_max = get_maximum_distance(pristine, i, j, scaling_factor)
-            if (not i == j
-               and is_new_double_defect_2(site1, site2,
-                                          complex_list, distance)
-               and distance < R_max):
+            print(site1, site2, R_max, distance)
+            if (is_new_double_defect_2(site1, site2,
+                                       complex_list, distance)
+               and distance < R_max
+               and not (el1 == defect.symbols[i] or el2 == defect.symbols[j])):
                 defect_string = f'{site1}.{site2}.{i}-{j}'
                 complex_list.append((defect_string, distance))
                 if el1 == 'v':
