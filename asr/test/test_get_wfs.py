@@ -24,3 +24,31 @@ def test_return_erange_states(ef, emin, emax):
     # states returned
     if emin > emax:
         assert len(states) == 0
+
+
+@pytest.mark.ci
+def test_return_defect_index(asr_tmpdir):
+    from pathlib import Path
+    from .materials import BN
+    from ase.io import read, write
+    from asr.setup.defects import main as setup
+    from asr.get_wfs import return_defect_index
+
+    results = {'v_B': (0, True),
+               'v_N': (1, True),
+               'N_B': (0, False),
+               'B_N': (1, False)}
+
+    primitive = BN.copy()
+    write('unrelaxed.json', primitive)
+    setup()
+    p = Path('.')
+    pathlist = list(p.glob('defects.*/charge_0/'))
+    for path in pathlist:
+        defname = str(path.absolute()).split('/')[-2].split('.')[-1]
+        structure = read(path / 'unrelaxed.json')
+        def_index, is_vacancy = return_defect_index(
+            path, primitive, structure)
+
+        assert results[defname][0] == def_index
+        assert results[defname][1] == is_vacancy

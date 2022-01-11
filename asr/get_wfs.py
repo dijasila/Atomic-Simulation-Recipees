@@ -133,22 +133,12 @@ def get_wfs_results(calc, state, spin, eref):
         energy=energy)
 
 
-def return_defect_index(path=None):
+def return_defect_index(defectpath, primitive, structure):
     """Return the index of the present defect."""
-    from pathlib import Path
     from asr.defect_symmetry import (get_defect_info,
-                                     check_and_return_input,
                                      is_vacancy)
-    from asr.core import chdir
 
-    if path is None:
-        defectpath = Path('.')
-        structure, _, primitive, _ = check_and_return_input()
-    else:
-        with chdir(path):
-            defectpath = Path('.')
-            structure, _, primitive, _ = check_and_return_input()
-    deftype, defpos = get_defect_info(primitive, defectpath)
+    deftype, defpos = get_defect_info(defectpath)
     if not is_vacancy(defectpath):
         for i in range(len(primitive)):
             if not (primitive.get_chemical_symbols()[i]
@@ -220,10 +210,13 @@ def return_gapstates(calc_def):
     structure has been created with asr.setup.defects!
     """
     from asr.core import read_json
+    from asr.defect_symmetry import check_and_return_input
     from gpaw import restart
 
     # return index of the point defect in the defect structure
-    def_index, is_vacancy = return_defect_index()
+    structure, _, primitive, _ = check_and_return_input()
+    p = Path('.')
+    def_index, is_vacancy = return_defect_index(p, primitive, structure)
 
     # get calculators and atoms for pristine and defect calculation
     try:
