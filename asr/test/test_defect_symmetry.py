@@ -30,7 +30,7 @@ def test_get_defect_info(asr_tmpdir, extrinsic, intrinsic, vacancies):
 
 @pytest.mark.ci
 def test_get_supercell_shape(asr_tmpdir):
-    from materials import BN
+    from .materials import BN
     from asr.defect_symmetry import get_supercell_shape
 
     atoms = BN.copy()
