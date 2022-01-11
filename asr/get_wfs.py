@@ -159,18 +159,26 @@ def return_defect_index(defectpath, primitive, structure):
     return label, is_vacancy(defectpath)
 
 
-def get_reference_index(def_index, struc_def, struc_pris):
-    """Get index of atom furthest away from the defect."""
+def get_reference_index(index, atoms):
+    """Get index of atom furthest away from the atom i."""
+    from ase.geometry import get_distances
+
     distances = []
-    for i in range(len(struc_pris)):
-        distances.append(struc_pris.get_distance(def_index, i, mic=True))
+    ref_index = None
+
+    pos = atoms.get_positions()
+    cell = atoms.get_cell()
+    for i in range(len(atoms)):
+        dist = get_distances(pos[i], pos[index],
+                             cell=cell, pbc=True)[1][0, 0]
+        distances.append(dist)
 
     for i, element in enumerate(distances):
         if element == max(distances):
-            index = i
+            ref_index = i
             break
 
-    return index
+    return ref_index
 
 
 def extract_atomic_potentials(calc_def, calc_pris, ref_index, is_vacancy):
@@ -232,7 +240,7 @@ def return_gapstates(calc_def):
               ' state for defect and pristine system?')
 
     # evaluate which atom possesses maximum distance to the defect site
-    ref_index = get_reference_index(def_index, struc_def, struc_pris)
+    ref_index = get_reference_index(def_index, struc_pris)
 
     # get atomic electrostatic potentials at the atom far away for both the
     # defect and pristine system

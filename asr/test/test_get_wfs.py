@@ -53,6 +53,7 @@ def test_return_defect_index(asr_tmpdir):
         assert results[defname][0] == def_index
         assert results[defname][1] == is_vacancy
 
+
 @pytest.mark.parametrize('gap', np.arange(0, 2.01, 20))
 @pytest.mark.ci
 def test_get_above_below(gap):
@@ -71,3 +72,16 @@ def test_get_above_below(gap):
 
     assert above_below[0] == ref[0]
     assert above_below[1] == ref[1]
+
+
+@pytest.mark.parametrize('formula', ['MoS2', 'MoSe2', 'MoTe2'])
+@pytest.mark.ci
+def test_get_reference_index(formula):
+    from asr.get_wfs import get_reference_index
+    from ase.build import mx2
+
+    atoms = mx2(formula)
+    atoms = atoms.repeat((3, 3, 1))
+    ref_index = get_reference_index(0, atoms)
+
+    assert (ref_index == 15 or ref_index == 10)
