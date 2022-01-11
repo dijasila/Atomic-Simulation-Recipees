@@ -58,8 +58,8 @@ gs_calc_dict = {'name': 'gpaw',
 @option('--double', type=bool,
         help='Specify whether you want to incorporate double defects.')
 @option('--uniform_vacuum', type=bool,
-        help='Pass some float value to choose vacuum for 2D case manually, '
-        ' it will be chosen automatically otherwise.')
+        help='If true, tries to set out of plane vacuum size '
+        'according to the in plane supercell size. Only for 2D.')
 @option('--extrinsic', type=str,
         help='Comma separated string of extrinsic point defect elements.')
 @option('--halfinteger', type=bool,
@@ -222,43 +222,35 @@ def setup_supercell(structure, max_lattice, is_2D):
     return structure_sc, x_size, y_size, z_size
 
 
-def apply_vacuum(structure_sc, vacuum):
+def apply_vacuum(atoms):
     """
     Apply vacuum to 2D structures.
 
-    Either sets the vacuum automatically for the 2D case (in such a way that
-    L_z ~ L_xy, sets it accordingly to the given input vacuum value, or just
-    passes in case one is dealing with a 3D structure.
+    Sets the vacuum automatically for the 2D case (in such a way that
+    L_z ~ L_xy).
 
-    :param structure_sc: supercell structure without defects incorporated
-    :param vacuum: either None (automatic adjustment of the vacuum size) or
-                   some float value for manual adjustment of the vacuum for
-                   2D structure
+    :param atoms: input atomic structure
 
-    :return supercell_final: supercell structure with suitable vacuum size
-                             applied
+    :return atoms_vac: output atomic structure with changed vacuum size
     """
     import numpy as np
-    cell = structure_sc.get_cell()
+
+    atoms_vac = atoms.copy()
+    cell = atoms_vac.get_cell()
     oldvac = cell[2][2]
-    pos = structure_sc.get_positions()
+    pos = atoms_vac.get_positions()
     a1 = np.sqrt(cell[0][0]**2 + cell[0][1]**2)
     a2 = np.sqrt(cell[1][0]**2 + cell[1][1]**2)
     a = (a1 + a2) / 2.
-    if vacuum is True:
-        vacuum = a
-        print('INFO: apply vacuum size to the supercell of the 2D structure '
-              'with {} Å.'.format(vacuum))
-    elif vacuum is False:
-        vacuum = oldvac
-        print('INFO: keep vacuum according to the initial 2D structure '
-              'with {} Å.'.format(vacuum))
-    cell[2][2] = vacuum
-    pos[:, 2] = pos[:, 2] - oldvac / 2. + vacuum / 2.
-    structure_sc.set_cell(cell)
-    structure_sc.set_positions(pos)
+    newvac = a
+    print('INFO: apply vacuum size to the supercell of the 2D structure '
+          'with {} Å.'.format(newvac))
+    cell[2][2] = newvac
+    pos[:, 2] = pos[:, 2] - oldvac / 2. + newvac / 2.
+    atoms_vac.set_cell(cell)
+    atoms_vac.set_positions(pos)
 
-    return structure_sc
+    return atoms_vac
 
 
 def create_vacancies(structure, pristine, eq_pos, charge_states, base_id):
@@ -493,8 +485,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
         pristine = structure.repeat((N_x, N_y, N_z))
 
     # for 2D structures, adjust vacuum size according to given input
-    if is_2D:
-        pristine = apply_vacuum(pristine, vacuum)
+    if is_2D and vacuum:
+        pristine = apply_vacuum(pristine)
 
     parameters = {}
     string = 'defects.pristine_sc.{}{}{}'.format(N_x, N_y, N_z)

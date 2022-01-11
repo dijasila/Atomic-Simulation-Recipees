@@ -45,8 +45,7 @@ def test_setup_defects(asr_tmpdir):
 
 
 @pytest.mark.ci
-def test_vacuum(asr_tmpdir):
-    import numpy as np
+def test_apply_vacuum(asr_tmpdir):
     from pathlib import Path
     from asr.setup.defects import main
     from ase.io import read, write
@@ -54,7 +53,7 @@ def test_vacuum(asr_tmpdir):
     from .materials import std_test_materials
 
     atoms = std_test_materials[1]
-    for vac in np.arange(20, 30, 1):
+    for vac in [True, False]:
         Path(f'{int(vac)}').mkdir()
         with chdir(f'{int(vac)}'):
             write('unrelaxed.json', atoms)
@@ -63,7 +62,12 @@ def test_vacuum(asr_tmpdir):
             for path in pathlist:
                 structure = read(path / 'unrelaxed.json')
                 cell = structure.get_cell()
-                assert cell[2, 2] == pytest.approx(vac)
+                ref = (cell.lengths()[0] + cell.lengths()[1]) / 2.
+                if vac:
+                    assert cell[2, 2] == pytest.approx(ref)
+                else:
+                    assert cell[2, 2] == pytest.approx(
+                        atoms.get_cell().lengths()[2])
 
 
 @pytest.mark.ci
@@ -109,8 +113,6 @@ def test_intrinsic_single_defects(asr_tmpdir):
 
 @pytest.mark.ci
 def test_chemical_elements(asr_tmpdir):
-    from pathlib import Path
-    from asr.core import chdir
     from .materials import std_test_materials
     from asr.setup.defects import add_intrinsic_elements
     results = {'Si2': ['Si'],
@@ -119,12 +121,10 @@ def test_chemical_elements(asr_tmpdir):
                'Fe': ['Fe']}
     for i, atoms in enumerate(std_test_materials):
         name = atoms.get_chemical_formula()
-        Path(name).mkdir()
-        with chdir(name):
-            elements = add_intrinsic_elements(atoms, elements=[])
-            for element in elements:
-                assert element in results[name]
-                assert len(elements) == len(results[name])
+        elements = add_intrinsic_elements(atoms, elements=[])
+        for element in elements:
+            assert element in results[name]
+            assert len(elements) == len(results[name])
 
 
 @pytest.mark.ci
