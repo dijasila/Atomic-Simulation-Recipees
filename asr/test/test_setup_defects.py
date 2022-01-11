@@ -163,9 +163,8 @@ def test_extrinsic_single_defects(asr_tmpdir):
 @pytest.mark.parametrize('double_type', ['vac-vac',
                                          'vac-sub',
                                          'sub-sub'])
-@pytest.mark.parametrize('scaling', [0, 1.5])
 @pytest.mark.ci
-def test_extrinsic_double_defects(double_type, scaling, asr_tmpdir):
+def test_extrinsic_double_defects(double_type, asr_tmpdir):
     from pathlib import Path
     from asr.core import chdir
     from asr.setup.defects import main
@@ -181,13 +180,29 @@ def test_extrinsic_double_defects(double_type, scaling, asr_tmpdir):
         Path(name).mkdir()
         write(f'{name}/unrelaxed.json', atoms)
         with chdir(name):
-            main(general_algorithm=16., extrinsic='Nb',
-                 double=double_type, scaling_double=scaling)
+            main(extrinsic='Nb',
+                 double=double_type, scaling_double=1.5)
             pathlist = list(Path('.').glob('defects.*/charge_0'))
-            if scaling == 0:
-                assert len(pathlist) == 6
-            else:
-                assert len(pathlist) == lengths[double_type]
+            assert len(pathlist) == lengths[double_type]
+
+
+@pytest.mark.parametrize('M', ['Mo', 'W'])
+@pytest.mark.parametrize('X', ['S', 'Se', 'Te'])
+@pytest.mark.parametrize('scaling', [0, 1, 1.5, 2])
+@pytest.mark.ci
+def test_get_maximum_distance(M, X, scaling):
+    from asr.setup.defects import get_maximum_distance
+    from ase.data import atomic_numbers, covalent_radii
+    from ase.build import mx2
+
+    atoms = mx2(f'{M}{X}2')
+    metal = atomic_numbers[M]
+    chalcogen = atomic_numbers[X]
+    reference = ((covalent_radii[metal] + covalent_radii[chalcogen])
+                 * scaling)
+
+    R = get_maximum_distance(atoms, 0, 1, scaling)
+    assert R == pytest.approx(reference)
 
 
 @pytest.mark.ci
