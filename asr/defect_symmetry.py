@@ -1,7 +1,6 @@
 from ase.io import read
 from asr.core import command, option, ASRResult, prepare_result, read_json
 from asr.database.browser import make_panel_description, href
-from gpaw import restart
 import typing
 import numpy as np
 from pathlib import Path
@@ -292,6 +291,7 @@ def main(mapping: bool = False,
     run asr.get_wfs beforehand to write out the needed wavefunctions.
     """
     from ase.io.cube import read_cube_data
+    from gpaw import restart
     from gpaw.point_groups import SymmetryChecker, point_group_names
 
     # define path of the current directory
