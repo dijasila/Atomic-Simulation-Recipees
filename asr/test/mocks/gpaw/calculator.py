@@ -102,6 +102,12 @@ class ASRCalculator(Calculator):
 
     world = world
 
+    def __init__(self, txt=None, **kwargs):
+        # We don't provide txt to the super constructor because we don't
+        # want that to be a "parameter" and then mess with trajectory
+        # writing whenever it contains an actual file object.
+        super().__init__(**kwargs)
+
     def calculate(self, atoms, *args, **kwargs):
         """Calculate properties of atoms and set some necessary instance variables.
 
