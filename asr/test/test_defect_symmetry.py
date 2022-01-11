@@ -65,10 +65,10 @@ def test_conserved_atoms(is_vacancy):
                                        i,
                                        is_vacancy)
 
+
 @pytest.mark.parametrize('sc_size', [1, 2, 3, 4, 5])
 @pytest.mark.ci
 def test_compare_structures(sc_size):
-    from ase.geometry import get_distances
     from asr.defect_symmetry import compare_structures
     from .materials import BN
 
@@ -84,7 +84,7 @@ def test_compare_structures(sc_size):
 
 
 @pytest.mark.parametrize('defect', ['v_N', 'B_N',
-                                     'v_B', 'N_B'])
+                                    'v_B', 'N_B'])
 @pytest.mark.ci
 def test_return_defect_coordinates(defect):
     from .materials import BN

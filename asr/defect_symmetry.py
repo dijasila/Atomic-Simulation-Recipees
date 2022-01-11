@@ -32,8 +32,8 @@ def get_number_of_rows(res, spin, vbm, cbm):
     return counter
 
 
-def get_matrixtable_array_new(state_results, vbm, cbm, ef,
-                              spin, style):
+def get_matrixtable_array(state_results, vbm, cbm, ef,
+                          spin, style):
     Nrows = get_number_of_rows(state_results, spin, vbm, cbm)
     state_array = np.empty((Nrows, 5), dtype='object')
     rowlabels = []
@@ -62,9 +62,9 @@ def get_matrixtable_array_new(state_results, vbm, cbm, ef,
     rowlabels.sort(reverse=True)
 
     for i in range(Nrows):
-        state_array[i, 0] = symlabels[i]
         state_array[i, 1] = spins[i]
         if style == 'symmetry':
+            state_array[i, 0] = symlabels[i]
             state_array[i, 2] = accuracies[i]
             state_array[i, 3] = loc_ratios[i]
         state_array[i, 4] = energies[i]
@@ -73,74 +73,7 @@ def get_matrixtable_array_new(state_results, vbm, cbm, ef,
     return state_array, rowlabels
 
 
-def get_matrixtable_array(state_results, vbm, cbm, ef,
-                          style):
-    Nrows = len(state_results)
-    state_array = np.empty((Nrows, 5), dtype='object')
-    state_rowlabels_0 = []
-    state_rowlabels_1 = []
-    state_spins_0 = []
-    state_energies_0 = []
-    state_label_0 = []
-    state_accuracy_0 = []
-    state_loc_ratio_0 = []
-    state_spins_1 = []
-    state_energies_1 = []
-    state_energies_1 = []
-    state_label_1 = []
-    state_accuracy_1 = []
-    state_loc_ratio_1 = []
-    for i, row in enumerate(state_array):
-        rowname = f"{int(state_results[i]['state']):.0f}"
-        label = str(state_results[i]['best'])
-        labelstr = label.lower()
-        splitstr = split(labelstr)
-        if len(splitstr) == 2:
-            labelstr = f'{splitstr[0]}<sub>{splitstr[1]}</sub>'
-        if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
-            if int(state_results[i]['spin']) == 0:
-                state_rowlabels_0.append(rowname)
-                state_spins_0.append(f"{int(state_results[i]['spin']):.0f}")
-                state_energies_0.append(f"{state_results[i]['energy']:.2f}")
-                if style == 'symmetry':
-                    state_label_0.append(labelstr)
-                    state_accuracy_0.append(f"{state_results[i]['error']:.2f}")
-                    state_loc_ratio_0.append(f"{state_results[i]['loc_ratio']:.2f}")
-            elif int(state_results[i]['spin']) == 1:
-                state_rowlabels_1.append(rowname)
-                state_spins_1.append(f"{int(state_results[i]['spin']):.0f}")
-                state_energies_1.append(f"{state_results[i]['energy']:.2f}")
-                if style == 'symmetry':
-                    state_label_1.append(labelstr)
-                    state_accuracy_1.append(f"{state_results[i]['error']:.2f}")
-                    state_loc_ratio_1.append(f"{state_results[i]['loc_ratio']:.2f}")
-    Nrows_0 = len(state_rowlabels_0)
-    Nrows_1 = len(state_rowlabels_1)
-    state_array_0 = np.empty((Nrows_0, 5), dtype='object')
-    state_rowlabels_0.sort(reverse=True)
-    state_array_1 = np.empty((Nrows_1, 5), dtype='object')
-    state_rowlabels_1.sort(reverse=True)
-    for i in range(Nrows_0):
-        state_array_0[i, 0] = state_label_0[i]
-        state_array_0[i, 1] = state_spins_0[i]
-        if style == 'symmetry':
-            state_array_0[i, 2] = state_accuracy_0[i]
-            state_array_0[i, 3] = state_loc_ratio_0[i]
-        state_array_0[i, 4] = state_energies_0[i]
-    state_array_0 = state_array_0[state_array_0[:, -1].argsort()]
-    for i in range(Nrows_1):
-        state_array_1[i, 0] = state_label_1[i]
-        state_array_1[i, 1] = state_spins_1[i]
-        if style == 'symmetry':
-            state_array_1[i, 2] = state_accuracy_1[i]
-            state_array_1[i, 3] = state_loc_ratio_1[i]
-        state_array_1[i, 4] = state_energies_1[i]
-    state_array_1 = state_array_1[state_array_1[:, -1].argsort()]
-
-    return (state_array_0, state_rowlabels_0), (state_array_1, state_rowlabels_1)
-
-
-def get_symmetry_table(state_results, vbm, cbm, row):
+def get_symmetry_tables(state_results, vbm, cbm, row, style):
     import numpy as np
     from asr.database.browser import matrixtable
 
@@ -149,9 +82,9 @@ def get_symmetry_table(state_results, vbm, cbm, row):
     eref = row.data.get('results-asr.get_wfs.json')['eref']
     ef = gsdata['efermi'] - eref
 
-    style = 'symmetry'
+    E_hls = []
     for spin in range(2):
-        state_array, rowlabels = get_matrixtable_array_new(
+        state_array, rowlabels = get_matrixtable_array(
             state_results, vbm, cbm, ef, spin, style)
         if style == 'symmetry':
             delete = [2]
@@ -160,7 +93,7 @@ def get_symmetry_table(state_results, vbm, cbm, row):
                             'Localization ratio',
                             'Energy [eV]']
         elif style == 'state':
-            delete = [1, 2, 3]
+            delete = [0, 2, 3]
             columnlabels = ['Spin',
                             'Energy [eV]']
 
@@ -169,17 +102,25 @@ def get_symmetry_table(state_results, vbm, cbm, row):
         for i in range(len(state_array)):
             if float(state_array[i, 4]) > ef:
                 N_lumo += 1
+
+        E_homo = vbm
+        E_lumo = cbm
         for i in range(len(state_array)):
             if float(state_array[i, 4]) > ef:
                 rowlabels[i] = f'LUMO + {N_lumo - 1}'
                 N_lumo = N_lumo - 1
                 if N_lumo == 0:
                     rowlabels[i] = 'LUMO'
+                    E_lumo = float(state_array[i, 4])
             elif float(state_array[i, 4]) <= ef:
                 rowlabels[i] = f'HOMO - {N_homo}'
                 if N_homo == 0:
                     rowlabels[i] = 'HOMO'
+                    E_homo = float(state_array[i, 4])
                 N_homo = N_homo + 1
+        E_hl = E_lumo - E_homo
+        E_hls.append(E_hl)
+
         state_array = np.delete(state_array, delete, 1)
         state_table = matrixtable(state_array,
                                   digits=None,
@@ -188,136 +129,31 @@ def get_symmetry_table(state_results, vbm, cbm, row):
                                   rowlabels=rowlabels)
         state_tables.append(state_table)
 
-    return state_tables
+    transition_table = get_transition_table(row, E_hls)
+
+    return state_tables, transition_table
 
 
-def get_state_table(state_results, vbm, cbm, row):
-    import numpy as np
-    from asr.database.browser import (matrixtable, table,
-                                      describe_entry)
-    print(state_results, vbm, cbm)
-
-    gsdata = row.data.get('results-asr.gs.json')
-    eref = row.data.get('results-asr.get_wfs.json')['eref']
-    ef = gsdata['efermi'] - eref
-
-    Nrows = len(state_results)
-    state_array = np.empty((Nrows, 2), dtype='object')
-    state_rowlabels_0 = []
-    state_rowlabels_1 = []
-    state_spins_0 = []
-    state_energies_0 = []
-    state_spins_1 = []
-    state_energies_1 = []
-    print(vbm, cbm)
-    for i, row in enumerate(state_array):
-        rowname = f"{int(state_results[i]['state']):.0f}"
-        if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
-            if int(state_results[i]['spin']) == 0:
-                state_rowlabels_0.append(rowname)
-                state_spins_0.append(f"{int(state_results[i]['spin']):.0f}")
-                state_energies_0.append(f"{state_results[i]['energy']:.2f}")
-            elif int(state_results[i]['spin']) == 1:
-                state_rowlabels_1.append(rowname)
-                state_spins_1.append(f"{int(state_results[i]['spin']):.0f}")
-                state_energies_1.append(f"{state_results[i]['energy']:.2f}")
-    Nrows_0 = len(state_rowlabels_0)
-    Nrows_1 = len(state_rowlabels_1)
-    state_array_0 = np.empty((Nrows_0, 2), dtype='object')
-    state_rowlabels_0.sort(reverse=True)
-    state_array_1 = np.empty((Nrows_1, 2), dtype='object')
-    state_rowlabels_1.sort(reverse=True)
-    for i in range(Nrows_0):
-        state_array_0[i, 0] = state_spins_0[i]
-        state_array_0[i, 1] = state_energies_0[i]
-    state_array_0 = state_array_0[state_array_0[:, 1].argsort()]
-    for i in range(Nrows_1):
-        state_array_1[i, 0] = state_spins_1[i]
-        state_array_1[i, 1] = state_energies_1[i]
-    state_array_1 = state_array_1[state_array_1[:, 1].argsort()]
-
-    N_homo = 0
-    N_lumo = 0
-    for i in range(len(state_array_0)):
-        if float(state_array_0[i, 1]) > ef:
-            N_lumo += 1
-
-    E_homo = vbm
-    E_lumo = cbm
-    for i in range(len(state_array_0)):
-        if float(state_array_0[i, 1]) > ef:
-            state_rowlabels_0[i] = f'LUMO + {N_lumo - 1}'
-            N_lumo = N_lumo - 1
-            if N_lumo == 0:
-                state_rowlabels_0[i] = 'LUMO'
-                E_lumo = float(state_array_0[i, 1])
-        elif float(state_array_0[i, 1]) <= ef:
-            state_rowlabels_0[i] = f'HOMO - {N_homo}'
-            if N_homo == 0:
-                state_rowlabels_0[i] = 'HOMO'
-                E_homo = float(state_array_0[i, 1])
-            N_homo = N_homo + 1
-    E_hl_0 = E_lumo - E_homo
-
-    N_homo = 0
-    N_lumo = 0
-    for i in range(len(state_array_1)):
-        if float(state_array_1[i, 1]) > ef:
-            N_lumo += 1
-
-    E_homo = vbm
-    E_lumo = cbm
-    for i in range(len(state_array_1)):
-        if float(state_array_1[i, 1]) > ef:
-            state_rowlabels_1[i] = f'LUMO + {N_lumo - 1}'
-            N_lumo = N_lumo - 1
-            if N_lumo == 0:
-                state_rowlabels_1[i] = 'LUMO'
-                E_lumo = float(state_array_1[i, 1])
-        elif float(state_array_1[i, 1]) <= ef:
-            state_rowlabels_1[i] = f'HOMO - {N_homo}'
-            if N_homo == 0:
-                state_rowlabels_1[i] = 'HOMO'
-                E_homo = float(state_array_1[i, 1])
-            N_homo = N_homo + 1
-    E_hl_1 = E_lumo - E_homo
-
-    print(state_array_0, state_rowlabels_0)
-    state_table_0 = matrixtable(state_array_0,
-                                digits=None,
-                                title='Orbital',
-                                columnlabels=['Spin',
-                                              'Energy [eV]'],
-                                rowlabels=state_rowlabels_0)
-    state_table_1 = matrixtable(state_array_1,
-                                digits=None,
-                                title='Orbital',
-                                columnlabels=['Spin',
-                                              'Energy [eV]'],
-                                rowlabels=state_rowlabels_1)
+def get_transition_table(row, E_hls):
+    """Create table for HOMO-LUMO transition in both spin channels."""
+    from asr.database.browser import table, describe_entry
 
     transition_table = table(row, 'Kohn-Sham HOMO-LUMO gap', [])
-    transition_table['rows'].extend(
-        [[describe_entry('Spin 0',
-                         'KS HOMO-LUMO gap for spin 0 channel.'),
-          f'{E_hl_0:.2f} eV']])
-    transition_table['rows'].extend(
-        [[describe_entry('Spin 1',
-                         'KS HOMO-LUMO gap for spin 1 channel.'),
-          f'{E_hl_1:.2f} eV']])
+    for i, element in enumerate(E_hls):
+        transition_table['rows'].extend(
+            [[describe_entry(f'Spin {i}',
+                             f'KS HOMO-LUMO gap for spin {i} channel.'),
+              f'{element:.2f} eV']])
 
-    return state_table_0, state_table_1, transition_table
+    return transition_table
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (WebPanel,
+def get_summary_table(result, row):
+    from asr.database.browser import (table,
                                       describe_entry,
-                                      table,
-                                      fig,
                                       href)
 
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
-
     basictable = table(row, 'Defect properties', [])
     pg_string = result.defect_pointgroup
     pg_strlist = split(pg_string)
@@ -328,88 +164,34 @@ def webpanel(result, row, key_descriptions):
                          f'The defect point group is calculated with {spglib}.'),
           pg_string]])
 
+    return basictable
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (WebPanel,
+                                      describe_entry,
+                                      fig)
+
     description = describe_entry('One-electron states', panel_description)
+    basictable = get_summary_table(result, row)
 
     vbm = result.pristine['vbm']
     cbm = result.pristine['cbm']
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
               'gapstates!')
-        state_table_0, state_table_1, transition_table = get_state_table(
-            result.symmetries, vbm, cbm, row)
-        if len(state_table_0['rows']) > 1 and len(state_table_1['rows']) > 1:
-            panel = WebPanel(description,
-                             columns=[[state_table_0, fig('ks_gap.png')],
-                                      [state_table_1, transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-        elif len(state_table_0['rows']) == 1 and len(state_table_1['rows']) > 1:
-            panel = WebPanel(description,
-                             columns=[[fig('ks_gap.png')], [state_table_1,
-                                                            transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-        elif len(state_table_1['rows']) == 1 and len(state_table_0['rows']) > 1:
-            panel = WebPanel(description,
-                             columns=[[state_table_0, fig('ks_gap.png')],
-                                      [transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-        else:
-            panel = WebPanel(description,
-                             columns=[[fig('ks_gap.png')], [transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-
+        state_tables, transition_table = get_symmetry_tables(
+            result.symmetries, vbm, cbm, row, style='state')
     else:
-        state_tables = get_symmetry_table(
-            result.symmetries, vbm, cbm, row)
-        panel = WebPanel(description,
-                         columns=[[state_tables[0],
-                                   fig('ks_gap.png')],
-                                  [state_tables[1]]],
-                         plot_descriptions=[{'function': plot_gapstates,
-                                             'filenames': ['ks_gap.png']}],
-                         sort=30)
-        # state_table_0, state_table_1, transition_table = get_state_table(
-        #     result.symmetries, vbm, cbm, row)
-        # symmetry_table_0, symmetry_table_1 = get_symmetry_table(
-        #     result.symmetries, vbm, cbm, row)
-        # print(symmetry_table_0)
-        # if len(symmetry_table_0['rows']) > 1 and len(symmetry_table_1['rows']) > 1:
-        #     panel = WebPanel(description,
-        #                      columns=[[symmetry_table_0,
-        #                                fig('ks_gap.png')],
-        #                               [symmetry_table_1,
-        #                                transition_table]],
-        #                      plot_descriptions=[{'function': plot_gapstates,
-        #                                          'filenames': ['ks_gap.png']}],
-        #                      sort=30)
-        # elif len(symmetry_table_0['rows']) == 1 and len(symmetry_table_1['rows']) > 1:
-        #     panel = WebPanel(description,
-        #                      columns=[[fig('ks_gap.png')],
-        #                               [symmetry_table_1, transition_table]],
-        #                      plot_descriptions=[{'function': plot_gapstates,
-        #                                          'filenames': ['ks_gap.png']}],
-        #                      sort=30)
-        # elif len(symmetry_table_1['rows']) == 1 and len(symmetry_table_0['rows']) > 1:
-        #     panel = WebPanel(description,
-        #                      columns=[[symmetry_table_0,
-        #                                fig('ks_gap.png')],
-        #                               [transition_table]],
-        #                      plot_descriptions=[{'function': plot_gapstates,
-        #                                          'filenames': ['ks_gap.png']}],
-        #                      sort=30)
-        # else:
-        #     panel = WebPanel(description,
-        #                      columns=[[fig('ks_gap.png')], [transition_table]],
-        #                      plot_descriptions=[{'function': plot_gapstates,
-        #                                          'filenames': ['ks_gap.png']}],
-        #                      sort=30)
+        state_tables, transition_table = get_symmetry_tables(
+            result.symmetries, vbm, cbm, row, style='symmetry')
+    panel = WebPanel(description,
+                     columns=[[state_tables[0],
+                               fig('ks_gap.png')],
+                              [state_tables[1], transition_table]],
+                     plot_descriptions=[{'function': plot_gapstates,
+                                         'filenames': ['ks_gap.png']}],
+                     sort=30)
 
     summary = {'title': 'Summary',
                'columns': [[basictable], []],
