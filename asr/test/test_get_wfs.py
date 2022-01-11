@@ -52,3 +52,22 @@ def test_return_defect_index(asr_tmpdir):
 
         assert results[defname][0] == def_index
         assert results[defname][1] == is_vacancy
+
+@pytest.mark.parametrize('gap', np.arange(0, 2.01, 20))
+@pytest.mark.ci
+def test_get_above_below(gap):
+    from asr.get_wfs import get_above_below
+
+    evs = np.arange(-5, 5.5, 20)
+    ef = 0
+    vbm = ef - gap / 2.
+    cbm = ef + gap / 2.
+
+    above_below = get_above_below(evs, ef, vbm, cbm)
+    if gap >= 1:
+        ref = (True, True)
+    else:
+        ref = (False, False)
+
+    assert above_below[0] == ref[0]
+    assert above_below[1] == ref[1]

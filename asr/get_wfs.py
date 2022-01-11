@@ -254,14 +254,7 @@ def return_gapstates(calc_def):
 
     # evaluate whether there are states above or below the fermi level
     # and within the bandgap
-    above = False
-    below = False
-    for state in ev_def:
-        if state < cbm and state > vbm and state > ef_def:
-            above = True
-        elif state < cbm and state > vbm and state < ef_def:
-            below = True
-    above_below = (above, below)
+    above_below = get_above_below(ev_def, ef_def, vbm, cbm)
     dif = pot_def - pot_pris + evac
 
     # check whether difference in atomic electrostatic potentials is
@@ -275,6 +268,19 @@ def return_gapstates(calc_def):
         state < cbm and state > vbm)]
 
     return statelist, above_below, dif
+
+
+def get_above_below(evs, ef, vbm, cbm):
+    """Check whether there are states above/below EF in the gap."""
+    above = False
+    below = False
+    for ev in evs:
+        if ev < cbm and ev > vbm and ev > ef:
+            above = True
+        elif ev < cbm and ev > vbm and ev < ef:
+            below = True
+
+    return (above, below)
 
 
 def return_erange_states(evs, ef, erange):
