@@ -435,9 +435,11 @@ def get_strucs_and_calcs(path):
 
 
 def get_half_integer_calc_and_index(charge, transition):
-    """Return pos. or neg. half integer calculator based on 'transition'.
+    """
+    Return pos. or neg. half integer calculator based on 'transition'.
 
-    Also, return index of the eigenvalue to be extracted (wrt. q HOMO index)."""
+    Also, return index of the eigenvalue to be extracted (wrt. q HOMO index).
+    """
     from gpaw import restart
     if transition[0] > transition[1]:
         identifier = '-0.5'
