@@ -574,10 +574,12 @@ def compare_structures(ref_structure, structure, cutoff):
     indexlist = []
     rmindexlist = []
     # find atom indices that are equivalent
+    pos = structure.get_positions()
+    ref_pos = structure.get_positions()
     for i in range(len(structure)):
-        pos_i = structure.get_positions()[i]
+        pos_i = pos[i]
         for j in range(len(ref_structure)):
-            pos_j = ref_structure.get_positions()[j]
+            pos_j = ref_pos[j]
             distance = get_distances(pos_i, pos_j)[1][0]
             if distance < cutoff and i not in indexlist:
                 indexlist.append(i)
@@ -837,7 +839,7 @@ def plot_gapstates(row, fname):
     ax1.set_yticks([ef])
     ax1.set_yticklabels([r'E$_\mathrm{F}$'])
     ax.set_xticks([])
-    ax.set_ylabel(r'$E-E\mathrm{vac}$ [eV]')
+    ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
 
     plt.tight_layout()
     plt.savefig(fname)
