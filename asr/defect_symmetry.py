@@ -427,7 +427,7 @@ def get_spin_and_band(wf_file):
     spin = str(wf_file)[str(wf_file).find('_') + 1]
     band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
 
-    return spin, band
+    return int(spin), int(band)
 
 
 def get_pristine_result():
@@ -487,7 +487,7 @@ def find_wf_result(state, spin):
     res = read_json('results-asr.get_wfs.json')
     wfs = res['wfs']
     for wf in wfs:
-        if int(wf['state']) == int(state) and int(wf['spin']) == int(spin):
+        if wf['state'] == state and wf['spin'] == spin:
             return wf
 
     print('ERROR: wf result to given wavefunction file not found! Make sure that '
@@ -495,7 +495,6 @@ def find_wf_result(state, spin):
           ' asr.get_wfs.')
     raise Exception('ERROR: can not find corresponging wavefunction result for '
                     f'wavefunction no. {state}/{spin}!')
-    return None
 
 
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
