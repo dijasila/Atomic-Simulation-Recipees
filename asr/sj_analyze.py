@@ -434,12 +434,33 @@ def get_strucs_and_calcs(path):
     return struc_pris, struc_def, calc_pris, calc_def
 
 
+def get_half_integer_calc_and_index(charge, transition):
+    """Return pos. or neg. half integer calculator based on 'transition'.
+
+    Also, return index of the eigenvalue to be extracted (wrt. q HOMO index)."""
+    from gpaw import restart
+    if transition[0] > transition[1]:
+        identifier = '-0.5'
+        delta_index = 1
+    elif transition[1] > transition[0]:
+        identifier = '+0.5'
+        delta_index = 0
+    _, calc = restart(f'../charge_{charge}/sj_{identifier}/gs.gpw', txt=None)
+    print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
+        transition[0], transition[1]))
+
+    return calc, delta_index
+
+
+def get_transition_energy(evs, index):
+    return evs[index]
+
+
 def get_transition_level(transition, charge, index, N_homo_q) -> TransitionResults:
     """Calculate the charge transition level for a given charge transition."""
     from asr.get_wfs import (return_defect_index,
                              get_reference_index,
                              extract_atomic_potentials)
-    from gpaw import restart
     from ase.io import read
 
     # return index of the point defect in the defect structure
@@ -447,6 +468,9 @@ def get_transition_level(transition, charge, index, N_homo_q) -> TransitionResul
     structure = read('structure.json')
     primitive = read('../../unrelaxed.json')
     def_index, is_vacancy = return_defect_index(p, primitive, structure)
+
+    # get string of the current charge
+    charge = str(charge)
 
     # get calculators and atoms for pristine and defect calculation
     struc_pris, struc_def, calc_pris, calc_def = get_strucs_and_calcs(p)
@@ -458,23 +482,13 @@ def get_transition_level(transition, charge, index, N_homo_q) -> TransitionResul
         ref_index = index
 
     # extract homo and lumo of the half-integer system
-    charge = str(charge)
-    # HOMO
-    if transition[0] > transition[1]:
-        atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
-        HL_index = N_homo_q + 1
-    # LUMO
-    elif transition[1] > transition[0]:
-        atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
-        HL_index = N_homo_q
-    ev = calc.get_eigenvalues()
-    e_trans = ev[HL_index]
-    print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
-        transition[0], transition[1]))
+    calc_half, delta = get_half_integer_calc_and_index(charge, transition)
+    evs = calc_half.get_eigenvalues()
+    e_trans = get_transition_energy(evs, N_homo_q + delta)
 
     # get atomic electrostatic potentials at the atom far away for both the
     # defect and pristine system
-    pot_def, pot_pris = extract_atomic_potentials(calc, calc_pris,
+    pot_def, pot_pris = extract_atomic_potentials(calc_half, calc_pris,
                                                   ref_index, is_vacancy)
 
     # if possible, calculate correction due to relaxation in the charge state
