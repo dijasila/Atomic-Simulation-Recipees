@@ -172,7 +172,8 @@ class myBFGS(BFGS):
             self.logfile.flush()
 
 
-def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
+def relax(atoms, tmp_atoms_file,
+          logfile, trajectory, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
           fmax=0.01, enforce_symmetry=False):
 
@@ -210,18 +211,14 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
 
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
-    filter = ExpCellFilter(atoms, mask=smask)
-    logfile = Path(tmp_atoms_file).with_suffix('.log').name
+    cellfilter = ExpCellFilter(atoms, mask=smask)
 
-    with Trajectory(tmp_atoms_file, 'a', atoms) as trajfile, \
-         myBFGS(filter,
+    with myBFGS(cellfilter,
                 logfile=logfile,
-                trajectory=trajfile) as opt:
+                trajectory=trajectory) as opt:
 
         # fmax=0 here because we have implemented our own convergence criteria
-        runner = opt.irun(fmax=0)
-
-        for _ in runner:
+        for _ in opt.irun(fmax=0):
             # Check that the symmetry has not been broken
             newdataset = atoms2symmetry(atoms,
                                         tolerance=1e-3,
@@ -391,30 +388,59 @@ def main(atoms: Atoms,
                  'a 2D material!')
             calculator['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    calc = Calculator(**calculator)
-    # Relax the structure
-
     def do_relax():
         return relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
                      fixcell=fixcell,
+                     logfile=logfile,
+                     trajectory=trajectory,
                      allow_symmetry_breaking=allow_symmetry_breaking,
                      dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
-    atoms = do_relax()
+    # Previously the relax recipe would open the text file twice and
+    # overwrite itself, except the files wouldn't be flushed at the
+    # right time so actually both were likely flushed simultaneously,
+    # leading to unreliable logfiles.
+    #
+    # We want a new text file only if the relaxation starts from scratch,
+    # and we prefer to open the file only once.
+    #
+    # Also, since we don't trust calc.set() etc., we create two different
+    # calculators instead of reusing the same one.
+    #
+    # Turns out the ASE paropen() implementation does not recognize
+    # the 'a' flag, so we have to roll our own.
+    txt = calculator.pop('txt', '-')
+    if tmp_atoms is None:
+        open_mode = 'w'
+    else:
+        open_mode = 'a'
 
-    # If the maximum magnetic moment on all atoms is big then
-    try:
-        magmoms = atoms.get_magnetic_moments()
-    except PropertyNotImplementedError:
-        # We assume this means that the magnetic moments are zero
-        # for this calculator.
-        magmoms = np.zeros(len(atoms))
+    logfile = Path(tmp_atoms_file).with_suffix('.log')
 
-    if not abs(magmoms).max() > 0.1:
-        atoms.set_initial_magnetic_moments([0] * len(atoms))
+    from ase.utils import IOContext
+
+    with IOContext() as io:
+        # XXX Not so nice to have special cases
+        if calculator.get('name') == 'gpaw':
+            calculator['txt'] = io.openfile(txt, mode=open_mode)
+        logfile = io.openfile(logfile, mode=open_mode)
+        trajectory = io.closelater(Trajectory(tmp_atoms_file, mode=open_mode))
+
         calc = Calculator(**calculator)
-        # Relax the structure
         atoms = do_relax()
+
+        # If the maximum magnetic moment on all atoms is big then
+        try:
+            magmoms = atoms.get_magnetic_moments()
+        except PropertyNotImplementedError:
+            # We assume this means that the magnetic moments are zero
+            # for this calculator.
+            magmoms = np.zeros(len(atoms))
+
+        if not abs(magmoms).max() > 0.1:
+            atoms.set_initial_magnetic_moments([0] * len(atoms))
+            calc = Calculator(**calculator)
+            atoms = do_relax()
 
     edft = calc.get_potential_energy(atoms)
     etot = atoms.get_potential_energy()
