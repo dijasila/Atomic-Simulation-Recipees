@@ -179,11 +179,12 @@ def webpanel(result, row, key_descriptions):
     if result.symmetries[0]['best'] is None:
         print('WARNING: no symmetry analysis for this defect present. Only plot '
               'gapstates!')
-        state_tables, transition_table = get_symmetry_tables(
-            result.symmetries, vbm, cbm, row, style='state')
+        style = 'state'
     else:
-        state_tables, transition_table = get_symmetry_tables(
-            result.symmetries, vbm, cbm, row, style='symmetry')
+        style = 'symmetry'
+
+    state_tables, transition_table = get_symmetry_tables(
+        result.symmetries, vbm, cbm, row, style=style)
     panel = WebPanel(description,
                      columns=[[state_tables[0],
                                fig('ks_gap.png')],
@@ -750,11 +751,6 @@ class Level:
             relpos = xpos_deg[spin][off]
         elif deg == 1:
             relpos = xpos_nor[spin]
-        # if deg - 1:
-        #     relpos = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]][off][spin]
-        # else:
-        #     relpos = [[1 / 4, [1 / 8, 3 / 8]],
-        #                [3 / 4, [5 / 8, 7 / 8]]][spin][deg - 1]
         pos = [relpos - self.size, relpos + self.size]
         self.relpos = relpos
         self.spin = spin
@@ -788,34 +784,24 @@ class Level:
                 labelstr = f'{splitstr[0]}$_{splitstr[1]}$'
         else:
             labelstr = 'a'
+
         if (self.off == 0 and self.spin == 0):
-            self.ax.text(self.relpos - self.size - shift,
-                         self.energy,
-                         labelstr,
-                         va='center',
-                         ha='right',
-                         color=labelcolor)
+            xpos = self.relpos - self.size - shift
+            ha = 'right'
         if (self.off == 0 and self.spin == 1):
-            self.ax.text(self.relpos + self.size + shift,
-                         self.energy,
-                         labelstr,
-                         va='center',
-                         ha='left',
-                         color=labelcolor)
+            xpos = self.relpos + self.size + shift
+            ha = 'left'
         if (self.off == 1 and self.spin == 0):
-            self.ax.text(self.relpos - self.size - shift,
-                         self.energy,
-                         labelstr,
-                         va='center',
-                         ha='right',
-                         color=labelcolor)
+            xpos = self.relpos - self.size - shift
+            ha = 'right'
         if (self.off == 1 and self.spin == 1):
-            self.ax.text(self.relpos + self.size + shift,
-                         self.energy,
-                         labelstr,
-                         va='center',
-                         ha='left',
-                         color=labelcolor)
+            xpos = self.relpos + self.size + shift
+            ha = 'left'
+        self.ax.text(xpos,
+                     self.energy,
+                     labelstr,
+                     va='center', ha=ha,
+                     color=labelcolor)
 
 
 def plot_gapstates(row, fname):
@@ -836,69 +822,12 @@ def plot_gapstates(row, fname):
     # Draw band edges
     draw_band_edge(evbm, 'vbm', 'C0', offset=gap / 5, ax=ax)
     draw_band_edge(ecbm, 'cbm', 'C1', offset=gap / 5, ax=ax)
-    # Loop over eigenvalues to draw the level
 
-    degoffset = 0
-
-    if data.symmetries[0].best is None:
-        levelflag = False
-    else:
-        levelflag = True
-
-    # start with first spin channel
-    i = 0
-    for sym in data.data['symmetries']:
-        if int(sym.spin) == 0:
-            ene = sym.energy
-            if ene < ecbm and ene > evbm:
-                spin = int(sym.spin)
-                irrep = sym.best
-                if levelflag:
-                    deg = [1, 2]['E' in irrep]
-                else:
-                    deg = 1
-                    degoffset = 1
-                if deg == 2 and i == 0:
-                    degoffset = 0
-                    i = 1
-                elif deg == 2 and i == 1:
-                    degoffset = 1
-                    i = 0
-                lev = Level(ene, ax=ax)
-                lev.draw(spin=spin, deg=deg, off=degoffset)
-                if ene <= ef:
-                    lev.add_occupation(length=gap / 15.)
-                if levelflag:
-                    lev.add_label(irrep)
-                elif not levelflag:
-                    lev.add_label(irrep, 'A')
-    # start with first spin channel
-    i = 0
-    for sym in data.data['symmetries']:
-        if int(sym.spin) == 1:
-            ene = sym.energy
-            if ene < ecbm and ene > evbm:
-                spin = int(sym.spin)
-                irrep = sym.best
-                if levelflag:
-                    deg = [1, 2]['E' in irrep]
-                else:
-                    deg = 1
-                    degoffset = 1
-                if deg == 2 and i == 0:
-                    degoffset = 0
-                    i = 1
-                elif deg == 2 and i == 1:
-                    degoffset = 1
-                    i = 0
-                lev = Level(ene, ax=ax)
-                lev.draw(spin=spin, deg=deg, off=degoffset)
-                if ene <= ef:
-                    lev.add_occupation(length=gap / 15)
-                if levelflag:
-                    lev.add_label(irrep)
-                elif not levelflag:
-                    lev.add_label(irrep, 'A')
+    levelflag = data.symmetries[0].best is not None
+    # draw the levels with occupations, and labels for both spins
+    for spin in [0, 1]:
+        draw_levels_occupations_labels(ax, spin, data, ecbm, evbm,
+                                       ef, gap, levelflag)
 
     ax1 = ax.twinx()
     ax.set_xlim(0, 1)
@@ -913,6 +842,38 @@ def plot_gapstates(row, fname):
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
+
+
+def draw_levels_occupations_labels(ax, spin, data, ecbm, evbm, ef,
+                                   gap, levelflag):
+    """Loop over all states in the gap and plot the levels."""
+    i = 0
+    degoffset = 0
+    for sym in data.data['symmetries']:
+        if int(sym.spin) == spin:
+            energy = sym.energy
+            if energy < ecbm and energy > evbm:
+                spin = int(sym.spin)
+                irrep = sym.best
+                if levelflag:
+                    deg = [1, 2]['E' in irrep]
+                else:
+                    deg = 1
+                    degoffset = 1
+                if deg == 2 and i == 0:
+                    degoffset = 0
+                    i = 1
+                elif deg == 2 and i == 1:
+                    degoffset = 1
+                    i = 0
+                lev = Level(energy, ax=ax)
+                lev.draw(spin=spin, deg=deg, off=degoffset)
+                if energy <= ef:
+                    lev.add_occupation(length=gap / 15.)
+                if levelflag:
+                    lev.add_label(irrep)
+                else:
+                    lev.add_label(irrep, 'A')
 
 
 def check_and_return_input():
