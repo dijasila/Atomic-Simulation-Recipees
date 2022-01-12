@@ -396,6 +396,11 @@ def main(atoms: Atoms,
                      allow_symmetry_breaking=allow_symmetry_breaking,
                      dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
+    # Previously the relax recipe would open the text file twice and
+    # overwrite itself, except the files wouldn't be flushed at the
+    # right time so actually both were likely flushed simultaneously,
+    # leading to unreliable logfiles.
+    #
     # We want a new text file only if the relaxation starts from scratch,
     # and we prefer to open the file only once.
     #
@@ -416,11 +421,13 @@ def main(atoms: Atoms,
     from ase.utils import IOContext
 
     with IOContext() as io:
-        gpaw_txt = io.openfile(txt, mode=open_mode)
+        # XXX Not so nice to have special cases
+        if calculator.get('name') == 'gpaw':
+            calculator['txt'] = io.openfile(txt, mode=open_mode)
         logfile = io.openfile(logfile, mode=open_mode)
         trajectory = io.closelater(Trajectory(tmp_atoms_file, mode=open_mode))
 
-        calc = Calculator(txt=gpaw_txt, **calculator)
+        calc = Calculator(**calculator)
         atoms = do_relax()
 
         # If the maximum magnetic moment on all atoms is big then
@@ -433,7 +440,7 @@ def main(atoms: Atoms,
 
         if not abs(magmoms).max() > 0.1:
             atoms.set_initial_magnetic_moments([0] * len(atoms))
-            calc = Calculator(txt=gpaw_txt, **calculator)
+            calc = Calculator(**calculator)
             atoms = do_relax()
 
     edft = calc.get_potential_energy(atoms)

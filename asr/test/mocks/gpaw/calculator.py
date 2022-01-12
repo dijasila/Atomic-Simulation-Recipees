@@ -93,7 +93,6 @@ class ASRCalculator(Calculator):
         "kpts": (4, 4, 4),
         "gridsize": 3,
         "nbands": 12,
-        "txt": None,
     }
 
     occupations = Occupations()
@@ -102,11 +101,12 @@ class ASRCalculator(Calculator):
 
     world = world
 
-    def __init__(self, txt=None, **kwargs):
+    def __init__(self, *args, txt=None, **kwargs):
         # We don't provide txt to the super constructor because we don't
         # want that to be a "parameter" and then mess with trajectory
         # writing whenever it contains an actual file object.
-        super().__init__(**kwargs)
+        self.txt = txt
+        super().__init__(*args, **kwargs)
 
     def calculate(self, atoms, *args, **kwargs):
         """Calculate properties of atoms and set some necessary instance variables.
@@ -151,14 +151,13 @@ class ASRCalculator(Calculator):
         # TODO: Fix this hack
         ASRCalculator._gap = self.results["gap"]
         ASRCalculator._fermi_level = self.results["fermi_level"]
-        if self.parameters.get('txt'):
+        if self.txt:
             data = {'params': self.parameters.copy(),
                     'results': self.results}
-            if isinstance(self.parameters.txt, str):
-                self.write(self.parameters.txt)
+            if isinstance(self.txt, str):
+                self.write(self.txt)
             else:  # Assume that this is a file-descriptor
-                data['params'].pop('txt')
-                self.parameters.txt.write(encode_json(data))
+                self.txt.write(encode_json(data))
 
     def set(self, **kwargs):
         Calculator.set(self, **kwargs)
