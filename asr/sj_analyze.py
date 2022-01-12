@@ -462,10 +462,8 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
 
     # get calculators and atoms for pristine and defect calculation
     try:
-        p = Path('.')
         pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
         pris_folder = pristinelist[0]
-        # res_pris = read_json(pris_folder / 'results-asr.gs.json')
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         struc_def, calc_def = restart(p / 'gs.gpw', txt=None)
     except FileNotFoundError:
@@ -489,13 +487,12 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
     # HOMO
     if transition[0] > transition[1]:
         atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
-        ev = calc.get_eigenvalues()
         HL_index = N_homo + 1
     # LUMO
     elif transition[1] > transition[0]:
         atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
-        ev = calc.get_eigenvalues()
         HL_index = N_homo
+    ev = calc.get_eigenvalues()
     e_trans = ev[HL_index]
     print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
         transition[0], transition[1]))
@@ -629,30 +626,9 @@ def plot_formation_energies(row, fname):
             ax1.axvline(energy, color='grey', linestyle='dotted')
     energies.append(100)
 
-    # for i, element in enumerate(transitions):
-    #     energy = energies[i]
-    #     charge = int(element['transition_name'].split('/')[1])
-    #     if energy > 0 and energy < gap:
-    #         for en in eform:
-    #             if en[1] == charge:
-    #                 if charge < 0:
-    #                     xmin = energy
-    #                     xmax = min(gap, energies[i + 1])
-    #                 else:
-    #                     xmin = max(0, min(special, energies[i + 1]))
-    #                     xmax = energy
-    #                 # ax1.plot([xmin, xmax],
-    #                 #          [f(xmin, en[1], en[0]),
-    #                 #           f(xmax, en[1], en[0])],
-    #                 #          color='black', linestyle='solid')
-    # # ax1.plot([max(0, positive), min(gap, negative)], [eform[0][0], eform[0][0]],
-    # #          color='black', linestyle='solid')
-
     ax2 = ax1.twiny()
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks([])
-    # ax2.set_xticks(tickslist)
-    # ax2.set_xticklabels(labellist)
     ax1.set_xlabel(r'$E - E_\mathrm{VBM}}$ [eV]')
     ax1.set_ylabel(r'$E^f$ (wrt. standard states) [eV]')
     ax1.legend()
@@ -686,15 +662,10 @@ def plot_charge_transitions(row, fname):
 
     transitions = data['transitions']
 
-    # plt.plot([-2, 2], [vbm, vbm])
-    # plt.plot([-2, 2], [cbm, cbm])
-
     plt.xlim(-1, 1)
     plt.ylim(-0.2 * gap, gap + 0.2 * gap)
     plt.xticks([], [])
 
-    # plt.axhline(vbm, color='C0')
-    # plt.axhline(cbm, color='C1')
     plt.axhspan(-5, 0, color='grey', alpha=0.5)
     plt.axhspan(gap, gap + 5, color='grey', alpha=0.5)
     plt.axhline(0, color='black', linestyle='solid')
