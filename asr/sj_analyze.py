@@ -367,7 +367,7 @@ def get_pristine_band_edges(index) -> PristineResults:
 
     # evaluate which atom possesses maximum distance to the defect site
     if index is None:
-        ref_index = get_reference_index(def_index, struc_def, struc_pris)
+        ref_index = get_reference_index(def_index, struc_pris)
     else:
         ref_index = index
 
@@ -479,32 +479,26 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
     else:
         ref_index = index
 
-    # get newly referenced eigenvalues for pristine and defect, as well as
-    # pristine fermi level for evaluation of the band gap
-    # if np.sum(struc_def.get_pbc()) == 2:
-    #     evac = res_pris['evac']
-    # else:
-    #     evac = 0
-
-    # extract HOMO or LUMO (TBD)
-    # HOMO
-    charge = str(charge)
+    # get index of the integer defect system
     ev = calc_def.get_eigenvalues()
     e_fermi = calc_def.get_fermi_level()
     N_homo = get_homo_index(ev, e_fermi)
+
+    # extract homo and lumo of the half-integer system
+    charge = str(charge)
+    # HOMO
     if transition[0] > transition[1]:
         atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
         ev = calc.get_eigenvalues()
-        e_trans = ev[N_homo + 1]
-        print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
-            transition[0], transition[1]))
+        HL_index = N_homo + 1
     # LUMO
     elif transition[1] > transition[0]:
         atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
         ev = calc.get_eigenvalues()
-        e_trans = ev[N_homo]
-        print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
-            transition[0], transition[1]))
+        HL_index = N_homo
+    e_trans = ev[HL_index]
+    print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
+        transition[0], transition[1]))
 
     # get atomic electrostatic potentials at the atom far away for both the
     # defect and pristine system
