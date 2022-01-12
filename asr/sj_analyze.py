@@ -199,11 +199,13 @@ def main(index: int = None) -> Result:
     """
     from ase.db import connect
     from ase.io import read
+    from asr.core import read_json
 
     p = Path('.')
     defectsystem = str(p.absolute()).split('/')[-2]
     print('INFO: calculate formation energy and charge transition levels '
           'for defect {}.'.format(defectsystem))
+    struc_pris, struc_def, calc_pris, calc_def = get_strucs_and_calcs(p)
 
     # get heat of formation
     c2db = connect('/home/niflheim/fafb/db/c2db_july20.db')
@@ -211,13 +213,25 @@ def main(index: int = None) -> Result:
     hof = get_heat_of_formation(c2db, primitive)
 
     # Obtain a list of all transitions with the respective ASRResults object
-    transition_list = calculate_transitions(index)
+    # get index of the integer defect system
+    ev = calc_def.get_eigenvalues()
+    e_fermi = calc_def.get_fermi_level()
+    N_homo_q = get_homo_index(ev, e_fermi)
+    transition_list = calculate_transitions(index, N_homo_q)
 
     # get pristine band edges for correct referencing and plotting
     pris = get_pristine_band_edges(index)
 
     # get neutral formation energy without chemical potentials applied
-    eform, standard_states = calculate_neutral_formation_energy()
+    p = Path('.')
+    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
+    results_def = read_json('./results-asr.gs.json')
+    results_pris = read_json(pris / 'results-asr.gs.json')
+    etot_def = results_def['etot']
+    etot_pris = results_pris['etot']
+    oqmd = connect('/home/niflheim/fafb/db/oqmd12.db')
+    eform, standard_states = calculate_neutral_formation_energy(etot_def, etot_pris,
+                                                                oqmd)
 
     # get formation energies for all charge states based on neutral
     # formation energy, as well as charge transition levels, and pristine results
@@ -303,40 +317,24 @@ def get_heat_of_formation(db, atoms):
     return hof
 
 
-def get_kindlist():
-    """Return list of elements present in the structure."""
-    from ase.io import read
-
-    atoms = read('structure.json')
-    kindlist = []
-
-    for symbol in atoms.get_chemical_symbols():
-        if symbol not in kindlist:
-            kindlist.append(symbol)
-
-    return kindlist
-
-
-def calculate_transitions(index):
+def calculate_transitions(index, N_homo_q):
     """Calculate all of the present transitions and return TransitionResults."""
     transition_list = []
     # First, get IP and EA (charge transition levels for the neutral defect
     if Path('./sj_+0.5/gs.gpw').is_file() and Path('./sj_-0.5/gs.gpw').is_file():
-        transition = [0, +1]
-        transition_results = get_transition_level(transition, 0, index)
-        transition_list.append(transition_results)
-        transition = [0, -1]
-        transition_results = get_transition_level(transition, 0, index)
-        transition_list.append(transition_results)
+        for delta in [+1, -1]:
+            transition = [0, delta]
+            transition_results = get_transition_level(transition, 0, index, N_homo_q)
+            transition_list.append(transition_results)
 
     for q in [-3, -2, -1, 1, 2, 3]:
         if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
-            transition_results = get_transition_level(transition, q, index)
+            transition_results = get_transition_level(transition, q, index, N_homo_q)
             transition_list.append(transition_results)
         if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q - 1]
-            transition_results = get_transition_level(transition, q, index)
+            transition_results = get_transition_level(transition, q, index, N_homo_q)
             transition_list.append(transition_results)
 
     return transition_list
@@ -348,22 +346,13 @@ def get_pristine_band_edges(index) -> PristineResults:
                              get_reference_index,
                              extract_atomic_potentials)
     from asr.core import read_json
-    from gpaw import restart
+
     # return index of the point defect in the defect structure
     def_index, is_vacancy = return_defect_index()
 
     # get calculators and atoms for pristine and defect calculation
-    try:
-        p = Path('.')
-        pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
-        pris_folder = pristinelist[0]
-        # res_pris = read_json(pris_folder / 'results-asr.gs.json')
-        struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
-        struc_def, calc_def = restart(p / 'gs.gpw', txt=None)
-    except FileNotFoundError:
-        print('ERROR: does not find pristine gs, pristine results, or defect'
-              ' results. Did you run setup.defects and calculate the ground'
-              ' state for defect and pristine system?')
+    p = Path('.')
+    struc_pris, struc_def, calc_pris, calc_def = get_strucs_and_calcs(p)
 
     # evaluate which atom possesses maximum distance to the defect site
     if index is None:
@@ -406,27 +395,20 @@ def obtain_chemical_potential(symbol, db):
         eref=eref)
 
 
-def calculate_neutral_formation_energy():
-    """Calculate the neutral formation energy without chemical potential shift applied.
+def calculate_neutral_formation_energy(etot_def, etot_pris, db):
+    """Calculate the neutral formation energy with chemical potential shift applied.
 
     Only the neutral one is needed as for the higher charge states we will use the sj
     transitions for the formation energy plot.
     """
-    from asr.core import read_json
-    from ase.db import connect
+    from pathlib import Path
     from asr.defect_symmetry import get_defect_info
 
-    results_def = read_json('./results-asr.gs.json')
-    p = Path('.')
-    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
-    results_pris = read_json(pris / 'results-asr.gs.json')
-
-    eform = results_def['etot'] - results_pris['etot']
+    eform = etot_def - etot_pris
 
     # next, extract standard state energies for particular defect
-    def_add, def_remove = get_defect_info(defectpath=p)
+    def_add, def_remove = get_defect_info(defectpath=Path('.'))
     # extract standard states of defect atoms from OQMD
-    db = connect('/home/niflheim/fafb/db/oqmd12.db')
     standard_states = []
     standard_states.append(obtain_chemical_potential(def_add, db))
     standard_states.append(obtain_chemical_potential(def_remove, db))
@@ -436,7 +418,23 @@ def calculate_neutral_formation_energy():
     return eform, standard_states
 
 
-def get_transition_level(transition, charge, index) -> TransitionResults:
+def get_strucs_and_calcs(path):
+    from gpaw import restart
+
+    try:
+        pristinelist = list(path.glob(f'./../../defects.pristine_sc*/'))
+        pris_folder = pristinelist[0]
+        struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
+        struc_def, calc_def = restart(path / 'gs.gpw', txt=None)
+    except FileNotFoundError:
+        print('ERROR: does not find pristine gs, pristine results, or defect'
+              ' results. Did you run setup.defects and calculate the ground'
+              ' state for defect and pristine system?')
+
+    return struc_pris, struc_def, calc_pris, calc_def
+
+
+def get_transition_level(transition, charge, index, N_homo_q) -> TransitionResults:
     """Calculate the charge transition level for a given charge transition."""
     from asr.get_wfs import (return_defect_index,
                              get_reference_index,
@@ -451,15 +449,7 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
     def_index, is_vacancy = return_defect_index(p, primitive, structure)
 
     # get calculators and atoms for pristine and defect calculation
-    try:
-        pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
-        pris_folder = pristinelist[0]
-        struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
-        struc_def, calc_def = restart(p / 'gs.gpw', txt=None)
-    except FileNotFoundError:
-        print('ERROR: does not find pristine gs, pristine results, or defect'
-              ' results. Did you run setup.defects and calculate the ground'
-              ' state for defect and pristine system?')
+    struc_pris, struc_def, calc_pris, calc_def = get_strucs_and_calcs(p)
 
     # evaluate which atom possesses maximum distance to the defect site
     if index is None:
@@ -467,21 +457,16 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
     else:
         ref_index = index
 
-    # get index of the integer defect system
-    ev = calc_def.get_eigenvalues()
-    e_fermi = calc_def.get_fermi_level()
-    N_homo = get_homo_index(ev, e_fermi)
-
     # extract homo and lumo of the half-integer system
     charge = str(charge)
     # HOMO
     if transition[0] > transition[1]:
         atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
-        HL_index = N_homo + 1
+        HL_index = N_homo_q + 1
     # LUMO
     elif transition[1] > transition[0]:
         atoms, calc = restart('../charge_{}/sj_+0.5/gs.gpw'.format(charge), txt=None)
-        HL_index = N_homo
+        HL_index = N_homo_q
     ev = calc.get_eigenvalues()
     e_trans = ev[HL_index]
     print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
