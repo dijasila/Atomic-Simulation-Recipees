@@ -2,7 +2,6 @@ from asr.core import command, ASRResult, prepare_result, option
 from asr.database.browser import make_panel_description, href
 from pathlib import Path
 from ase.io import Trajectory
-from gpaw import restart
 import numpy as np
 import typing
 
@@ -348,6 +347,7 @@ def get_pristine_band_edges(index) -> PristineResults:
                              get_reference_index,
                              extract_atomic_potentials)
     from asr.core import read_json
+    from gpaw import restart
     # return index of the point defect in the defect structure
     def_index, is_vacancy = return_defect_index()
 
@@ -454,6 +454,7 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
     from asr.get_wfs import (return_defect_index,
                              get_reference_index,
                              extract_atomic_potentials)
+    from gpaw import restart
     # return index of the point defect in the defect structure
     def_index, is_vacancy = return_defect_index()
 
