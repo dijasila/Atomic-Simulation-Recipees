@@ -78,8 +78,10 @@ def test_relax_emt_fail_broken_symmetry(asr_tmpdir_w_params, name,
 
     unrelaxed = bulk(name)
 
+    rng = np.random.RandomState(1234)
+
     def get_stress(*args, **kwargs):
-        return np.random.rand(3, 3)
+        return rng.rand(3, 3)
 
     monkeypatch.setattr(EMT, 'get_stress', get_stress)
     with pytest.raises(BrokenSymmetryError) as excinfo:
