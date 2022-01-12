@@ -447,17 +447,18 @@ def calculate_neutral_formation_energy():
 
 
 def get_transition_level(transition, charge, index) -> TransitionResults:
-    """Calculate the charge transition level for a given charge transition.
-
-    :param transition: (List), transition (e.g. [0,-1])
-    :param correct_relax: (Boolean), True if transition energy will be corrected
-    """
+    """Calculate the charge transition level for a given charge transition."""
     from asr.get_wfs import (return_defect_index,
                              get_reference_index,
                              extract_atomic_potentials)
     from gpaw import restart
+    from ase.io import read
+
     # return index of the point defect in the defect structure
-    def_index, is_vacancy = return_defect_index()
+    p = Path('.')
+    structure = read('structure.json')
+    primitive = read('../../unrelaxed.json')
+    def_index, is_vacancy = return_defect_index(p, primitive, structure)
 
     # get calculators and atoms for pristine and defect calculation
     try:
@@ -474,7 +475,7 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
 
     # evaluate which atom possesses maximum distance to the defect site
     if index is None:
-        ref_index = get_reference_index(def_index, struc_def, struc_pris)
+        ref_index = get_reference_index(def_index, struc_pris)
     else:
         ref_index = index
 
