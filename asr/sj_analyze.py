@@ -247,7 +247,6 @@ def main(index: int = None) -> Result:
 
 def calculate_formation_energies(eform, transitions, vbm):
     """Calculate formation energies for all charge states at the VB band edge."""
-
     # CALCULATION OF FORMATION ENERGIES
     transitions = order_transitions(transitions)
     enlist = []
