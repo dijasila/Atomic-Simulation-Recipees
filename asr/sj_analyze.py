@@ -220,7 +220,7 @@ def main(index: int = None) -> Result:
     transition_list = calculate_transitions(index, N_homo_q)
 
     # get pristine band edges for correct referencing and plotting
-    pris = get_pristine_band_edges(index)
+    pristine = get_pristine_band_edges(index)
 
     # get neutral formation energy without chemical potentials applied
     p = Path('.')
@@ -235,19 +235,18 @@ def main(index: int = None) -> Result:
 
     # get formation energies for all charge states based on neutral
     # formation energy, as well as charge transition levels, and pristine results
-    eform = calculate_formation_energies(eform, transition_list, pris)
+    vbm = pristine['vbm']
+    eform = calculate_formation_energies(eform, transition_list, vbm)
 
     return Result.fromdata(eform=eform,
                            transitions=transition_list,
-                           pristine=pris,
+                           pristine=pristine,
                            standard_states=standard_states,
                            hof=hof)
 
 
-def calculate_formation_energies(eform, transitions, pristine):
+def calculate_formation_energies(eform, transitions, vbm):
     """Calculate formation energies for all charge states at the VB band edge."""
-    # from asr.core import read_json
-    vbm = pristine['vbm']
 
     # CALCULATION OF FORMATION ENERGIES
     transitions = order_transitions(transitions)
