@@ -348,7 +348,6 @@ def get_pristine_band_edges(index) -> PristineResults:
                              get_reference_index,
                              extract_atomic_potentials)
     from asr.core import read_json
-    import numpy as np
     # return index of the point defect in the defect structure
     def_index, is_vacancy = return_defect_index()
 
@@ -357,7 +356,7 @@ def get_pristine_band_edges(index) -> PristineResults:
         p = Path('.')
         pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
         pris_folder = pristinelist[0]
-        res_pris = read_json(pris_folder / 'results-asr.gs.json')
+        # res_pris = read_json(pris_folder / 'results-asr.gs.json')
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         struc_def, calc_def = restart(p / 'gs.gpw', txt=None)
     except FileNotFoundError:
@@ -369,7 +368,7 @@ def get_pristine_band_edges(index) -> PristineResults:
     if index is None:
         ref_index = get_reference_index(def_index, struc_def, struc_pris)
     else:
-        ret_index = index
+        ref_index = index
 
     pot_def, pot_pris = extract_atomic_potentials(calc_def, calc_pris,
                                                   ref_index, is_vacancy)
@@ -384,7 +383,6 @@ def get_pristine_band_edges(index) -> PristineResults:
     else:
         vbm = None
         cbm = None
-        evac = None
 
     return PristineResults.fromdata(
         vbm=vbm,
@@ -456,7 +454,6 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
     from asr.get_wfs import (return_defect_index,
                              get_reference_index,
                              extract_atomic_potentials)
-    from asr.core import read_json
     # return index of the point defect in the defect structure
     def_index, is_vacancy = return_defect_index()
 
@@ -465,7 +462,7 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
         p = Path('.')
         pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
         pris_folder = pristinelist[0]
-        res_pris = read_json(pris_folder / 'results-asr.gs.json')
+        # res_pris = read_json(pris_folder / 'results-asr.gs.json')
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         struc_def, calc_def = restart(p / 'gs.gpw', txt=None)
     except FileNotFoundError:
@@ -481,10 +478,10 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
 
     # get newly referenced eigenvalues for pristine and defect, as well as
     # pristine fermi level for evaluation of the band gap
-    if np.sum(struc_def.get_pbc()) == 2:
-        evac = res_pris['evac']
-    else:
-        evac = 0
+    # if np.sum(struc_def.get_pbc()) == 2:
+    #     evac = res_pris['evac']
+    # else:
+    #     evac = 0
 
     # extract HOMO or LUMO (TBD)
     # HOMO
@@ -685,8 +682,8 @@ def plot_charge_transitions(row, fname):
 
     data = row.data.get('results-asr.sj_analyze.json')
 
-    vbm = data['pristine']['vbm'] # - 142.7 + 2.56
-    cbm = data['pristine']['cbm'] # - 142.7 + 2.56
+    vbm = data['pristine']['vbm']
+    cbm = data['pristine']['cbm']
 
     gap = abs(cbm - vbm)
 
@@ -728,13 +725,9 @@ def plot_charge_transitions(row, fname):
             color1 = colors[str(q)]
             color2 = colors[str(q_new)]
         if y <= (cbm + 0.2 * gap) and y >= (vbm - 0.2 * gap):
-            plt.plot(np.linspace(-0.9, 0.5, 20), 20 * [y - vbm], label=trans['transition_name'],
+            plt.plot(np.linspace(-0.9, 0.5, 20), 20 * [y - vbm],
+                     label=trans['transition_name'],
                      color=color1, mec=color2, mfc=color2, marker='s', markersize=3)
-            # if i % 2 == 0:
-            #     plt.text(0.6, y - vbm, trans['transition_name'], ha='left', va='center')
-            # else:
-            #     plt.text(-0.6, y - vbm,
-            #              trans['transition_name'], ha='right', va='center')
             i += 1
 
     plt.legend(loc='center right')
