@@ -441,19 +441,12 @@ def get_pristine_result():
 
     try:
         p = Path('.')
-        # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-        # pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
-        # pris_folder = pristinelist[0]
         pris = list(p.glob('./../../defects.pristine_sc*'))[0]
         res_pris = read_json(pris / 'results-asr.gs.json')
-    except FileNotFoundError:
-        print('ERROR: does not find pristine results. Did you run setup.defects '
-              'and calculate the ground state for the pristine system?')
-
-    try:
-        read_json('results-asr.get_wfs.json')
-    except FileNotFoundError:
-        print('ERROR: does not find get_wfs results. Did you run asr.get_wfs? ')
+    except FileNotFoundError as err:
+        msg = ('ERROR: does not find pristine results. Did you run setup.defects '
+               'and calculate the ground state for the pristine system?')
+        raise RuntimeError(msg) from err
 
     ref_pris = res_pris['evac']
     if ref_pris is None:
