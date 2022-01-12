@@ -406,17 +406,6 @@ def obtain_chemical_potential(symbol, db):
         eref=eref)
 
 
-def get_defect_info():
-    """Return defect_type, and defect_position of present defect."""
-    from pathlib import Path
-
-    p = Path('.')
-    d_type = str(p.absolute()).split('/')[-2].split('_')[-2].split('.')[-1]
-    d_pos = str(p.absolute()).split('/')[-2].split('_')[-1]
-
-    return d_type, d_pos
-
-
 def calculate_neutral_formation_energy():
     """Calculate the neutral formation energy without chemical potential shift applied.
 
@@ -425,6 +414,7 @@ def calculate_neutral_formation_energy():
     """
     from asr.core import read_json
     from ase.db import connect
+    from asr.defect_symmetry import get_defect_info
 
     results_def = read_json('./results-asr.gs.json')
     p = Path('.')
@@ -434,7 +424,7 @@ def calculate_neutral_formation_energy():
     eform = results_def['etot'] - results_pris['etot']
 
     # next, extract standard state energies for particular defect
-    def_add, def_remove = get_defect_info()
+    def_add, def_remove = get_defect_info(defectpath=p)
     # extract standard states of defect atoms from OQMD
     db = connect('/home/niflheim/fafb/db/oqmd12.db')
     standard_states = []
