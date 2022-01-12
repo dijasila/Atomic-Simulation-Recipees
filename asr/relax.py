@@ -409,7 +409,6 @@ def main(atoms: Atoms,
     #
     # Turns out the ASE paropen() implementation does not recognize
     # the 'a' flag, so we have to roll our own.
-    import sys
     txt = calculator.pop('txt', '-')
     if tmp_atoms is None:
         open_mode = 'w'
