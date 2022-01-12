@@ -73,7 +73,6 @@ def get_matrixtable_array(state_results, vbm, cbm, ef,
 
 
 def get_symmetry_tables(state_results, vbm, cbm, row, style):
-    import numpy as np
     from asr.database.browser import matrixtable
 
     state_tables = []
@@ -501,7 +500,6 @@ def find_wf_result(state, spin):
 
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
     """Return centered and mapped structure."""
-    import numpy as np
     vac = is_vacancy(defect)
     for delta in [0, 0.03, 0.05, 0.1, -0.03, -0.05, -0.1]:
         for cutoff in np.arange(0.1, 0.8, 0.04):
