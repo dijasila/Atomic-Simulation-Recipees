@@ -197,13 +197,18 @@ def main(index: int = None) -> Result:
     At least, asr.setup.sj had to be run in the charge_0 folder of a defect system and
     the half integer calculations have to be finished within the newly created folders.
     """
+    from ase.db import connect
+    from ase.io import read
+
     p = Path('.')
     defectsystem = str(p.absolute()).split('/')[-2]
     print('INFO: calculate formation energy and charge transition levels '
           'for defect {}.'.format(defectsystem))
 
     # get heat of formation
-    hof = get_heat_of_formation()
+    c2db = connect('/home/niflheim/fafb/db/c2db_july20.db')
+    primitive = read('../../unrelaxed.json')
+    hof = get_heat_of_formation(c2db, primitive)
 
     # Obtain a list of all transitions with the respective ASRResults object
     transition_list = calculate_transitions(index)
@@ -285,14 +290,10 @@ def calculate_formation_energies(eform, transitions, pristine):
     return eform_list
 
 
-def get_heat_of_formation():
+def get_heat_of_formation(db, atoms):
     """Extract heat of formation from C2DB."""
     from asr.database.material_fingerprint import get_uid_of_atoms, get_hash_of_atoms
-    from ase.db import connect
-    from ase.io import read
 
-    db = connect('/home/niflheim/fafb/db/c2db_july20.db')
-    atoms = read('../../unrelaxed.json')
     hash = get_hash_of_atoms(atoms)
     uid = get_uid_of_atoms(atoms, hash)
 
@@ -487,7 +488,9 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
     # extract HOMO or LUMO (TBD)
     # HOMO
     charge = str(charge)
-    N_homo = get_homo_index(calc_def)
+    ev = calc_def.get_eigenvalues()
+    e_fermi = calc_def.get_fermi_level()
+    N_homo = get_homo_index(ev, e_fermi)
     if transition[0] > transition[1]:
         atoms, calc = restart('../charge_{}/sj_-0.5/gs.gpw'.format(charge), txt=None)
         ev = calc.get_eigenvalues()
@@ -527,11 +530,9 @@ def get_transition_level(transition, charge, index) -> TransitionResults:
         transition_values=transition_values)
 
 
-def get_homo_index(calc):
-    ev = calc.get_eigenvalues()
-    e_fermi = calc.get_fermi_level()
+def get_homo_index(evs, ef):
     occ = []
-    [occ.append(v) for v in ev if v < e_fermi]
+    [occ.append(ev) for ev in evs if ev < ef]
 
     return len(occ) - 1
 
