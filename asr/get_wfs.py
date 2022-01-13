@@ -1,6 +1,5 @@
 import typing
 import click
-import numpy as np
 from pathlib import Path
 from asr.core import command, option, ASRResult, prepare_result
 
@@ -76,23 +75,23 @@ def main(state: int = 0,
     print('INFO: ran fixed density calculation starting from gs.gpw.')
 
     # evaluate states in the gap (if '--get-gapstates' is active)
+    ef = calc.get_fermi_level()
     if get_gapstates:
         print('INFO: evaluate gapstates.')
         states, above_below, eref = return_gapstates(calc)
     # get energy reference and convert given input state to correct format
     elif not get_gapstates:
         # for 2D systems, use the vacuum level as energy reference point
-        if sum(atoms.get_pbc) == 2:
-            eref = read_json('results-asr.gs.json')['evac']
+        if sum(atoms.pbc) == 3:
+            eref = ef
         else:
-            eref = 0
+            eref = read_json('results-asr.gs.json')['evac']
         # if no 'erange' is given, just use the input state to write out wfs
         if erange == (0, 0):
             states = [state]
         # otherwise, return all of the states in a particular energy range
         elif erange != (0, 0):
             evs = calc.get_eigenvalues()
-            ef = calc.get_fermi_level()
             states = return_erange_states(evs, ef, erange)
         # specific to the defect project result (will be removed in 'master')
         above_below = (None, None)
@@ -244,10 +243,10 @@ def return_gapstates(calc_def):
 
     # get newly referenced eigenvalues for pristine and defect, as well as
     # pristine fermi level for evaluation of the band gap
-    if np.sum(struc_def.get_pbc()) == 2:
-        evac = res_pris['evac']
-    else:
+    if sum(struc_def.pbc) == 3:
         evac = 0
+    else:
+        evac = res_pris['evac']
 
     vbm = res_pris['vbm'] - pot_pris
     cbm = res_pris['cbm'] - pot_pris
