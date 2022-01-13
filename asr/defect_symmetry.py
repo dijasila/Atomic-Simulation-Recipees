@@ -13,7 +13,7 @@ Analysis of defect states localized inside the pristine bandgap (energetics and
  symmetry).
 """,
     articles=[
-        href("""S. Kaappa et al. Point group symmetry anallysis of the electronic structure
+        href("""S. Kaappa et al. Point group symmetry analysis of the electronic structure
 of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)""",
              'https://doi.org/10.1021/acs.jpca.8b07923'),
     ],
@@ -495,8 +495,8 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
     """Return centered and mapped structure."""
     vac = is_vacancy(defect)
     done = False
-    for delta in [0, 0.03, 0.05, 0.1, -0.03, -0.05, -0.1]:
-        for cutoff in np.arange(0.1, 0.8, 0.08):
+    for delta in [0, 0.03, 0.5, 0.1, -0.03, -0.1]:
+        for cutoff in np.arange(0.1, 0.81, 0.05):
             for threshold in [0.99, 1.01]:
                 translation = return_defect_coordinates(structure, primitive,
                                                         pristine, vac, defect)
@@ -513,7 +513,7 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
                 indexlist = indexlist_cut_atoms(ref_struc, threshold)
                 del ref_struc[indexlist]
                 del rel_struc[indexlist]
-                if conserved_atoms(ref_struc, primitive, N, defect):
+                if conserved_atoms(ref_struc, primitive, N, vac):
                     done = True
                     break
             if done:
@@ -543,16 +543,17 @@ def conserved_atoms(ref_struc, primitive, N, is_vacancy):
     else:
         removed = 0
 
-    if len(ref_struc) != (N * N * len(primitive) - removed):
-        return False
-    else:
+    if len(ref_struc) == (N * N * len(primitive) - removed):
         print('INFO: number of atoms correct after mapping.')
         return True
+    else:
+        print(len(ref_struc), len(primitive), N, removed)
+        return False
 
 
 def indexlist_cut_atoms(structure, threshold):
     indexlist = []
-    pos = structure.get_scaled_positions(wrap=False)
+    pos = structure.get_scaled_positions(wrap=True)
     for i in range(len(structure)):
         # save indices that are outside the new cell
         if abs(max(pos[i]) > threshold) or min(pos[i]) < 1 - threshold:
@@ -567,7 +568,7 @@ def compare_structures(ref_structure, structure, cutoff):
     rmindexlist = []
     # find atom indices that are equivalent
     pos = structure.get_positions()
-    ref_pos = structure.get_positions()
+    ref_pos = ref_structure.get_positions()
     for i in range(len(structure)):
         pos_i = pos[i]
         for j in range(len(ref_structure)):
