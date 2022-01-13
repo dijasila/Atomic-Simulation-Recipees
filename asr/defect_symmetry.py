@@ -553,7 +553,7 @@ def conserved_atoms(ref_struc, primitive, N, is_vacancy):
 
 def indexlist_cut_atoms(structure, threshold):
     indexlist = []
-    pos = structure.get_scaled_positions(wrap=True)
+    pos = structure.get_scaled_positions(wrap=False)
     for i in range(len(structure)):
         # save indices that are outside the new cell
         if abs(max(pos[i]) > threshold) or min(pos[i]) < 1 - threshold:

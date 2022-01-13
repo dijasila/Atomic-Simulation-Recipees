@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 
 @pytest.mark.parametrize('extrinsic', ['NO', 'C', 'Se,Te'])
@@ -144,3 +145,38 @@ def test_get_mapped_structure(asr_tmpdir, size, defect):
         structure.rattle()
         _ = get_mapped_structure(
             structure, unrelaxed, atoms, pristine, path)
+
+
+@pytest.mark.ci
+def test_indexlist_cut_atoms():
+    from .materials import std_test_materials
+    from ase import Atoms
+    from asr.defect_symmetry import indexlist_cut_atoms
+
+    threshold = 1.01
+    for atoms in std_test_materials:
+        struc = atoms.copy()
+        indices = indexlist_cut_atoms(atoms, threshold)
+        del struc[indices]
+        assert len(struc) == len(atoms) - len(indices)
+
+    res = [3, 0]
+    for atoms in std_test_materials:
+        for i, delta in enumerate([-0.05, 0.05]):
+            positions = atoms.get_scaled_positions()
+            symbols = atoms.get_chemical_symbols()
+            newpos = np.array([[1 + delta, 0.5, 0.5],
+                               [0.5, 1 + delta, 0.5],
+                               [0.5, 0.5, 1 + delta]])
+            symbols.append('X')
+            symbols.append('X')
+            symbols.append('X')
+            positions = np.append(positions, newpos, axis=0)
+            newatoms = Atoms(symbols,
+                             scaled_positions=positions,
+                             cell=atoms.get_cell(),
+                             pbc=True)
+            indices = indexlist_cut_atoms(newatoms, threshold)
+            print(indices)
+            del newatoms[indices]
+            assert len(newatoms) - res[i] == len(atoms)
