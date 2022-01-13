@@ -56,6 +56,7 @@ def test_stiffness_emt(asr_tmpdir_w_params, name, get_webcontent):
                                    get_relevant_strains)
 
     structure = bulk(name)
+    structure.set_initial_magnetic_moments([0.0] * len(structure))
     structure.write('structure.json')
     strain_percent = 1
     setup_strains(strain_percent=1)
