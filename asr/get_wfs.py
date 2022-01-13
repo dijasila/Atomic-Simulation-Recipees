@@ -139,13 +139,17 @@ def return_defect_index(defectpath, primitive, structure):
                                      is_vacancy)
 
     deftype, defpos = get_defect_info(defectpath)
+    found_defect = False
     for i in range(len(primitive)):
         if not (primitive.symbols[i]
                 == structure.symbols[i]):
             label = i
+            found_defect = True
             break
-        else:
-            label = 0
+
+    assert found_defect, ("Didn't find the point defect in "
+                          "the structure. Please check input "
+                          "structures.")
 
     return label, is_vacancy(defectpath)
 

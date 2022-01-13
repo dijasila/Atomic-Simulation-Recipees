@@ -57,6 +57,16 @@ def test_return_defect_index(asr_tmpdir, setup_method):
         assert results[defname][0] == def_index
         assert results[defname][1] == is_vacancy
 
+    pristine = primitive.repeat((3, 3, 1))
+    try:
+        def_index, is_vacancy = return_defect_index(
+            path, primitive, pristine)
+    except AssertionError:
+        # function should fail with an assertion error
+        # when the input is not a defect structure but
+        # a pristine one
+        assert True
+
 
 @pytest.mark.parametrize('gap', np.arange(0, 2.01, 20))
 @pytest.mark.ci
