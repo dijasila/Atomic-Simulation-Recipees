@@ -425,7 +425,12 @@ def main(atoms: Atoms,
         logfile = io.openfile(logfile, mode=open_mode)
         trajectory = io.closelater(Trajectory(tmp_atoms_file, mode=open_mode))
 
+        # TODO: Perform actual GPAW computations in a separate process.
+        # This should simplify the hacky IO handling here by forcing
+        # proper GC, flushing and closing in that process.
+
         calc = Calculator(**calculator)
+
         atoms = do_relax()
 
         # If the maximum magnetic moment on all atoms is big then
@@ -438,11 +443,22 @@ def main(atoms: Atoms,
 
         if not abs(magmoms).max() > 0.1:
             atoms.set_initial_magnetic_moments([0] * len(atoms))
-            calc = Calculator(**calculator)
+            atoms.calc = calc
             atoms = do_relax()
 
-    edft = calc.get_potential_energy(atoms)
-    etot = atoms.get_potential_energy()
+        edft = calc.get_potential_energy(atoms)
+        etot = atoms.get_potential_energy()
+
+        if calculatorname == 'gpaw':
+            # GPAW will have calc.close() soon.
+            # Until then, we abuse __del__() which happens to
+            # be the same currently.
+            # If we didn't do this, then the txt file will be closed
+            # before timings are written which is bad.
+            #
+            # (Also, when testing we do not always have __del__.)
+            if hasattr(calc, '__del__'):
+                calc.__del__()
 
     cellpar = atoms.cell.cellpar()
 
