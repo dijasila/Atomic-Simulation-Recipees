@@ -367,9 +367,13 @@ def main(atoms: Atoms,
     if tmp_atoms is not None:
         atoms = tmp_atoms
 
-    # Make our own copy
     atoms = atoms.copy()
-    if not atoms.has('initial_magmoms'):
+    if atoms.has('initial_magmoms'):
+        initially_spinpol = any(atoms.get_initial_magnetic_moments())
+    else:
+        # We don't know whether the system is spin polarized,
+        # so we must assume it is.
+        initially_spinpol = True
         set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
@@ -434,17 +438,13 @@ def main(atoms: Atoms,
         atoms = do_relax()
 
         # If the maximum magnetic moment on all atoms is big then
-        try:
+        if initially_spinpol:
             magmoms = atoms.get_magnetic_moments()
-        except PropertyNotImplementedError:
-            # We assume this means that the magnetic moments are zero
-            # for this calculator.
-            magmoms = np.zeros(len(atoms))
 
-        if not abs(magmoms).max() > 0.1:
-            atoms.set_initial_magnetic_moments([0] * len(atoms))
-            atoms.calc = calc
-            atoms = do_relax()
+            if not abs(magmoms).max() > 0.1:
+                atoms.set_initial_magnetic_moments([0] * len(atoms))
+                atoms.calc = calc
+                atoms = do_relax()
 
         edft = calc.get_potential_energy(atoms)
         etot = atoms.get_potential_energy()
