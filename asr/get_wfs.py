@@ -139,22 +139,13 @@ def return_defect_index(defectpath, primitive, structure):
                                      is_vacancy)
 
     deftype, defpos = get_defect_info(defectpath)
-    if not is_vacancy(defectpath):
-        for i in range(len(primitive)):
-            if not (primitive.get_chemical_symbols()[i]
-                    == structure.get_chemical_symbols()[i]):
-                label = i
-                break
-            else:
-                label = 0
-    elif is_vacancy(defectpath):
-        for i in range(len(primitive)):
-            if not (primitive.get_chemical_symbols()[i]
-                    == structure.get_chemical_symbols()[i]):
-                label = i
-                break
-            else:
-                label = 0
+    for i in range(len(primitive)):
+        if not (primitive.symbols[i]
+                == structure.symbols[i]):
+            label = i
+            break
+        else:
+            label = 0
 
     return label, is_vacancy(defectpath)
 

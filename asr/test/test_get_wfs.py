@@ -26,8 +26,9 @@ def test_return_erange_states(ef, emin, emax):
         assert len(states) == 0
 
 
+@pytest.mark.parametrize('setup_method', ['uni', 'gen'])
 @pytest.mark.ci
-def test_return_defect_index(asr_tmpdir):
+def test_return_defect_index(asr_tmpdir, setup_method):
     from pathlib import Path
     from .materials import BN
     from ase.io import read, write
@@ -41,7 +42,10 @@ def test_return_defect_index(asr_tmpdir):
 
     primitive = BN.copy()
     write('unrelaxed.json', primitive)
-    setup()
+    if setup == 'uni':
+        setup()
+    else:
+        setup(general_algorithm=15.)
     p = Path('.')
     pathlist = list(p.glob('defects.*/charge_0/'))
     for path in pathlist:
