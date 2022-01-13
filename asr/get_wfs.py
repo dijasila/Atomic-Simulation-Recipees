@@ -189,9 +189,9 @@ def extract_atomic_potentials(calc_def, calc_pris, ref_index, is_vacancy):
     pot_def = calc_def.get_atomic_electrostatic_potentials()[def_index]
 
     # check whether chemical symbols of both reference atoms are equal
-    if not (struc_def.get_chemical_symbols()[def_index]
-            == struc_pris.get_chemical_symbols()[ref_index]):
-        raise AssertionError('chemical symbols of reference atoms '
+    if not (struc_def.symbols[def_index]
+            == struc_pris.symbols[ref_index]):
+        raise ValueError('chemical symbols of reference atoms '
                              'are not the same.')
 
     return pot_def, pot_pris
