@@ -321,7 +321,8 @@ def main(mapping: bool = False,
     center = return_defect_coordinates(structure,
                                        primitive,
                                        pristine,
-                                       vac)
+                                       vac,
+                                       defect)
     print(f'INFO: defect position: {center}, structural symmetry: {point_group}')
 
     # return pristine results to visualise wavefunctions within the gap
@@ -493,11 +494,12 @@ def find_wf_result(state, spin):
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
     """Return centered and mapped structure."""
     vac = is_vacancy(defect)
+    done = False
     for delta in [0, 0.03, 0.05, 0.1, -0.03, -0.05, -0.1]:
-        for cutoff in np.arange(0.1, 0.8, 0.04):
+        for cutoff in np.arange(0.1, 0.8, 0.08):
             for threshold in [0.99, 1.01]:
                 translation = return_defect_coordinates(structure, primitive,
-                                                        pristine, vac)
+                                                        pristine, vac, defect)
                 rel_struc, ref_struc, artificial, N = recreate_symmetric_cell(
                     structure,
                     unrelaxed,
@@ -550,10 +552,10 @@ def conserved_atoms(ref_struc, primitive, N, is_vacancy):
 
 def indexlist_cut_atoms(structure, threshold):
     indexlist = []
+    pos = structure.get_scaled_positions(wrap=False)
     for i in range(len(structure)):
-        pos = structure.get_scaled_positions()[i]
         # save indices that are outside the new cell
-        if abs(max(pos) > threshold) or min(pos) < -0.01:
+        if abs(max(pos[i]) > threshold) or min(pos[i]) < 1 - threshold:
             indexlist.append(i)
 
     return indexlist
