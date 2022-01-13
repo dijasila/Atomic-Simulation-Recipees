@@ -52,6 +52,7 @@ from ase import Atoms
 from ase.calculators.calculator import PropertyNotImplementedError
 from ase.io import Trajectory, write
 from ase.optimize.bfgs import BFGS
+from ase.utils import IOContext
 
 from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
                       prepare_result)
@@ -417,11 +418,9 @@ def main(atoms: Atoms,
 
     logfile = Path(tmp_atoms_file).with_suffix('.log')
 
-    from ase.utils import IOContext
-
     with IOContext() as io:
         # XXX Not so nice to have special cases
-        if calculator.get('name') == 'gpaw':
+        if calculatorname == 'gpaw':
             calculator['txt'] = io.openfile(txt, mode=open_mode)
         logfile = io.openfile(logfile, mode=open_mode)
         trajectory = io.closelater(Trajectory(tmp_atoms_file, mode=open_mode))
