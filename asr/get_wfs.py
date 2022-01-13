@@ -82,7 +82,7 @@ def main(state: int = 0,
     # get energy reference and convert given input state to correct format
     elif not get_gapstates:
         # for 2D systems, use the vacuum level as energy reference point
-        if np.sum(atoms.get_pbc()) == 2:
+        if sum(atoms.get_pbc) == 2:
             eref = read_json('results-asr.gs.json')['evac']
         else:
             eref = 0
