@@ -446,6 +446,13 @@ def main(atoms: Atoms,
                 atoms.calc = calc
                 atoms = do_relax()
 
+        # This is buggy for systems that are close to the limit
+        # of spinpolarizedness.  In stiffness recipe some calculations
+        # may come out spinpolarized and others not, causing a small
+        # jump in energy and botched derivatives.  It would be better
+        # for the algorithm to strictly respect the input parameters
+        # ("spinpol", "spinpaired", or "guess")
+
         edft = calc.get_potential_energy(atoms)
         etot = atoms.get_potential_energy()
 
