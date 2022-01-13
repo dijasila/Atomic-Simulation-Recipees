@@ -192,7 +192,7 @@ def extract_atomic_potentials(calc_def, calc_pris, ref_index, is_vacancy):
     if not (struc_def.symbols[def_index]
             == struc_pris.symbols[ref_index]):
         raise ValueError('chemical symbols of reference atoms '
-                             'are not the same.')
+                         'are not the same.')
 
     return pot_def, pot_pris
 
