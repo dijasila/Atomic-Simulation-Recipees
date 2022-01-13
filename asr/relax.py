@@ -49,7 +49,6 @@ from pathlib import Path
 
 import numpy as np
 from ase import Atoms
-from ase.calculators.calculator import PropertyNotImplementedError
 from ase.io import Trajectory, write
 from ase.optimize.bfgs import BFGS
 from ase.utils import IOContext
