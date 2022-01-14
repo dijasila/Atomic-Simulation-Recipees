@@ -216,7 +216,10 @@ def return_gapstates(calc_def):
     from gpaw import restart
 
     # return index of the point defect in the defect structure
-    structure, _, primitive, _ = check_and_return_input()
+    structure, _, primitive, _ = check_and_return_input(
+        structurefile='structure.json',
+        primitivefile='../../unrelaxed.json')
+
     p = Path('.')
     def_index, is_vacancy = return_defect_index(p, primitive, structure)
 

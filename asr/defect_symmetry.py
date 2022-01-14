@@ -871,25 +871,34 @@ def draw_levels_occupations_labels(ax, spin, data, ecbm, evbm, ef,
                     lev.add_label(irrep, 'A')
 
 
-def check_and_return_input(structurefile, unrelaxedfile,
-                           primitivefile, pristinefile):
+def check_and_return_input(structurefile='', unrelaxedfile='NO',
+                           primitivefile='', pristinefile=''):
     """Check whether all neccessary structures are available."""
-    try:
-        pristine = read(pristinefile)
-    except FileNotFoundError as err:
-        msg = 'ERROR: pristine structure not available! Check your inputs.'
-        raise RuntimeError(msg) from err
-    try:
-        structure = read(structurefile)
-    except FileNotFoundError as err:
-        msg = ('ERROR: relaxed defect structure not available! '
-               'Check your inputs.')
-        raise RuntimeError(msg) from err
-    try:
-        primitive = read(primitivefile)
-    except FileNotFoundError as err:
-        msg = 'ERROR: primitive unrelaxed structure not available!'
-        raise RuntimeError(msg) from err
+    if pristinefile != '':
+        try:
+            pristine = read(pristinefile)
+        except FileNotFoundError as err:
+            msg = 'ERROR: pristine structure not available! Check your inputs.'
+            raise RuntimeError(msg) from err
+    else:
+        pristine = None
+    if structurefile != '':
+        try:
+            structure = read(structurefile)
+        except FileNotFoundError as err:
+            msg = ('ERROR: relaxed defect structure not available! '
+                   'Check your inputs.')
+            raise RuntimeError(msg) from err
+    else:
+        structure = None
+    if primitivefile != '':
+        try:
+            primitive = read(primitivefile)
+        except FileNotFoundError as err:
+            msg = 'ERROR: primitive unrelaxed structure not available!'
+            raise RuntimeError(msg) from err
+    else:
+        primitive = None
     if unrelaxedfile != 'NO':
         try:
             unrelaxed = read(unrelaxedfile)
