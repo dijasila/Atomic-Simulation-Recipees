@@ -338,6 +338,9 @@ def main(primitivefile: str = 'primitive.json',
     # return pristine results to visualise wavefunctions within the gap
     pris_result = get_pristine_result()
 
+    # read in calc once
+    atoms, calc = restart('gs.gpw', txt=None)
+
     # read in cubefiles of the wavefunctions
     cubefiles = list(defect.glob('*.cube'))
     if len(cubefiles) == 0:
@@ -357,7 +360,7 @@ def main(primitivefile: str = 'primitive.json',
 
             # calculate localization ratio
             wf, atoms = read_cube_data(str(wf_file))
-            localization = get_localization_ratio(atoms, wf)
+            localization = get_localization_ratio(atoms, wf, calc)
             irrep_results = [IrrepResult.fromdata(
                 sym_name=None,
                 sym_score=None)]
@@ -385,9 +388,6 @@ def main(primitivefile: str = 'primitive.json',
     labels_up = []
     labels_down = []
 
-    # read in calc once
-    atoms, calc = restart('gs.gpw', txt=None)
-
     symmetry_results = []
     for wf_file in cubefiles:
         spin, band = get_spin_and_band(wf_file)
@@ -396,7 +396,7 @@ def main(primitivefile: str = 'primitive.json',
 
         # calculate localization ratio
         wf, atoms = read_cube_data(str(wf_file))
-        localization = get_localization_ratio(atoms, wf)
+        localization = get_localization_ratio(atoms, wf, calc)
 
         dct = checker.check_function(wf, (atoms.cell.T / wf.shape).T)
         best = dct['symmetry']
@@ -469,15 +469,18 @@ def get_pristine_result():
         gap=res_pris['gap'])
 
 
-def get_localization_ratio(atoms, wf):
+def get_localization_ratio(atoms, wf, calc):
     """
     Return the localization ratio of the wavefunction.
 
     It is defined as the volume of the cell divided the
     integral of the fourth power of the wavefunction.
     """
-    grid_vectors = (atoms.cell.T / wf.shape).T
-    dv = abs(np.linalg.det(grid_vectors))
+    assert wf.size == np.prod(calc.wfs.gd.N_c), (
+        'grid points in wf cube file and calculator '
+        'are not the same!')
+
+    dv = wf.size / atoms.cell.volume
     V = atoms.get_volume()
 
     IPR = 1 / ((wf**4).sum() * dv)
