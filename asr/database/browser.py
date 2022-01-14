@@ -370,6 +370,11 @@ def matrixtable(M, digits=2, unit='',
             value = M[i - 1][j - 1]
             if digits is None:
                 rows[i][j] = value
+                if unit != '':
+                    raise TypeError(
+                        f"input unit ({unit}) can't be set because digits "
+                        "is None! When setting 'unit' please specify 'digits' "
+                        "as well.")
             else:
                 rows[i][j] = '{:.{}f}{}'.format(value, digits, unit)
 
