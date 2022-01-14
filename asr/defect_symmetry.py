@@ -105,13 +105,13 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         E_lumo = cbm
         for i in range(len(state_array)):
             if float(state_array[i, 4]) > ef:
-                rowlabels[i] = f'LUMO + {N_lumo - 1}'
+                rowlabels[i] = f'LUMO+{N_lumo - 1}'
                 N_lumo = N_lumo - 1
                 if N_lumo == 0:
                     rowlabels[i] = 'LUMO'
                     E_lumo = float(state_array[i, 4])
             elif float(state_array[i, 4]) <= ef:
-                rowlabels[i] = f'HOMO - {N_homo}'
+                rowlabels[i] = f'HOMO-{N_homo}'
                 if N_homo == 0:
                     rowlabels[i] = 'HOMO'
                     E_homo = float(state_array[i, 4])
