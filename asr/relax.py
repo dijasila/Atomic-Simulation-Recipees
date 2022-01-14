@@ -49,9 +49,9 @@ from pathlib import Path
 
 import numpy as np
 from ase import Atoms
-from ase.calculators.calculator import PropertyNotImplementedError
 from ase.io import Trajectory, write
 from ase.optimize.bfgs import BFGS
+from ase.utils import IOContext
 
 from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
                       prepare_result)
@@ -366,9 +366,13 @@ def main(atoms: Atoms,
     if tmp_atoms is not None:
         atoms = tmp_atoms
 
-    # Make our own copy
     atoms = atoms.copy()
-    if not atoms.has('initial_magmoms'):
+    if atoms.has('initial_magmoms'):
+        initially_spinpol = any(atoms.get_initial_magnetic_moments())
+    else:
+        # We don't know whether the system is spin polarized,
+        # so we must assume it is.
+        initially_spinpol = True
         set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
@@ -417,33 +421,50 @@ def main(atoms: Atoms,
 
     logfile = Path(tmp_atoms_file).with_suffix('.log')
 
-    from ase.utils import IOContext
-
     with IOContext() as io:
         # XXX Not so nice to have special cases
-        if calculator.get('name') == 'gpaw':
+        if calculatorname == 'gpaw':
             calculator['txt'] = io.openfile(txt, mode=open_mode)
         logfile = io.openfile(logfile, mode=open_mode)
         trajectory = io.closelater(Trajectory(tmp_atoms_file, mode=open_mode))
 
+        # TODO: Perform actual GPAW computations in a separate process.
+        # This should simplify the hacky IO handling here by forcing
+        # proper GC, flushing and closing in that process.
+
         calc = Calculator(**calculator)
+
         atoms = do_relax()
 
         # If the maximum magnetic moment on all atoms is big then
-        try:
+        if initially_spinpol:
             magmoms = atoms.get_magnetic_moments()
-        except PropertyNotImplementedError:
-            # We assume this means that the magnetic moments are zero
-            # for this calculator.
-            magmoms = np.zeros(len(atoms))
 
-        if not abs(magmoms).max() > 0.1:
-            atoms.set_initial_magnetic_moments([0] * len(atoms))
-            calc = Calculator(**calculator)
-            atoms = do_relax()
+            if not abs(magmoms).max() > 0.1:
+                atoms.set_initial_magnetic_moments([0] * len(atoms))
+                atoms.calc = calc
+                atoms = do_relax()
 
-    edft = calc.get_potential_energy(atoms)
-    etot = atoms.get_potential_energy()
+        # This is buggy for systems that are close to the limit
+        # of spinpolarizedness.  In stiffness recipe some calculations
+        # may come out spinpolarized and others not, causing a small
+        # jump in energy and botched derivatives.  It would be better
+        # for the algorithm to strictly respect the input parameters
+        # ("spinpol", "spinpaired", or "guess")
+
+        edft = calc.get_potential_energy(atoms)
+        etot = atoms.get_potential_energy()
+
+        if calculatorname == 'gpaw':
+            # GPAW will have calc.close() soon.
+            # Until then, we abuse __del__() which happens to
+            # be the same currently.
+            # If we didn't do this, then the txt file will be closed
+            # before timings are written which is bad.
+            #
+            # (Also, when testing we do not always have __del__.)
+            if hasattr(calc, '__del__'):
+                calc.__del__()
 
     cellpar = atoms.cell.cellpar()
 
