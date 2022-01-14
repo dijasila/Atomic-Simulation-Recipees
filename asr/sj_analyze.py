@@ -424,10 +424,11 @@ def get_strucs_and_calcs(path):
         pris_folder = pristinelist[0]
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         struc_def, calc_def = restart(path / 'gs.gpw', txt=None)
-    except FileNotFoundError:
-        print('ERROR: does not find pristine gs, pristine results, or defect'
-              ' results. Did you run setup.defects and calculate the ground'
-              ' state for defect and pristine system?')
+    except FileNotFoundError as err:
+        msg = ('does not find pristine gs, pristine results, or defect'
+               ' results. Did you run setup.defects and calculate the ground'
+               ' state for defect and pristine system?')
+        raise RuntimeError(msg) from err
 
     return struc_pris, struc_def, calc_pris, calc_def
 
@@ -439,6 +440,7 @@ def get_half_integer_calc_and_index(charge, transition):
     Also, return index of the eigenvalue to be extracted (wrt. q HOMO index).
     """
     from gpaw import restart
+
     if transition[0] > transition[1]:
         identifier = '-0.5'
         delta_index = 1

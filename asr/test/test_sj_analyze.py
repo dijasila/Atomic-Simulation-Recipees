@@ -54,3 +54,44 @@ def test_ordered_transitions(ref_trans):
     ordered_transitions = order_transitions(new_transitions)
     for i, transition in enumerate(ordered_transitions):
         assert transition['transition_name'] == order[i]
+
+
+@pytest.mark.parametrize('hof', [0.1, -1.1])
+@pytest.mark.ci
+def test_get_heat_of_formation(asr_tmpdir, hof):
+    from ase.db import connect
+    from ase.build import mx2
+    from asr.database.material_fingerprint import get_uid_of_atoms, get_hash_of_atoms
+    from asr.sj_analyze import get_heat_of_formation
+
+    db = connect('database.db')
+    atoms = mx2('MoS2')
+    hash = get_hash_of_atoms(atoms)
+    uid = get_uid_of_atoms(atoms, hash)
+    db.write(atoms, hform=hof, uid=uid)
+
+    ref_hof = get_heat_of_formation(db, atoms)
+    assert ref_hof == pytest.approx(hof)
+
+
+@pytest.mark.parametrize('symbol', ['v', 'Ag'])
+@pytest.mark.ci
+def test_obtain_chemical_potential(asr_tmpdir, symbol):
+    from ase.db import connect
+    from .materials import Ag
+    from ase.calculators.emt import EMT
+    from asr.sj_analyze import obtain_chemical_potential
+
+    atoms = Ag.copy()
+    calc = EMT()
+    atoms.calc = calc
+    en = atoms.get_potential_energy()
+    db = connect('database.db')
+    db.write(atoms, ns=1)
+
+    res_standard_states = obtain_chemical_potential(symbol, db)
+    if symbol == 'v':
+        assert res_standard_states['eref'] == pytest.approx(0)
+    else:
+        assert res_standard_states['eref'] == pytest.approx(en)
+    assert res_standard_states['element'] == symbol
