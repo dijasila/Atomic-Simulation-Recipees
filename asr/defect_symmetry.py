@@ -562,24 +562,14 @@ def indexlist_cut_atoms(structure, threshold):
     return indexlist
 
 
-def compare_structures(ref_structure, structure, cutoff):
-    from ase.geometry import get_distances
-    indexlist = []
-    rmindexlist = []
-    # find atom indices that are equivalent
-    pos = structure.get_positions()
-    ref_pos = ref_structure.get_positions()
-    for i in range(len(structure)):
-        pos_i = pos[i]
-        for j in range(len(ref_structure)):
-            pos_j = ref_pos[j]
-            distance = get_distances(pos_i, pos_j)[1][0]
-            if distance < cutoff and i not in indexlist:
-                indexlist.append(i)
+def compare_structures(ref_atoms, atoms, cutoff):
+    from ase.neighborlist import neighbor_list
 
-    # collect non-equivalent atom indices
-    for i in range(len(structure)):
-        if i not in indexlist:
+    tmp_atoms = atoms + ref_atoms
+    nl = neighbor_list('i', tmp_atoms, cutoff=cutoff)
+    rmindexlist = []
+    for i in range(len(atoms)):
+        if i not in nl:
             rmindexlist.append(i)
 
     return rmindexlist

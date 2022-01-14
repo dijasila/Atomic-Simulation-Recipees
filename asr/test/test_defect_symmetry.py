@@ -123,7 +123,7 @@ def test_get_spg_symmetry():
         assert sym == results[i]
 
 
-@pytest.mark.parametrize('defect', ['v_N', 'N_B', 'B_N', 'v_B'])
+@pytest.mark.parametrize('defect', ['v_N', 'N_B'])
 @pytest.mark.parametrize('size', [10, 12.5])
 @pytest.mark.ci
 def test_get_mapped_structure(asr_tmpdir, size, defect):
