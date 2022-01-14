@@ -270,18 +270,26 @@ class Result(ASRResult):
 
 
 @command(module='asr.defect_symmetry',
-         requires=['structure.json', 'unrelaxed.json',
-                   '../../unrelaxed.json'],
+         requires=['structure.json'],
          dependencies=['asr.get_wfs'],
          resources='1:1h',
          returns=Result)
+@option('--primitivefile', help='Path to the primitive structure file.',
+        type=str)
+@option('--pristinefile', help='Path to the pristine supercell file'
+        '(needs to be of the same shape as structure.json).', type=str)
+@option('--unrelaxedfile', help='Path to an the unrelaxed '
+        'supercell file (only needed if --mapping is set).', type=str)
 @option('--mapping/--no-mapping', help='Choose mapping if defect '
         'supercells are created with the general algorithm of '
         'asr.setup.defects, or if non-uniform supercells are used.'
         ' Use --no-mapping otherwise.', is_flag=True)
 @option('--radius', help='Radius around the defect where the wavefunction '
         'gets analyzed.', type=float)
-def main(mapping: bool = False,
+def main(primitivefile: str = 'primitive.json',
+         pristinefile: str = 'pristine.json',
+         unrelaxedfile: str = 'NO',
+         mapping: bool = False,
          radius: float = 2.0) -> Result:
     """
     Analyze defect wavefunctions and their symmetries.
@@ -298,7 +306,9 @@ def main(mapping: bool = False,
     defect = Path('.')
 
     # check whether input is correct and return important structures
-    structure, unrelaxed, primitive, pristine = check_and_return_input()
+    structurefile = 'structure.json'
+    structure, unrelaxed, primitive, pristine = check_and_return_input(
+        structurefile, unrelaxedfile, primitivefile, pristinefile)
 
     # construct mapped structure, or return relaxed defect structure in
     # case mapping is not needed
@@ -309,7 +319,7 @@ def main(mapping: bool = False,
                                                 pristine,
                                                 defect)
     else:
-        mapped_structure = read('structure.json')
+        mapped_structure = structure.copy()
 
     # return point group of the defect structure
     point_group = get_spg_symmetry(mapped_structure)
@@ -861,24 +871,35 @@ def draw_levels_occupations_labels(ax, spin, data, ecbm, evbm, ef,
                     lev.add_label(irrep, 'A')
 
 
-def check_and_return_input():
-    """Check whether folder structure is correct and return input."""
-    pristinepath = list(Path('.').glob('../../defects.pristine*'))[0]
+def check_and_return_input(structurefile, unrelaxedfile,
+                           primitivefile, pristinefile):
+    """Check whether all neccessary structures are available."""
     try:
-        pris_struc = read(pristinepath / 'structure.json')
-    except FileNotFoundError:
-        print('ERROR: pristine structure not available!')
+        pristine = read(pristinefile)
+    except FileNotFoundError as err:
+        msg = 'ERROR: pristine structure not available! Check your inputs.'
+        raise RuntimeError(msg) from err
     try:
-        struc = read('structure.json')
-        unrel = read('unrelaxed.json')
-    except FileNotFoundError:
-        print('ERROR: defect structure(s) not available!')
+        structure = read(structurefile)
+    except FileNotFoundError as err:
+        msg = ('ERROR: relaxed defect structure not available! '
+               'Check your inputs.')
+        raise RuntimeError(msg) from err
     try:
-        prim_unrel = read('../../unrelaxed.json')
-    except FileNotFoundError:
-        print('ERROR: primitive unrelaxed structure not available!')
+        primitive = read(primitivefile)
+    except FileNotFoundError as err:
+        msg = 'ERROR: primitive unrelaxed structure not available!'
+        raise RuntimeError(msg) from err
+    if unrelaxedfile != 'NO':
+        try:
+            unrelaxed = read(unrelaxedfile)
+        except FileNotFoundError as err:
+            msg = 'ERROR: unrelaxed defect structure not available! Check your inputs.'
+            raise RuntimeError(msg) from err
+    else:
+        unrelaxed = None
 
-    return struc, unrel, prim_unrel, pris_struc
+    return structure, unrelaxed, primitive, pristine
 
 
 if __name__ == '__main__':

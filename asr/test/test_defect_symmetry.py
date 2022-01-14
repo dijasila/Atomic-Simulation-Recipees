@@ -124,7 +124,7 @@ def test_get_spg_symmetry():
 
 
 @pytest.mark.parametrize('defect', ['v_N', 'N_B'])
-@pytest.mark.parametrize('size', [10, 12.5])
+@pytest.mark.parametrize('size', [10])
 @pytest.mark.ci
 def test_get_mapped_structure(asr_tmpdir, size, defect):
     from .materials import BN
@@ -180,3 +180,39 @@ def test_indexlist_cut_atoms():
             print(indices)
             del newatoms[indices]
             assert len(newatoms) - res[i] == len(atoms)
+
+
+@pytest.mark.ci
+def test_check_and_return_input(asr_tmpdir):
+    from .materials import std_test_materials
+    from pathlib import Path
+    from asr.core import chdir
+    from ase.io import write
+    from asr.defect_symmetry import check_and_return_input
+
+    for atoms in std_test_materials:
+        folder = f'{atoms.get_chemical_formula()}'
+        Path(folder).mkdir()
+        with chdir(folder):
+            write('primitive.json', atoms)
+            supercell = atoms.copy()
+            supercell = supercell.repeat((2, 2, 2))
+            supercell.pop(0)
+            write('supercell_unrelaxed.json', supercell)
+            relaxed = supercell.copy()
+            relaxed.rattle()
+            write('supercell_relaxed.json', relaxed)
+            pristine = atoms.repeat((2, 2, 2))
+            write('pristine.json', pristine)
+            struc, un, prim, pris = check_and_return_input(
+                'supercell_relaxed.json',
+                'supercell_unrelaxed.json',
+                'primitive.json',
+                'pristine.json')
+            assert un is not None
+            struc, un, prim, pris = check_and_return_input(
+                'supercell_relaxed.json',
+                'NO',
+                'primitive.json',
+                'pristine.json')
+            assert un is None
