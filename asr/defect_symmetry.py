@@ -480,7 +480,7 @@ def get_localization_ratio(atoms, wf, calc):
         'grid points in wf cube file and calculator '
         'are not the same!')
 
-    dv = wf.size / atoms.cell.volume
+    dv = atoms.cell.volume / wf.size
     V = atoms.get_volume()
 
     IPR = 1 / ((wf**4).sum() * dv)
