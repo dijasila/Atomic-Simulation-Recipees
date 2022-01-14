@@ -4,7 +4,6 @@ from ase.dft.bandgap import bandgap
 from ase.io import read
 from asr.database.browser import make_panel_description, href
 import typing
-from gpaw import restart
 import numpy as np
 
 
@@ -420,6 +419,7 @@ def main(temp: float = 300,
     - defect_dict = {'defect_name': [(form. en. at VBM, charge state), (.., ..)],
                      ...}
     """
+    from gpaw import restart
     # test input and read in defect dictionary from asr.sj_analyze results
     if defects == {}:
         inputdict = return_defect_dict()
