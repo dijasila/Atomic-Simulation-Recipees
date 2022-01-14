@@ -937,9 +937,10 @@ def get_min_el(array):
 
 def get_crossing_point(y1, y2, q1, q2):
     """
+    Calculate the crossing point between two charge states.
+
     f1 = y1 + x * q1
     f2 = y2 + x * q2
-
     x * (q1 - q2) = y2 - y1
     x = (y2 - y1) / (q1 - q2)
     """
