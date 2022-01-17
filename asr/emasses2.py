@@ -1,7 +1,6 @@
 """Effective masses - version 117."""
 # noqa: W504
 import pickle
-from collections import defaultdict
 from math import pi
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
@@ -84,73 +83,22 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
 
 def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
     K1, K2, K3, N = fingerprint_ijknx.shape[:-1]
-    band_ijkn = np.zeros((K1, K2, K3, N), int) - 1
-    bnew = 0
-    equal = []
+    for k1 in range(K1 - 1):
+        con2(eig_ijkn[k1:k1 + 2, 0, 0],
+             fingerprint_ijknx[k1:k1 + 2, 0, 0])
+
+    for k1 in range(K1):
+        for k2 in range(K2 - 1):
+            con2(eig_ijkn[k1, k2:k2 + 2, 0],
+                 fingerprint_ijknx[k1, k2:k2 + 2, 0])
+
     for k1 in range(K1):
         for k2 in range(K2):
-            bnew = con1d(
-                eig_ijkn[k1, k2],
-                fingerprint_ijknx[k1, k2], band_ijkn[k1, k2],
-                bnew, equal)
+            for k3 in range(K3 - 1):
+                con2(eig_ijkn[k1, k2, k3:k3 + 2],
+                     fingerprint_ijknx[k1, k2, k3:k3 + 2])
 
-    for k1 in range(K1):
-        for k3 in range(K3):
-            bnew = con1d(
-                eig_ijkn[k1, :, k3],
-                fingerprint_ijknx[k1, :, k3], band_ijkn[k1, :, k3],
-                bnew, equal)
-
-    for k2 in range(K2):
-        for k3 in range(K3):
-            bnew = con1d(
-                eig_ijkn[:, k2, k3],
-                fingerprint_ijknx[:, k2, k3], band_ijkn[:, k2, k3],
-                bnew, equal)
-
-    mapping = {}
-    sets = []
-    for i, j in equal:
-        if i in mapping and j not in mapping:
-            sets[mapping[i]].add(j)
-            mapping[j] = mapping[i]
-        elif j in mapping and i not in mapping:
-            sets[mapping[j]].add(i)
-            mapping[i] = mapping[j]
-        elif i not in mapping and j not in mapping:
-            mapping[i] = len(sets)
-            mapping[j] = len(sets)
-            sets.append({i, j})
-        elif mapping[i] != mapping[j]:
-            s1 = sets[mapping[i]]
-            s2 = sets[mapping[j]]
-            s1.update(s2)
-            for j in s2:
-                mapping[j] = mapping[i]
-            s2.clear()
-
-    dct = {}
-    for s in sets:
-        if not s:
-            continue
-        m = min(s)
-        for i in s:
-            dct[i] = m
-
-    band_ijkn = np.array([dct.get(b, b)
-                          for b in band_ijkn.ravel()]).reshape(band_ijkn.shape)
-
-    count = defaultdict(int)
-    for b in band_ijkn.ravel():
-        count[b] += 1
-
-    mapping = dict(zip(sorted(count, key=lambda k: -count[k]),
-                       range(len(count))))
-
-    band_ijkn = np.array([mapping[b]
-                          for b in band_ijkn.ravel()]).reshape(band_ijkn.shape)
-
-    return band_ijkn
+    return eig_ijkn
 
 
 def clusters(eigs,
@@ -180,69 +128,55 @@ def clusters(eigs,
     return c
 
 
-def con1d(e_kn,
-          fp_knx,
-          b_kn,
-          bnew,
-          equal):
-    K, N = fp_knx.shape[:2]
-    c1 = clusters(e_kn[0])
-    for k1 in range(K - 1):
-        k2 = (k1 + 1) % K
-        ovl_n1n2 = abs(fp_knx[k1] @ fp_knx[k2].conj().T)
-        c2 = clusters(e_kn[k2])
-        for a1, b1 in c1:
-            for a2, b2 in c2:
-                if b1 - a1 == b2 - a2:
-                    o = ovl_n1n2[a1:b1, a2:b2]
-                    ovl_n1n2[a1:b1, a2:b2] = o.max() * np.eye(b1 - a1)
-        taken = set()
-        for n2 in range(N):
-            n1b, n1a = ovl_n1n2[:, n2].argsort()[-2:]
-            b2 = b_kn[k2, n2]
-            if ovl_n1n2[n1a, n2] > 3.0 * ovl_n1n2[n1b, n2] and n1a not in taken:
-                b1 = b_kn[k1, n1a]
-                if b1 == -1:
-                    b1 = bnew
-                    bnew += 1
-                    b_kn[k1, n1a] = b1
-                taken.add(n1a)
-                if b2 == -1:
-                    b_kn[k2, n2] = b1
-                else:
-                    if b1 != b2:
-                        equal.append((b1, b2))
-            else:
-                if b2 == -1:
-                    b_kn[k2, n2] = bnew
-                    bnew += 1
-    return bnew
+def con2(e_kn, fp_knx):
+    K, N = e_kn.shape
+    assert K == 2, K
+
+    ovl_n1n2 = abs(fp_knx[0] @ fp_knx[1].conj().T)
+
+    c2 = clusters(e_kn[1])
+
+    for a, b in c2:
+        o = ovl_n1n2[:, a:b]
+        o[:] = o.max(axis=1)[:, np.newaxis]
+
+    n2_n1 = []
+    n1_n2: dict[int, int] = {}
+    for n1 in range(N):
+        n2 = ovl_n1n2[n1].argmax()
+        ovl_n1n2[:, n2] = -1.0
+        n2_n1.append(n2)
+        n1_n2[n2] = n1
+
+    fp2_nx = fp_knx[1].copy()
+    for a, b in c2:
+        for n2 in range(a, b):
+            fp2_nx[n2] = fp_knx[0, n1_n2[n2]]
+
+    e2_n = e_kn[1, n2_n1]
+    fp2_nx = fp2_nx[n2_n1]
+    e_kn[1] = e2_n
+    fp_knx[1] = fp2_nx
+
+    return n2_n1
 
 
 def main(data: dict,
          kind='cbm',
          log=print):
-    bands, axes = find_extrema(kind=kind,
-                               log=log,
-                               **data)
+    k_ijkc, e_ijkn, axes = find_extrema(kind=kind,
+                                        log=log,
+                                        **data)
 
     cell_cv = data['cell_cv'][axes][:, axes]
 
-    for kpt_kc, eig_k, spinproj_kv in bands:
-        k0 = eig_k.argmin()
-        kpt0_c = kpt_kc[k0]
-        dk_kc = kpt_kc - kpt0_c
-        dk_kc -= dk_kc.round()
-        k_kv = (kpt0_c + dk_kc)[:, axes] @ np.linalg.inv(cell_cv).T * 2 * pi
+    k_kv = k_ijkc.reshape((-1, 3))[:, axes] @ np.linalg.inv(cell_cv).T * 2 * pi
+    e_kn = e_ijkn.reshape((-1, e_ijkn.shape[3]))
 
-        try:
-            k_v, energy, mass_w, direction_wv, error_k = fit(
-                k_kv, eig_k, spinproj_kv, cell_cv,
-                log=log)
-        except NoMinimum:
-            pass
-
-    return bands
+    for e_k in e_kn.T:
+        k_v, energy, mass_w, direction_wv, error_k = fit(
+            k_kv, e_k, None, cell_cv,
+            log=log)
 
 
 def find_extrema(cell_cv,
@@ -280,28 +214,21 @@ def find_extrema(cell_cv,
     ijk = eig_ijkn[:, :, :, 0].ravel().argmin()
     i, j, k = np.unravel_index(ijk, (K1, K2, K3))
 
+    dk = 3
+    r1 = [0] if K1 == 1 else [x % K1 for x in range(i - dk, i + dk + 1)]
+    r2 = [0] if K2 == 1 else [x % K2 for x in range(j - dk, j + dk + 1)]
+    r3 = [0] if K3 == 1 else [x % K3 for x in range(k - dk, k + dk + 1)]
+    e_ijkn = eig_ijkn[r1][:, r2][:, :, r3]
+    fp_ijknI = proj_ijknI[r1][:, r2][:, :, r3]
+    k_ijkc = (kpt_ijkc[r1][:, r2][:, :, r3] - kpt_ijkc[i, j, k] + 0.5) % 1
+    k_ijkc += kpt_ijkc[i, j, k] - 0.5
+
     log('Connecting bands')
-    b_ijkn = connect(eig_ijkn, proj_ijknI)
+    connect(e_ijkn, fp_ijknI)
 
     axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
 
-    bands = []
-    for b in range(b_ijkn.max() + 1):
-        mask_ijkn = b_ijkn == b
-        eig_k = eig_ijkn[mask_ijkn]
-        kpt_kc = kpt_ijkc[mask_ijkn.any(axis=3)]
-        spinproj_kv = np.array([spinproj_ijknv[..., v][mask_ijkn]
-                                for v in range(3)]).T
-        bands.append((eig_k, kpt_kc, spinproj_kv))
-
-    bands.sort(key=lambda value: value[0].min())
-
-    e0 = bands[0][0].min()
-    for eig_k, kpt_kc, spinproj_kv in bands[:6]:
-        log(f'{eig_k.min() - e0} eV: {len(eig_k)} points')
-        log(kpt_kc[eig_k.argmin()])
-    return [(kpt_kc, eig_k, spinproj_kv)
-            for eig_k, kpt_kc, spinproj_kv in bands[:6]], axes
+    return k_ijkc, e_ijkn, axes
 
 
 class NoMinimum(ValueError):
