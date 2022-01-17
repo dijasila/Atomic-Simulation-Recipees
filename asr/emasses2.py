@@ -71,14 +71,19 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
                                           axis=1)
         fermilevel = calc.get_fermi_level()
 
+    nocc = (eig_kn[0, 0, 0] < fermilevel).sum()
+    N = range(nocc - 4, nocc + 4)
+
     K1, K2, K3 = tuple(kd.N_c)
     _, N, nI = proj_knI.shape
     return {'cell_cv': calc.atoms.cell,
             'kpt_ijkc': k_kc.reshape((K1, K2, K3, 3)),
             'fermilevel': fermilevel,
             'eig_ijkn': eig_kn.reshape((K1, K2, K3, N)),
-            'proj_ijknI': proj_knI.reshape((K1, K2, K3, N, nI)),
-            'spinproj_ijknv': spinproj_knv.reshape((K1, K2, K3, N, 3))}
+            'proj_ijknI': proj_knI.reshape((K1, K2, K3, N, nI)).astype(
+                np.complex64),
+            'spinproj_ijknv': spinproj_knv.reshape((K1, K2, K3, N, 3)).astype(
+                np.float16}
 
 
 def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
