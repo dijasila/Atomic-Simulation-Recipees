@@ -83,7 +83,7 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
             'proj_ijknI': proj_knI.reshape((K1, K2, K3, N, nI)).astype(
                 np.complex64),
             'spinproj_ijknv': spinproj_knv.reshape((K1, K2, K3, N, 3)).astype(
-                np.float16}
+                np.float16)}
 
 
 def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
