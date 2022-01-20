@@ -48,11 +48,10 @@ def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
 #                                   'Pd', 'Pt', 'C'])
 @pytest.mark.parametrize('name', ['Al'])
 def test_stiffness_emt(asr_tmpdir_w_params, name, mockgpaw, get_webcontent):
-    # from pathlib import Path
     from ase.build import bulk
     from asr.c2db.stiffness import main as stiffness
-
     atoms = bulk(name)
+    atoms.set_initial_magnetic_moments([0.0] * len(atoms))
     atoms.write('structure.json')
 
     result = stiffness(atoms=atoms, calculator=dict(name='emt'))

@@ -24,6 +24,7 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
     import asr.c2db.relax
     from asr.c2db.relax import main
     from gpaw import GPAW
+
     mocker.patch.object(GPAW, "_get_magmoms")
     spy = mocker.spy(asr.c2db.relax, "set_initial_magnetic_moments")
     GPAW._get_magmoms.return_value = (np.zeros((len(test_material), ), float)
@@ -32,13 +33,20 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
         test_material.set_initial_magnetic_moments(
             [initial_magmoms] * len(test_material))
 
+    if not test_material.has('initial_magmoms'):
+        attempt_spinpol = True
+    elif any(test_material.get_initial_magnetic_moments()):
+        attempt_spinpol = True
+    else:
+        attempt_spinpol = False
+
     test_material.write('unrelaxed.json')
     record = main.cli([])
     relaxed = record.result.atoms
 
     assert relaxed.has('initial_magmoms')
 
-    if final_magmoms > 0.1:
+    if final_magmoms > 0.1 and attempt_spinpol:
         assert all(record.result.magmoms == 1)
     else:
         assert not relaxed.get_initial_magnetic_moments().any()
@@ -58,6 +66,7 @@ def test_relax_emt(asr_tmpdir_w_params, name):
     from ase.build import bulk
 
     unrelaxed = bulk(name)
+    unrelaxed.set_initial_magnetic_moments([0.0] * len(unrelaxed))
     relax(unrelaxed, calculator={'name': 'emt'})
 
 
@@ -73,8 +82,10 @@ def test_relax_emt_fail_broken_symmetry(asr_tmpdir_w_params, name,
 
     unrelaxed = bulk(name)
 
+    rng = np.random.RandomState(1234)
+
     def get_stress(*args, **kwargs):
-        return np.random.rand(3, 3)
+        return rng.rand(3, 3)
 
     monkeypatch.setattr(EMT, 'get_stress', get_stress)
     with pytest.raises(BrokenSymmetryError) as excinfo:
@@ -90,6 +101,7 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
     from asr.c2db.relax import main, SpgAtoms, myBFGS
 
     diamond = bulk('C')
+    diamond.set_initial_magnetic_moments([0.0] * len(diamond))
     natoms = len(diamond)
     sposoriginal_ac = diamond.get_scaled_positions()
     spos_ac = diamond.get_scaled_positions()
