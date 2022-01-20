@@ -234,7 +234,6 @@ def apply_vacuum(atoms):
 
     :return atoms_vac: output atomic structure with changed vacuum size
     """
-
     atoms_vac = atoms.copy()
     cell = atoms_vac.get_cell()
     oldvac = cell[2][2]
