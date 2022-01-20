@@ -156,8 +156,7 @@ def webpanel(result, context):
 
         tab['rows'].extend(info)
 
-    xcname = context.xcname
-    title = f'Basic electronic properties ({xcname})'
+    title = f'Basic electronic properties ({context.xcname})'
 
     panel = WebPanel(
         title=describe_entry(title, panel_description),

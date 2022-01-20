@@ -9,11 +9,11 @@ from pytest import approx
 def test_setup_symmetrize(asr_tmpdir_w_params, inputatoms):
     import numpy as np
     from asr.setup.symmetrize import main
-    np.random.seed(1234)
+    rng = np.random.RandomState(1234)
     atoms = inputatoms.copy()
     atoms.rattle(stdev=0.001)
     cell_cv = atoms.get_cell()
-    cell_cv += (np.random.rand(3, 3) - 0.5) * 1e-5
+    cell_cv += (rng.random((3, 3)) - 0.5) * 1e-5
     atoms.set_cell(cell_cv)
 
     symmetrizedatoms = main(atoms=atoms)

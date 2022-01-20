@@ -97,7 +97,7 @@ def calculate(
 
     gsres = gscalculate(atoms=atoms, calculator=calculator)
     calc_gs = gsres.calculation.load()
-    spin = calc_gs.get_spin_polarized()
+    spin = calc_gs.get_number_of_spins() == 2
     nval = calc_gs.wfs.nvalence
     nocc = int(nval / 2)
     nbands = bandfactor * nocc
