@@ -24,6 +24,7 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
     import asr.c2db.relax
     from asr.c2db.relax import main
     from gpaw import GPAW
+
     mocker.patch.object(GPAW, "_get_magmoms")
     spy = mocker.spy(asr.c2db.relax, "set_initial_magnetic_moments")
     GPAW._get_magmoms.return_value = (np.zeros((len(test_material), ), float)
@@ -32,13 +33,20 @@ def test_relax_magmoms(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
         test_material.set_initial_magnetic_moments(
             [initial_magmoms] * len(test_material))
 
+    if not test_material.has('initial_magmoms'):
+        attempt_spinpol = True
+    elif any(test_material.get_initial_magnetic_moments()):
+        attempt_spinpol = True
+    else:
+        attempt_spinpol = False
+
     test_material.write('unrelaxed.json')
     record = main.cli([])
     relaxed = record.result.atoms
 
     assert relaxed.has('initial_magmoms')
 
-    if final_magmoms > 0.1:
+    if final_magmoms > 0.1 and attempt_spinpol:
         assert all(record.result.magmoms == 1)
     else:
         assert not relaxed.get_initial_magnetic_moments().any()
