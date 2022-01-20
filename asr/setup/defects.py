@@ -1,11 +1,10 @@
 """Generate defective atomic structures."""
 import numpy as np
-from typing import List, Sequence
+from typing import Sequence
 from pathlib import Path
-from asr.core import command, option, ASRResult, atomsopt
+from asr.core import command, option, ASRResult
 import click
 import os
-from ase import Atoms
 
 
 # Define calculators that are needed for the params.json file
@@ -695,6 +694,7 @@ def write_halfinteger_files(deltacharge, identifier, params, charge, foldername)
     write_json(f'sj_{identifier}/params.json', paramsfile)
     shutil.copyfile(foldername + '/structure.json',
                     foldername + f'/sj_{identifier}/structure.json')
+
 
 def create_general_supercell(structure, size=12.5):
     """
