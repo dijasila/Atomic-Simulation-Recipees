@@ -87,32 +87,32 @@ Ready to contribute? Here's how to set up `asr` for local development.
 
 6. Commit your changes and push your branch to GitLab::
 
-    $ git add .
+    $ git add <files or directories>
     $ git commit -m "Your detailed description of your changes."
     $ git push origin name-of-your-bugfix-or-feature
 
-7. Submit a pull request through the GitLab website.
+7. Submit a merge request through the GitLab website.
 
-Pull Request Guidelines
+Merge Request Guidelines
 -----------------------
 
-Before you submit a pull request, check that it meets these guidelines:
+Before you submit a merge request, check that it meets these guidelines:
 
-1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put
+1. The merge request should include tests.
+2. If the merge request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
-3. The pull request should work for Python 3.5, 3.6, 3.7 and 3.8, and for PyPy. Check
-   https://travis-ci.org/mortengjerding/asr/pull_requests
-   and make sure that the tests pass for all supported Python versions.
+3. The merge request should work for any Python versions implied by setup.py
 
 Tips
 ----
 
 To run a subset of tests::
 
-$ pytest tests.test_asr
+$ pytest <files or directories>
+$ pytest -k <expression to match names of tests>
 
+See also `pytest --help`
 
 Deploying
 ---------
