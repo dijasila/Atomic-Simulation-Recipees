@@ -188,8 +188,8 @@ class Result(ASRResult):
          resources='24:2h',
          returns=Result)
 @option('--index', help='Specify index of the atom in the pristine supercell '
-        'that you want to use as a potential reference. ONLY TEMPORARY OPTION!',
-        type=int)
+        'that you want to use as a potential reference. Will be chosen '
+        'automatically if nothing is set.', type=int)
 def main(index: int = None) -> Result:
     """Calculate charge transition levels for defect systems.
 
