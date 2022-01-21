@@ -607,7 +607,8 @@ def adjust_formation_energies(defectdict, element):
     newdict = {}
     atoms = read('structure.json')
     el_list = get_element_list(atoms)
-    stoi = get_stoichiometry()
+    host = read('unrelaxed.json')
+    stoi = get_stoichiometry(host)
     sstates = get_chemical_potentials(stoi, element, el_list)
     for defect in defectdict:
         def_type, def_pos = get_defect_info(defect)
@@ -625,9 +626,9 @@ def adjust_formation_energies(defectdict, element):
     return newdict
 
 
-def get_stoichiometry():
+def get_stoichiometry(atoms):
     from ase.formula import Formula
-    atoms = read('../unrelaxed.json')
+
     w = Formula(atoms.get_chemical_formula())
 
     return w.count()
