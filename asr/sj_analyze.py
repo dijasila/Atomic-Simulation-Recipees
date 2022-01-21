@@ -19,34 +19,10 @@ dichalcogenides, Nano Letters, 16 (4) 2234 (2016)""",
 )
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig, WebPanel,
-                                      describe_entry, table, matrixtable)
-    import numpy as np
-
-    explained_keys = []
-    for key in ['eform']:
-        if key in result.key_descriptions:
-            key_description = result.key_descriptions[key]
-            explanation = key_description
-            explained_key = describe_entry(key, description=explanation)
-        else:
-            explained_key = key
-        explained_keys.append(explained_key)
-
-    formation_table_sum = table(result, 'Defect properties', [])
-    formation_table_sum['rows'].extend(
-        [[describe_entry('Neutral formation energy',
-                         description='Neutral formation energy [eV].'),
-          f'{result.eform[0][0]:.2f} eV']])
-
-    formation_table = table(result, 'Defect formation', [])
-    for element in result.eform:
-        formation_table['rows'].extend(
-            [[describe_entry(f'Formation energy (q = {element[1]:1d} @ VBM)',
-                             description='Formation energy for charge state q '
-                                         'at the valence band maximum [eV].'),
-              f'{element[0]:.2f} eV']])
+def get_transition_table(result):
+    """Set up table for charge transition levels."""
+    from asr.database.browser import (matrixtable,
+                                      describe_entry)
 
     trans_results = result.transitions
     vbm = result.pristine.vbm
@@ -65,7 +41,7 @@ def webpanel(result, row, key_descriptions):
 
     transition_array = transition_array[transition_array[:, 0].argsort()]
 
-    transitions_table = matrixtable(
+    transition_table = matrixtable(
         transition_array,
         title='Transition',
         columnlabels=[describe_entry('Transition Energy [eV]',
@@ -74,12 +50,59 @@ def webpanel(result, row, key_descriptions):
                                      description='Correction due to ion relaxation')],
         rowlabels=transition_labels)
 
+    return transition_table
+
+
+def get_summary_table(result):
+    from asr.database.browser import table, describe_entry
+
+    summary_table = table(result, 'Defect properties', [])
+    summary_table['rows'].extend(
+        [[describe_entry('Neutral formation energy',
+                         description='Neutral formation energy [eV].'),
+          f'{result.eform[0][0]:.2f} eV']])
+
+    return summary_table
+
+
+def get_formation_table(result):
+    from asr.database.browser import table, describe_entry
+
+    formation_table = table(result, 'Defect formation', [])
+    for element in result.eform:
+        formation_table['rows'].extend(
+            [[describe_entry(f'Formation energy (q = {element[1]:1d} @ VBM)',
+                             description='Formation energy for charge state q '
+                                         'at the valence band maximum [eV].'),
+              f'{element[0]:.2f} eV']])
+
+    return formation_table
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (fig, WebPanel,
+                                      describe_entry)
+
+    explained_keys = []
+    for key in ['eform']:
+        if key in result.key_descriptions:
+            key_description = result.key_descriptions[key]
+            explanation = key_description
+            explained_key = describe_entry(key, description=explanation)
+        else:
+            explained_key = key
+        explained_keys.append(explained_key)
+
+    formation_table_sum = get_summary_table(result)
+    formation_table = get_formation_table(result)
+    transition_table = get_transition_table(result)
+
     panel = WebPanel(
         describe_entry('Formation energies and charge transition levels (Slater-Janak)',
                        panel_description),
         columns=[[describe_entry(fig('sj_transitions.png'),
                                  'Slater-Janak calculated charge transition levels.'),
-                  transitions_table],
+                  transition_table],
                  [describe_entry(fig('formation.png'),
                                  'Formation energy diagram.'),
                   formation_table]],
@@ -183,8 +206,7 @@ class Result(ASRResult):
 
 @command(module='asr.sj_analyze',
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
-                   '../../unrelaxed.json',
-                   'gs.gpw'],
+                   '../../unrelaxed.json', 'gs.gpw'],
          resources='24:2h',
          returns=Result)
 @option('--index', help='Specify index of the atom in the pristine supercell '
@@ -202,9 +224,6 @@ def main(index: int = None) -> Result:
     from asr.core import read_json
 
     p = Path('.')
-    defectsystem = str(p.absolute()).split('/')[-2]
-    print('INFO: calculate formation energy and charge transition levels '
-          'for defect {}.'.format(defectsystem))
     struc_pris, struc_def, calc_pris, calc_def = get_strucs_and_calcs(p)
 
     # get heat of formation
