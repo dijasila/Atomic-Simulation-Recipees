@@ -673,6 +673,40 @@ def is_vacancy(defectpath):
         return False
 
 
+class DefectInfo():
+    """Class containing all information about a specific defect."""
+
+    def __init__(self, defectpath=None, defecttype=None, defectkind=None):
+        if defectpath is None:
+            assert (defecttype is not None and defectkind is not None), (
+                'DefectInfo class either needs a defect path (from asr.setup.'
+                'defects) or a defecttype and defectposition passed to it!')
+            self.defecttype = defecttype
+            self.defectkind = defectkind
+        else:
+            self.defecttype, self.defectkind = self.get_defect_info_cls(defectpath)
+        self.defectpath = defectpath
+        self.defectname = f'{self.defecttype}_{self.defectkind}'
+
+    def get_defect_info_cls(defectpath=None):
+        """Return defecttype, and kind."""
+        from pathlib import Path
+        if defectpath is None:
+            defectpath = Path('.')
+        defecttype = str(defectpath.absolute()).split(
+            '/')[-2].split('_')[-2].split('.')[-1]
+        defectpos = str(defectpath.absolute()).split(
+            '/')[-2].split('_')[-1]
+
+        return defecttype, defectpos
+
+    def is_vacancy(self):
+        if self.defecttype == 'v':
+            return True
+        else:
+            return False
+
+
 def get_defect_info(defectpath=None):
     """Return defecttype, and kind."""
     from pathlib import Path
