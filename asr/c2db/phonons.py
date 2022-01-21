@@ -50,7 +50,7 @@ class CalculateResult(ASRResult):
 @option('-a', '--atoms', help='Atomic structure.',
         type=AtomsFile(), default='structure.json')
 @asr.calcopt
-@option('-n', help='Supercell size', type=int, nargs=3)
+@option('-n', help='Supercell size', type=int, nargs=1)
 def calculate(
         atoms: Atoms,
         calculator: dict = {
@@ -70,6 +70,9 @@ def calculate(
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import construct_calculator
+    # XXX code does not handle n being three integers.
+    # We should probably support that.
+
     # XXX Here we should purge the cache
 
     # Set initial magnetic moments
@@ -84,13 +87,9 @@ def calculate(
 
     calc = construct_calculator(calculator)
 
-    nd = sum(atoms.get_pbc())
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
+    ndim = sum(atoms.pbc)
+    supercell = np.ones(3, int)
+    supercell[:ndim] = n
 
     phonons = Phonons(atoms=atoms, calc=calc, supercell=supercell)
     phonons.run()

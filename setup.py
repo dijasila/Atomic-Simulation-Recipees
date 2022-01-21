@@ -12,9 +12,10 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
+python_requires = '>=3.8'
 requirements = [
     'pyparsing>=3.0.6',
-    'Click==7.1.2',
+    'Click>=8.0.3',
     'ase', 'matplotlib',
     'simplejson',
     'spglib', 'plotly', 'flask', 'pymatgen',
@@ -37,17 +38,12 @@ package_data = {'asr': ['database/templates/*.html',
 setup(
     author="Morten Niklas Gjerding",
     author_email='mortengjerding@gmail.com',
-    python_requires='>=3.5',
+    python_requires=python_requires,
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Natural Language :: English',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
     ],
     description="ASE recipes for calculating material properties",
     package_data=package_data,
