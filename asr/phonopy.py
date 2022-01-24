@@ -25,19 +25,18 @@ def lattice_vectors(N_c):
 
 
 @command(
-    "asr.phonopy",
-    requires=["structure.json", "gs.gpw"],
-    dependencies=["asr.gs@calculate"],
+    'asr.phonopy',
+    requires=['structure.json', 'gs.gpw'],
+    dependencies=['asr.gs@calculate'],
 )
-@option("--d", type=float, help="Displacement size")
-@option("--dist_max", type=float,
-        help="Maximum distance between atoms in the supercell")
-@option("--fsname", help="Name for forces file", type=str)
-@option('--sc', nargs=3, type=int,
+@option('-d', '--displacement', type=float, help='Displacement size')
+@option('-fsname', '--forcesname', help='Name for forces file', type=str)
+@option('-sc', '--supercell', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
-def calculate(d: float = 0.05, fsname: str = 'phonons',
-              sc: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
+def calculate(displacement: float = 0.05,
+              forcesname: str = 'phonons',
+              supercell: typing.List[int] = [2, 2, 2],
               calculator: dict = {'name': 'gpaw',
                                   'mode': {'name': 'pw', 'ecut': 800},
                                   'xc': 'PBE',
@@ -56,7 +55,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
     from phonopy.structure.atoms import PhonopyAtoms
     # Remove empty files:
     if world.rank == 0:
-        for f in Path().glob(fsname + ".*.json"):
+        for f in Path().glob(forcesname + ".*.json"):
             if f.stat().st_size == 0:
                 f.unlink()
     world.barrier()
@@ -76,9 +75,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
         atoms.set_initial_magnetic_moments(magmoms_m)
 
     nd = sum(atoms.get_pbc())
-    sc = list(map(int, sc))
-    if np.array(sc).any() == 0:
-        sc = distance_to_sc(nd, atoms, dist_max)
+    sc = list(map(int, supercell))
 
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
@@ -93,7 +90,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
 
     phonon = Phonopy(phonopy_atoms, supercell)
 
-    phonon.generate_displacements(distance=d, is_plusminus=True)
+    phonon.generate_displacements(distance=displacement, is_plusminus=True)
     # displacements = phonon.get_displacements()
     displaced_sc = phonon.get_supercells_with_displacements()
 
@@ -110,7 +107,7 @@ def calculate(d: float = 0.05, fsname: str = 'phonons',
         # Sign of the displacement
         sign = ["+", "-"][n % 2]
 
-        filename = fsname + ".{0}{1}.json".format(a, sign)
+        filename = forcesname + ".{0}{1}.json".format(a, sign)
 
         if Path(filename).is_file():
             forces = read_json(filename)["force"]
@@ -218,16 +215,13 @@ def main(rc: float = None) -> Result:
     calculateresult = read_json("results-asr.phonopy@calculate.json")
     atoms = read("structure.json")
     params = calculateresult.metadata.params
-    sc = params["sc"]
-    d = params["d"]
-    dist_max = params["dist_max"]
-    fsname = params["fsname"]
+    supercell = params["supercell"]
+    displacement = params["displacement"]
+    forcesname = params["forcesname"]
 
     nd = sum(atoms.get_pbc())
+    sc = list(map(int, supercell))
 
-    sc = list(map(int, sc))
-    if np.array(sc).any() == 0:
-        sc = distance_to_sc(nd, atoms, dist_max)
     if nd == 3:
         supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
     elif nd == 2:
@@ -243,7 +237,7 @@ def main(rc: float = None) -> Result:
 
     phonon = Phonopy(phonopy_atoms, supercell)
 
-    phonon.generate_displacements(distance=d, is_plusminus=True)
+    phonon.generate_displacements(distance=displacement, is_plusminus=True)
     # displacements = phonon.get_displacements()
     displaced_sc = phonon.get_supercells_with_displacements()
 
@@ -258,7 +252,7 @@ def main(rc: float = None) -> Result:
         # Sign of the diplacement
         sign = ["+", "-"][i % 2]
 
-        filename = fsname + ".{0}{1}.json".format(a, sign)
+        filename = forcesname + ".{0}{1}.json".format(a, sign)
 
         forces = read_json(filename)["force"]
         # Number of forces equals to the number of atoms in the supercell
