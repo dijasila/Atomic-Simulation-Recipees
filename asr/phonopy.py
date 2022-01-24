@@ -24,46 +24,6 @@ def lattice_vectors(N_c):
     return R_cN
 
 
-def distance_to_sc(nd, atoms, dist_max):
-    if nd >= 1:
-        for x in range(2, 20):
-            atoms_x = atoms.repeat((x, 1, 1))
-            indices_x = [a for a in range(len(atoms_x))]
-            dist_x = []
-            for a in range(len(atoms)):
-                dist = max(atoms_x.get_distances(a, indices_x, mic=True))
-                dist_x.append(dist)
-            if max(dist_x) > dist_max:
-                x_size = x - 1
-                break
-        supercell = [x_size, 1, 1]
-    if nd >= 2:
-        for y in range(2, 20):
-            atoms_y = atoms.repeat((1, y, 1))
-            indices_y = [a for a in range(len(atoms_y))]
-            dist_y = []
-            for a in range(len(atoms)):
-                dist = max(atoms_y.get_distances(a, indices_y, mic=True))
-                dist_y.append(dist)
-            if max(dist_y) > dist_max:
-                y_size = y - 1
-                supercell = [x_size, y_size, 1]
-                break
-    if nd >= 3:
-        for z in range(2, 20):
-            atoms_z = atoms.repeat((1, 1, z))
-            indices_z = [a for a in range(len(atoms_z))]
-            dist_z = []
-            for a in range(len(atoms)):
-                dist = max(atoms_z.get_distances(a, indices_z, mic=True))
-                dist_z.append(dist)
-            if max(dist_z) > dist_max:
-                z_size = z - 1
-                supercell = [x_size, y_size, z_size]
-                break
-    return supercell
-
-
 @command(
     "asr.phonopy",
     requires=["structure.json", "gs.gpw"],
