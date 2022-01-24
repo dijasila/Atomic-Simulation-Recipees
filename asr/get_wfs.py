@@ -131,11 +131,8 @@ def get_wfs_results(calc, state, spin, eref):
         energy=energy)
 
 
-def return_defect_index(defectpath, primitive, structure):
+def return_defect_index(defectinfo, primitive, structure):
     """Return the index of the present defect."""
-    from asr.defect_symmetry import DefectInfo
-
-    defectinfo = DefectInfo(defectpath=defectpath)
     deftype, defpos = defectinfo.get_defect_type_and_kind()
     is_vacancy = defectinfo.is_vacancy
 
@@ -213,7 +210,7 @@ def return_gapstates(calc_def):
     structure has been created with asr.setup.defects!
     """
     from asr.core import read_json
-    from asr.defect_symmetry import check_and_return_input
+    from asr.defect_symmetry import check_and_return_input, DefectInfo
     from gpaw import restart
 
     # return index of the point defect in the defect structure
@@ -222,7 +219,8 @@ def return_gapstates(calc_def):
         primitivefile='../../unrelaxed.json')
 
     p = Path('.')
-    def_index, is_vacancy = return_defect_index(p, primitive, structure)
+    defectinfo = DefectInfo(defectpath=p)
+    def_index, is_vacancy = return_defect_index(defectinfo, primitive, structure)
 
     # get calculators and atoms for pristine and defect calculation
     try:

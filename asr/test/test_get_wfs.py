@@ -34,6 +34,7 @@ def test_return_defect_index(asr_tmpdir, setup_method):
     from ase.io import read, write
     from asr.setup.defects import main as setup
     from asr.get_wfs import return_defect_index
+    from asr.defect_symmetry import DefectInfo
 
     results = {'v_B': (0, True),
                'v_N': (1, True),
@@ -51,8 +52,9 @@ def test_return_defect_index(asr_tmpdir, setup_method):
     for path in pathlist:
         defname = str(path.absolute()).split('/')[-2].split('.')[-1]
         structure = read(path / 'unrelaxed.json')
+        defectinfo = DefectInfo(defectpath=path)
         def_index, is_vacancy = return_defect_index(
-            path, primitive, structure)
+            defectinfo, primitive, structure)
 
         assert results[defname][0] == def_index
         assert results[defname][1] == is_vacancy
@@ -60,7 +62,7 @@ def test_return_defect_index(asr_tmpdir, setup_method):
     pristine = primitive.repeat((3, 3, 1))
     try:
         def_index, is_vacancy = return_defect_index(
-            path, primitive, pristine)
+            defectinfo, primitive, pristine)
     except AssertionError:
         # function should fail with an assertion error
         # when the input is not a defect structure but
