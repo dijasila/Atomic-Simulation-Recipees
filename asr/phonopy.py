@@ -57,12 +57,12 @@ def calculate(dftd3: bool = False,
     from phonopy.structure.atoms import PhonopyAtoms
     # Remove empty files:
     if world.rank == 0:
-        for f in Path().glob(forcesname + ".*.json"):
+        for f in Path().glob(forcesname + '.*.json'):
             if f.stat().st_size == 0:
                 f.unlink()
     world.barrier()
 
-    atoms = read("structure.json")
+    atoms = read('structure.json')
 
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
@@ -74,7 +74,7 @@ def calculate(dftd3: bool = False,
     from asr.utils import is_magnetic
 
     if is_magnetic():
-        gsold = get_calculator()("gs.gpw", txt=None)
+        gsold = get_calculator()('gs.gpw', txt=None)
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
@@ -91,11 +91,12 @@ def calculate(dftd3: bool = False,
     phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
                                  cell=atoms.get_cell(),
                                  scaled_positions=atoms.get_scaled_positions())
+    if is_magnetic():
+        phonopy_atoms.magnetic_moments = atoms.get_initial_magnetic_moments()
 
     phonon = Phonopy(phonopy_atoms, supercell)
 
     phonon.generate_displacements(distance=displacement, is_plusminus=True)
-    # displacements = phonon.get_displacements()
     displaced_sc = phonon.get_supercells_with_displacements()
 
     from ase.atoms import Atoms
@@ -105,19 +106,25 @@ def calculate(dftd3: bool = False,
                     cell=scell.get_cell(),
                     pbc=atoms.pbc)
 
+    if is_magnetic():
+        atoms_N.set_initial_magnetic_moments(scell.get_magnetic_moments())
+
+    set_of_forces = []
+
     for n, cell in enumerate(displaced_sc):
         # Displacement number
         a = n // 2
         # Sign of the displacement
-        sign = ["+", "-"][n % 2]
+        sign = ['+', '-'][n % 2]
 
-        filename = forcesname + ".{0}{1}.json".format(a, sign)
+        filename = forcesname + '.{0}{1}.json'.format(a, sign)
 
         if Path(filename).is_file():
-            forces = read_json(filename)["force"]
+            forces = read_json(filename)['force']
+            set_of_forces.append(forces)
             # Number of forces equals to the number of atoms in the supercell
             assert len(forces) == len(atoms) * np.prod(sc), (
-                "Wrong supercell size!")
+                'Wrong supercell size!')
             continue
 
         atoms_N.set_scaled_positions(cell.get_scaled_positions())
@@ -127,8 +134,15 @@ def calculate(dftd3: bool = False,
         drift_force = forces.sum(axis=0)
         for force in forces:
             force -= drift_force / forces.shape[0]
+        set_of_forces.append(forces)
+        write_json(filename, {'force': forces})
 
-        write_json(filename, {"force": forces})
+    phonon.produce_force_constants(
+        forces=set_of_forces,
+        calculate_full_force_constants=False)
+    phonon.symmetrize_force_constants()
+
+    phonon.save(settings={'force_constants': True})
 
 
 def requires():
@@ -210,10 +224,9 @@ class Result(ASRResult):
     returns=Result,
     dependencies=["asr.phonopy@calculate"],
 )
-@option("--rc", type=float, help="Cutoff force constants matrix")
-def main(rc: float = None) -> Result:
-    from phonopy import Phonopy
-    from phonopy.structure.atoms import PhonopyAtoms
+@option("-rc", '--cutoff', type=float, help="Cutoff for the force constants matrix")
+def main(cutoff: float = None) -> Result:
+    import phonopy
     from phonopy.units import THzToEv
 
     calculateresult = read_json("results-asr.phonopy@calculate.json")
@@ -223,51 +236,9 @@ def main(rc: float = None) -> Result:
     displacement = params["displacement"]
     forcesname = params["forcesname"]
 
-    nd = sum(atoms.get_pbc())
-    sc = list(map(int, supercell))
+    phonon = phonopy.load('phonopy_params.yaml')
 
-    if nd == 3:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
-    elif nd == 2:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]]
-    elif nd == 1:
-        supercell = [[sc[0], 0, 0], [0, 1, 0], [0, 0, 1]]
-
-    phonopy_atoms = PhonopyAtoms(
-        symbols=atoms.symbols,
-        cell=atoms.get_cell(),
-        scaled_positions=atoms.get_scaled_positions(),
-    )
-
-    phonon = Phonopy(phonopy_atoms, supercell)
-
-    phonon.generate_displacements(distance=displacement, is_plusminus=True)
-    # displacements = phonon.get_displacements()
-    displaced_sc = phonon.get_supercells_with_displacements()
-
-    # for displace in displacements:
-    #    print("[Phonopy] %d %s" % (displace[0], displace[1:]))
-
-    set_of_forces = []
-
-    for i, cell in enumerate(displaced_sc):
-        # Displacement index
-        a = i // 2
-        # Sign of the diplacement
-        sign = ["+", "-"][i % 2]
-
-        filename = forcesname + ".{0}{1}.json".format(a, sign)
-
-        forces = read_json(filename)["force"]
-        # Number of forces equals to the number of atoms in the supercell
-        assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
-
-        set_of_forces.append(forces)
-
-    phonon.produce_force_constants(
-        forces=set_of_forces, calculate_full_force_constants=False
-    )
-    if rc is not None:
+    if cutoff is not None:
         phonon.set_force_constants_zero_with_radius(rc)
     phonon.symmetrize_force_constants()
 
@@ -281,11 +252,11 @@ def main(rc: float = None) -> Result:
         omega_l = phonon.get_frequencies(q_c)
         omega_kl[q] = omega_l * THzToEv
 
-    R_cN = lattice_vectors(sc)
+    R_cN = lattice_vectors(supercell)
     C_N = phonon.get_force_constants()
-    C_N = C_N.reshape(len(atoms), len(atoms), np.prod(sc), 3, 3)
+    C_N = C_N.reshape(len(atoms), len(atoms), np.prod(supercell), 3, 3)
     C_N = C_N.transpose(2, 0, 3, 1, 4)
-    C_N = C_N.reshape(np.prod(sc), 3 * len(atoms), 3 * len(atoms))
+    C_N = C_N.reshape(np.prod(supercell), 3 * len(atoms), 3 * len(atoms))
 
     # Calculating hessian and eigenvectors at high symmetry points of the BZ
     eigs_kl = []
