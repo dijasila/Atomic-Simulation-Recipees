@@ -225,7 +225,8 @@ class Result(ASRResult):
     dependencies=["asr.phonopy@calculate"],
 )
 @option("-rc", '--cutoff', type=float, help="Cutoff for the force constants matrix")
-def main(cutoff: float = None) -> Result:
+@option("--nac", type=float, help="Non-analytical term correction")
+def main(cutoff: float = None, nac: bool = False) -> Result:
     import phonopy
     from phonopy.units import THzToEv
 
@@ -238,17 +239,33 @@ def main(cutoff: float = None) -> Result:
 
     phonon = phonopy.load('phonopy_params.yaml')
 
+    if nac:
+        Z_avv = read_json('results-asr.borncharges.json')['Z_avv']
+        ex = 4*np.pi * read_json('results-asr.polarizability.json')['alphax_el'] + 1
+        ey = 4*np.pi * read_json('results-asr.polarizability.json')['alphay_el'] + 1
+        ez = 4*np.pi * read_json('results-asr.polarizability.json')['alphaz_el'] + 1
+
+        nac = {'born': Z_avv, 
+               'factor': 14.4, 
+               'dielectric': np.diag([ex,ey,ez])}                              
+
+        phonon.set_nac_params(nac)
+
     if cutoff is not None:
         phonon.set_force_constants_zero_with_radius(rc)
     phonon.symmetrize_force_constants()
 
-    nqpts = 100
+    nqpts = 400
     path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
 
     omega_kl = np.zeros((nqpts, 3 * len(atoms)))
 
     # Calculating phonon frequencies along a path in the BZ
     for q, q_c in enumerate(path.kpts):
+        if (nac and q_c.any() == 0):
+            print('Avoid Gamma point if NAC is included!')
+            q_c = [0.001,0,0]
+
         omega_l = phonon.get_frequencies(q_c)
         omega_kl[q] = omega_l * THzToEv
 
