@@ -2,31 +2,28 @@ import pytest
 import numpy as np
 
 
-@pytest.mark.parametrize('extrinsic', ['NO', 'C', 'Se,Te'])
-@pytest.mark.parametrize('intrinsic', [True, False])
-@pytest.mark.parametrize('vacancies', [True, False])
+@pytest.mark.parametrize('defecttype', ['v', 'i', 'S'])
+@pytest.mark.parametrize('defectkind', ['Mo', 'Te'])
 @pytest.mark.ci
-def test_get_defect_info(asr_tmpdir, extrinsic, intrinsic, vacancies):
-    from .materials import BN
+def test_get_defect_info(asr_tmpdir, defecttype, defectkind):
     from pathlib import Path
-    from ase.io import write
-    from asr.defect_symmetry import get_defect_info, is_vacancy
-    from asr.setup.defects import main
+    from asr.defect_symmetry import DefectInfo
 
-    atoms = BN.copy()
-    write('unrelaxed.json', atoms)
-    main(extrinsic=extrinsic,
-         intrinsic=intrinsic,
-         vacancies=vacancies)
-    p = Path('.')
-    pathlist = list(p.glob('defects.BN*/charge_0'))
-    for path in pathlist:
-        defecttype, defectpos = get_defect_info(path)
-        string = str(path.absolute()).split('/')[-2].split('.')[-1]
-        assert defecttype == string.split('_')[0]
-        assert defectpos == string.split('_')[1]
-        if string.split('_')[0] == 'v':
-            assert is_vacancy(path)
+    def get_defect_path(defecttype, defectkind):
+        return Path(f'defects.XXX_000.{defecttype}_{defectkind}/charge_0')
+
+    path = get_defect_path(defecttype, defectkind)
+    defectinfo_from_path = DefectInfo(defectpath=path)
+    defectinfo_from_input = DefectInfo(defecttype=defecttype, defectkind=defectkind)
+
+    for defectinfo in [defectinfo_from_path, defectinfo_from_input]:
+        ref_defecttype, ref_defectkind = defectinfo.get_defect_type_and_kind()
+        assert ref_defecttype == defecttype
+        assert ref_defectkind == defectkind
+        if defecttype == 'v':
+            assert defectinfo.is_vacancy
+        else:
+            assert not defectinfo.is_vacancy
 
 
 @pytest.mark.ci
@@ -84,30 +81,22 @@ def test_compare_structures(sc_size):
     assert len(indices) == sc_size * sc_size * len(atoms) - 2
 
 
-@pytest.mark.parametrize('defect', ['v_N', 'B_N',
-                                    'v_B', 'N_B'])
+@pytest.mark.parametrize('defecttype', ['v', 'i', 'S'])
+@pytest.mark.parametrize('defectkind', ['Te', 'W'])
 @pytest.mark.ci
-def test_return_defect_coordinates(defect):
+def test_return_defect_coordinates(defecttype, defectkind):
+    from asr.defect_symmetry import return_defect_coordinates, DefectInfo
     from .materials import BN
-    from pathlib import Path
-    from asr.defect_symmetry import return_defect_coordinates
 
     atoms = BN.copy()
     supercell = atoms.repeat((3, 3, 1))
+    defectinfo = DefectInfo(defecttype=defecttype, defectkind=defectkind)
 
     for i in range(len(supercell)):
-        path = Path(f'defects.BN_331.{defect}/charge_0/')
         system = supercell.copy()
         ref_position = supercell.get_positions()[i]
-        if defect.startswith('v'):
-            system.pop(i)
-            is_vacancy = True
-        else:
-            system.symbols[i] = 'X'
-            is_vacancy = False
         position = return_defect_coordinates(
-            system, atoms, supercell, is_vacancy,
-            defectpath=path)
+            system, atoms, supercell, defectinfo)
 
         assert pytest.approx(position, ref_position)
 
@@ -131,7 +120,7 @@ def test_get_mapped_structure(asr_tmpdir, size, defect):
     from pathlib import Path
     from ase.io import write, read
     from asr.setup.defects import main as setup
-    from asr.defect_symmetry import get_mapped_structure
+    from asr.defect_symmetry import get_mapped_structure, DefectInfo
 
     atoms = BN.copy()
     write('unrelaxed.json', atoms)
@@ -140,11 +129,12 @@ def test_get_mapped_structure(asr_tmpdir, size, defect):
     pristine = read('defects.pristine_sc.000/structure.json')
     pathlist = list(p.glob(f'defects.BN*{defect}/charge_0'))
     for path in pathlist:
+        defectinfo = DefectInfo(defectpath=path)
         unrelaxed = read(path / 'unrelaxed.json')
         structure = unrelaxed.copy()
         structure.rattle()
         _ = get_mapped_structure(
-            structure, unrelaxed, atoms, pristine, path)
+            structure, unrelaxed, atoms, pristine, defectinfo)
 
 
 @pytest.mark.ci
