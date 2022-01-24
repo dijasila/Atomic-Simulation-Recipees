@@ -29,12 +29,14 @@ def lattice_vectors(N_c):
     requires=['structure.json', 'gs.gpw'],
     dependencies=['asr.gs@calculate'],
 )
+@option('--dftd3', type=bool, help='Enable DFT-D3 for phonon calculations')
 @option('-d', '--displacement', type=float, help='Displacement size')
 @option('-fsname', '--forcesname', help='Name for forces file', type=str)
 @option('-sc', '--supercell', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
-def calculate(displacement: float = 0.05,
+def calculate(dftd3: bool = False,
+              displacement: float = 0.05,
               forcesname: str = 'phonons',
               supercell: typing.List[int] = [2, 2, 2],
               calculator: dict = {'name': 'gpaw',
@@ -50,7 +52,7 @@ def calculate(displacement: float = 0.05,
                                   'charge': 0}) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
-
+    from ase.calculators.dftd3 import DFTD3
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     # Remove empty files:
@@ -65,6 +67,8 @@ def calculate(displacement: float = 0.05,
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
+    if dftd3:
+        calc = DFTD3(dft=calc, cutoff=60)
 
     # Set initial magnetic moments
     from asr.utils import is_magnetic
