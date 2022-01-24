@@ -336,8 +336,8 @@ def main(primitivefile: str = 'primitive.json',
     atoms, calc = restart('gs.gpw', txt=None)
 
     # read in cubefiles of the wavefunctions
-    cubefiles = list(defect.glob('*.cube'))
-    if len(cubefiles) == 0:
+    cubefilepaths = list(defect.glob('*.cube'))
+    if len(cubefilepaths) == 0:
         raise FileNotFoundError('WARNING: no cube files available in this '
                                 'folder!')
 
@@ -347,13 +347,16 @@ def main(primitivefile: str = 'primitive.json',
     if point_group not in point_group_names:
         print(f'WARNING: point group {point_group} not implemented in GPAW. '
               'Return results without symmetry analysis of the wavefunctions.')
-        for wf_file in cubefiles:
-            spin, band = get_spin_and_band(wf_file)
+        for cubefilepath in cubefilepaths:
+            cubefilename = str(cubefilepath)
+            wfcubefile = WFCubeFile.fromfilename(cubefilename)
+            spin = wfcubefile.spin
+            band = wfcubefile.band
             res_wf = find_wf_result(band, spin)
             energy = res_wf['energy']
 
             # calculate localization ratio
-            wf, atoms = read_cube_data(str(wf_file))
+            wf, atoms = read_cube_data(wfcubefile.filename)
             localization = get_localization_ratio(atoms, wf, calc)
             irrep_results = [IrrepResult.fromdata(
                 sym_name=None,
@@ -383,13 +386,16 @@ def main(primitivefile: str = 'primitive.json',
     labels_down = []
 
     symmetry_results = []
-    for wf_file in cubefiles:
-        spin, band = get_spin_and_band(wf_file)
+    for cubefilepath in cubefilepaths:
+        cubefilename = str(cubefilepath)
+        wfcubefile = WFCubeFile.fromfilename(cubefilename)
+        spin = wfcubefile.spin
+        band = wfcubefile.band
         res_wf = find_wf_result(band, spin)
         energy = res_wf['energy']
 
         # calculate localization ratio
-        wf, atoms = read_cube_data(str(wf_file))
+        wf, atoms = read_cube_data(wfcubefile.filename)
         localization = get_localization_ratio(atoms, wf, calc)
 
         dct = checker.check_function(wf, (atoms.cell.T / wf.shape).T)
@@ -491,9 +497,6 @@ def find_wf_result(state, spin):
         if wf['state'] == state and wf['spin'] == spin:
             return wf
 
-    print('ERROR: wf result to given wavefunction file not found! Make sure that '
-          'you have consitent wavefunctions or delete old wavefunctions and rerun'
-          ' asr.get_wfs.')
     raise Exception('ERROR: can not find corresponging wavefunction result for '
                     f'wavefunction no. {state}/{spin}!')
 
@@ -653,7 +656,45 @@ def get_supercell_shape(primitive, pristine):
     return size
 
 
-class DefectInfo():
+class WFCubeFile:
+    """Class containing functionalities about WFs and file I/O."""
+
+    def __init__(self, spin, band, wf_data=None, calc=None):
+        self.spin = spin
+        assert spin in [0, 1], 'spin can only be zero or one!'
+        self.band = band
+        assert band >= 0, 'negative band indices are not allowed!'
+        self.wf_data = wf_data
+        self.calc = calc
+
+    @classmethod
+    def fromfilename(cls, filename):
+        band_spin = filename.split('.')[1]
+        band = int(band_spin.split('_')[0])
+        spin = int(band_spin.split('_')[1])
+
+        return cls(spin=spin, band=band)
+
+    @property
+    def filename(self):
+        return f'wf.{self.band}_{self.spin}.cube'
+
+    def write_to_cubefile(self):
+        from ase.io import write
+
+        assert (self.wf_data is not None and self.calc is not None), (
+            'calculator and wavefunction data needed to write cubefile!')
+
+        write(self.filename, self.calc.atoms, data=self.wf_data)
+
+    def get_wavefunction_from_calc(self, calc):
+        wf = calc.get_pseudo_wave_function(band=self.band, spin=self.spin)
+        self.wf = wf
+
+        return wf
+
+
+class DefectInfo:
     """Class containing all information about a specific single defect."""
 
     def __init__(self, defectpath=None, defecttype=None, defectkind=None):

@@ -67,6 +67,7 @@ def main(state: int = 0,
     """
     from gpaw import restart
     from asr.core import read_json
+    from asr.defect_symmetry import WFCubeFile
 
     # read in converged gs.gpw file and run fixed density calculation
     print('INFO: run fixed density calculation.')
@@ -105,7 +106,10 @@ def main(state: int = 0,
     for state in states:
         for spin in range(nspins):
             wfs_result = get_wfs_results(calc, state, spin, eref)
+            wf = calc.get_pseudo_wave_function(band=state, spin=spin)
             wfs_results.append(wfs_result)
+            wfcubefile = WFCubeFile(spin=spin, band=state, wf_data=wf, calc=calc)
+            wfcubefile.write_to_cubefile()
 
     return Result.fromdata(
         wfs=wfs_results,
@@ -119,12 +123,7 @@ def get_wfs_results(calc, state, spin, eref):
 
     Write corresponding wavefunction cube file.
     """
-    from ase.io import write
-
-    wf = calc.get_pseudo_wave_function(band=state, spin=spin)
     energy = calc.get_eigenvalues(spin=spin)[state] - eref
-    fname = f'wf.{state}_{spin}.cube'
-    write(fname, calc.atoms, data=wf)
 
     return WaveFunctionResult.fromdata(
         state=state,
