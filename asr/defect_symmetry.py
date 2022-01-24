@@ -147,20 +147,18 @@ def get_transition_table(row, E_hls):
 
 
 def get_summary_table(result, row):
-    from asr.database.browser import (table,
-                                      describe_entry,
-                                      href)
+    from asr.database.browser import table
+    from asr.structureinfo import get_spg_href, describe_pointgroup_entry
 
-    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
+    spglib = get_spg_href('https://spglib.github.io/spglib/')
     basictable = table(row, 'Defect properties', [])
     pg_string = result.defect_pointgroup
     pg_strlist = split(pg_string)
     sub = ''.join(pg_strlist[1:])
     pg_string = f'{pg_strlist[0]}<sub>{sub}</sub>'
+    pointgroup = describe_pointgroup_entry(spglib)
     basictable['rows'].extend(
-        [[describe_entry('Point group',
-                         f'The defect point group is calculated with {spglib}.'),
-          pg_string]])
+        [[pointgroup, pg_string]])
 
     return basictable
 
