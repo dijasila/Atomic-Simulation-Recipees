@@ -31,8 +31,8 @@ def lattice_vectors(N_c):
 )
 @option('--dftd3', type=bool, help='Enable DFT-D3 for phonon calculations')
 @option('-d', '--displacement', type=float, help='Displacement size')
-@option('-fsname', '--forcesname', help='Name for forces file', type=str)
-@option('-sc', '--supercell', nargs=3, type=int,
+@option('-f', '--forcesname', help='Name for forces file', type=str)
+@option('-s', '--supercell', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(dftd3: bool = False,
@@ -234,25 +234,22 @@ def main(cutoff: float = None, nac: bool = False) -> Result:
     atoms = read("structure.json")
     params = calculateresult.metadata.params
     supercell = params["supercell"]
-    displacement = params["displacement"]
-    forcesname = params["forcesname"]
 
     phonon = phonopy.load('phonopy_params.yaml')
 
     if nac:
         Z_avv = read_json('results-asr.borncharges.json')['Z_avv']
-        ex = 4*np.pi * read_json('results-asr.polarizability.json')['alphax_el'] + 1
-        ey = 4*np.pi * read_json('results-asr.polarizability.json')['alphay_el'] + 1
-        ez = 4*np.pi * read_json('results-asr.polarizability.json')['alphaz_el'] + 1
+        ex = 4 * np.pi * read_json('results-asr.polarizability.json')['alphax_el'] + 1
+        ey = 4 * np.pi * read_json('results-asr.polarizability.json')['alphay_el'] + 1
+        ez = 4 * np.pi * read_json('results-asr.polarizability.json')['alphaz_el'] + 1
 
-        nac = {'born': Z_avv, 
-               'factor': 14.4, 
-               'dielectric': np.diag([ex,ey,ez])}                              
-
+        nac = {'born': Z_avv,
+               'factor': 14.4,
+               'dielectric': np.diag([ex, ey, ez])}
         phonon.set_nac_params(nac)
 
     if cutoff is not None:
-        phonon.set_force_constants_zero_with_radius(rc)
+        phonon.set_force_constants_zero_with_radius(cutoff)
     phonon.symmetrize_force_constants()
 
     nqpts = 400
@@ -264,7 +261,7 @@ def main(cutoff: float = None, nac: bool = False) -> Result:
     for q, q_c in enumerate(path.kpts):
         if (nac and q_c.any() == 0):
             print('Avoid Gamma point if NAC is included!')
-            q_c = [0.001,0,0]
+            q_c = [1e-3, 0, 0]
 
         omega_l = phonon.get_frequencies(q_c)
         omega_kl[q] = omega_l * THzToEv
@@ -380,7 +377,7 @@ def plot_bandstructure(row, fname):
 )
 @option('-q', '--momentum', nargs=3, type=float,
         help='Phonon momentum')
-@option('-sc', '--supercell', nargs=3, type=int,
+@option('-s', '--supercell', nargs=3, type=int,
         help='Supercell sizes')
 @option('-m', '--mode', type=int, help='Mode index')
 @option('-a', '--amplitude', type=float,

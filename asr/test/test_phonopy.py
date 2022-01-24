@@ -14,7 +14,7 @@ def test_phonopy(asr_tmpdir_w_params, mockgpaw, get_webcontent):
     atoms = bulk('Al', 'fcc', a=4.05)
     atoms.write("structure.json")
 
-    calculate(sc=[N, N, N], calculator={'name': 'emt'})
+    calculate(supercell=[N, N, N], calculator={'name': 'emt'})
 
     main()
 
