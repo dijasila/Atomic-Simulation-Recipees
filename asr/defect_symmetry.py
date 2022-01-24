@@ -300,8 +300,9 @@ def main(primitivefile: str = 'primitive.json',
     from gpaw import restart
     from gpaw.point_groups import SymmetryChecker, point_group_names
 
-    # define path of the current directory
+    # define path of the current directory, and initialize DefectInfo class
     defect = Path('.')
+    defectinfo = DefectInfo(defectpath=defect)
 
     # check whether input is correct and return important structures
     structurefile = 'structure.json'
@@ -315,7 +316,7 @@ def main(primitivefile: str = 'primitive.json',
                                                 unrelaxed,
                                                 primitive,
                                                 pristine,
-                                                defect)
+                                                defectinfo)
     else:
         mapped_structure = structure.copy()
 
@@ -323,14 +324,9 @@ def main(primitivefile: str = 'primitive.json',
     point_group = get_spg_symmetry(mapped_structure)
 
     # evaluate coordinates of defect in the supercell
-    defecttype, defectpos = get_defect_info(defect)
-    defectname = defecttype + '_' + defectpos
-    vac = is_vacancy(defect)
-    center = return_defect_coordinates(structure,
-                                       primitive,
-                                       pristine,
-                                       vac,
-                                       defect)
+    defecttype, defectpos = defectinfo.get_defect_type_and_kind()
+    defectname = defectinfo.get_defect_name()
+    center = return_defect_coordinates(structure, primitive, pristine, defectinfo)
     print(f'INFO: defect position: {center}, structural symmetry: {point_group}')
 
     # return pristine results to visualise wavefunctions within the gap
@@ -502,15 +498,15 @@ def find_wf_result(state, spin):
                     f'wavefunction no. {state}/{spin}!')
 
 
-def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
+def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     """Return centered and mapped structure."""
-    vac = is_vacancy(defect)
+    vac = defectinfo.is_vacancy
     done = False
     for delta in [0, 0.03, 0.5, 0.1, -0.03, -0.1]:
         for cutoff in np.arange(0.1, 0.81, 0.05):
             for threshold in [0.99, 1.01]:
                 translation = return_defect_coordinates(structure, primitive,
-                                                        pristine, vac, defect)
+                                                        pristine, defectinfo)
                 rel_struc, ref_struc, artificial, N = recreate_symmetric_cell(
                     structure,
                     unrelaxed,
@@ -532,8 +528,7 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
         if done:
             break
     if not done:
-        raise ValueError('number of atoms wrong in {}! Mapping not correct!'.format(
-            defect.absolute()))
+        raise ValueError('number of atoms wrong! Mapping not correct!')
 
     return rel_struc
 
@@ -658,21 +653,8 @@ def get_supercell_shape(primitive, pristine):
     return size
 
 
-def is_vacancy(defectpath):
-    """Check whether current defect is a vacancy."""
-    try:
-        defecttype = str(defectpath.absolute()).split(
-            '/')[-2].split('_')[-2].split('.')[-1]
-        if defecttype == 'v':
-            return True
-        else:
-            return False
-    except IndexError:
-        return False
-
-
 class DefectInfo():
-    """Class containing all information about a specific defect."""
+    """Class containing all information about a specific single defect."""
 
     def __init__(self, defectpath=None, defecttype=None, defectkind=None):
         if defectpath is None:
@@ -682,22 +664,33 @@ class DefectInfo():
             self.defecttype = defecttype
             self.defectkind = defectkind
         else:
-            self.defecttype, self.defectkind = self.get_defect_info_cls(defectpath)
+            self.defecttype, self.defectkind = self._get_defect_type_and_kind_from_path(
+                defectpath)
         self.defectpath = defectpath
         self.defectname = f'{self.defecttype}_{self.defectkind}'
 
-    def get_defect_info_cls(defectpath=None):
+    def _get_defect_type_and_kind_from_path(self, defectpath):
         """Return defecttype, and kind."""
         from pathlib import Path
-        if defectpath is None:
-            defectpath = Path('.')
+        defectpath = Path(defectpath)
+
         defecttype = str(defectpath.absolute()).split(
             '/')[-2].split('_')[-2].split('.')[-1]
-        defectpos = str(defectpath.absolute()).split(
+        defectkind = str(defectpath.absolute()).split(
             '/')[-2].split('_')[-1]
 
-        return defecttype, defectpos
+        return defecttype, defectkind
 
+    def get_defect_type_and_kind(self):
+        deftype = self.defecttype
+        defkind = self.defectkind
+
+        return deftype, defkind
+
+    def get_defect_name(self):
+        return self.defectname
+
+    @property
     def is_vacancy(self):
         if self.defecttype == 'v':
             return True
@@ -705,26 +698,11 @@ class DefectInfo():
             return False
 
 
-def get_defect_info(defectpath=None):
-    """Return defecttype, and kind."""
-    from pathlib import Path
-    if defectpath is None:
-        defectpath = Path('.')
-    defecttype = str(defectpath.absolute()).split(
-        '/')[-2].split('_')[-2].split('.')[-1]
-    defectpos = str(defectpath.absolute()).split(
-        '/')[-2].split('_')[-1]
-
-    return defecttype, defectpos
-
-
-def return_defect_coordinates(structure, primitive, pristine,
-                              is_vacancy, defectpath=None):
+def return_defect_coordinates(structure, primitive, pristine, defectinfo):
     """Return the coordinates of the present defect."""
-    from pathlib import Path
-    if defectpath is None:
-        defectpath = Path('.')
-    deftype, defpos = get_defect_info(defectpath)
+    deftype, defpos = defectinfo.get_defect_type_and_kind()
+    is_vacancy = defectinfo.is_vacancy
+
     if not is_vacancy:
         for i in range(len(primitive)):
             if not (primitive.symbols[i]

@@ -134,10 +134,12 @@ def get_wfs_results(calc, state, spin, eref):
 
 def return_defect_index(defectpath, primitive, structure):
     """Return the index of the present defect."""
-    from asr.defect_symmetry import (get_defect_info,
-                                     is_vacancy)
+    from asr.defect_symmetry import DefectInfo
 
-    deftype, defpos = get_defect_info(defectpath)
+    defectinfo = DefectInfo(defectpath=defectpath)
+    deftype, defpos = defectinfo.get_defect_type_and_kind()
+    is_vacancy = defectinfo.is_vacancy
+
     found_defect = False
     for i in range(len(primitive)):
         if not (primitive.symbols[i]
@@ -150,7 +152,7 @@ def return_defect_index(defectpath, primitive, structure):
                           "the structure. Please check input "
                           "structures.")
 
-    return label, is_vacancy(defectpath)
+    return label, is_vacancy
 
 
 def get_reference_index(index, atoms):
