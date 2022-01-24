@@ -172,6 +172,22 @@ def test_indexlist_cut_atoms():
             assert len(newatoms) - res[i] == len(atoms)
 
 
+@pytest.mark.parametrize('band', [0, 1, 12])
+@pytest.mark.parametrize('spin', [0, 1])
+@pytest.mark.ci
+def test_WFCubeFile(band, spin):
+    from asr.defect_symmetry import WFCubeFile
+
+    wfcubefiles = [
+        WFCubeFile(spin=spin, band=band),
+        WFCubeFile.fromfilename(f'wf.{band}_{spin}.cube')]
+
+    for wfcubefile in wfcubefiles:
+        assert wfcubefile.filename == f'wf.{band}_{spin}.cube'
+        assert wfcubefile.spin == spin
+        assert wfcubefile.band == band
+
+
 @pytest.mark.ci
 def test_check_and_return_input(asr_tmpdir):
     from .materials import std_test_materials
