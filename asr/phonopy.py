@@ -225,7 +225,7 @@ class Result(ASRResult):
     dependencies=["asr.phonopy@calculate"],
 )
 @option("-rc", '--cutoff', type=float, help="Cutoff for the force constants matrix")
-@option("--nac", type=float, help="Non-analytical term correction")
+@option("--nac", type=bool, help="Non-analytical term correction")
 def main(cutoff: float = None, nac: bool = False) -> Result:
     import phonopy
     from phonopy.units import THzToEv
@@ -233,7 +233,7 @@ def main(cutoff: float = None, nac: bool = False) -> Result:
     calculateresult = read_json("results-asr.phonopy@calculate.json")
     atoms = read("structure.json")
     params = calculateresult.metadata.params
-    supercell = params["supercell"]
+    supercell = list(map(int, params["supercell"]))
 
     phonon = phonopy.load('phonopy_params.yaml')
 
@@ -252,7 +252,7 @@ def main(cutoff: float = None, nac: bool = False) -> Result:
         phonon.set_force_constants_zero_with_radius(cutoff)
     phonon.symmetrize_force_constants()
 
-    nqpts = 400
+    nqpts = 8
     path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
 
     omega_kl = np.zeros((nqpts, 3 * len(atoms)))
@@ -372,7 +372,6 @@ def plot_bandstructure(row, fname):
 @command(
     'asr.phonopy',
     requires=requires,
-    webpanel=webpanel,
     dependencies=['asr.phonopy'],
 )
 @option('-q', '--momentum', nargs=3, type=float,
@@ -383,7 +382,7 @@ def plot_bandstructure(row, fname):
 @option('-a', '--amplitude', type=float,
         help='Maximum distance an atom will be displaced')
 @option('--nimages', type=int, help='Mode index')
-def write_mode(momentum: typing.List[float] = [0, 0, 0], mode: int = 0,
+def write_mode(momentum: typing.List[float] = [0., 0., 0.], mode: int = 0,
                supercell: typing.List[int] = [1, 1, 1], amplitude: float = 0.1,
                nimages: int = 30):
 
