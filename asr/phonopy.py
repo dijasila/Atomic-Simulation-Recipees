@@ -201,7 +201,7 @@ class Result(ASRResult):
     u_klav: typing.List[typing.List[float]]
     irr_l: typing.List[str]
     path: BandPath
-    dynamic_stability_level: int
+    dynamic_stability_phonons: str
 
     key_descriptions = {
         "omega_kl": "Phonon frequencies.",
@@ -212,7 +212,7 @@ class Result(ASRResult):
         "u_klav": "Phonon modes.",
         "irr_l": "Phonon irreducible representations.",
         "path": "Phonon bandstructure path.",
-        "dynamic_stability_level": "Phonon dynamic stability (1,2,3)",
+        "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
     }
 
     formats = {"ase_webpanel": webpanel}
@@ -226,7 +226,8 @@ class Result(ASRResult):
 )
 @option("-rc", '--cutoff', type=float, help="Cutoff for the force constants matrix")
 @option("--nac", type=bool, help="Non-analytical term correction")
-def main(cutoff: float = None, nac: bool = False) -> Result:
+@option('--nqpts', type=int, help='Number of q-points along the path')
+def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
     import phonopy
     from phonopy.units import THzToEv
 
@@ -252,7 +253,6 @@ def main(cutoff: float = None, nac: bool = False) -> Result:
         phonon.set_force_constants_zero_with_radius(cutoff)
     phonon.symmetrize_force_constants()
 
-    nqpts = 8
     path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
 
     omega_kl = np.zeros((nqpts, 3 * len(atoms)))
@@ -297,12 +297,10 @@ def main(cutoff: float = None, nac: bool = False) -> Result:
     eigs_kl = np.array(eigs_kl)
     mineig = np.min(eigs_kl)
 
-    if mineig < -2:
-        dynamic_stability = 1
-    elif mineig < -1e-5:
-        dynamic_stability = 2
+    if mineig < -0.01:
+        dynamic_stability = 'low'
     else:
-        dynamic_stability = 3
+        dynamic_stability = 'high'
 
     phi_anv = phonon.get_force_constants()
 
@@ -314,7 +312,7 @@ def main(cutoff: float = None, nac: bool = False) -> Result:
                'path': path,
                'u_klav': u_klav,
                'minhessianeig': mineig,
-               'dynamic_stability_level': dynamic_stability}
+               'dynamic_stability_phonons': dynamic_stability}
 
     return results
 
