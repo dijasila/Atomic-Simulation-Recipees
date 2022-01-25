@@ -6,7 +6,6 @@ import ase.units as units
 from asr.core import (command, ASRResult, prepare_result,
                       read_json)
 from asr.database.browser import make_panel_description, href
-from gpaw import restart
 
 
 panel_description = make_panel_description(
@@ -310,6 +309,8 @@ class Result(ASRResult):
          returns=Result)
 def main() -> Result:
     """Calculate hyperfine splitting."""
+    from gpaw import restart
+
     atoms, calc = restart('gs.gpw', txt=None)
     hf_results, gfactor_results, ht_int_en, sct = calculate_hyperfine(atoms, calc)
 
