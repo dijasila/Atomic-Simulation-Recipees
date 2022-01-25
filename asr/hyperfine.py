@@ -1,5 +1,4 @@
 import typing
-from math import pi
 import numpy as np
 from pathlib import Path
 import ase.units as units
@@ -335,34 +334,36 @@ def MHz_to_eV(MHz):
     return J / units._e
 
 
+def g_factors_from_gyromagnetic_ratios(gyromagnetic_ratios):
+    from math import pi
+
+    g_factors = {symbol: ratio * 1e6 * 4 * pi * units._mp / units._e
+                 for symbol, (n, ratio) in gyromagnetic_ratios.items()}
+
+    return g_factors
+
+
 def calculate_hyperfine(atoms, calc):
     """Calculate hyperfine splitting from the calculator."""
     from gpaw.hyperfine import hyperfine_parameters
 
-    # _hbar = 6.5822e-16  # in eV * s
-    # _mu_bohr = 5.788381e-5  # in eV / T
-
     symbols = atoms.symbols
     magmoms = atoms.get_magnetic_moments()
     total_magmom = atoms.get_magnetic_moment()
-    assert total_magmom != 0.0
+    assert total_magmom != 0.0, ('no hyperfine interaction for zero '
+                                 'total magnetic moment!')
 
     # convert from MHz/T to eV
-    g_factors = {symbol: ratio * 1e6 * 4 * pi * units._mp / units._e
-                 for symbol, (n, ratio) in gyromagnetic_ratios.items()}
+    g_factors = g_factors_from_gyromagnetic_ratios(
+        gyromagnetic_ratios)
 
     scale = units._e / units._hplanck * 1e-6
 
     # return hyperfine tensor in eV units
     A_avv = hyperfine_parameters(calc)
-    print('Hyperfine coupling paramters '
-          f'in MHz:\n')
-    columns = ['1.', '2.', '3.']
-    print('  atom  magmom      ', '       '.join(columns))
 
     used = {}
     hyperfine_results = []
-    hf_list = []
     symbol_list = []
     for a, A_vv in enumerate(A_avv):
         symbol = symbols[a]
@@ -371,7 +372,6 @@ def calculate_hyperfine(atoms, calc):
         used[symbol] = g_factor
         A_vv *= g_factor / total_magmom * scale
         numbers = np.linalg.eigvalsh(A_vv)
-        hf_list.append(sum(numbers) / 3.)
         symbol_list.append(str(symbol))
         hyperfine_result = HyperfineResult.fromdata(
             index=a,
@@ -380,16 +380,8 @@ def calculate_hyperfine(atoms, calc):
             eigenvalues=numbers)
         hyperfine_results.append(hyperfine_result)
 
-        print(f'{a:3} {symbol:>2}  {magmom:6.3f}',
-              ''.join(f'{x:9.2f}' for x in numbers))
-
-    print('\nCore correction included')
-    print(f'Total magnetic moment: {total_magmom:.3f}')
-
-    print('\nG-factors used:')
     gyro_results = []
     for symbol, g in used.items():
-        print(f'{symbol:2} {g:10.3f}')
         gyro_result = GyromagneticResult.fromdata(
             symbol=symbol,
             g=g)
