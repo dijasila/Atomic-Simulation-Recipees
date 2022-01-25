@@ -2,6 +2,7 @@
 import subprocess
 import pytest
 from asr.c2db.bader import main, Result, webpanel
+from asr.c2db.gs import calculate as gscalculate
 from .materials import Si
 
 
@@ -9,7 +10,8 @@ from .materials import Si
 def test_bader(mockgpaw, asr_tmpdir, monkeypatch):
     monkeypatch.setattr(subprocess, 'run',
                         lambda args, stdout=None, stderr=None: None)
-    result = main(atoms=Si, grid_spacing=0.05)
+    groundstate = gscalculate(atoms=Si)
+    result = main(groundstate=groundstate, grid_spacing=0.05)
     assert (result.bader_charges == [-0.5, 0.5]).all()
     assert result.sym_a == ['Si', 'Si']
 

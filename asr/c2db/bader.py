@@ -2,12 +2,11 @@
 from typing import List
 
 import numpy as np
-from ase import Atoms
 
 from asr.core import (
-    command, option, ASRResult, prepare_result, calcopt, atomsopt)
+    command, option, argument, ASRResult, prepare_result)
 
-from asr.c2db.gs import calculate as gscalculate
+from asr.c2db.gs import GroundStateCalculationResult
 from asr.database.browser import describe_entry, make_panel_description, href
 
 panel_description = make_panel_description(
@@ -50,12 +49,10 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.bader')
-@atomsopt
-@calcopt
+@argument('groundstate', type=GroundStateCalculationResult)
 @option('--grid-spacing', help='Grid spacing (Å)', type=float)
 def main(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+        groundstate: GroundStateCalculationResult,
         grid_spacing: float = 0.05) -> Result:
     """Calculate bader charges.
 
@@ -79,8 +76,7 @@ def main(
 
     assert world.size == 1, 'Do not run in parallel!'
 
-    result = gscalculate(atoms=atoms, calculator=calculator)
-    gs = result.calculation.load()
+    gs = groundstate.calculation.load()
     converter = PS2AE(gs, grid_spacing=grid_spacing)  # grid-spacing in Å
     density = converter.get_pseudo_density()
     write('density.cube', gs.atoms, data=density * Bohr**3)
