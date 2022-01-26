@@ -6,9 +6,6 @@ Atomic Simulation Recipes
 .. image:: https://img.shields.io/pypi/v/asr.svg
         :target: https://pypi.python.org/pypi/asr
 
-.. image:: https://img.shields.io/travis/mortengjerding/asr.svg
-        :target: https://travis-ci.org/mortengjerding/asr
-
 .. image:: https://readthedocs.org/projects/asr/badge/?version=latest
         :target: https://asr.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
