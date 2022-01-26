@@ -282,7 +282,7 @@ class GapsResult(ASRResult):
     )
 
 
-def gaps(atoms, calc, calculator, mag_ani, soc=True) -> GapsResult:
+def gaps(atoms, calc, mag_ani, soc=True) -> GapsResult:
     # ##TODO min kpt dens? XXX
     # inputs: gpw groundstate file, soc?, direct gap? XXX
     from functools import partial
@@ -296,14 +296,13 @@ def gaps(atoms, calc, calculator, mag_ani, soc=True) -> GapsResult:
     (evbm_ecbm_gap,
      skn_vbm, skn_cbm) = get_gap_info(atoms,
                                       soc=soc, direct=False, mag_ani=mag_ani,
-                                      calc=calc, calculator=calculator)
+                                      calc=calc)
     (evbm_ecbm_direct_gap,
      direct_skn_vbm, direct_skn_cbm) = get_gap_info(atoms,
                                                     soc=soc,
                                                     direct=True,
                                                     mag_ani=mag_ani,
-                                                    calc=calc,
-                                                    calculator=calculator)
+                                                    calc=calc)
 
     k_vbm, k_cbm = skn_vbm[1], skn_cbm[1]
     direct_k_vbm, direct_k_cbm = direct_skn_vbm[1], direct_skn_cbm[1]
@@ -349,7 +348,7 @@ def get_1bz_k(ibzkpts, calc, k_index):
     return k_c
 
 
-def get_gap_info(atoms, soc, direct, calc, calculator, mag_ani):
+def get_gap_info(atoms, soc, direct, calc, mag_ani):
     from ase.dft.bandgap import bandgap
     from asr.utils.gpw2eigs import calc2eigs
     # e1 is VBM, e2 is CBM
@@ -573,8 +572,8 @@ def main(atoms: Atoms,
     stresses = calc.get_property('stress', allow_calculation=False)
     etot = calc.get_potential_energy()
 
-    gaps_nosoc = gaps(atoms, calc, soc=False, mag_ani=mag_ani, calculator=calculator)
-    gaps_soc = gaps(atoms, calc, soc=True, mag_ani=mag_ani, calculator=calculator)
+    gaps_nosoc = gaps(atoms, calc, soc=False, mag_ani=mag_ani)
+    gaps_soc = gaps(atoms, calc, soc=True, mag_ani=mag_ani)
     vac = vacuumlevels(atoms, calc)
     workfunction = vac.evacmean - gaps_soc.efermi if vac.evacmean else None
     return Result.fromdata(
