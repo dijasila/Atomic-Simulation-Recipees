@@ -3,7 +3,7 @@ import numpy as np
 from ase import Atoms
 import asr
 from asr.core import (command, ASRResult, prepare_result,
-                      option, AtomsFile)
+                      argument, option, AtomsFile)
 
 from asr.database.browser import (
     table, make_panel_description, describe_entry, href)
@@ -120,22 +120,9 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.magnetic_anisotropy')
-@option('-a', '--atoms', help='Atomic structure.',
-        type=AtomsFile(), default='structure.json')
-@asr.calcopt
-def main(atoms: Atoms,
-         calculator: dict = {
-             'name': 'gpaw',
-             'mode': {'name': 'pw', 'ecut': 800},
-             'xc': 'PBE',
-             'kpts': {'density': 12.0, 'gamma': True},
-             'occupations': {'name': 'fermi-dirac',
-                             'width': 0.05},
-             'convergence': {'bands': 'CBM+3.0'},
-             'nbands': '200%',
-             'txt': 'gs.txt',
-             'charge': 0
-         }) -> Result:
+# @argument('groundstate')  # , type=GroundStateCalculationResult)
+def main(groundstate, # : GroundStateCalculationResult,
+         magnetic: bool):
     """Calculate the magnetic anisotropy.
 
     Uses the magnetic anisotropy to calculate the preferred spin orientation
@@ -146,20 +133,18 @@ def main(atoms: Atoms,
         theta: Polar angle in radians
         phi: Azimuthal angle in radians
     """
-    from asr.c2db.magstate import main as magstate
-    from asr.c2db.gs import calculate as calculategs
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
 
-    magstateresults = magstate(
-        atoms=atoms,
-        calculator=calculator)
-    magstate = magstateresults['magstate']
+    calc = groundstate.calculation.load()
 
-    # Figure out if material is magnetic
-    results = {}
-
-    if magstate == 'NM':
+    # Previously called magstate in order just to produce zeros in
+    # nonmagnetic case.  Much better to just *not call this recipe*
+    # if the material is not magnetic.  But for historic reasons we still
+    # take a boolean as an input in order to produce those zeros,
+    # since we're deathly scared of the consequences should anything change.
+    if not magnetic:
+        results = {}
         results['E_x'] = 0
         results['E_y'] = 0
         results['E_z'] = 0
@@ -170,8 +155,6 @@ def main(atoms: Atoms,
         results['spin_axis'] = 'z'
         return Result(data=results)
 
-    calculateresult = calculategs(atoms=atoms, calculator=calculator)
-    calc = calculateresult.calculation.load()
     width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
     Ex, Ey, Ez = (soc_eigenstates(calc,
@@ -192,14 +175,15 @@ def main(atoms: Atoms,
 
     axis = spin_axis(theta, phi)
 
-    results.update({'spin_axis': axis,
-                    'theta': theta / 180 * pi,
-                    'phi': phi / 180 * pi,
-                    'E_x': Ex * 1e3,
-                    'E_y': Ey * 1e3,
-                    'E_z': Ez * 1e3,
-                    'dE_zx': dE_zx * 1e3,
-                    'dE_zy': dE_zy * 1e3})
+    results = {
+        'spin_axis': axis,
+        'theta': theta / 180 * pi,
+        'phi': phi / 180 * pi,
+        'E_x': Ex * 1e3,
+        'E_y': Ey * 1e3,
+        'E_z': Ez * 1e3,
+        'dE_zx': dE_zx * 1e3,
+        'dE_zy': dE_zy * 1e3}
     return Result(data=results)
 
 

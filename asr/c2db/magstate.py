@@ -1,7 +1,8 @@
 """Module for determining magnetic state."""
 import asr
 from asr.core import (command, ASRResult, prepare_result, option,
-                      AtomsFile)
+                      AtomsFile, argument)
+from asr.c2db.gs import GroundStateCalculationResult
 from ase import Atoms
 import typing
 
@@ -97,27 +98,10 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.magstate')
-@option('-a', '--atoms', help='Atomic structure.',
-        type=AtomsFile(), default='structure.json')
-@asr.calcopt
-def main(atoms: Atoms,
-         calculator: dict = {
-             'name': 'gpaw',
-             'mode': {'name': 'pw', 'ecut': 800},
-             'xc': 'PBE',
-             'kpts': {'density': 12.0, 'gamma': True},
-             'occupations': {'name': 'fermi-dirac',
-                             'width': 0.05},
-             'convergence': {'bands': 'CBM+3.0'},
-             'nbands': '200%',
-             'txt': 'gs.txt',
-             'charge': 0
-         }) -> Result:
+@argument('groundstate', type=GroundStateCalculationResult)
+def main(groundstate: GroundStateCalculationResult):
     """Determine magnetic state."""
-    from asr.c2db.gs import calculate as calculategs
-
-    calculateresult = calculategs(atoms=atoms, calculator=calculator)
-    calc = calculateresult.calculation.load()
+    calc = groundstate.calculation.load()
     magstate = get_magstate(calc)
     magmoms = calc.get_property('magmoms', allow_calculation=False)
     magmom = calc.get_property('magmom', allow_calculation=False)

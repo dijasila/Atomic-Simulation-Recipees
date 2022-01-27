@@ -2,7 +2,7 @@
 from ase import Atoms
 import asr
 from asr.core import (
-    ASRResult, prepare_result,
+    ASRResult, prepare_result, argument
 )
 from asr.calculators import (
     set_calculator_hook, Calculation, get_calculator_class)
@@ -546,27 +546,17 @@ class Result(ASRResult):
     argument_hooks=[set_calculator_hook],
     version=0,
 )
-@asr.atomsopt
-@asr.calcopt
-def main(atoms: Atoms,
-         calculator: dict = {
-             'name': 'gpaw',
-             'mode': {'name': 'pw', 'ecut': 800},
-             'xc': 'PBE',
-             'kpts': {'density': 12.0, 'gamma': True},
-             'occupations': {'name': 'fermi-dirac',
-                             'width': 0.05},
-             'convergence': {'bands': 'CBM+3.0'},
-             'nbands': '200%',
-             'txt': 'gs.txt',
-             'charge': 0
-         }) -> Result:
+@argument('groundstate')
+@argument('mag_ani')
+def postprocess(
+        groundstate,
+        mag_ani):
     """Extract derived quantities from groundstate in gs.gpw."""
-    calculateresult = calculate(atoms=atoms, calculator=calculator)
-    calc = calculateresult.calculation.load(parallel=False)
+    # calculateresult = calculate(atoms=atoms, calculator=calculator)
+    calc = groundstate.calculation.load(parallel=False)
     calc.atoms.calc = calc
-
-    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+    atoms = calc.atoms
+    # mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
 
     # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)
@@ -604,6 +594,16 @@ def main(atoms: Atoms,
         evac=vac.evacmean,
         evacdiff=vac.evacdiff,
         workfunction=workfunction)
+
+
+def workflow(rn, atoms, calculator):
+    groundstate = rn.task('groundstate', atoms=atoms, calculator=calculator)
+    magstate = rn.task('magstate', groundstate=groundstate.output)
+    mag_ani = rn.task('magnetic_anisotropy', groundstate=groundstate.output,
+                      magnetic=magstate.output['is_magnetic'])
+    post = rn.task('postprocess', groundstate=groundstate.output,
+                   mag_ani=mag_ani.output)
+    return post
 
 
 if __name__ == '__main__':

@@ -102,10 +102,10 @@ class ASRCommand:
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""
         myparams = []
-        for key, value in self.__signature__.parameters.items():
-            assert key in self.myparams, \
-                f'Missing description for param={key},value={value}.'
-            myparams.append(key)
+        #for key, value in self.__signature__.parameters.items():
+        #    assert key in self.myparams, \
+        #        f'Missing description for param={key},value={value}.'
+        #    myparams.append(key)
 
         # Check that all annotated parameters can be found in the
         # actual function signature.
@@ -269,13 +269,13 @@ class ASRCommand:
 
         parameters = self.prepare_parameters(*args, **kwargs)
         run_specification = self.make_run_specification(parameters)
-        cache = self.cache
+        # cache = self.cache
 
-        @register_dependencies.register
-        @cache(make_selector=self.make_selector)
-        @register_metadata()
-        @register_dependencies()
-        @runner()
+        # @register_dependencies.register
+        # @cache(make_selector=self.make_selector)
+        # @register_metadata()
+        # @register_dependencies()
+        # @runner()
         @register_resources()
         def execute_run_spec(run_spec):
             name = run_spec.name
