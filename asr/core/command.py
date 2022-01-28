@@ -34,7 +34,6 @@ class ASRCommand:
             wrapped_function,
             module=None,
             version=0,
-            cache=None,
             argument_hooks=None,
             package_dependencies=('asr', 'ase', 'gpaw'),
     ):
