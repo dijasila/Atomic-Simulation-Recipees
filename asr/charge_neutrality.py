@@ -8,6 +8,7 @@ import numpy as np
 
 
 # TODO: automate degeneracy counting
+# TODO: use DefectInfo class functionalities once asr.defect_symmetry is merged
 
 
 panel_description = make_panel_description(
@@ -246,8 +247,11 @@ class Result(ASRResult):
          returns=ASRResult)
 @option('--temp', help='Temperature [K]', type=float)
 @option('--defects', help='Defect dictionary.', type=DictStr())
+@option('--dosfile', help='DOS results file. DOS will be generated '
+        'from gs.gpw if no DOS results file is given.', type=str)
 def main(temp: float = 300,
-         defects: dict = {}) -> ASRResult:
+         defects: dict = {},
+         dosfile: str = '') -> ASRResult:
     """Calculate self-consistent Fermi energy for defect systems.
 
     This recipe calculates the self-consistent Fermi energy for a
@@ -273,8 +277,9 @@ def main(temp: float = 300,
 
     # read in pristine ground state calculation and evaluate,
     # renormalize density of states
-    atoms, calc = restart('gs.gpw', txt=None)
-    dos, EF, gap = get_dos(calc)
+    if dosfile == '':
+        atoms, calc = restart('gs.gpw', txt=None)
+        dos, EF, gap = get_dos(calc)
     dos = renormalize_dos(calc, dos, EF)
 
     # Calculate initial electron and hole carrier concentration
