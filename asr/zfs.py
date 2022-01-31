@@ -9,20 +9,20 @@ def webpanel(result, row, key_description):
     rowlabels = ['Spin 0', 'Spin 1']
     for i, element in enumerate(zfs_array):
         for j in range(3):
-            zfs_array[i, j] = result.zfs['D_vv'][i][j]
+            zfs_array[i, j] = result['D_vv'][i][j]
         # zfs_array[i, 0] = f"{result.zfs['D_vv'][i][0]:.2f} MeV"
         # zfs_array[i, 1] = f"{result.zfs['D_vv'][i][1]:.2f} MeV"
         # zfs_array[i, 2] = f"{result.zfs['D_vv'][i][2]:.2f} MeV"
 
     zfs_table = matrixtable(zfs_array,
-                            unit='MHz',
+                            unit=' MHz',
                             title='ZFS',
                             columnlabels=['D<sub>xx</sub>',
                                           'D<sub>yy</sub>',
                                           'D<sub>zz</sub>'],
                             rowlabels=rowlabels)
 
-    zfs = WebPanel('HF coupling and zero-field-splitting',
+    zfs = WebPanel('Zero field splitting (ZFS)',
                    columns=[[], [zfs_table]],
                    sort=2)
 
