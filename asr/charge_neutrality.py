@@ -7,7 +7,6 @@ import typing
 import numpy as np
 
 
-# TODO: implement test
 # TODO: automate degeneracy counting
 
 
@@ -48,12 +47,6 @@ def webpanel(result, row, key_descriptions):
                                 'filenames': [plotname]}],
             sort=25 + i)
         panels.append(panel)
-
-    # summary = {'title': 'Summary',
-    #            'columns': [[scf_summary], []],
-    #            'sort': 1}
-
-    # panels.append(summary)
 
     return panels
 
@@ -191,159 +184,6 @@ def get_conc_table(result, element, unitstring):
     return scf_table
 
 
-def oldwebpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig, WebPanel,
-                                      describe_entry, table,
-                                      dl, code)
-
-    unit = result.conc_unit
-    unitstring = f"cm<sup>{unit.split('^')[-1]}</sup>"
-    table_list = []
-    for element in result.defect_concentrations:
-        name = element['defect_name']
-        def_type = name.split('_')[0]
-        if def_type == 'v':
-            def_type = 'V'
-        def_name = name.split('_')[1]
-        scf_table = table(result, f'Eq. concentrations of {def_type}'
-                                  f'<sub>{def_name}</sub> [{unitstring}]', [])
-        for altel in element['concentrations']:
-            if altel[0] > 1e1:
-                scf_table['rows'].extend(
-                    [[describe_entry(f'<b>Charge {altel[1]:1d}</b>',
-                                     description='Equilibrium concentration '
-                                                 'in charge state q at T = '
-                                                 f'{int(result.temperature):d} K.'),
-                      f'<b>{altel[0]:.1e}</b>']])
-            else:
-                scf_table['rows'].extend(
-                    [[describe_entry(f'Charge {altel[1]:1d}',
-                                     description='Equilibrium concentration '
-                                                 'in charge state q at T = '
-                                                 f'{int(result.temperature):d} K.'),
-                      f'{altel[0]:.1e}']])
-        table_list.append(scf_table)
-
-    ef = result.efermi_sc
-    gap = result.gap
-    if ef < (gap / 4.):
-        dopability = '<b style="color:red;">p-type</b>'
-    elif ef > (3 * gap / 4.):
-        dopability = '<b style="color:blue;">n-type</b>'
-    else:
-        dopability = 'intrinsic'
-
-    # get strength of p-/n-type dopability
-    if ef < 0:
-        ptype_val = '100+'
-        ntype_val = '0'
-    elif ef > gap:
-        ptype_val = '0'
-        ntype_val = '100+'
-    else:
-        ptype_val = int((1 - ef / gap) * 100)
-        ntype_val = int((100 - ptype_val))
-    pn_strength = f'{ptype_val:3}% / {ntype_val:3}%'
-    pn = describe_entry(
-        'p-type / n-type strength',
-        'Strength of p-/n-type dopability in percent '
-        f'(normalized wrt. band gap) at T = {int(result.temperature):d} K.'
-        + dl(
-            [
-                [
-                    '100/0',
-                    code('if E<sub>F</sub> at VBM')
-                ],
-                [
-                    '0/100',
-                    code('if E<sub>F</sub> at CBM')
-                ],
-                [
-                    '50/50',
-                    code('if E<sub>F</sub> at E<sub>gap</sub> * 0.5')
-                ]
-            ],
-        )
-    )
-
-    is_dopable = describe_entry(
-        'Intrinsic doping type',
-        'Is the material intrinsically n-type, p-type or intrinsic at '
-        f'T = {int(result.temperature):d} K?'
-        + dl(
-            [
-                [
-                    'p-type',
-                    code('if E<sub>F</sub> < 0.25 * E<sub>gap</sub>')
-                ],
-                [
-                    'n-type',
-                    code('if E<sub>F</sub> 0.75 * E<sub>gap</sub>')
-                ],
-                [
-                    'intrinsic',
-                    code('if 0.25 * E<sub>gap</sub> < E<sub>F</sub> < '
-                         '0.75 * E<sub>gap</sub>')
-                ],
-            ],
-        )
-    )
-
-    scf_fermi = describe_entry(
-        'Fermi level position',
-        'Self-consistent Fermi level wrt. VBM at which charge neutrality condition is '
-        f'fulfilled at T = {int(result.temperature):d} K [eV].')
-
-    scf_summary = table(result, 'Charge neutrality', [])
-    scf_summary['rows'].extend([[is_dopable, dopability]])
-    scf_summary['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
-    scf_summary['rows'].extend([[pn, pn_strength]])
-
-    scf_overview = table(result,
-                         f'Equilibrium properties @ {int(result.temperature):d} K', [])
-    scf_overview['rows'].extend([[is_dopable, dopability]])
-    scf_overview['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
-    scf_overview['rows'].extend([[pn, pn_strength]])
-    if result.n0 > 1e-5:
-        n0 = result.n0
-    else:
-        n0 = 0
-    scf_overview['rows'].extend(
-        [[describe_entry('Electron carrier concentration',
-                         'Equilibrium electron carrier concentration at '
-                         f'T = {int(result.temperature):d} K.'),
-          f'{n0:.1e} {unitstring}']])
-    if result.p0 > 1e-5:
-        p0 = result.p0
-    else:
-        p0 = 0
-    scf_overview['rows'].extend(
-        [[describe_entry('Hole carrier concentration',
-                         'Equilibrium hole carrier concentration at '
-                         f'T = {int(result.temperature):d} K.'),
-          f'{p0:.1e} {unitstring}']])
-
-    figure = describe_entry(fig('charge_neutrality.png'),
-                            description='Formation energies of all point defects '
-                                        'intrinsic to the material and self-consistent '
-                                        'Fermi level at T = '
-                                        f'{int(result.temperature):d} K.')
-
-    panel = WebPanel(
-        describe_entry('Equilibrium defect energetics',
-                       panel_description),
-        columns=[[figure, scf_overview], table_list],
-        plot_descriptions=[{'function': plot_formation_scf,
-                            'filenames': ['charge_neutrality.png']}],
-        sort=25)
-
-    summary = {'title': 'Summary',
-               'columns': [[scf_summary], []],
-               'sort': 1}
-
-    return [panel, summary]
-
-
 @prepare_result
 class ConcentrationResult(ASRResult):
     """Container for concentration results of a specific defect."""
@@ -422,7 +262,7 @@ def main(temp: float = 300,
     from gpaw import restart
     # test input and read in defect dictionary from asr.sj_analyze results
     if defects == {}:
-        inputdict = return_defect_dict()
+        inputdict = get_defect_dict_from_file()
     else:
         inputdict = defects
 
@@ -446,6 +286,7 @@ def main(temp: float = 300,
     for element in el_list:
         print(f'INFO: run self-consitent EF evaluation for {element}-poor conditions.')
         defectdict = adjust_formation_energies(inputdict, element)
+        print(element, defectdict)
         # Initialize self-consistent loop for finding Fermi energy
         E = 0
         d = 1  # directional parameter
@@ -574,6 +415,7 @@ def get_chemical_potentials(stoi, element, el_list):
     paths = list(Path('.').glob('../defects.*/charge_0/results-asr.sj_analyze.json'))
     sj_res = read_json(paths[0])
     hof = sj_res['hof']
+    print(hof)
     sstates = {}
     # db = connect('/home/niflheim/fafb/db/oqmd12.db')
     for el in el_list:
@@ -609,7 +451,9 @@ def adjust_formation_energies(defectdict, element):
     el_list = get_element_list(atoms)
     host = read('unrelaxed.json')
     stoi = get_stoichiometry(host)
+    print(stoi)
     sstates = get_chemical_potentials(stoi, element, el_list)
+    print(element, sstates)
     for defect in defectdict:
         def_type, def_pos = get_defect_info(defect)
         if def_type == 'v':
@@ -626,10 +470,13 @@ def adjust_formation_energies(defectdict, element):
     return newdict
 
 
-def get_stoichiometry(atoms):
+def get_stoichiometry(atoms, reduced=False):
     from ase.formula import Formula
 
-    w = Formula(atoms.get_chemical_formula())
+    if reduced:
+        w = Formula(atoms.get_chemical_formula()).stoichiometry()[1]
+    else:
+        w = Formula(atoms.get_chemical_formula())
 
     return w.count()
 
@@ -737,7 +584,7 @@ def get_zero_formation_energy(defect):
     return eform, charge
 
 
-def return_defect_dict():
+def get_defect_dict_from_file():
     """Read in the results of asr.sj_analyze and store the formation energies at VBM."""
     from asr.core import read_json
     from pathlib import Path
