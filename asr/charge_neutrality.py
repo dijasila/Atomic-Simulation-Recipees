@@ -266,9 +266,10 @@ def main(temp: float = 300,
     else:
         inputdict = defects
 
-    # evaluate host crystal elements
-    atoms = read('structure.json')
-    el_list = get_element_list(atoms)
+    # evaluate host crystal elements and hof
+    host = read('../unrelaxed.json')
+    el_list = get_element_list(host)
+    hof = get_hof_from_sj_results()
 
     # read in pristine ground state calculation and evaluate,
     # renormalize density of states
@@ -285,7 +286,7 @@ def main(temp: float = 300,
     sc_results = []
     for element in el_list:
         print(f'INFO: run self-consitent EF evaluation for {element}-poor conditions.')
-        defectdict = adjust_formation_energies(inputdict, element)
+        defectdict = adjust_formation_energies(host, inputdict, element, hof)
         print(element, defectdict)
         # Initialize self-consistent loop for finding Fermi energy
         E = 0
@@ -407,26 +408,29 @@ def get_defect_info(defect):
     return defect.split('_')[0], defect.split('_')[1]
 
 
-def get_chemical_potentials(stoi, element, el_list):
-    # from ase.db import connect
+def get_hof_from_sj_results():
     from asr.core import read_json
     from pathlib import Path
 
-    paths = list(Path('.').glob('../defects.*/charge_0/results-asr.sj_analyze.json'))
-    sj_res = read_json(paths[0])
+    p = Path('.')
+    pathlist = list(p.glob('../defects.*/charge_0/results-asr.sj_analyze.json'))
+    sj_res = read_json(pathlist[0])
     hof = sj_res['hof']
-    print(hof)
+
+    return hof
+
+
+def get_adjusted_chemical_potentials(host, hof, element):
+
+    el_list = get_element_list(host)
+    stoi = get_stoichiometry(host)
     sstates = {}
-    # db = connect('/home/niflheim/fafb/db/oqmd12.db')
     for el in el_list:
-        # sstate = obtain_chemical_potential(el, db)
         name = el
         if el == element:
-            # mu_el = hof / stoi[element] + sstate
             mu_el = hof / stoi[element]
             sstates[f'{name}'] = mu_el
         else:
-            # sstates[f'{name}'] = sstate
             sstates[f'{name}'] = 0
 
     return sstates
@@ -444,16 +448,10 @@ def obtain_chemical_potential(symbol, db):
     return eref
 
 
-def adjust_formation_energies(defectdict, element):
+def adjust_formation_energies(host, defectdict, element, hof):
     """Return defect dict in X-poor conditions given a defect dict @ stand. states."""
     newdict = {}
-    atoms = read('structure.json')
-    el_list = get_element_list(atoms)
-    host = read('unrelaxed.json')
-    stoi = get_stoichiometry(host)
-    print(stoi)
-    sstates = get_chemical_potentials(stoi, element, el_list)
-    print(element, sstates)
+    sstates = get_adjusted_chemical_potentials(host, hof, element)
     for defect in defectdict:
         def_type, def_pos = get_defect_info(defect)
         if def_type == 'v':
