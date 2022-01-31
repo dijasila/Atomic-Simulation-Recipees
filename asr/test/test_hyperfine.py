@@ -40,10 +40,10 @@ def test_paired_system(asr_tmpdir):
     res_hf, used = rescale_hyperfine_tensor(
         refarray, g_factors, symbols, magmoms)
 
-    # HF interaction energy and sct are not implemented yet
+    # compare HF eigenvalues
     res = [-1.646985e-7, 1.23996548e-08, 6.50022739e+08]
     for i, eigenvalue in enumerate(res_hf[0]['eigenvalues']):
-        assert eigenvalue == pytest.approx(res[i])
+        assert eigenvalue == pytest.approx(res[i], rel=1e-2)
 
 
 @pytest.mark.parametrize('atoms', std_test_materials)
