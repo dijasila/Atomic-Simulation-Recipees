@@ -205,14 +205,14 @@ def get_hf_matrixtable(hf_results, orderarray):
     hf_atoms = []
     for i, element in enumerate(orderarray[:10, 0]):
         hf_atoms.append(hf_results[int(element)]['kind']
-                        + str(hf_results[int(element)]['index']))
+                        + ' (' + str(hf_results[int(element)]['index']) + ')')
         hf_array[i, 0] = f"{hf_results[int(element)]['magmom']:.2f}"
         hf_array[i, 1] = f"{hf_results[int(element)]['eigenvalues'][0]:.2f}"
         hf_array[i, 2] = f"{hf_results[int(element)]['eigenvalues'][1]:.2f}"
         hf_array[i, 3] = f"{hf_results[int(element)]['eigenvalues'][2]:.2f}"
 
     hf_table = matrixtable(hf_array,
-                           title='Atom',
+                           title='Symbol (index)',
                            columnlabels=['Magn. moment',
                                          'A<sub>xx</sub> [MHz]',
                                          'A<sub>yy</sub> [MHz]',
@@ -311,9 +311,12 @@ class Result(ASRResult):
          returns=Result)
 def main() -> Result:
     """Calculate hyperfine splitting."""
-    from gpaw import restart
+    from gpaw import GPAW
+    from ase.io import read
 
-    atoms, calc = restart('gs.gpw', txt=None)
+    # atoms, calc = restart('gs.gpw', txt=None)
+    calc = GPAW('gs.gpw', txt=None)
+    atoms = read('structure.json')
     hf_results, gfactor_results, ht_int_en, sct = calculate_hyperfine(atoms, calc)
 
     if Path('results-asr.defect_symmetry.json').is_file():
