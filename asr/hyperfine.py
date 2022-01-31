@@ -175,7 +175,6 @@ def get_atoms_close_to_center(center, row):
     ghost_atoms = atoms.copy()
     ghost_atoms.append(Atoms('H', cell=atoms.get_cell(), positions=[center])[0])
     for i, atom in enumerate(ghost_atoms[:-1]):
-        # meancell = np.mean(atoms.get_cell_lengths_and_angles()[:2])
         distance = ghost_atoms.get_distance(-1, i, mic=True)
         distancelist.append(distance)
         indexlist.append(i)
@@ -199,16 +198,8 @@ def get_gyro_array(gfactors_results):
     return array, symbollist
 
 
-def webpanel(result, row, key_description):
-    from asr.database.browser import (WebPanel,
-                                      matrixtable,
-                                      table,
-                                      describe_entry)
-
-    hf_results = result.hyperfine
-    center = result.center
-
-    orderarray = get_atoms_close_to_center(center, row)
+def get_hf_matrixtable(hf_results, orderarray):
+    from asr.database.browser import matrixtable
 
     hf_array = np.zeros((10, 4))
     hf_atoms = []
@@ -223,10 +214,16 @@ def webpanel(result, row, key_description):
     hf_table = matrixtable(hf_array,
                            title='Atom',
                            columnlabels=['Magn. moment',
-                                         'Axx (MHz)',
-                                         'Ayy (MHz)',
-                                         'Azz (MHz)'],
+                                         'A<sub>xx</sub> [MHz]',
+                                         'A<sub>yy</sub> [MHz]',
+                                         'A<sub>zz</sub> [MHz]'],
                            rowlabels=hf_atoms)
+
+    return hf_table
+
+
+def get_gyro_matrixtable(result):
+    from asr.database.browser import matrixtable
 
     gyro_array, gyro_rownames = get_gyro_array(result.gfactors)
     gyro_table = matrixtable(gyro_array,
@@ -234,18 +231,24 @@ def webpanel(result, row, key_description):
                              columnlabels=['g-factor'],
                              rowlabels=gyro_rownames)
 
-    sct_table = table(result, 'Global hyperfine properties', [])
-    sct_table['rows'].extend(
-        [[describe_entry(f"Hyperfine interaction energy",
-                         description=result.key_descriptions['delta_E_hyp']),
-          f'{result.delta_E_hyp:.2e} eV'],
-         [describe_entry(f"Spin coherence time",
-                         description=result.key_descriptions['sc_time']),
-          f'{result.sc_time:.2e} ms']])
+    return gyro_table
+
+
+def webpanel(result, row, key_description):
+    from asr.database.browser import (WebPanel,
+                                      describe_entry)
+
+    hf_results = result.hyperfine
+    center = result.center
+
+    orderarray = get_atoms_close_to_center(center, row)
+
+    hf_table = get_hf_matrixtable(hf_results, orderarray)
+    gyro_table = get_gyro_matrixtable(result)
 
     hyperfine = WebPanel(describe_entry('HF coupling and spin coherence time',
                                         panel_description),
-                         columns=[[hf_table], [gyro_table, sct_table]],
+                         columns=[[hf_table], [gyro_table]],
                          sort=42)
 
     return [hyperfine]
