@@ -247,7 +247,7 @@ def webpanel(result, row, key_description):
     hf_table = get_hf_matrixtable(hf_results, orderarray)
     gyro_table = get_gyro_matrixtable(result)
 
-    hyperfine = WebPanel(describe_entry('HF coupling and spin coherence time',
+    hyperfine = WebPanel(describe_entry('Hyperfine (HF) parameters',
                                         panel_description),
                          columns=[[hf_table], [gyro_table]],
                          sort=42)
