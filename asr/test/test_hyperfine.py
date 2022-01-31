@@ -14,20 +14,24 @@ def test_g_factors_from_gyromagnetic_ratios():
 
 @pytest.mark.ci
 def test_paired_system(asr_tmpdir):
-    from gpaw import GPAW
-    from .materials import Ag
-    from asr.hyperfine import calculate_hyperfine
-    import numpy as np
+    from .materials import Ag, BN
+    from ase.io import write
+    from asr.hyperfine import main
+    from asr.gs import calculate
 
-    atoms = Ag.copy()
-
-    calc = GPAW(txt=None)
-    atoms.calc = calc
-    atoms.get_potential_energy()
+    atoms = BN.copy()
+    write('structure.json', atoms)
+    calculate(
+        calculator={
+            "name": "gpaw",
+            "kpts": {"size": (1, 1, 1), "gamma": True},
+        },
+    )
 
     # recipe should raise an error for zero magnetic moment
     try:
-        calculate_hyperfine(atoms, calc)
+        # calculate_hyperfine(atoms, calc)
+        main()
         calculated = True
     except AssertionError:
         calculated = False
@@ -35,12 +39,19 @@ def test_paired_system(asr_tmpdir):
     assert not calculated
 
     # set magnetic moment
-    atoms.set_initial_magnetic_moments(np.ones(len(atoms)))
-    hf_res, gyro_res, hf_int, sct = calculate_hyperfine(atoms, calc)
+    atoms = Ag.copy()
+    write('structure.json', atoms)
+    calculate(
+        calculator={
+            "name": "gpaw",
+            "kpts": {"size": (1, 1, 1), "gamma": True},
+        },
+    )
+    res = main()
 
     # HF interaction energy and sct are not implemented yet
     res_ag = 39.878123
-    assert hf_int is None
-    assert sct is None
-    for eigenvalue in hf_res[0]['eigenvalues']:
+    assert res['delta_E_hyp'] is None
+    assert res['sc_time'] is None
+    for eigenvalue in res['hyperfine'][0]['eigenvalues']:
         assert eigenvalue == pytest.approx(res_ag)
