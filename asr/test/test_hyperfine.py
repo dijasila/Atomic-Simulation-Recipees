@@ -13,7 +13,7 @@ def test_g_factors_from_gyromagnetic_ratios():
 
 
 @pytest.mark.ci
-def test_paired_system(asr_tmpdir):
+def test_paired_system(asr_tmpdir, mockgpaw, mocker):
     from .materials import Ag, BN
     from ase.io import write
     from asr.hyperfine import main
