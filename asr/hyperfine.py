@@ -155,6 +155,7 @@ nuclear_abundance = {
     'Pb': (22.6 , 0.5),
     'Bi': (100 , 4.5),
     'La': (99.91, 3.5)}
+scale = units._e / units._hplanck * 1e-6
 
 
 def get_atoms_close_to_center(center, row):
@@ -349,28 +350,14 @@ def g_factors_from_gyromagnetic_ratios(gyromagnetic_ratios):
     return g_factors
 
 
-def calculate_hyperfine(atoms, calc):
-    """Calculate hyperfine splitting from the calculator."""
-    from gpaw.hyperfine import hyperfine_parameters
-
-    symbols = atoms.symbols
-    magmoms = atoms.get_magnetic_moments()
-    total_magmom = atoms.get_magnetic_moment()
+def rescale_hyperfine_tensor(A_avv, g_factors, symbols, magmoms):
+    """Rescale hyperfine tensor and diagonalize."""
+    total_magmom = sum(magmoms)
     assert total_magmom != 0.0, ('no hyperfine interaction for zero '
                                  'total magnetic moment!')
 
-    # convert from MHz/T to eV
-    g_factors = g_factors_from_gyromagnetic_ratios(
-        gyromagnetic_ratios)
-
-    scale = units._e / units._hplanck * 1e-6
-
-    # return hyperfine tensor in eV units
-    A_avv = hyperfine_parameters(calc)
-
     used = {}
     hyperfine_results = []
-    symbol_list = []
     for a, A_vv in enumerate(A_avv):
         symbol = symbols[a]
         magmom = magmoms[a]
@@ -378,7 +365,6 @@ def calculate_hyperfine(atoms, calc):
         used[symbol] = g_factor
         A_vv *= g_factor / total_magmom * scale
         numbers = np.linalg.eigvalsh(A_vv)
-        symbol_list.append(str(symbol))
         hyperfine_result = HyperfineResult.fromdata(
             index=a,
             kind=symbol,
@@ -386,12 +372,37 @@ def calculate_hyperfine(atoms, calc):
             eigenvalues=numbers)
         hyperfine_results.append(hyperfine_result)
 
+    return hyperfine_results, used
+
+
+def get_gyro_results(used):
     gyro_results = []
     for symbol, g in used.items():
         gyro_result = GyromagneticResult.fromdata(
             symbol=symbol,
             g=g)
         gyro_results.append(gyro_result)
+
+    return gyro_results
+
+
+def calculate_hyperfine(atoms, calc):
+    """Calculate hyperfine splitting from the calculator."""
+    from gpaw.hyperfine import hyperfine_parameters
+
+    # convert from MHz/T to eV
+    g_factors = g_factors_from_gyromagnetic_ratios(
+        gyromagnetic_ratios)
+
+    # return hyperfine tensor in eV units
+    A_avv = hyperfine_parameters(calc)
+
+    magmoms = atoms.get_magnetic_moments()
+    symbols = atoms.symbols
+    hyperfine_results, used = rescale_hyperfine_tensor(
+        A_avv, g_factors, symbols, magmoms)
+
+    gyro_results = get_gyro_results(used)
 
     # spin coherence time and hyperfine interaction energy to be implemented
     hf_int_en = None

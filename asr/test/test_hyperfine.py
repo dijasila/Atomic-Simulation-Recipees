@@ -1,4 +1,5 @@
 import pytest
+from .materials import std_test_materials
 
 
 @pytest.mark.ci
@@ -13,45 +14,57 @@ def test_g_factors_from_gyromagnetic_ratios():
 
 
 @pytest.mark.ci
-def test_paired_system(asr_tmpdir, mockgpaw, mocker):
-    from .materials import Ag, BN
-    from ase.io import write
-    from asr.hyperfine import main
-    from asr.gs import calculate
+def test_paired_system(asr_tmpdir):
+    from .materials import BN
+    from asr.hyperfine import (gyromagnetic_ratios,
+                               rescale_hyperfine_tensor,
+                               g_factors_from_gyromagnetic_ratios)
+    import numpy as np
 
     atoms = BN.copy()
-    write('structure.json', atoms)
-    calculate(
-        calculator={
-            "name": "gpaw",
-            "kpts": {"size": (1, 1, 1), "gamma": True},
-        },
-    )
-
+    refarray = np.ones((len(atoms), 3, 3))
+    symbols = atoms.symbols
+    magmoms = np.zeros(len(atoms))
+    g_factors = g_factors_from_gyromagnetic_ratios(gyromagnetic_ratios)
     # recipe should raise an error for zero magnetic moment
     try:
-        # calculate_hyperfine(atoms, calc)
-        main()
+        rescale_hyperfine_tensor(refarray, g_factors, symbols, magmoms)
         calculated = True
     except AssertionError:
         calculated = False
 
     assert not calculated
 
-    # set magnetic moment
-    atoms = Ag.copy()
-    write('structure.json', atoms)
-    calculate(
-        calculator={
-            "name": "gpaw",
-            "kpts": {"size": (1, 1, 1), "gamma": True},
-        },
-    )
-    res = main()
+    # run the rescaling function for non-zero magnetic_moment
+    magmoms = np.ones(len(atoms))
+    res_hf, used = rescale_hyperfine_tensor(
+        refarray, g_factors, symbols, magmoms)
 
     # HF interaction energy and sct are not implemented yet
-    res_ag = 39.878123
-    assert res['delta_E_hyp'] is None
-    assert res['sc_time'] is None
-    for eigenvalue in res['hyperfine'][0]['eigenvalues']:
-        assert eigenvalue == pytest.approx(res_ag)
+    res = [-1.646985e-7, 1.23996548e-08, 6.50022739e+08]
+    for i, eigenvalue in enumerate(res_hf[0]['eigenvalues']):
+        assert eigenvalue == pytest.approx(res[i])
+
+
+@pytest.mark.parametrize('atoms', std_test_materials)
+@pytest.mark.ci
+def test_get_gyro_results(atoms):
+    from asr.hyperfine import (gyromagnetic_ratios,
+                               rescale_hyperfine_tensor,
+                               g_factors_from_gyromagnetic_ratios,
+                               get_gyro_results)
+    import numpy as np
+
+    refarray = np.ones((len(atoms), 3, 3))
+    symbols = atoms.symbols
+    magmoms = np.ones(len(atoms))
+    g_factors = g_factors_from_gyromagnetic_ratios(gyromagnetic_ratios)
+
+    _, used = rescale_hyperfine_tensor(
+        refarray, g_factors, symbols, magmoms)
+
+    res_gyro = get_gyro_results(used)
+    for res in res_gyro:
+        symbol = res['symbol']
+        assert symbol in symbols
+        assert g_factors[symbol] == res['g']
