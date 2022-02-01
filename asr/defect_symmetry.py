@@ -3,6 +3,7 @@ from asr.core import command, option, ASRResult, prepare_result, read_json
 from asr.database.browser import make_panel_description, href
 import typing
 import numpy as np
+import warnings
 from pathlib import Path
 from ase import Atoms
 
@@ -174,8 +175,8 @@ def webpanel(result, row, key_descriptions):
     vbm = result.pristine['vbm']
     cbm = result.pristine['cbm']
     if result.symmetries[0]['best'] is None:
-        print('WARNING: no symmetry analysis for this defect present. Only plot '
-              'gapstates!')
+        warnings.warn("no symmetry analysis present for this defect. "
+                      "Only plot gapstates!", UserWarning)
         style = 'state'
     else:
         style = 'symmetry'
@@ -301,8 +302,8 @@ def main(primitivefile: str = 'primitive.json',
     from gpaw.point_groups import SymmetryChecker, point_group_names
 
     # define path of the current directory, and initialize DefectInfo class
-    defect = Path('.')
-    defectinfo = DefectInfo(defectpath=defect)
+    defectdir = Path('.')
+    defectinfo = DefectInfo(defectpath=defectdir)
 
     # check whether input is correct and return important structures
     structurefile = 'structure.json'
@@ -336,7 +337,7 @@ def main(primitivefile: str = 'primitive.json',
     atoms, calc = restart('gs.gpw', txt=None)
 
     # read in cubefiles of the wavefunctions
-    cubefilepaths = list(defect.glob('*.cube'))
+    cubefilepaths = list(defectdir.glob('*.cube'))
     if len(cubefilepaths) == 0:
         raise FileNotFoundError('WARNING: no cube files available in this '
                                 'folder!')
@@ -741,27 +742,10 @@ class DefectInfo:
 
 def return_defect_coordinates(structure, primitive, pristine, defectinfo):
     """Return the coordinates of the present defect."""
-    deftype, defpos = defectinfo.get_defect_type_and_kind()
-    is_vacancy = defectinfo.is_vacancy
+    from asr.get_wfs import return_defect_index
 
-    if not is_vacancy:
-        for i in range(len(primitive)):
-            if not (primitive.symbols[i]
-                    == structure.symbols[i]):
-                label = i
-                break
-            else:
-                label = 0
-    elif is_vacancy:
-        for i in range(len(primitive)):
-            if not (primitive.symbols[i]
-                    == structure.symbols[i]):
-                label = i
-                break
-            else:
-                label = 0
-
-    pos = pristine.get_positions()[label]
+    defect_index = return_defect_index(defectinfo, primitive, structure)
+    pos = pristine.get_positions()[defect_index]
 
     return pos
 
