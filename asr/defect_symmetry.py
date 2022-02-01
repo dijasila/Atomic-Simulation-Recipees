@@ -744,7 +744,7 @@ def return_defect_coordinates(structure, primitive, pristine, defectinfo):
     """Return the coordinates of the present defect."""
     from asr.get_wfs import return_defect_index
 
-    defect_index = return_defect_index(defectinfo, primitive, structure)
+    defect_index, _ = return_defect_index(defectinfo, primitive, structure)
     pos = pristine.get_positions()[defect_index]
 
     return pos
