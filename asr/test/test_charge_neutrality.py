@@ -54,3 +54,30 @@ def test_get_adjusted_chemical_potentials(hof):
                 assert chempot[f'{symbol}'] == pytest.approx(hof)
             else:
                 assert chempot[f'{symbol}'] == pytest.approx(0)
+
+
+@pytest.mark.parametrize('hof', [-2, -1.5, -0.75])
+@pytest.mark.parametrize('element', ['B', 'N'])
+@pytest.mark.parametrize('defect', ['v_N', 'v_B', 'N_B'])
+@pytest.mark.ci
+def test_adjust_formation_energies(hof, element, defect):
+    from asr.charge_neutrality import adjust_formation_energies
+    from .materials import BN
+
+    host = BN.copy()
+    defectdict = {f'{defect}': [(0, 0), (0.5, 1)]}
+
+    adjusted_defectdict = adjust_formation_energies(host, defectdict, element, hof)
+    add = defect.split('_')[0]
+    remove = defect.split('_')[1]
+    if add == element:
+        offset = -hof
+    elif remove == element:
+        offset = hof
+    else:
+        offset = 0
+    for i in range(len(defectdict[f'{defect}'])):
+        assert adjusted_defectdict[f'{defect}'][i][0] == pytest.approx(
+            defectdict[f'{defect}'][i][0] + offset)
+        assert adjusted_defectdict[f'{defect}'][i][1] == pytest.approx(
+            defectdict[f'{defect}'][i][1])
