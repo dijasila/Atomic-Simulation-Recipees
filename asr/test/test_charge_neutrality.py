@@ -81,3 +81,25 @@ def test_adjust_formation_energies(hof, element, defect):
             defectdict[f'{defect}'][i][0] + offset)
         assert adjusted_defectdict[f'{defect}'][i][1] == pytest.approx(
             defectdict[f'{defect}'][i][1])
+
+
+@pytest.mark.parametrize('energy', [0, 0.5, 1])
+@pytest.mark.parametrize('efermi', [0, 0.5, 1])
+@pytest.mark.ci
+def test_fermi_dirac(energy, efermi):
+    from asr.charge_neutrality import (fermi_dirac_electrons,
+                                       fermi_dirac_holes)
+
+    T = 300
+    c_e = fermi_dirac_electrons(energy, efermi, T)
+    c_h = fermi_dirac_holes(energy, efermi, T)
+
+    if energy == efermi:
+        assert c_e == pytest.approx(0.5)
+        assert c_h == pytest.approx(0.5)
+    elif energy > efermi:
+        assert c_e > 0.5
+        assert c_h < 0.5
+    elif energy < efermi:
+        assert c_e < 0.5
+        assert c_h > 0.5
