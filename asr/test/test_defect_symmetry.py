@@ -56,17 +56,12 @@ def test_conserved_atoms(is_vacancy):
             supercell = atoms.repeat((i, i, 1))
             if is_vacancy:
                 supercell.pop(j)
-                print(len(supercell), len(atoms), i)
-                assert conserved_atoms(supercell,
-                                       atoms,
-                                       i,
-                                       is_vacancy)
             else:
                 supercell.symbols[j] = 'X'
-                assert conserved_atoms(supercell,
-                                       atoms,
-                                       i,
-                                       is_vacancy)
+            assert conserved_atoms(supercell,
+                                   atoms,
+                                   i,
+                                   is_vacancy)
 
 
 @pytest.mark.parametrize('sc_size', [1, 2, 3, 4, 5])
