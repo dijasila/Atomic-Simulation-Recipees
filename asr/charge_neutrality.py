@@ -630,23 +630,16 @@ def integrate_electron_hole_concentration(dos, ef, gap, T):
 
     # electron carrier concentration integration
     int_el = []
+    int_hole = []
     for i in range(len(dos[0])):
         energy = dos[0][i]
         rho = dos[1][i]
         if energy >= gap:
             int_el.append(rho * fermi_dirac_holes(energy, ef, T))
-    n0 = np.trapz(int_el, dx=dx)
-    # print('INFO: calculated electron carrier concentration: {}'.format(n0))
-
-    # hole carrier concentration integration
-    int_hole = []
-    for i in range(len(dos[0])):
-        energy = dos[0][i]
-        rho = dos[1][i]
-        if energy <= 0:
+        elif energy <= 0:
             int_hole.append(rho * fermi_dirac_electrons(energy, ef, T))
+    n0 = np.trapz(int_el, dx=dx)
     p0 = np.trapz(int_hole, dx=dx)
-    # print('INFO: calculated hole carrier concentration: {}'.format(p0))
 
     return n0, p0
 
