@@ -1,17 +1,28 @@
 import pytest
 import numpy as np
+from pathlib import Path
+from ase import Atoms
+from ase.io import write, read
+from .materials import BN, Ag, std_test_materials
+from asr.core import chdir
+from asr.defect_symmetry import (DefectInfo,
+                                 get_supercell_shape,
+                                 conserved_atoms,
+                                 compare_structures,
+                                 return_defect_coordinates,
+                                 get_spg_symmetry,
+                                 get_mapped_structure,
+                                 indexlist_cut_atoms,
+                                 WFCubeFile,
+                                 check_and_return_input)
 
 
 @pytest.mark.parametrize('defecttype', ['v', 'i', 'S'])
 @pytest.mark.parametrize('defectkind', ['Mo', 'Te'])
 @pytest.mark.ci
 def test_get_defect_info(asr_tmpdir, defecttype, defectkind):
-    from pathlib import Path
-    from asr.defect_symmetry import DefectInfo
-
     def get_defect_path(defecttype, defectkind):
         return Path(f'defects.XXX_000.{defecttype}_{defectkind}/charge_0')
-
     path = get_defect_path(defecttype, defectkind)
     defectinfo_from_path = DefectInfo(defectpath=path)
     defectinfo_from_input = DefectInfo(defecttype=defecttype, defectkind=defectkind)
@@ -28,9 +39,6 @@ def test_get_defect_info(asr_tmpdir, defecttype, defectkind):
 
 @pytest.mark.ci
 def test_get_supercell_shape(asr_tmpdir):
-    from .materials import BN
-    from asr.defect_symmetry import get_supercell_shape
-
     atoms = BN.copy()
     for i in range(1, 10):
         for j in range(1, 10):
@@ -42,9 +50,6 @@ def test_get_supercell_shape(asr_tmpdir):
 @pytest.mark.parametrize('is_vacancy', [True, False])
 @pytest.mark.ci
 def test_conserved_atoms(is_vacancy):
-    from asr.defect_symmetry import conserved_atoms
-    from .materials import BN
-
     atoms = BN.copy()
     for i in range(2, 10):
         for j in range(len(atoms) * i):
@@ -67,9 +72,6 @@ def test_conserved_atoms(is_vacancy):
 @pytest.mark.parametrize('sc_size', [1, 2, 3, 4, 5])
 @pytest.mark.ci
 def test_compare_structures(sc_size):
-    from asr.defect_symmetry import compare_structures
-    from .materials import BN
-
     atoms = BN.copy()
 
     indices = compare_structures(atoms, atoms, 0.1)
@@ -85,9 +87,6 @@ def test_compare_structures(sc_size):
 @pytest.mark.parametrize('defectkind', ['Te', 'W'])
 @pytest.mark.ci
 def test_return_defect_coordinates(defecttype, defectkind):
-    from asr.defect_symmetry import return_defect_coordinates, DefectInfo
-    from .materials import BN
-
     atoms = BN.copy()
     supercell = atoms.repeat((3, 3, 1))
     defectinfo = DefectInfo(defecttype=defecttype, defectkind=defectkind)
@@ -103,11 +102,8 @@ def test_return_defect_coordinates(defecttype, defectkind):
 
 @pytest.mark.ci
 def test_get_spg_symmetry():
-    from .materials import BN, Ag
-    from asr.defect_symmetry import get_spg_symmetry
-
     results = ['D3h', 'Oh']
-    for i, atoms in enumerate([BN, Ag]):
+    for i, atoms in enumerate([BN.copy(), Ag.copy()]):
         sym = get_spg_symmetry(atoms)
         assert sym == results[i]
 
@@ -116,11 +112,7 @@ def test_get_spg_symmetry():
 @pytest.mark.parametrize('size', [10])
 @pytest.mark.ci
 def test_get_mapped_structure(asr_tmpdir, size, defect):
-    from .materials import BN
-    from pathlib import Path
-    from ase.io import write, read
     from asr.setup.defects import main as setup
-    from asr.defect_symmetry import get_mapped_structure, DefectInfo
 
     atoms = BN.copy()
     write('unrelaxed.json', atoms)
@@ -139,9 +131,6 @@ def test_get_mapped_structure(asr_tmpdir, size, defect):
 
 @pytest.mark.ci
 def test_indexlist_cut_atoms():
-    from .materials import std_test_materials
-    from ase import Atoms
-    from asr.defect_symmetry import indexlist_cut_atoms
 
     threshold = 1.01
     for atoms in std_test_materials:
@@ -176,7 +165,6 @@ def test_indexlist_cut_atoms():
 @pytest.mark.parametrize('spin', [0, 1])
 @pytest.mark.ci
 def test_WFCubeFile(band, spin):
-    from asr.defect_symmetry import WFCubeFile
 
     wfcubefiles = [
         WFCubeFile(spin=spin, band=band),
@@ -190,11 +178,6 @@ def test_WFCubeFile(band, spin):
 
 @pytest.mark.ci
 def test_check_and_return_input(asr_tmpdir):
-    from .materials import std_test_materials
-    from pathlib import Path
-    from asr.core import chdir
-    from ase.io import write
-    from asr.defect_symmetry import check_and_return_input
 
     for atoms in std_test_materials:
         folder = f'{atoms.get_chemical_formula()}'
