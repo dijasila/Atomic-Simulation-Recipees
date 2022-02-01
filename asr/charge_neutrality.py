@@ -386,6 +386,9 @@ def main(temp: float = 300,
                     defect_name=defecttype,
                     concentrations=concentration_tuples)
                 concentration_results.append(concentration_result)
+        else:
+            raise RuntimeError('self-consistent E_F evaluation failed '
+                               f'for {element}-poor conditions!')
 
         if E < 0.25 * gap:
             dop = 'p-type'
