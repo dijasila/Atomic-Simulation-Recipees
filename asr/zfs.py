@@ -10,9 +10,6 @@ def webpanel(result, row, key_description):
     for i, element in enumerate(zfs_array):
         for j in range(3):
             zfs_array[i, j] = result['D_vv'][i][j]
-        # zfs_array[i, 0] = f"{result.zfs['D_vv'][i][0]:.2f} MeV"
-        # zfs_array[i, 1] = f"{result.zfs['D_vv'][i][1]:.2f} MeV"
-        # zfs_array[i, 2] = f"{result.zfs['D_vv'][i][2]:.2f} MeV"
 
     zfs_table = matrixtable(zfs_array,
                             unit=' MHz',
