@@ -279,10 +279,10 @@ def get_above_below(evs, ef, vbm, cbm):
     above = False
     below = False
     for ev in evs:
-        if ev < cbm and ev > vbm and ev > ef:
-            above = True
-        elif ev < cbm and ev > vbm and ev < ef:
-            below = True
+        is_inside_gap = vbm < ev < cbm
+        if is_inside_gap:
+            above |= ev > ef
+            below |= ev < ef
 
     return (above, below)
 
