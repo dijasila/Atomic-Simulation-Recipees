@@ -43,11 +43,28 @@ def get_reduced_formula(formula, stoichiometry=False):
     return result
 
 
+def get_spg_href(url):
+    from asr.database.browser import href
+
+    return href('SpgLib', url)
+
+
+def describe_pointgroup_entry(spglib):
+    from asr.database.browser import describe_entry
+
+    pointgroup = describe_entry(
+        'pointgroup',
+        f"Point group determined with {spglib}."
+    )
+
+    return pointgroup
+
+
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (table, describe_entry, code, bold,
                                       br, href, dl, div)
 
-    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
+    spglib = get_spg_href('https://spglib.github.io/spglib/')
     crystal_type = describe_entry(
         'crystal_type',
         "The crystal type is defined as "
@@ -87,10 +104,7 @@ def webpanel(result, row, key_descriptions):
         f"{spg_list_link} number determined with {spglib}."
     )
 
-    pointgroup = describe_entry(
-        'pointgroup',
-        f"Point group determined with {spglib}."
-    )
+    pointgroup = describe_pointgroup_entry(spglib)
 
     icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
                      'https://icsd.products.fiz-karlsruhe.de/')
