@@ -306,10 +306,18 @@ def main(primitivefile: str = 'primitive.json',
     defectdir = Path('.')
     defectinfo = DefectInfo(defectpath=defectdir)
 
-    # check whether input is correct and return important structures
+    # everything where files are handled: input structures, wf_results,
+    # calculator and cubefilepaths
     structurefile = 'structure.json'
     structure, unrelaxed, primitive, pristine = check_and_return_input(
         structurefile, unrelaxedfile, primitivefile, pristinefile)
+    wf_result = read_json('results-asr.get_wfs.json')
+    pris_result = get_pristine_result()
+    atoms, calc = restart('gs.gpw', txt=None)
+    cubefilepaths = list(defectdir.glob('*.cube'))
+    if len(cubefilepaths) == 0:
+        raise FileNotFoundError('WARNING: no cube files available in this '
+                                'folder!')
 
     # construct mapped structure, or return relaxed defect structure in
     # case mapping is not needed
@@ -331,99 +339,44 @@ def main(primitivefile: str = 'primitive.json',
     center = return_defect_coordinates(structure, primitive, pristine, defectinfo)
     print(f'INFO: defect position: {center}, structural symmetry: {point_group}')
 
-    # return pristine results to visualise wavefunctions within the gap
-    pris_result = get_pristine_result()
+    # symmetry analysis only for point groups implemented in GPAW
+    if point_group in point_group_names:
+        checker = SymmetryChecker(point_group, center, radius=radius)
 
-    # read in calc once
-    atoms, calc = restart('gs.gpw', txt=None)
-
-    # read in cubefiles of the wavefunctions
-    cubefilepaths = list(defectdir.glob('*.cube'))
-    if len(cubefilepaths) == 0:
-        raise FileNotFoundError('WARNING: no cube files available in this '
-                                'folder!')
-
-    # check whether point group is implemented in GPAW, return results
-    # without symmetry analysis if it is not implmented
-    symmetry_results = []
-    if point_group not in point_group_names:
-        print(f'WARNING: point group {point_group} not implemented in GPAW. '
-              'Return results without symmetry analysis of the wavefunctions.')
-        for cubefilepath in cubefilepaths:
-            cubefilename = str(cubefilepath)
-            wfcubefile = WFCubeFile.fromfilename(cubefilename)
-            spin = wfcubefile.spin
-            band = wfcubefile.band
-            res_wf = find_wf_result(band, spin)
-            energy = res_wf['energy']
-
-            # calculate localization ratio
-            wf, atoms = read_cube_data(wfcubefile.filename)
-            localization = get_localization_ratio(atoms, wf, calc)
-            irrep_results = [IrrepResult.fromdata(
-                sym_name=None,
-                sym_score=None)]
-            symmetry_result = SymmetryResult.fromdata(irreps=irrep_results,
-                                                      best=None,
-                                                      error=None,
-                                                      loc_ratio=localization,
-                                                      state=band,
-                                                      spin=spin,
-                                                      energy=energy)
-            symmetry_results.append(symmetry_result)
-        return Result.fromdata(
-            defect_pointgroup=point_group,
-            defect_center=center,
-            defect_name=defectname,
-            symmetries=symmetry_results,
-            pristine=pris_result)
-
-    # symmetry analysis
-    checker = SymmetryChecker(point_group, center, radius=radius)
-
-    print('spin  band     norm    normcut     best    '
-          + ''.join(f'{x:8.3s}' for x in checker.group.symmetries) + 'error')
-
-    labels_up = []
-    labels_down = []
-
+    # loop over cubefiles to save symmetry results
     symmetry_results = []
     for cubefilepath in cubefilepaths:
         cubefilename = str(cubefilepath)
         wfcubefile = WFCubeFile.fromfilename(cubefilename)
-        spin = wfcubefile.spin
-        band = wfcubefile.band
-        res_wf = find_wf_result(band, spin)
+        res_wf = find_wf_result(wf_result, wfcubefile.band, wfcubefile.spin)
         energy = res_wf['energy']
-
         # calculate localization ratio
         wf, atoms = read_cube_data(wfcubefile.filename)
         localization = get_localization_ratio(atoms, wf, calc)
-
-        dct = checker.check_function(wf, (atoms.cell.T / wf.shape).T)
-        best = dct['symmetry']
-        norm = dct['norm']
-        normcut = dct['overlaps'][0]
-        error = (np.array(list(dct['characters'].values()))**2).sum()
-
-        print(f'{spin:6} {band:5} {norm:6.3f} {normcut:9.3f} {best:>8}'
-              + ''.join(f'{x:8.3f}' for x in dct['characters'].values())
-              + '{:9.3}'.format(error))
-
-        [labels_up, labels_down][0].append(best)
-
-        irrep_results = []
-        for element in dct['characters']:
-            irrep_result = IrrepResult.fromdata(sym_name=element,
-                                                sym_score=dct['characters'][element])
-            irrep_results.append(irrep_result)
+        # only evaluate 'best' and 'error' for knows point groups
+        if point_group in point_group_names:
+            dct = checker.check_function(wf, (atoms.cell.T / wf.shape).T)
+            best = dct['symmetry']
+            error = (np.array(list(dct['characters'].values()))**2).sum()
+            irrep_results = []
+            for element in dct['characters']:
+                irrep_result = IrrepResult.fromdata(
+                    sym_name=element, sym_score=dct['characters'][element])
+                irrep_results.append(irrep_result)
+        # otherwise, set irrep results and 'best', 'error' to None
+        else:
+            irrep_results = [IrrepResult.fromdata(
+                sym_name=None,
+                sym_score=None)]
+            best = None
+            error = None
 
         symmetry_result = SymmetryResult.fromdata(irreps=irrep_results,
                                                   best=best,
                                                   error=error,
                                                   loc_ratio=localization,
-                                                  state=band,
-                                                  spin=spin,
+                                                  state=wfcubefile.band,
+                                                  spin=wfcubefile.spin,
                                                   energy=energy)
         symmetry_results.append(symmetry_result)
 
@@ -491,10 +444,9 @@ def get_localization_ratio(atoms, wf, calc):
     return local_ratio
 
 
-def find_wf_result(state, spin):
+def find_wf_result(wf_result, state, spin):
     """Read in results of asr.get_wfs and returns WaveFunctionResult."""
-    res = read_json('results-asr.get_wfs.json')
-    wfs = res['wfs']
+    wfs = wf_result['wfs']
     for wf in wfs:
         if wf['state'] == state and wf['spin'] == spin:
             return wf
@@ -687,11 +639,11 @@ class WFCubeFile:
 
         write(self.filename, self.calc.atoms, data=self.wf_data)
 
-    def get_wavefunction_from_calc(self, calc):
-        wf = calc.get_pseudo_wave_function(band=self.band, spin=self.spin)
-        self.wf = wf
-
-        return wf
+    def get_wavefunction_from_calc(self):
+        assert self.calc is not None, ('initialize WFCubeFile class with a '
+                                       'calculator to obtain wavefunction!')
+        wf = self.calc.get_pseudo_wave_function(band=self.band, spin=self.spin)
+        self.wf_data = wf
 
 
 class DefectInfo:
@@ -731,10 +683,7 @@ class DefectInfo:
 
     @property
     def is_vacancy(self):
-        if self.defecttype == 'v':
-            return True
-        else:
-            return False
+        return self.defecttype == 'v'
 
 
 def return_defect_coordinates(structure, primitive, pristine, defectinfo):
