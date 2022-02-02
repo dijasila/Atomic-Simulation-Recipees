@@ -750,7 +750,7 @@ def return_defect_coordinates(structure, primitive, pristine, defectinfo):
     return pos
 
 
-def draw_band_edge(energy, edge, color, offset=2, ax=None):
+def draw_band_edge(energy, edge, color, *, offset=2, ax):
     if edge == 'vbm':
         eoffset = energy - offset
         elabel = energy - offset / 2
@@ -771,30 +771,32 @@ def split(word):
 class Level:
     """Class to draw a single defect state level in the gap."""
 
-    def __init__(self, energy, size=0.05, ax=None):
+    def __init__(self, energy, spin, deg, off, size=0.05, ax=None):
         self.size = size
         self.energy = energy
         self.ax = ax
+        self.spin = spin
+        self.deg = deg
+        assert deg in [1, 2], ('only degeneracies up to two are '
+                               'implemented!')
+        self.off = off
+        self.relpos = self.get_relative_position(self.spin, self.deg, self.off)
 
-    def draw(self, spin, deg, off):
-        """Draw the defect state according to spin and degeneracy."""
+    def get_relative_position(self, spin, deg, off):
+        """Set relative position of the level based on spin, degeneracy and offset."""
         xpos_deg = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]]
         xpos_nor = [1 / 4, 3 / 4]
         if deg == 2:
             relpos = xpos_deg[spin][off]
         elif deg == 1:
             relpos = xpos_nor[spin]
-        pos = [relpos - self.size, relpos + self.size]
-        self.relpos = relpos
-        self.spin = spin
-        self.deg = deg
-        self.off = off
 
-        if deg == 1:
-            self.ax.plot(pos, [self.energy] * 2, '-k')
+        return relpos
 
-        if deg == 2:
-            self.ax.plot(pos, [self.energy] * 2, '-k')
+    def draw(self):
+        """Draw the defect state according to spin and degeneracy."""
+        pos = [self.relpos - self.size, self.relpos + self.size]
+        self.ax.plot(pos, [self.energy] * 2, '-k')
 
     def add_occupation(self, length):
         """Draw an arrow if the defect state if occupied."""
@@ -859,7 +861,8 @@ def plot_gapstates(row, fname):
     levelflag = data.symmetries[0].best is not None
     # draw the levels with occupations, and labels for both spins
     for spin in [0, 1]:
-        draw_levels_occupations_labels(ax, spin, data, ecbm, evbm,
+        spin_data = get_spin_data(data, spin)
+        draw_levels_occupations_labels(ax, spin, spin_data, ecbm, evbm,
                                        ef, gap, levelflag)
 
     ax1 = ax.twinx()
@@ -877,36 +880,70 @@ def plot_gapstates(row, fname):
     plt.close()
 
 
-def draw_levels_occupations_labels(ax, spin, data, ecbm, evbm, ef,
-                                   gap, levelflag):
-    """Loop over all states in the gap and plot the levels."""
-    i = 0
-    degoffset = 0
+def get_spin_data(data, spin):
+    """Create symmetry result only containing entries for one spin channel."""
+    spin_data = []
     for sym in data.data['symmetries']:
         if int(sym.spin) == spin:
-            energy = sym.energy
-            if energy < ecbm and energy > evbm:
-                spin = int(sym.spin)
-                irrep = sym.best
-                if levelflag:
-                    deg = [1, 2]['E' in irrep]
-                else:
-                    deg = 1
-                    degoffset = 1
-                if deg == 2 and i == 0:
-                    degoffset = 0
-                    i = 1
-                elif deg == 2 and i == 1:
-                    degoffset = 1
-                    i = 0
-                lev = Level(energy, ax=ax)
-                lev.draw(spin=spin, deg=deg, off=degoffset)
-                if energy <= ef:
-                    lev.add_occupation(length=gap / 15.)
-                if levelflag:
-                    lev.add_label(irrep)
-                else:
-                    lev.add_label(irrep, 'A')
+            spin_data.append(sym)
+
+    return spin_data
+
+
+def draw_levels_occupations_labels(ax, spin, spin_data, ecbm, evbm, ef,
+                                   gap, levelflag):
+    """Loop over all states in the gap and plot the levels.
+
+    This function loops over all states in the gap of a given spin
+    channel, and dravs the states with labels. If there are
+    degenerate states, it makes use of the degeneracy_counter, i.e. if two
+    degenerate states follow after each other, one of them will be drawn
+    on the left side (degoffset=0, degeneracy_counter=0), the degeneracy
+    counter will be increased by one and the next degenerate state will be
+    drawn on the right side (degoffset=1, degeneracy_counter=1). Since we
+    only deal with doubly degenerate states here, the degeneracy counter
+    will be set to zero again after drawing the second degenerate state.
+
+    For non degenerate states, i.e. deg = 1, all states will be drawn
+    in the middle and the counter logic is not needed.
+    """
+    # initialize degeneracy counter and offset
+    degeneracy_counter = 0
+    degoffset = 0
+    for sym in spin_data:
+        energy = sym.energy
+        is_inside_gap = evbm < energy < ecbm
+        if is_inside_gap:
+            spin = int(sym.spin)
+            irrep = sym.best
+            # only do drawing left and right if levelflag, i.e.
+            # if there is a symmetry analysis to evaluate degeneracies
+            if levelflag:
+                deg = [1, 2]['E' in irrep]
+            else:
+                deg = 1
+                degoffset = 1
+            # draw draw state on the left hand side
+            if deg == 2 and degeneracy_counter == 0:
+                degoffset = 0
+                degeneracy_counter = 1
+            # draw state on the right hand side, set counter to zero again
+            elif deg == 2 and degeneracy_counter == 1:
+                degoffset = 1
+                degeneracy_counter = 0
+            # intitialize and draw the energy level
+            lev = Level(energy, ax=ax, spin=spin, deg=deg,
+                        off=degoffset)
+            lev.draw()
+            # add occupation arrow if level is below E_F
+            if energy <= ef:
+                lev.add_occupation(length=gap / 15.)
+            # draw label based on irrep
+            if levelflag:
+                static = None
+            else:
+                static = 'A'
+            lev.add_label(irrep, static=static)
 
 
 def check_and_return_input(structurefile='', unrelaxedfile='NO',
