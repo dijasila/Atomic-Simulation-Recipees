@@ -267,9 +267,7 @@ def return_gapstates(calc_def):
                                            "in energy referencing")
 
     # evaluate states within the gap
-    statelist = []
-    [statelist.append(i) for i, state in enumerate(ev_def) if (
-        state < cbm and state > vbm)]
+    statelist = [i for i, state in enumerate(ev_def) if vbm < state < cbm]
 
     return statelist, above_below, dif
 
@@ -289,11 +287,8 @@ def get_above_below(evs, ef, vbm, cbm):
 
 def return_erange_states(evs, ef, erange):
     """Return states within a certain energy range wrt. the Fermi level."""
-    statelist = []
-    [statelist.append(i) for i, state in enumerate(evs) if (
-        state >= (ef + erange[0]) and state <= (ef + erange[1]))]
-
-    return statelist
+    return [i for i, state in enumerate(evs) if (
+        (ef + erange[0]) <= state <= (ef + erange[1]))]
 
 
 if __name__ == '__main__':
