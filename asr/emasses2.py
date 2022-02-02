@@ -175,13 +175,26 @@ def main(data: dict,
 
     cell_cv = data['cell_cv'][axes][:, axes]
 
-    k_kv = k_ijkc.reshape((-1, 3))[:, axes] @ np.linalg.inv(cell_cv).T * 2 * pi
+    k_kc = k_ijkc.reshape((-1, 3))[:, axes]
     e_kn = e_ijkn.reshape((-1, e_ijkn.shape[3]))
 
+    if 0:
+        print(e_ijkn[:, :, 0, 0])
+        import matplotlib.pyplot as plt
+        plt.contourf(e_ijkn[:, :, 0, 1])
+        plt.show()
+
+    things = []
     for e_k in e_kn.T:
-        k_v, energy, mass_w, direction_wv, error_k = fit(
-            k_kv, e_k, None, cell_cv,
-            log=log)
+        try:
+            k_v, energy, mass_w, direction_wv, error_k = fit(
+                k_kc, e_k, None, cell_cv,
+                log=log)
+        except NoMinimum:
+            pass
+        else:
+            things.append((k_v, energy, mass_w, direction_wv, error_k))
+    return things
 
 
 def find_extrema(cell_cv,
@@ -209,7 +222,7 @@ def find_extrema(cell_cv,
         bands = slice(nocc, nocc + 6)
         eig_ijkn = eig_ijkn[..., bands]
     else:
-        bands = slice(nocc - 1, None, -1)
+        bands = slice(nocc - 1, nocc - 7 if nocc - 7 >= 0 else None, -1)
         # bands = slice(nocc - 1, nocc-4, -1)
         eig_ijkn = -eig_ijkn[..., bands]
 
@@ -218,6 +231,7 @@ def find_extrema(cell_cv,
 
     ijk = eig_ijkn[:, :, :, 0].ravel().argmin()
     i, j, k = np.unravel_index(ijk, (K1, K2, K3))
+    print(i, j, k)
 
     dk = 3
     r1 = [0] if K1 == 1 else [x % K1 for x in range(i - dk, i + dk + 1)]
@@ -247,20 +261,27 @@ def k2str(k_v, cell_cv):
     return f'({v}) Ang^-1 = ({c})'
 
 
-def fit(k_kv, eig_k, spinproj_kv,
+def fit(k_kc, eig_k, spinproj_kv,
         cell_cv,
         npoints=None,
         log=print):
-    dims = k_kv.shape[1]
+    dims = k_kc.shape[1]
     npoints = npoints or [7, 15, 25][dims - 1]
 
     def K(k_v):
         return k2str(k_v, cell_cv)
 
-    kmin_v = k_kv[eig_k.argmin()].copy()
-    k_kv -= kmin_v
+    k0_c = k_kc[eig_k.argmin()]
+    if (k0_c <= k_kc.min(0)).any() or (k0_c >= k_kc.max(0)).any():
+        log('  Minimum too close to edge of box!')
+        raise NoMinimum
+
+    k_kv = k_kc @ np.linalg.inv(cell_cv).T * 2 * pi
+    k0_v = k_kv[eig_k.argmin()]
+
+    k_kv -= k0_v
     k = (k_kv**2).sum(1).argsort()[:npoints]
-    log(f'Fitting to {len(k)} points close to {K(kmin_v)}:')
+    log(f'Fitting to {len(k)} points close to {K(k0_v)}:')
 
     if len(k) < npoints:
         log('  Too few points!')
@@ -290,7 +311,7 @@ def fit(k_kv, eig_k, spinproj_kv,
     evals_w, evec_vw = np.linalg.eigh(hessian_vv)
     mass_w = Bohr**2 * Ha / evals_w
 
-    log(f'  Found minimum: {K(k_v + kmin_v)}, {emin:.3f} eV')
+    log(f'  Found minimum: {K(k_v + k0_v)}, {emin:.3f} eV')
     for w, (mass, evec_v) in enumerate(zip(mass_w, evec_vw.T)):
         log(f'    Mass #{w}: {mass:.3f} m_e, {K(evec_v)}')
 
@@ -298,7 +319,7 @@ def fit(k_kv, eig_k, spinproj_kv,
         log('  Unrealistic mass!')
         raise NoMinimum
 
-    return k_v + kmin_v, emin, mass_w, evec_vw.T, error_k
+    return k_v + k0_v, emin, mass_w, evec_vw.T, error_k
 
 
 class Fit3D:
@@ -310,7 +331,8 @@ class Fit3D:
         elif self.dims == 2:
             x, y = k_iv.T
             f_ji = np.array(
-                [x**0, x, y, x**2, y**2, x * y, x**3, y**3, x**2 * y, y**2 * x])
+                [x**0, x, y, x**2, y**2, x * y,
+                 x**3, y**3, x**2 * y, y**2 * x])
         else:
             x, y, z = k_iv.T
             f_ji = np.array(
