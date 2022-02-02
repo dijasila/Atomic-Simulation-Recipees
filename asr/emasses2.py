@@ -178,12 +178,6 @@ def main(data: dict,
     k_kc = k_ijkc.reshape((-1, 3))[:, axes]
     e_kn = e_ijkn.reshape((-1, e_ijkn.shape[3]))
 
-    if 0:
-        print(e_ijkn[:, :, 0, 0])
-        import matplotlib.pyplot as plt
-        plt.contourf(e_ijkn[:, :, 0, 1])
-        plt.show()
-
     things = []
     for e_k in e_kn.T:
         try:
@@ -266,7 +260,7 @@ def fit(k_kc, eig_k, spinproj_kv,
         npoints=None,
         log=print):
     dims = k_kc.shape[1]
-    npoints = npoints or [7, 15, 25][dims - 1]
+    npoints = npoints or [7, 25, 55][dims - 1]
 
     def K(k_v):
         return k2str(k_v, cell_cv)
@@ -277,7 +271,7 @@ def fit(k_kc, eig_k, spinproj_kv,
         raise NoMinimum
 
     k_kv = k_kc @ np.linalg.inv(cell_cv).T * 2 * pi
-    k0_v = k_kv[eig_k.argmin()]
+    k0_v = k_kv[eig_k.argmin()].copy()
 
     k_kv -= k0_v
     k = (k_kv**2).sum(1).argsort()[:npoints]
@@ -320,6 +314,56 @@ def fit(k_kc, eig_k, spinproj_kv,
         raise NoMinimum
 
     return k_v + k0_v, emin, mass_w, evec_vw.T, error_k
+
+
+from itertools import combinations_with_replacement
+from collections import defaultdict
+
+
+def deriv(f, d):
+    return [f[:i] + f[i + 1:] for i, x in enumerate(f) if x == d]
+
+
+def tuples2str(tuples):
+    if not tuples:
+        return '0'
+    assert len(set(tuples)) == 1
+    return '*'.join([str(len(tuples))] + ['xyz'[d] for d in tuples[0]])
+    D = defaultdict(int)
+    for t in tt:
+        D[t] += 1
+    if D:
+        code = '+'.join('*'.join([str(n)] + ['xyz'[d] for d in t])
+                        for t, n in D.items())
+    else:
+        code = '0'
+    return code
+
+
+class PolyFit:
+    def __init__(self, N, D):
+        t0 = []
+        for n in range(N + 1):
+            t0.extend(combinations_with_replacement(range(D), n))
+        args = ', '.join('xyz'[:D])
+        values = ', '.join(tuples2str([t]) for t in t0)
+        self.functions = eval(compile(f'lambda {args}: [{values}]', '', 'eval'))
+        print(values)
+        t1 = [[deriv(t, d) for t in t0] for d in range(D)]
+        for d in range(D):
+            print([tuples2str(tt) for tt in t1[d]])
+        t2 = [[[sum((deriv(t, d2) for t in tt), start=[]) for tt in t1[d1]]
+               for d1 in range(D)]
+              for d2 in range(D)]
+        for d1 in range(D):
+            for d2 in range(D):
+                print([tuples2str(tt) for tt in t2[d1][d2]])
+
+    def value(self, k_v):
+        return self.coefs @ self.functions(*k_v)
+
+
+PolyFit(4, 3)
 
 
 class Fit3D:
