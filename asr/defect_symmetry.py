@@ -1,6 +1,7 @@
 from ase.io import read
 from asr.core import command, option, ASRResult, prepare_result, read_json
 from asr.database.browser import make_panel_description, href
+import spglib as spg
 import typing
 import numpy as np
 import warnings
@@ -46,7 +47,7 @@ def get_matrixtable_array(state_results, vbm, cbm, ef,
         rowname = f"{int(state_results[i]['state']):.0f}"
         label = str(state_results[i]['best'])
         labelstr = label.lower()
-        splitstr = split(labelstr)
+        splitstr = list(labelstr)
         if len(splitstr) == 2:
             labelstr = f'{splitstr[0]}<sub>{splitstr[1]}</sub>'
         if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
@@ -154,7 +155,7 @@ def get_summary_table(result, row):
     spglib = get_spg_href('https://spglib.github.io/spglib/')
     basictable = table(row, 'Defect properties', [])
     pg_string = result.defect_pointgroup
-    pg_strlist = split(pg_string)
+    pg_strlist = list(pg_string)
     sub = ''.join(pg_strlist[1:])
     pg_string = f'{pg_strlist[0]}<sub>{sub}</sub>'
     pointgroup = describe_pointgroup_entry(spglib)
@@ -539,8 +540,6 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
 
 def get_spg_symmetry(structure, symprec=0.1):
     """Return the symmetry of a given structure evaluated with spglib."""
-    import spglib as spg
-
     spg_sym = spg.get_spacegroup(structure, symprec=symprec, symbol_type=1)
 
     return spg_sym.split('^')[0]
@@ -713,13 +712,11 @@ class DefectInfo:
 
     def _get_defect_type_and_kind_from_path(self, defectpath):
         """Return defecttype, and kind."""
-        from pathlib import Path
-        defectpath = Path(defectpath)
-
-        defecttype = str(defectpath.absolute()).split(
-            '/')[-2].split('_')[-2].split('.')[-1]
-        defectkind = str(defectpath.absolute()).split(
-            '/')[-2].split('_')[-1]
+        complete_defectpath = Path(defectpath.absolute())
+        dirname = complete_defectpath.parent.name
+        defect_tokens = dirname.split('_')
+        defecttype = defect_tokens[-2].split('.')[-1]
+        defectkind = defect_tokens[-1]
 
         return defecttype, defectkind
 
@@ -762,10 +759,6 @@ def draw_band_edge(energy, edge, color, *, offset=2, ax):
     ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color='grey', alpha=0.5)
     ax.text(0.5, elabel, edge.upper(), color='w', weight='bold', ha='center',
             va='center')
-
-
-def split(word):
-    return [char for char in word]
 
 
 class Level:
@@ -814,7 +807,7 @@ class Level:
         labelcolor = 'C3'
         if static is None:
             labelstr = label.lower()
-            splitstr = split(labelstr)
+            splitstr = list(labelstr)
             if len(splitstr) == 2:
                 labelstr = f'{splitstr[0]}$_{splitstr[1]}$'
         else:
