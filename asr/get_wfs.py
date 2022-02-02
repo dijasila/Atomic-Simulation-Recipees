@@ -230,10 +230,12 @@ def return_gapstates(calc_def):
         res_pris = read_json(pris_folder / 'results-asr.gs.json')
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         struc_def, calc_def = restart(p / 'gs.gpw', txt=None)
-    except FileNotFoundError:
-        print('ERROR: does not find pristine gs, pristine results, or defect'
-              ' results. Did you run setup.defects and calculate the ground'
-              ' state for defect and pristine system?')
+    except FileNotFoundError as err:
+        msg = (
+            'does not find pristine gs, pristine results, or defect'
+            ' results. Did you run setup.defects and calculate the ground'
+            ' state for defect and pristine system?')
+        raise RuntimeError(msg) from err
 
     # evaluate which atom possesses maximum distance to the defect site
     ref_index = get_reference_index(def_index, struc_pris)
