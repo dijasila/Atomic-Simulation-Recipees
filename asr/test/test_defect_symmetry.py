@@ -78,7 +78,7 @@ def test_compare_structures(sc_size):
     assert len(indices) == sc_size * sc_size * len(atoms) - 2
 
 
-@pytest.mark.parametrize('defecttype', ['v', 'i', 'S'])
+@pytest.mark.parametrize('defecttype', ['v', 'S'])
 @pytest.mark.parametrize('defectkind', ['Te', 'W'])
 @pytest.mark.ci
 def test_return_defect_coordinates(defecttype, defectkind):
@@ -86,8 +86,12 @@ def test_return_defect_coordinates(defecttype, defectkind):
     supercell = atoms.repeat((3, 3, 1))
     defectinfo = DefectInfo(defecttype=defecttype, defectkind=defectkind)
 
-    for i in range(len(supercell)):
+    for i in range(len(atoms)):
         system = supercell.copy()
+        if defecttype == 'v':
+            system.pop(i)
+        else:
+            system.symbols[i] = defecttype
         ref_position = supercell.get_positions()[i]
         position = return_defect_coordinates(
             system, atoms, supercell, defectinfo)
