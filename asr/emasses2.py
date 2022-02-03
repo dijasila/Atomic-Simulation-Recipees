@@ -1,6 +1,7 @@
 """Effective masses - version 117."""
 # noqa: W504
 import pickle
+from itertools import combinations_with_replacement
 from math import pi
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
@@ -285,7 +286,8 @@ def fit(k_kc, eig_k, spinproj_kv,
     eig_k = eig_k[k]
 
     try:
-        fit = Fit3D(k_kv, eig_k)
+        # fit = Fit3D(k_kv, eig_k)
+        fit = PolyFit(k_kv, eig_k, 3)
     except np.linalg.LinAlgError:
         log('   Bad minimum!')
         raise NoMinimum
@@ -316,10 +318,6 @@ def fit(k_kc, eig_k, spinproj_kv,
     return k_v + k0_v, emin, mass_w, evec_vw.T, error_k
 
 
-from itertools import combinations_with_replacement
-from collections import defaultdict
-
-
 def deriv(f, d):
     return [f[:i] + f[i + 1:] for i, x in enumerate(f) if x == d]
 
@@ -329,62 +327,54 @@ def tuples2str(tuples):
         return '0'
     assert len(set(tuples)) == 1
     return '*'.join([str(len(tuples))] + ['xyz'[d] for d in tuples[0]])
-    D = defaultdict(int)
-    for t in tt:
-        D[t] += 1
-    if D:
-        code = '+'.join('*'.join([str(n)] + ['xyz'[d] for d in t])
-                        for t, n in D.items())
-    else:
-        code = '0'
-    return code
 
 
 class PolyFit:
-    def __init__(self, N, D):
+    def __init__(self, x, y, order=2, verbose=False):
+        ndims = x.shape[1]
+        self.ndims = ndims
+
         t0 = []
-        for n in range(N + 1):
-            t0.extend(combinations_with_replacement(range(D), n))
-        args = ', '.join('xyz'[:D])
-        values = ', '.join(tuples2str([t]) for t in t0)
-        self.functions = eval(compile(f'lambda {args}: [{values}]', '', 'eval'))
-        print(values)
-        t1 = [[deriv(t, d) for t in t0] for d in range(D)]
-        for d in range(D):
-            print([tuples2str(tt) for tt in t1[d]])
+        for n in range(order + 1):
+            t0.extend(combinations_with_replacement(range(ndims), n))
+        args = ', '.join('xyz'[:ndims])
+        s0 = ', '.join(tuples2str([t]) for t in t0)
+        self.f0 = eval(compile(f'lambda {args}: [{s0}]', '', 'eval'))
+
+        t1 = [[deriv(t, d) for t in t0] for d in range(ndims)]
+        s1 = '], ['.join(', '.join(tuples2str(tt)
+                                   for tt in t1[d])
+                         for d in range(ndims))
+        self.f1 = eval(compile(f'lambda {args}: [[{s1}]]', '', 'eval'))
+
         t2 = [[[sum((deriv(t, d2) for t in tt), start=[]) for tt in t1[d1]]
-               for d1 in range(D)]
-              for d2 in range(D)]
-        for d1 in range(D):
-            for d2 in range(D):
-                print([tuples2str(tt) for tt in t2[d1][d2]])
+               for d1 in range(ndims)]
+              for d2 in range(ndims)]
+        s2 = ']], [['.join('], ['.join(', '.join(tuples2str(tt)
+                                                 for tt in t2[d1][d2])
+                                       for d1 in range(ndims))
+                           for d2 in range(ndims))
+        self.f2 = eval(compile(f'lambda {args}: [[[{s2}]]]', '', 'eval'))
+
+        M = self.f0(*x.T)
+        M[0] = np.ones(len(x))
+        M = np.array(M)
+        self.coefs = np.linalg.solve(M @ M.T, M @ y)
+
+        if verbose:
+            print(f'[{s0}]')
+            print(f'[[{s0}]]')
+            print(f'[[[{s0}]]]')
+            print(self.coefs)
 
     def value(self, k_v):
-        return self.coefs @ self.functions(*k_v)
+        return self.f0(*k_v) @ self.coefs
 
+    def gradient(self, k_v):
+        return self.f1(*k_v) @ self.coefs
 
-PolyFit(4, 3)
-
-
-class Fit3D:
-    def __init__(self, k_iv, eig_i):
-        self.dims = k_iv.shape[1]
-        if self.dims == 1:
-            x = k_iv[:, 0]
-            f_ji = np.array([x**0, x, x**2, x**3])
-        elif self.dims == 2:
-            x, y = k_iv.T
-            f_ji = np.array(
-                [x**0, x, y, x**2, y**2, x * y,
-                 x**3, y**3, x**2 * y, y**2 * x])
-        else:
-            x, y, z = k_iv.T
-            f_ji = np.array(
-                [x**0, x, y, z, x**2, y**2, z**2, x * y, y * z, z * x,
-                 x**3, y**3, z**3,
-                 x**2 * y, x**2 * z, y**2 * x, y**2 * z, z**2 * x, z**2 * y,
-                 x * y * z])
-        self.coef_j = np.linalg.solve(f_ji @ f_ji.T, f_ji @ eig_i)
+    def hessian(self, k_v):
+        return self.f2(*k_v) @ self.coefs
 
     def find_minimum(self, k_v=None):
         from scipy.optimize import minimize
@@ -393,53 +383,10 @@ class Fit3D:
             return self.value(k_v), self.gradient(k_v)
 
         if k_v is None:
-            k_v = np.zeros(self.dims)
+            k_v = np.zeros(self.ndims)
 
         result = minimize(f, k_v, jac=True, method='Newton-CG')
         return result.x
-
-    def value(self, k_v):
-        if self.dims == 1:
-            x = k_v[0]
-            c, cx, cxx, cxxx = self.coef_j
-            return c + cx * x + cxx * x**2 + cxxx * x**3
-        if self.dims == 2:
-            x, y = k_v
-            c, cx, cy, cxx, cyy, cxy, cxxx, cyyy, cxxy, cxyy = self.coef_j
-            return (
-                c + cx * x + cy * y + cxx * x**2 + cxy * x * y +  # noqa: W504
-                cyy * y**2 + cxxx * x**3 + cxxy * x**2 * y +  # noqa: W504
-                cxyy * x * y**2 + cyyy * y**3)
-        1 / 0
-
-    def gradient(self, k_v):
-        if self.dims == 1:
-            x = k_v[0]
-            _, cx, cxx, cxxx = self.coef_j
-            return [cx + 2 * cxx * x + 3 * cxxx * x**2]
-        if self.dims == 2:
-            x, y = k_v
-            _, cx, cy, cxx, cyy, cxy, cxxx, cyyy, cxxy, cxyy = self.coef_j
-            return [
-                cx + 2 * cxx * x + cxy * y +  # noqa: W504
-                3 * cxxx * x**2 + 2 * cxxy * x * y + cxyy * y**2,
-                cy + 2 * cyy * y + cxy * x +  # noqa: W504
-                3 * cyyy * y**2 + 2 * cxyy * x * y + cxxy * x**2]
-        1 / 0
-
-    def hessian(self, k_v):
-        if self.dims == 1:
-            x = k_v[0]
-            _, _, cxx, cxxx = self.coef_j
-            return [[2 * cxx + 6 * cxxx * x]]
-        if self.dims == 2:
-            x, y = k_v
-            _, _, _, cxx, cyy, cxy, cxxx, cyyy, cxxy, cxyy = self.coef_j
-            return [[2 * cxx + 6 * cxxx * x + 2 * cxxy * y,
-                     cxy + 2 * cxyy * y + 2 * cxxy * x],
-                    [cxy + 2 * cxyy * y + 2 * cxxy * x,
-                     2 * cyy + 6 * cyyy * y + 2 * cxyy * x]]
-        1 / 0
 
 
 def cli():
@@ -457,4 +404,16 @@ def cli():
 
 
 if __name__ == '__main__':
-    cli()
+    if 0:
+        cli()
+    x = np.linspace(-1, 1, 5)
+    xy = np.empty((5, 5, 2))
+    xy[:, :, 0] = x[:, None]
+    xy[:, :, 1] = x
+    xy.shape = (25, 2)
+    z = xy[:, 0]**2 + 2 * xy[:, 1]**2
+    pf = PolyFit(xy, z, 2)
+    print(pf.value([1, 1]))
+    print(pf.gradient([1, 1]))
+    print(pf.hessian([1, 1]))
+    print(pf.find_minimum([1, 1]))
