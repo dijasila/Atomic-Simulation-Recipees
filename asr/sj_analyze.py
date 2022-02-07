@@ -222,8 +222,10 @@ def main(index: int = None) -> Result:
     from ase.db import connect
     from ase.io import read
     from asr.core import read_json
+    from asr.defect_symmetry import DefectInfo
 
     p = Path('.')
+    defectinfo = DefectInfo(defectpath=p)
     struc_pris, struc_def, calc_pris, calc_def = get_strucs_and_calcs(p)
 
     # get heat of formation
@@ -250,7 +252,7 @@ def main(index: int = None) -> Result:
     etot_pris = results_pris['etot']
     oqmd = connect('/home/niflheim/fafb/db/oqmd12.db')
     eform, standard_states = calculate_neutral_formation_energy(etot_def, etot_pris,
-                                                                oqmd)
+                                                                oqmd, defectinfo)
 
     # get formation energies for all charge states based on neutral
     # formation energy, as well as charge transition levels, and pristine results
@@ -412,19 +414,16 @@ def obtain_chemical_potential(symbol, db):
         eref=eref)
 
 
-def calculate_neutral_formation_energy(etot_def, etot_pris, db):
+def calculate_neutral_formation_energy(etot_def, etot_pris, db, defectinfo):
     """Calculate the neutral formation energy with chemical potential shift applied.
 
     Only the neutral one is needed as for the higher charge states we will use the sj
     transitions for the formation energy plot.
     """
-    from pathlib import Path
-    from asr.defect_symmetry import get_defect_info
-
     eform = etot_def - etot_pris
-
     # next, extract standard state energies for particular defect
-    def_add, def_remove = get_defect_info(defectpath=Path('.'))
+    def_add = defectinfo.defecttype
+    def_remove = defectinfo.defectkind
     # extract standard states of defect atoms from OQMD
     standard_states = []
     standard_states.append(obtain_chemical_potential(def_add, db))
