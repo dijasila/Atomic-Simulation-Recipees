@@ -1,5 +1,31 @@
 """Test Slater Janak recipe."""
 import pytest
+from .materials import Ag
+from ase.calculators.emt import EMT
+from ase.db import connect
+from ase.build import mx2
+from asr.database.material_fingerprint import get_uid_of_atoms, get_hash_of_atoms
+from asr.sj_analyze import (obtain_chemical_potential,
+                            calculate_formation_energies,
+                            order_transitions,
+                            get_heat_of_formation,
+                            calculate_neutral_formation_energy)
+from asr.defect_symmetry import DefectInfo
+
+
+def create_reference_db():
+    atoms = Ag.copy()
+    calc = EMT()
+    atoms.calc = calc
+    atoms.get_potential_energy()
+
+    db = connect('database.db')
+    db.write(atoms, ns=1)
+
+    return db
+
+
+ref_db = create_reference_db()
 
 transitions = [{
     'transition_name': '0/1',
@@ -18,7 +44,6 @@ transitions = [{
 @pytest.mark.parametrize('tran', [[transitions[0]], transitions[1]])
 @pytest.mark.ci
 def test_calculate_formation_energies(tran):
-    from asr.sj_analyze import calculate_formation_energies
     vbm = 0.4
     eform_0 = 1
     results = {
@@ -38,8 +63,6 @@ def test_calculate_formation_energies(tran):
 @pytest.mark.parametrize('ref_trans', ['1/2', '2/3', '-1/-2'])
 @pytest.mark.ci
 def test_ordered_transitions(ref_trans):
-    from asr.sj_analyze import order_transitions
-
     new = {'transition_name': ref_trans,
            'transition_values': {
                'transition': 1,
@@ -59,11 +82,6 @@ def test_ordered_transitions(ref_trans):
 @pytest.mark.parametrize('hof', [0.1, -1.1])
 @pytest.mark.ci
 def test_get_heat_of_formation(asr_tmpdir, hof):
-    from ase.db import connect
-    from ase.build import mx2
-    from asr.database.material_fingerprint import get_uid_of_atoms, get_hash_of_atoms
-    from asr.sj_analyze import get_heat_of_formation
-
     db = connect('database.db')
     atoms = mx2('MoS2')
     hash = get_hash_of_atoms(atoms)
@@ -77,21 +95,25 @@ def test_get_heat_of_formation(asr_tmpdir, hof):
 @pytest.mark.parametrize('symbol', ['v', 'Ag'])
 @pytest.mark.ci
 def test_obtain_chemical_potential(asr_tmpdir, symbol):
-    from ase.db import connect
-    from .materials import Ag
-    from ase.calculators.emt import EMT
-    from asr.sj_analyze import obtain_chemical_potential
-
-    atoms = Ag.copy()
-    calc = EMT()
-    atoms.calc = calc
-    en = atoms.get_potential_energy()
-    db = connect('database.db')
-    db.write(atoms, ns=1)
-
-    res_standard_states = obtain_chemical_potential(symbol, db)
+    res_standard_states = obtain_chemical_potential(symbol, ref_db)
     if symbol == 'v':
         assert res_standard_states['eref'] == pytest.approx(0)
     else:
+        for row in ref_db.select(formula=symbol):
+            en = row.energy
         assert res_standard_states['eref'] == pytest.approx(en)
     assert res_standard_states['element'] == symbol
+
+
+@pytest.mark.parametrize('edef', [-1, 0.5])
+@pytest.mark.parametrize('epris', [-2, -0.5])
+@pytest.mark.ci
+def test_calculate_neutral_formation_energy(edef, epris):
+    defectinfo = DefectInfo(defecttype='v', defectkind='Ag')
+    eform, standard_states = calculate_neutral_formation_energy(
+        edef, epris, ref_db, defectinfo)
+
+    ref_Ag = obtain_chemical_potential('Ag', ref_db)
+    eform_ref = edef - epris + ref_Ag['eref']
+
+    assert eform == pytest.approx(eform_ref)

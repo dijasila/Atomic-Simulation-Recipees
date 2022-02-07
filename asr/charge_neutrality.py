@@ -266,7 +266,7 @@ def main(temp: float = 300,
     from gpaw import restart
     # test input and read in defect dictionary from asr.sj_analyze results
     if defects == {}:
-        inputdict = get_defect_dict_from_file()
+        inputdict = get_defect_dict_from_files()
     else:
         inputdict = defects
 
@@ -590,7 +590,7 @@ def get_zero_formation_energy(defect):
     return eform, charge
 
 
-def get_defect_dict_from_file():
+def get_defect_dict_from_files():
     """Read in the results of asr.sj_analyze and store the formation energies at VBM."""
     from asr.core import read_json
     from pathlib import Path
