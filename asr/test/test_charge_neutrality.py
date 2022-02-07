@@ -164,3 +164,19 @@ def test_calculate_defect_concentration(eform):
         assert conc > 1
     elif eform > 0:
         assert conc < 1
+
+
+@pytest.mark.parametrize('gap', np.arange(0, 1.1, 0.5))
+@pytest.mark.ci
+def test_initialize_scf_loop(gap):
+    from asr.charge_neutrality import initialize_scf_loop
+
+    E, d, i, maxsteps, E_step, epsilon, converged = initialize_scf_loop(gap)
+
+    assert E == pytest.approx(0)
+    assert d == pytest.approx(1)
+    assert i == pytest.approx(0)
+    assert maxsteps == pytest.approx(1000)
+    assert E_step == pytest.approx(gap / 10.)
+    assert epsilon == pytest.approx(1e-12)
+    assert not converged

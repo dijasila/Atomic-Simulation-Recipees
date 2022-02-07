@@ -295,6 +295,8 @@ def main(temp: float = 300,
         defectdict = adjust_formation_energies(host, inputdict, element, hof)
         print(element, defectdict)
         # Initialize self-consistent loop for finding Fermi energy
+        E, d, i, maxsteps, E_step, epsilon, converged = initialize_scf_loop(
+            E=0, maxsteps=1000, epsilon=1e-12)
         E = 0
         d = 1  # directional parameter
         i = 0  # loop index
@@ -411,8 +413,8 @@ def main(temp: float = 300,
         gap=gap)
 
 
-def get_defect_info(defect):
-    return defect.split('_')[0], defect.split('_')[1]
+def initialize_scf_loop(gap, E=0, maxsteps=1000, epsilon=1e-12):
+    return E, 1, 0, maxsteps, gap / 10., epsilon, False
 
 
 def get_hof_from_sj_results():
