@@ -130,3 +130,23 @@ def test_convert_concentration_units(zsize, conc):
         assert False
     except NotImplementedError:
         assert True
+
+
+@pytest.mark.parametrize('p0', [1e3, 1e-4])
+@pytest.mark.parametrize('n0', [1e3, 2.3e2])
+@pytest.mark.ci
+def test_calculate_delta(p0, n0):
+    from asr.charge_neutrality import (calculate_delta,
+                                       check_delta_zero)
+
+    conc_list = [1e-2, 2e-2, 2e-2]
+    charge_list = [0, 1, -1]
+
+    delta = calculate_delta(conc_list, charge_list, n0, p0)
+    ref_delta = n0 - p0
+
+    assert delta == pytest.approx(ref_delta)
+    if delta == pytest.approx(0):
+        assert check_delta_zero(delta, conc_list, n0, p0)
+    else:
+        assert not check_delta_zero(delta, conc_list, n0, p0)
