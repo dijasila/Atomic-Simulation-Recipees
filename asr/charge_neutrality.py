@@ -322,7 +322,6 @@ def main(temp: float = 300,
                 for defect in defectdict[defecttype]:
                     eform = get_formation_energy(defect, E)
                     conc_def = calculate_defect_concentration(eform,
-                                                              defect[1],
                                                               sites,
                                                               degeneracy,
                                                               temp)
@@ -375,7 +374,6 @@ def main(temp: float = 300,
                 for defect in defectdict[defecttype]:
                     eform = get_formation_energy(defect, E)
                     conc_def = calculate_defect_concentration(eform,
-                                                              1,
                                                               1,
                                                               1,
                                                               temp)
@@ -559,7 +557,7 @@ def check_delta_zero(delta_new, conc_list, n0, p0):
         return False
 
 
-def calculate_defect_concentration(e_form, charge, sites, degeneracy, T):
+def calculate_defect_concentration(e_form, sites, degeneracy, T):
     """Calculate and return the defect concentration for a specific defect.
 
     For a particular charge state with the formation energy for a particular energy.

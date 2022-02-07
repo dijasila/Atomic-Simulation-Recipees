@@ -150,3 +150,17 @@ def test_calculate_delta(p0, n0):
         assert check_delta_zero(delta, conc_list, n0, p0)
     else:
         assert not check_delta_zero(delta, conc_list, n0, p0)
+
+
+@pytest.mark.parametrize('eform', [-1, 0, 1])
+@pytest.mark.ci
+def test_calculate_defect_concentration(eform):
+    from asr.charge_neutrality import calculate_defect_concentration
+
+    conc = calculate_defect_concentration(eform, 1, 1, 300)
+    if eform == 0:
+        assert conc == pytest.approx(1)
+    elif eform < 0:
+        assert conc > 1
+    elif eform > 0:
+        assert conc < 1
