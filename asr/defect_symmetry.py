@@ -649,13 +649,24 @@ class WFCubeFile:
 class DefectInfo:
     """Class containing all information about a specific single defect."""
 
-    def __init__(self, defectpath=None, defecttype=None, defectkind=None):
+    def __init__(self,
+                 defectpath=None,
+                 defecttype=None,
+                 defectkind=None,
+                 defectname=None):
         if defectpath is None:
-            assert (defecttype is not None and defectkind is not None), (
-                'DefectInfo class either needs a defect path (from asr.setup.'
-                'defects) or a defecttype and defectposition passed to it!')
-            self.defecttype = defecttype
-            self.defectkind = defectkind
+            if defectname is None:
+                assert (defecttype is not None and defectkind is not None), (
+                    'DefectInfo class either needs a defect path (from asr.setup.'
+                    'defects) or a defecttype and defectposition passed to it!')
+                self.defecttype = defecttype
+                self.defectkind = defectkind
+            else:
+                assert len(defectname.split('_')) == 2, (
+                    'Defect name has to be of the following structure: '
+                    f'"<defecttype>_<defectkind>"')
+                self.defecttype = defectname.split('_')[0]
+                self.defectkind = defectname.split('_')[1]
         else:
             self.defecttype, self.defectkind = self._get_defect_type_and_kind_from_path(
                 defectpath)

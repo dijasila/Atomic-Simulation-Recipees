@@ -3,6 +3,7 @@ from asr.core import command, option, ASRResult, prepare_result, DictStr
 from ase.dft.bandgap import bandgap
 from ase.io import read
 from asr.database.browser import make_panel_description, href
+from asr.defect_symmetry import DefectInfo
 import typing
 import numpy as np
 
@@ -461,7 +462,9 @@ def adjust_formation_energies(host, defectdict, element, hof):
     newdict = {}
     sstates = get_adjusted_chemical_potentials(host, hof, element)
     for defect in defectdict:
-        def_type, def_pos = get_defect_info(defect)
+        defectinfo = DefectInfo(defectname=defect)
+        def_type = defectinfo.defecttype
+        def_pos = defectinfo.defectkind
         if def_type == 'v':
             add = 0
         else:

@@ -26,7 +26,6 @@ def create_reference_db():
     return db
 
 
-
 transitions = [{
     'transition_name': '0/1',
     'transition_values': {
