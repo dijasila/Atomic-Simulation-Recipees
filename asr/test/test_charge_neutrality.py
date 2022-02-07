@@ -180,3 +180,75 @@ def test_initialize_scf_loop(gap):
     assert E_step == pytest.approx(gap / 10.)
     assert epsilon == pytest.approx(1e-12)
     assert not converged
+
+
+@pytest.mark.parametrize('concentration', [1e-12, 3e-12, 1])
+@pytest.mark.parametrize('delta', [1e-25, 1e-13, 1e-5])
+@pytest.mark.parametrize('E_step', [1e-13, 1e-11])
+@pytest.mark.ci
+def test_check_convergence(concentration, delta, E_step):
+    from asr.charge_neutrality import check_convergence, check_delta_zero
+
+    n0 = 1
+    p0 = 1
+    epsilon = 1e-12
+    conc_list = [n0 + p0 + concentration]
+    delta_zero = check_delta_zero(delta, conc_list, n0, p0)
+    if delta < concentration * 1e-12:
+        ref_delta_zero = True
+    else:
+        ref_delta_zero = False
+    assert delta_zero == ref_delta_zero
+
+    convergence = check_convergence(delta, conc_list, n0, p0, E_step, epsilon)
+
+    if E_step < epsilon or delta_zero:
+        assert convergence
+    else:
+        assert not convergence
+
+
+@pytest.mark.parametrize('old', [1, 0.5])
+@pytest.mark.parametrize('new', [1, 0.5])
+@pytest.mark.parametrize('d', [-1, 1])
+@pytest.mark.ci
+def test_update_scf_parameters(old, new, d):
+    from asr.charge_neutrality import update_scf_parameters
+
+    E_step = 10
+    newstep, newd, olddelta = update_scf_parameters(old, new,
+                                                    E_step, d)
+
+    if new > old:
+        assert newstep == pytest.approx(E_step / 10.)
+        assert newd == pytest.approx(d * -1)
+    else:
+        assert newstep == pytest.approx(E_step)
+        assert newd == pytest.approx(d)
+    assert olddelta == pytest.approx(new)
+
+
+@pytest.mark.parametrize('gap', np.arange(0.1, 1.01, 0.1))
+@pytest.mark.ci
+def test_get_dopability_type(gap):
+    from asr.charge_neutrality import get_dopability_type
+    energies = np.arange(0, gap, gap / 10.)
+
+    for energy in energies:
+        dopability = get_dopability_type(energy, gap)
+        if energy < 0.25 * gap:
+            assert dopability == 'p-type'
+        elif energy > 0.75 * gap:
+            assert dopability == 'n-type'
+        else:
+            assert dopability == 'intrinsic'
+
+
+@pytest.mark.parametrize('energy', [0, 0.5])
+@pytest.mark.parametrize('size', [0, 0.1])
+@pytest.mark.parametrize('d', [-1, 1])
+@pytest.mark.ci
+def test_get_new_sample_point(energy, size, d):
+    from asr.charge_neutrality import get_new_sample_point
+    assert get_new_sample_point(energy, size, d) == pytest.approx(
+        energy + size * d)

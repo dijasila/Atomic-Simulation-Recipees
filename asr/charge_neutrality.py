@@ -2,14 +2,15 @@
 from asr.core import command, option, ASRResult, prepare_result, DictStr
 from ase.dft.bandgap import bandgap
 from ase.io import read
-from asr.database.browser import make_panel_description, href
+from asr.database.browser import (table, describe_entry, dl, code,
+                                  make_panel_description, href, fig,
+                                  WebPanel)
 from asr.defect_symmetry import DefectInfo
 import typing
 import numpy as np
 
 
 # TODO: automate degeneracy counting
-# TODO: use DefectInfo class functionalities once asr.defect_symmetry is merged
 
 
 panel_description = make_panel_description(
@@ -27,9 +28,6 @@ until charge neutrality is achieved.
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig, WebPanel,
-                                      describe_entry)
-
     unit = result.conc_unit
     unitstring = f"cm<sup>{unit.split('^')[-1]}</sup>"
     panels = []
@@ -39,7 +37,7 @@ def webpanel(result, row, key_descriptions):
         for element in scresult.defect_concentrations:
             conc_table = get_conc_table(result, element, unitstring)
             tables.append(conc_table)
-        scf_overview, scf_summary = get_overview_table(scresult, result, unitstring)
+        scf_overview, scf_summary = get_overview_tables(scresult, result, unitstring)
         plotname = f'neutrality-{condition}.png'
         panel = WebPanel(
             describe_entry(f'Equilibrium defect energetics ({condition})',
@@ -53,8 +51,7 @@ def webpanel(result, row, key_descriptions):
     return panels
 
 
-def get_overview_table(scresult, result, unitstring):
-    from asr.database.browser import table, describe_entry, dl, code
+def get_overview_tables(scresult, result, unitstring):
     ef = scresult.efermi_sc
     gap = result.gap
     if ef < (gap / 4.):
@@ -284,40 +281,24 @@ def main(temp: float = 300,
     dos = renormalize_dos(calc, dos, EF)
 
     # Calculate initial electron and hole carrier concentration
-    n0, p0 = integrate_electron_hole_concentration(dos,
-                                                   EF,
-                                                   gap,
-                                                   temp)
+    n0, p0 = integrate_electron_hole_concentration(dos, EF, gap, temp)
+
+    unit = get_concentration_unit(host)
 
     sc_results = []
     for element in el_list:
-        print(f'INFO: run self-consitent EF evaluation for {element}-poor conditions.')
         defectdict = adjust_formation_energies(host, inputdict, element, hof)
-        print(element, defectdict)
         # Initialize self-consistent loop for finding Fermi energy
         E, d, i, maxsteps, E_step, epsilon, converged = initialize_scf_loop(gap)
-        # d directional parameter
-        # i loop index
-        # maxsteps maximum number of steps for SCF loop
-        # E_step initial step sizew
-        # epsilon threshold for minimum step length
-        # converged boolean to see whether calculation is converged
-
         # Start the self-consistent loop
         while (i < maxsteps):
-            E = E + E_step * d
-            n0, p0 = integrate_electron_hole_concentration(dos,
-                                                           E,
-                                                           gap,
-                                                           temp)
+            E = get_new_sample_point(E, E_step, d)
+            n0, p0 = integrate_electron_hole_concentration(dos, E, gap, temp)
             # initialise lists for concentrations and charges
             conc_list = []
             charge_list = []
+            sites, degeneracy = get_site_and_state_degeneracy()
             # loop over all defects
-            # FIX #
-            sites = 1
-            degeneracy = 1
-            # FIX #
             for defecttype in defectdict:
                 for defect in defectdict[defecttype]:
                     eform = get_formation_energy(defect, E)
@@ -327,31 +308,16 @@ def main(temp: float = 300,
                                                               temp)
                     conc_list.append(conc_def)
                     charge_list.append(defect[1])
-            # calculate delta
             delta_new = calculate_delta(conc_list, charge_list, n0, p0)
-            if check_delta_zero(delta_new, conc_list, n0, p0):
-                print('INFO: charge balance approximately zero! Solution found!')
-                converged = True
-                break
-            if E_step < epsilon:
-                print(f'INFO: steps smaller than threshold! Solution found!')
-                converged = True
+            converged = check_convergence(delta_new, conc_list, n0, p0, E_step, epsilon)
+            if converged:
                 break
             if i == 0:
                 delta_old = delta_new
-            elif i > 0:
-                if abs(delta_new) > abs(delta_old):
-                    E_step = E_step / 10.
-                    d = -1 * d
-                delta_old = delta_new
+            else:
+                E_step, d, delta_old = update_scf_parameters(delta_old, delta_new,
+                                                             E_step, d)
             i += 1
-
-        # evaluate units based on the dimensionality of the system
-        dim = np.sum(atoms.get_pbc())
-        if dim == 2:
-            unit = 'cm^-2'
-        elif dim == 3:
-            unit = 'cm^-3'
 
         # if calculation is converged, show final results
         if converged:
@@ -361,26 +327,15 @@ def main(temp: float = 300,
                                                            temp)
             n0 = convert_concentration_units(n0, atoms)
             p0 = convert_concentration_units(p0, atoms)
-            print(f'INFO: Calculation converged after {i} steps! Final results:')
-            print(f'      Self-consistent Fermi-energy: {E:.2f} eV.')
-            print(f'      Equilibrium electron concentration: {n0:.2e} {unit:5}.')
-            print(f'      Equilibrium hole concentration: {p0:.2e} {unit:5}.')
-            print(f'      Concentrations:')
             concentration_results = []
             for defecttype in defectdict:
-                print(f'      - defecttype: {defecttype}')
-                print(f'      ----------------------------------------------')
                 concentration_tuples = []
                 for defect in defectdict[defecttype]:
                     eform = get_formation_energy(defect, E)
-                    conc_def = calculate_defect_concentration(eform,
-                                                              1,
-                                                              1,
+                    conc_def = calculate_defect_concentration(eform, sites, degeneracy,
                                                               temp)
                     conc_def = convert_concentration_units(conc_def, atoms)
                     concentration_tuples.append((conc_def, int(defect[1]), eform))
-                    print(f'      defect concentration for ({defect[1]:2}): '
-                          f'{conc_def:.2e} {unit:5}')
                 concentration_result = ConcentrationResult.fromdata(
                     defect_name=defecttype,
                     concentrations=concentration_tuples)
@@ -389,12 +344,7 @@ def main(temp: float = 300,
             raise RuntimeError('self-consistent E_F evaluation failed '
                                f'for {element}-poor conditions!')
 
-        if E < 0.25 * gap:
-            dop = 'p-type'
-        elif E > 0.75 * gap:
-            dop = 'n-type'
-        else:
-            dop = 'intrinsic'
+        dopability = get_dopability_type(E, gap)
 
         sc_results.append(SelfConsistentResult.fromdata(
             condition=f'{element}-poor',
@@ -402,7 +352,7 @@ def main(temp: float = 300,
             n0=n0,
             p0=p0,
             defect_concentrations=concentration_results,
-            dopability=dop))
+            dopability=dopability))
 
     return Result.fromdata(
         scresults=sc_results,
@@ -411,7 +361,57 @@ def main(temp: float = 300,
         gap=gap)
 
 
+def check_convergence(delta, conc_list, n0, p0, E_step, epsilon):
+    return check_delta_zero(delta, conc_list, n0, p0) or (E_step < epsilon)
+
+
+def update_scf_parameters(delta_old, delta_new, E_step, d):
+    if abs(delta_new) > abs(delta_old):
+        E_step = E_step / 10.
+        d = -1 * d
+    delta_old = delta_new
+
+    return E_step, d, delta_old
+
+
+def get_dopability_type(energy, gap):
+    if energy < 0.25 * gap:
+        dopability = 'p-type'
+    elif energy > 0.75 * gap:
+        dopability = 'n-type'
+    else:
+        dopability = 'intrinsic'
+
+    return dopability
+
+
+def get_concentration_unit(atoms):
+    """Evaluate conc. units based on the dimensionality of the system."""
+    dim = sum(atoms.pbc)
+    if dim == 2:
+        unit = 'cm^-2'
+    elif dim == 3:
+        unit = 'cm^-3'
+
+    return unit
+
+
+def get_new_sample_point(energy, stepsize, d):
+    return energy + stepsize * d
+
+
+def get_site_and_state_degeneracy():
+    # site and state dependent version to be implemented
+    return 1, 1
+
+
 def initialize_scf_loop(gap, E=0, maxsteps=1000, epsilon=1e-12):
+    # d directional parameter
+    # i loop index
+    # maxsteps maximum number of steps for SCF loop
+    # E_step initial step sizew
+    # epsilon threshold for minimum step length
+    # converged boolean to see whether calculation is converged
     return E, 1, 0, maxsteps, gap / 10., epsilon, False
 
 
@@ -428,7 +428,6 @@ def get_hof_from_sj_results():
 
 
 def get_adjusted_chemical_potentials(host, hof, element):
-
     el_list = get_element_list(host)
     stoi = get_stoichiometry(host)
     sstates = {}
@@ -721,6 +720,7 @@ def get_dos(calc, npts=4001, width=0.01):
     return dos, EF, gap
 
 
+# all of the following are just plotting functionalities
 def plot_formation_scf(row, fname):
     """Plot formation energy diagram and SC Fermi level wrt. VBM."""
     import matplotlib.pyplot as plt
