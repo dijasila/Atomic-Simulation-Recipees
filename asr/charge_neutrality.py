@@ -507,9 +507,9 @@ def convert_concentration_units(conc, atoms):
 
     Note, that n is the dimensionality of the system.
     """
-    # cell = atoms.get_cell()
     volume = atoms.get_volume()
-    dim = np.sum(atoms.get_pbc())
+    dim = sum(atoms.pbc)
+    # cell = atoms.get_cell()
 
     # conversion factor from \AA to cm
     ang_to_cm = 1. * 10 ** (-8)
@@ -519,10 +519,9 @@ def convert_concentration_units(conc, atoms):
     elif dim == 2:
         z = atoms.get_cell_lengths_and_angles()[2]
         volume = volume / z
-        conc = conc / (volume * (ang_to_cm ** 2))
     elif dim == 3:
         volume = volume
-        conc = conc / (volume * (ang_to_cm ** 3))
+    conc = conc / (volume * (ang_to_cm ** dim))
 
     return conc
 

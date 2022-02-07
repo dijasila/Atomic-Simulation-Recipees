@@ -1,5 +1,7 @@
 import pytest
+import numpy as np
 from .materials import std_test_materials
+from asr.charge_neutrality import convert_concentration_units
 
 
 @pytest.mark.parametrize('reduced', [True, False])
@@ -103,3 +105,28 @@ def test_fermi_dirac(energy, efermi):
     elif energy < efermi:
         assert c_e < 0.5
         assert c_h > 0.5
+
+
+@pytest.mark.parametrize('zsize', np.arange(10, 20, 3))
+@pytest.mark.parametrize('conc', [1e2, 0.001, 2])
+@pytest.mark.ci
+def test_convert_concentration_units(zsize, conc):
+    from .materials import BN, Agchain
+
+    ang_to_cm = 1. * 10 ** (-8)
+
+    atoms = BN.copy()
+    cell = atoms.get_cell()
+    atoms.set_cell([cell[0], cell[1], [0, 0, zsize]])
+    volume = atoms.get_volume() / zsize
+    ref_conc = conc / (volume * (ang_to_cm ** 2))
+
+    conc = convert_concentration_units(conc, atoms)
+
+    assert ref_conc == pytest.approx(conc)
+
+    try:
+        convert_concentration_units(conc, Agchain)
+        assert False
+    except NotImplementedError:
+        assert True

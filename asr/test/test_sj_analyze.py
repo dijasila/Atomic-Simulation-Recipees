@@ -121,7 +121,7 @@ def test_calculate_neutral_formation_energy(asr_tmpdir, edef, epris):
 
 
 @pytest.mark.ci
-def test_get_half_integer_calc_and_index():
+def test_get_half_integer_calc_and_index(mockgpaw):
     charge = 0
     transition = '0/1'
     try:

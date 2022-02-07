@@ -457,7 +457,7 @@ def get_half_integer_calc_and_index(charge, transition):
 
     Also, return index of the eigenvalue to be extracted (wrt. q HOMO index).
     """
-    from gpaw import restart
+    from gpaw import GPAW
 
     if transition[0] > transition[1]:
         identifier = '-0.5'
@@ -467,7 +467,7 @@ def get_half_integer_calc_and_index(charge, transition):
         delta_index = 0
     parentpath = f'../charge_{charge}/sj_{identifier}'
     try:
-        _, calc = restart(f'{parentpath}/gs.gpw', txt=None)
+        calc = GPAW(f'{parentpath}/gs.gpw', txt=None)
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
             transition[0], transition[1]))
     except FileNotFoundError as err:
