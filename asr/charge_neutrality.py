@@ -295,15 +295,13 @@ def main(temp: float = 300,
         defectdict = adjust_formation_energies(host, inputdict, element, hof)
         print(element, defectdict)
         # Initialize self-consistent loop for finding Fermi energy
-        E, d, i, maxsteps, E_step, epsilon, converged = initialize_scf_loop(
-            E=0, maxsteps=1000, epsilon=1e-12)
-        E = 0
-        d = 1  # directional parameter
-        i = 0  # loop index
-        maxsteps = 1000  # maximum number of steps for SCF loop
-        E_step = gap / 10.  # initial step sizew
-        epsilon = 1e-12  # threshold for minimum step length
-        converged = False  # boolean to see whether calculation is converged
+        E, d, i, maxsteps, E_step, epsilon, converged = initialize_scf_loop(gap)
+        # d directional parameter
+        # i loop index
+        # maxsteps maximum number of steps for SCF loop
+        # E_step initial step sizew
+        # epsilon threshold for minimum step length
+        # converged boolean to see whether calculation is converged
 
         # Start the self-consistent loop
         while (i < maxsteps):
