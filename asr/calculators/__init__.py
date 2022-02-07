@@ -102,10 +102,15 @@ class Calculation:
         from asr.core import ExternalFile
         self.id = id
         self.cls_name = cls_name
-        self.paths = []
-        for path in paths:
-            self.paths.append(ExternalFile(path))
+        from pathlib import Path
+        self.paths = [Path(path) for path in paths]
         self.state = state
+
+    def __repr__(self):
+        return (f'<Calculation id={self.id}, '
+                f'cls_name={self.cls_name}, '
+                f'paths={self.paths}>')
+
 
     def load(self, *args, **kwargs) -> Calculator:
         """Restart calculation."""
