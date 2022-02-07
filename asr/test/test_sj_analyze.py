@@ -26,7 +26,6 @@ def create_reference_db():
     return db
 
 
-ref_db = create_reference_db()
 
 transitions = [{
     'transition_name': '0/1',
@@ -96,6 +95,7 @@ def test_get_heat_of_formation(asr_tmpdir, hof):
 @pytest.mark.parametrize('symbol', ['v', 'Ag'])
 @pytest.mark.ci
 def test_obtain_chemical_potential(asr_tmpdir, symbol):
+    ref_db = create_reference_db()
     res_standard_states = obtain_chemical_potential(symbol, ref_db)
     if symbol == 'v':
         assert res_standard_states['eref'] == pytest.approx(0)
@@ -109,7 +109,8 @@ def test_obtain_chemical_potential(asr_tmpdir, symbol):
 @pytest.mark.parametrize('edef', [-1, 0.5])
 @pytest.mark.parametrize('epris', [-2, -0.5])
 @pytest.mark.ci
-def test_calculate_neutral_formation_energy(edef, epris):
+def test_calculate_neutral_formation_energy(asr_tmpdir, edef, epris):
+    ref_db = create_reference_db()
     defectinfo = DefectInfo(defecttype='v', defectkind='Ag')
     eform, standard_states = calculate_neutral_formation_energy(
         edef, epris, ref_db, defectinfo)
