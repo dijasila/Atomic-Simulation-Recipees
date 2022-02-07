@@ -115,7 +115,7 @@ def webpanel(result, row, key_descriptions):
     summary = {'title': 'Summary',
                'columns': [[formation_table_sum],
                            []],
-               'sort': 50}
+               'sort': 0}
 
     return [panel, summary]
 
