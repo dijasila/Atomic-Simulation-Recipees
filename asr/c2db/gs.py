@@ -602,7 +602,11 @@ def workflow(rn, atoms, calculator):
                       magnetic=magstate.output['is_magnetic'])
     post = rn.task('postprocess', groundstate=groundstate.output,
                    mag_ani=mag_ani.output)
-    return post
+
+    return {'gs': groundstate,
+            'magstate': magstate,
+            'magnetic_anisotropy': mag_ani,
+            'postprocess': post}
 
 
 if __name__ == '__main__':
