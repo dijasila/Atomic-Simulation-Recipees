@@ -465,9 +465,16 @@ def get_half_integer_calc_and_index(charge, transition):
     elif transition[1] > transition[0]:
         identifier = '+0.5'
         delta_index = 0
-    _, calc = restart(f'../charge_{charge}/sj_{identifier}/gs.gpw', txt=None)
-    print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
-        transition[0], transition[1]))
+    parentpath = f'../charge_{charge}/sj_{identifier}'
+    try:
+        _, calc = restart(f'{parentpath}/gs.gpw', txt=None)
+        print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
+            transition[0], transition[1]))
+    except FileNotFoundError as err:
+        msg = ('did not find gs.gpw in {parentpath}! Make sure to run asr.setup.defects'
+               ' with the --halfinteger option and run the groundstate recipe in the '
+               'newly created folders after.')
+        raise RuntimeError(msg) from err
 
     return calc, delta_index
 
@@ -481,13 +488,15 @@ def get_transition_level(transition, charge, index, N_homo_q) -> TransitionResul
     from asr.get_wfs import (return_defect_index,
                              get_reference_index,
                              extract_atomic_potentials)
+    from asr.defect_symmetry import DefectInfo
     from ase.io import read
 
     # return index of the point defect in the defect structure
     p = Path('.')
+    defectinfo = DefectInfo(defectpath=p)
     structure = read('structure.json')
     primitive = read('../../unrelaxed.json')
-    def_index, is_vacancy = return_defect_index(p, primitive, structure)
+    def_index, is_vacancy = return_defect_index(defectinfo, primitive, structure)
 
     # get string of the current charge
     charge = str(charge)

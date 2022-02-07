@@ -9,7 +9,8 @@ from asr.sj_analyze import (obtain_chemical_potential,
                             calculate_formation_energies,
                             order_transitions,
                             get_heat_of_formation,
-                            calculate_neutral_formation_energy)
+                            calculate_neutral_formation_energy,
+                            get_half_integer_calc_and_index)
 from asr.defect_symmetry import DefectInfo
 
 
@@ -117,3 +118,14 @@ def test_calculate_neutral_formation_energy(edef, epris):
     eform_ref = edef - epris + ref_Ag['eref']
 
     assert eform == pytest.approx(eform_ref)
+
+
+@pytest.mark.ci
+def test_get_half_integer_calc_and_index():
+    charge = 0
+    transition = '0/1'
+    try:
+        get_half_integer_calc_and_index(charge, transition)
+        assert False
+    except RuntimeError:
+        assert True
