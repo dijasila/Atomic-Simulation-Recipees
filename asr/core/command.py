@@ -287,6 +287,12 @@ class ASRCommand:
                 result=result,
                 run_specification=run_spec,
             )
+
+            from asr.core.serialize import encode
+            import json
+            txt = json.dumps(run_spec, default=encode)
+            spec = Path('spec.json')
+            spec.write_text(txt)
             return record
 
         run_record = execute_run_spec(run_specification)
