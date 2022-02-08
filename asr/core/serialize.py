@@ -6,21 +6,23 @@ import typing
 import ase
 import numpy as np
 import simplejson as json
-from ase.io.jsonio import object_hook
+from ase.io.jsonio import object_hook as ase_object_hook
 
 from asr.core.results import get_object_matching_obj_id
 
 from .results import obj_to_id
 
 
-class ASRJSONEncoder(json.JSONEncoder):
+def encode(obj):
+    try:
+        return object_to_dict(obj)
+    except ValueError:
+        return ase.io.jsonio.encode(obj)
 
+
+class ASRJSONEncoder(json.JSONEncoder):
     def default(self, obj) -> dict:
-        try:
-            return object_to_dict(obj)
-        except ValueError:
-            pass
-        return ase.io.jsonio.MyEncoder.default(self, obj)
+        return encode(obj)
 
 
 def object_to_dict(obj) -> dict:
@@ -70,7 +72,7 @@ def json_hook(json_object: dict):
         return dict_to_object(json_object)
     except ValueError:
         pass
-    return object_hook(json_object)
+    return ase_object_hook(json_object)
 
 
 def dict_to_object(json_object) -> typing.Any:
