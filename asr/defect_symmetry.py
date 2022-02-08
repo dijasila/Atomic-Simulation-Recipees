@@ -508,7 +508,6 @@ def conserved_atoms(ref_struc, primitive, N, is_vacancy):
         print('INFO: number of atoms correct after mapping.')
         return True
     else:
-        print(len(ref_struc), len(primitive), N, removed)
         return False
 
 
