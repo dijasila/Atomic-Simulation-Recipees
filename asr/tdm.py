@@ -24,8 +24,8 @@ class Result(ASRResult):
 
 
 @command(module='asr.tdm',
-         requires=['gs.gpw', 'structure.json', 'results-asr.get_wfs.json'],
-         dependencies=['asr.gs@calculate', 'asr.get_wfs'],
+         requires=['gs.gpw', 'structure.json'],
+         dependencies=['asr.gs@calculate'],
          resources='1:1h',
          returns=Result)
 @option('--primitivefile', help='Path to the primitive structure file.',
@@ -35,7 +35,7 @@ class Result(ASRResult):
 @option('--unrelaxedfile', help='Path to an the unrelaxed '
         'supercell file (only needed if --mapping is set).', type=str)
 @option('--defect', help='Specify whether analysis is conducted for a '
-        'defect system.', type=bool)
+        'defect system. Only works when asr.get_wfs ran before!', type=bool)
 def main(primitivefile: str = 'primitive.json',
          pristinefile: str = 'pristine.json',
          unrelaxedfile: str = 'NO',
@@ -52,6 +52,8 @@ def main(primitivefile: str = 'primitive.json',
 
     if defect:
         # evaluate position of the defect in the structure
+        assert Path('results-asr.get_wfs.json').is_file(), (
+            'you first need to run asr.get_wfs in this directory!')
         defectpath = Path('.')
         defectinfo = DefectInfo(defectpath=defectpath)
         center = return_defect_coordinates(structure, primitive, pristine, defectinfo)
