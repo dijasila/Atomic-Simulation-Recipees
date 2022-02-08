@@ -344,6 +344,31 @@ class MemoryBackend:
         return selected
 
 
+class HTWCache:
+    def __init__(self, repo, viewdir):
+        self.repo = repo
+        self.viewdir = Path(viewdir)
+
+    def _select(self, selector):
+        tree = self.repo.tree([self.viewdir])
+        for entry in tree.entries():
+            runspecfile = entry.directory / 'spec.json'
+            if not runspecfile.exists():
+                continue
+
+            from asr.core.serialize import JSONSerializer
+            runspec = JSONSerializer().deserialize(runspecfile.read_text())
+
+
+            result = entry.output()
+            record = Record(result=result, run_specification=runspec)
+            if selector.matches(record):
+                yield record
+
+    def select(self, selector):
+        return list(self._select(selector))
+
+
 def get_cache(backend: typing.Optional[str] = None) -> Cache:
     """Get ASR Cache object.
 
@@ -352,6 +377,12 @@ def get_cache(backend: typing.Optional[str] = None) -> Cache:
     backend
         The chosen backend. Allowed values 'filesystem', 'memory'.
     """
+    from htwutil.repository import Repository
+    viewdir = Path.cwd()
+    repo = Repository.find(viewdir)
+    return Cache(HTWCache(repo, viewdir))
+    # XXX WIP
+
     if backend is None:
         from .config import config
         backend = config.backend
