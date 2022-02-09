@@ -596,11 +596,14 @@ def postprocess(
 
 
 def workflow(rn, atoms, calculator):
-    groundstate = rn.task('groundstate', atoms=atoms, calculator=calculator)
-    magstate = rn.task('magstate', groundstate=groundstate.output)
-    mag_ani = rn.task('magnetic_anisotropy', groundstate=groundstate.output,
+    groundstate = rn.task('asr.c2db.gs.calculate',
+                          atoms=atoms, calculator=calculator)
+    magstate = rn.task('asr.c2db.magstate.main',
+                       groundstate=groundstate.output)
+    mag_ani = rn.task('asr.c2db.magnetic_anisotropy.main',
+                      groundstate=groundstate.output,
                       magnetic=magstate.output['is_magnetic'])
-    post = rn.task('postprocess', groundstate=groundstate.output,
+    post = rn.task('asr.c2db.gs.postprocess', groundstate=groundstate.output,
                    mag_ani=mag_ani.output)
 
     return {'gs': groundstate,

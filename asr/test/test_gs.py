@@ -115,10 +115,10 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-@pytest.mark.parametrize('atoms,calculator,results', [
+@pytest.mark.parametrize('atoms,calculator,refs', [
     (Si,
      {
-         "name": "gpaw",
+         "name": "gpaw", 'txt': 'tmp.txt',
          "kpts": {"density": 2, "gamma": True},
          "xc": "PBE",
          "mode": {"ecut": 300, "name": "pw"}
@@ -134,13 +134,21 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
      },
      {'magstate': 'FM', 'gap': 0.0})
 ])
-def test_gs_integration_gpaw(asr_tmpdir, atoms, calculator, results):
+def test_gs_integration_gpaw(repo, atoms, calculator, refs):
     """Check that the groundstates produced by GPAW are correct."""
-    from asr.c2db.gs import main as groundstate
-    from asr.c2db.magstate import main as magstate
-    gsresults = groundstate(atoms=atoms, calculator=calculator)
+    from asr.c2db.gs import workflow
+    from htwutil.runner import Runner
 
-    assert gsresults['gap'] == results['gap']
+    rn = Runner(repo.cache)
+    dct = workflow(rn, atoms=atoms, calculator=calculator)
 
-    magstateresults = magstate(atoms=atoms, calculator=calculator)
-    assert magstateresults["magstate"] == results['magstate']
+    postprocess = dct['postprocess']
+    assert not postprocess.has_output()
+    for future in postprocess.ancestors():
+        future.run_blocking()
+
+    outputs = {name: future.value().output
+               for name, future in dct.items()}
+
+    assert outputs['postprocess']['gap'] == refs['gap']
+    assert outputs['magstate']['magstate'] == refs['magstate']

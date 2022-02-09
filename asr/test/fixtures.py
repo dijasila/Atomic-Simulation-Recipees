@@ -74,8 +74,8 @@ def various_object_types(request):
     return request.param
 
 
-@pytest.fixture()
-def asr_tmpdir(request, tmp_path_factory):
+@pytest.fixture
+def in_tempdir(request, tmp_path_factory):
     """Create temp folder and change directory to that folder.
 
     A context manager that creates a temporary folder and changes
@@ -89,10 +89,19 @@ def asr_tmpdir(request, tmp_path_factory):
     path = broadcast(path)
 
     with workdir(path):
-        if world.rank == 0:
-            Repository.initialize(path)
-
         yield path
+
+
+@pytest.fixture
+def repo(in_tempdir):
+    from htwutil.repository import Repository
+    return Repository.create(in_tempdir)
+
+
+@pytest.fixture
+def asr_tmpdir(in_tempdir):
+    # XXX replace with repo, or similar
+    return in_tempdir
 
 
 def _get_webcontent(dbname="database.db", row_id=1):
