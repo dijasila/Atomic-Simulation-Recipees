@@ -8,12 +8,12 @@ from pathlib import Path
 @pytest.mark.parallel
 @pytest.mark.parametrize("gap", [0, 1])
 @pytest.mark.parametrize("fermi_level", [0.5, 1.5])
-def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
+def test_gs(asr_tmpdir_w_params,
+            repo, mockgpaw, mocker, get_webcontent,
             test_material, gap, fermi_level):
     import asr.c2db.relax
     from asr.core import read_json
-    from asr.core.cache import get_cache
-    from asr.c2db.gs import calculate, main
+    from asr.c2db.gs import workflow
     from ase.parallel import world
     import gpaw
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
@@ -26,21 +26,13 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
                   'kpts': {'density': 2, 'gamma': True},
                   'xc': 'PBE',
                   'mode': {'name': 'pw', 'ecut': 800}}
-    calculateresult = calculate(test_material, calculator)
-    record = main.get(
-        atoms=test_material,
-        calculator=calculator)
-    results = record.result
-    dependencies = record.dependencies
-    cache = get_cache()
-    dep_records = [
-        cache.get(uid=dependency.uid, revision=dependency.revision)
-        for dependency in dependencies
-    ]
-    dep_names = [dep_record.run_specification.name
-                 for dep_record in dep_records]
-    assert (set(dep_names)
-            == set(['asr.c2db.gs:calculate', 'asr.c2db.magnetic_anisotropy:main']))
+
+    dct = repo.run_workflow_blocking(
+        workflow, atoms=test_material, calculator=calculator)
+
+    calculateresult = dct['gs'].value().output
+    post = dct['postprocess'].value().output
+
     gsfile = calculateresult.calculation.paths[0]
     assert Path(gsfile).is_file()
     gs = read_json(gsfile)
@@ -50,19 +42,21 @@ def test_gs(asr_tmpdir_w_params, mockgpaw, mocker, get_webcontent,
     else:
         spy.assert_called()
 
-    assert len(list(
-        Path('.asr/records').glob(
-            'asr.c2db.magnetic_anisotropy*.json'))) == 1
-    assert len(list(
-        Path('.asr/records').glob('asr.c2db.gs:calculate*.json'))) == 1
-    assert results.get("gaps_nosoc").get("efermi") == approx(fermi_level)
-    assert results.get("efermi") == approx(fermi_level, abs=0.1)
+    assert post.get("gaps_nosoc").get("efermi") == approx(fermi_level)
+    assert post.get("efermi") == approx(fermi_level, abs=0.1)
+
     if gap >= fermi_level:
-        assert results.get("gap") == approx(gap)
+        assert post.get("gap") == approx(gap)
     else:
-        assert results.get("gap") == approx(0)
+        assert post.get("gap") == approx(0)
 
     test_material.write('structure.json')
+
+
+@pytest.mark.xfail
+def test_gs_structureinfo():
+    # This snippet was part of the preceding test but we cannot call it until
+    # htw caches can be collected to a database
     if world.size == 1:
         from asr.structureinfo import main as structureinfo
         structureinfo(atoms=test_material)
@@ -124,7 +118,7 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 def test_gs_integration_gpaw(repo, atoms, refs):
     """Check that the groundstates produced by GPAW are correct."""
     from asr.c2db.gs import workflow
-    from htwutil.runner import Runner
+    # from htwutil.runner import Runner
 
     calculator = {
         'txt': 'gpaw.txt',
@@ -134,13 +128,8 @@ def test_gs_integration_gpaw(repo, atoms, refs):
         'mode': {'ecut': 200, 'name': 'pw'},
     }
 
-    rn = Runner(repo.cache)
-    dct = workflow(rn, atoms=atoms, calculator=calculator)
-
-    postprocess = dct['postprocess']
-    assert not postprocess.has_output()
-    for future in postprocess.ancestors():
-        future.run_blocking()
+    dct = repo.run_workflow_blocking(workflow,
+                                     atoms=atoms, calculator=calculator)
 
     outputs = {name: future.value().output
                for name, future in dct.items()}
