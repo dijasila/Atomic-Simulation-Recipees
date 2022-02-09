@@ -8,8 +8,7 @@ from pathlib import Path
 @pytest.mark.parallel
 @pytest.mark.parametrize("gap", [0, 1])
 @pytest.mark.parametrize("fermi_level", [0.5, 1.5])
-def test_gs(asr_tmpdir_w_params,
-            repo, mockgpaw, mocker, get_webcontent,
+def test_gs(repo, mockgpaw, mocker, get_webcontent,
             test_material, gap, fermi_level):
     import asr.c2db.relax
     from asr.core import read_json
@@ -112,15 +111,12 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
 @pytest.mark.parametrize('atoms,refs', [
-    (Si,
-     {'magstate': 'NM',
-      'gap': pytest.approx(0.55, abs=0.01)}),
+    (Si, {'magstate': 'NM', 'gap': pytest.approx(0.55, abs=0.01)}),
     (Fe, {'magstate': 'FM', 'gap': 0.0})
 ])
 def test_gs_integration_gpaw(repo, atoms, refs):
     """Check that the groundstates produced by GPAW are correct."""
     from asr.c2db.gs import workflow
-    # from htwutil.runner import Runner
 
     calculator = {
         'txt': 'gpaw.txt',
