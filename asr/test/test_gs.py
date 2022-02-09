@@ -115,29 +115,24 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-@pytest.mark.parametrize('atoms,calculator,refs', [
+@pytest.mark.parametrize('atoms,refs', [
     (Si,
-     {
-         "name": "gpaw", 'txt': 'tmp.txt',
-         "kpts": {"density": 2, "gamma": True},
-         "xc": "PBE",
-         "mode": {"ecut": 300, "name": "pw"}
-     },
      {'magstate': 'NM',
       'gap': pytest.approx(0.55, abs=0.01)}),
-    (Fe,
-     {
-         "name": "gpaw",
-         "kpts": {"density": 2, "gamma": True},
-         "xc": "PBE",
-         "mode": {"ecut": 300, "name": "pw"}
-     },
-     {'magstate': 'FM', 'gap': 0.0})
+    (Fe, {'magstate': 'FM', 'gap': 0.0})
 ])
-def test_gs_integration_gpaw(repo, atoms, calculator, refs):
+def test_gs_integration_gpaw(repo, atoms, refs):
     """Check that the groundstates produced by GPAW are correct."""
     from asr.c2db.gs import workflow
     from htwutil.runner import Runner
+
+    calculator = {
+        'txt': 'gpaw.txt',
+        'name': 'gpaw',
+        'xc': 'PBE',
+        'kpts': {'density': 2.0, 'gamma': True},
+        'mode': {'ecut': 200, 'name': 'pw'},
+    }
 
     rn = Runner(repo.cache)
     dct = workflow(rn, atoms=atoms, calculator=calculator)
