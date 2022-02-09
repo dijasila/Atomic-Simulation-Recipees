@@ -1,9 +1,7 @@
-from gpaw.utilities.dipole import dipole_matrix_elements_from_calc
 from asr.core import command, ASRResult, prepare_result, option
 from asr.defect_symmetry import (return_defect_coordinates,
                                  check_and_return_input,
                                  DefectInfo, WFCubeFile)
-from gpaw import GPAW
 from pathlib import Path
 import numpy as np
 import typing
@@ -41,6 +39,9 @@ def main(primitivefile: str = 'primitive.json',
          unrelaxedfile: str = 'NO',
          defect: bool = False) -> Result:
     """Calculate HOMO-LUMO transition dipole moment for a given structure."""
+    from gpaw import GPAW
+    from gpaw.utilities.dipole import dipole_matrix_elements_from_calc
+
     # collect relevant files and evaluate center of the defect structure
     structurefile = 'structure.json'
     structure, unrelaxed, primitive, pristine = check_and_return_input(
