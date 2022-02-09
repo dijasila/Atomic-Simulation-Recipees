@@ -60,6 +60,7 @@ def main(primitivefile: str = 'primitive.json',
         center = return_defect_coordinates(structure, primitive, pristine, defectinfo)
         n1, n2 = get_state_numbers_from_defectpath(defectpath)
     else:
+        center = get_center_of_cell(structure)
         n1, n2 = get_state_numbers_from_calc(calc)
 
     d_snnv = dipole_matrix_elements_from_calc(calc, n1, n2, center)
@@ -68,6 +69,14 @@ def main(primitivefile: str = 'primitive.json',
         d_snnv=d_snnv,
         n1=n1,
         n2=n2)
+
+
+def get_center_of_cell(atoms):
+    """Return the center point of the cell of a given atoms object."""
+    cell = atoms.get_cell()
+    scaled_positions = [0.5, 0.5, 0.5]
+
+    return cell.cartesian_positions(scaled_positions)
 
 
 def get_state_numbers_from_defectpath(path):
