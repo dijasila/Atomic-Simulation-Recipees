@@ -72,8 +72,10 @@ def test_gs_structureinfo():
             content, content
 
 
+@pytest.mark.xfail
 @pytest.mark.ci
 def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
+    # Need to implement collection of folders with htwutil cache
     from .materials import std_test_materials
     from asr.c2db.gs import main
     from asr.database import connect
