@@ -8,8 +8,6 @@ from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
     AtomsFile, Selector,
 )
-from asr.c2db.gs import calculate as calculategs
-from asr.c2db.gs import main as maings
 
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
@@ -58,9 +56,6 @@ def remove_emptybands_and_make_bsrestart(record):
 @command(
     'asr.c2db.bandstructure',
 )
-@option('-a', '--atoms', help='Atomic structure.',
-        type=AtomsFile(), default='structure.json')
-@asr.calcopt
 @asr.calcopt(
     aliases=['-b', '--bsrestart'],
     help='Bandstructure Calculator params.',
@@ -71,8 +66,9 @@ def remove_emptybands_and_make_bsrestart(record):
         type=int,
         help='Number of points along k-point path.')
 def calculate(
-        atoms: Atoms,
-        calculator: dict = calculategs.defaults.calculator,
+        gsresult,
+        #atoms: Atoms,
+        #calculator: dict = calculategs.defaults.calculator,
         bsrestart: dict = {
             'nbands': -20,
             'txt': 'bs.txt',
@@ -85,13 +81,19 @@ def calculate(
         npoints: int = 400,
 ) -> BandstructureCalculationResult:
     """Calculate electronic band structure."""
+
+    calculation = gsresult.calculation
+
+    # XXX somewhat hacky way to get the atoms.
+    # We could prboably rely on them having been the input to the GS
+    # calculation, and that should be more easily expressible.
+    atoms = calculation.load().get_atoms()
     path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
                                pbc=atoms.pbc)
 
-    result = calculategs(atoms=atoms, calculator=calculator)
-    calculation = result.calculation
     bsrestart['kpts'] = path
     calc = calculation.load(**bsrestart)
+    atoms = calc.get_atoms()
     calc.get_potential_energy()
     calculation = calc.save(id='bs')
     return BandstructureCalculationResult.fromdata(calculation=calculation)
@@ -503,41 +505,39 @@ def set_bsrestart_from_dependencies(record):
     return record
 
 
-@command(
-    'asr.c2db.bandstructure',
-)
-@option('-a', '--atoms', help='Atomic structure.',
-        type=AtomsFile(), default='structure.json')
-@asr.calcopt
-@asr.calcopt(
-    aliases=['-b', '--bsrestart'],
-    help='Bandstructure Calculator params.',
-    matcher=asr.matchers.EQUAL,
-)
-@option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints',
-        type=int,
-        help='Number of points along k-point path.')
-def main(
-        atoms: Atoms,
-        calculator: dict = calculate.defaults.calculator,
-        bsrestart: dict = calculate.defaults.bsrestart,
-        kptpath: Union[str, None] = None,
-        npoints: int = 400) -> Result:
+@command('asr.c2db.bandstructure')
+#@option('-a', '--atoms', help='Atomic structure.',
+#        type=AtomsFile(), default='structure.json')
+#@asr.calcopt
+#@asr.calcopt(
+#    aliases=['-b', '--bsrestart'],
+#    help='Bandstructure Calculator params.',
+#    matcher=asr.matchers.EQUAL,
+    #)
+#@option('--kptpath', type=str, help='Custom kpoint path.')
+#@option('--npoints',
+#        type=int,
+#        help='Number of points along k-point path.')
+def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
+        #atoms: Atoms,
+        #calculator: dict = calculate.defaults.calculator,
+        #bsrestart: dict = calculate.defaults.bsrestart,
+        #kptpath: Union[str, None] = None,
+        #npoints: int = 400) -> Result:
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
     import copy
     from asr.utils.gpw2eigs import gpw2eigs
     from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 
-    bsresult = calculate(
-        atoms=atoms,
-        calculator=calculator,
-        bsrestart=bsrestart,
-        npoints=npoints,
-        kptpath=kptpath,
-    )
-    gsresult = calculategs(atoms=atoms, calculator=calculator)
+    #bsresult = calculate(
+    #    atoms=atoms,
+    #    calculator=calculator,
+    #    bsrestart=bsrestart,
+    #    npoints=npoints,
+    #    kptpath=kptpath,
+    #)
+    # gsresult = calculategs(atoms=atoms, calculator=calculator)
     ref = gsresult.calculation.load().get_fermi_level()
     calc = bsresult.calculation.load()
     atoms = calc.atoms
@@ -558,7 +558,13 @@ def main(
     bsresults = bs.todict()
 
     # Save Fermi levels
-    gsresults = maings(atoms=atoms, calculator=calculator)
+    # XXXX Why do we have "gsresult" for the gpw file and also
+    # gsresults being the main/postprocess result?
+    #
+    # We just got the Fermi level a few lines ago!
+    #
+    gsresults = gspostprocess
+    # gsresults = maings(atoms=atoms, calculator=calculator)
     efermi_nosoc = gsresults['gaps_nosoc']['efermi']
     bsresults['efermi'] = efermi_nosoc
 
@@ -568,7 +574,7 @@ def main(
     # Add spin orbit correction
     bsresults = bs.todict()
 
-    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+    # mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
     theta, phi = mag_ani.spin_angles()
 
     # We use a larger symmetry tolerance because we want to correctly
@@ -606,5 +612,14 @@ def main(
     )
 
 
-if __name__ == '__main__':
-    main.cli()
+def workflow(rn, gsresult, mag_ani, gspostprocess,
+             bsrestart, kptpath, npoints):
+    bs = rn.task('asr.c2db.bandstructure.calculate',
+                 gsresult=gsresult, bsrestart=bsrestart,
+                 kptpath=kptpath, npoints=npoints)
+    post = rn.task('asr.c2db.bandstructure.postprocess',
+                   bsresult=bs.output,
+                   gsresult=gsresult,
+                   mag_ani=mag_ani,
+                   gspostprocess=gspostprocess)
+    return {'bs': bs, 'postprocess': post}
