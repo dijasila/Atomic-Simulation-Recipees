@@ -23,7 +23,7 @@ def extract_stuff_from_gpw_file(gpwpath: Path,
     from gpaw.calculator import GPAW
     calc = GPAW(gpwpath)
     stuff = extract_stuff_from_gpaw_calculation(calc, soc)
-    outpath.write_bytes(pickle.dumps(stuff))
+    # outpath.write_bytes(pickle.dumps(stuff))
 
 
 def extract_stuff_from_gpaw_calculation(calc: GPAW,
@@ -32,7 +32,7 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
     kd: KPointDescriptor = calc.wfs.kd
     if soc:
         from gpaw.spinorbit import soc_eigenstates
-        states = soc_eigenstates(calc)
+        states = soc_eigenstates(calc)  # , scale=1)
         k_kc = np.array([kd.bzk_kc[wf.bz_index]
                          for wf in states])
         eig_kn = np.array([wf.eig_m
@@ -72,9 +72,10 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
                                           axis=1)
         fermilevel = calc.get_fermi_level()
 
-    nocc = (eig_kn[0, 0, 0] < fermilevel).sum()
+    nocc = (eig_kn[0] < fermilevel).sum()
     N = range(nocc - 4, nocc + 4)
-
+    print(nocc, fermilevel)
+    print(eig_kn[:, nocc].min() - eig_kn[:, nocc - 1].max())
     K1, K2, K3 = tuple(kd.N_c)
     _, N, nI = proj_knI.shape
     return {'cell_cv': calc.atoms.cell,
@@ -134,17 +135,20 @@ def clusters(eigs,
     return c
 
 
-def con2(e_kn, fp_knx):
+def con2(e_kn, fp_knx, verbose=False):
     K, N = e_kn.shape
     assert K == 2, K
 
     ovl_n1n2 = abs(fp_knx[0] @ fp_knx[1].conj().T)
 
-    c2 = clusters(e_kn[1])
+    c2 = []#clusters(e_kn[1])
 
     for a, b in c2:
         o = ovl_n1n2[:, a:b]
         o[:] = o.max(axis=1)[:, np.newaxis]
+
+    if verbose:
+        print(ovl_n1n2)
 
     n2_n1 = []
     n1_n2: dict[int, int] = {}
@@ -158,6 +162,9 @@ def con2(e_kn, fp_knx):
     for a, b in c2:
         for n2 in range(a, b):
             fp2_nx[n2] = fp_knx[0, n1_n2[n2]]
+
+    if verbose:
+        print(n2_n1, n1_n2)
 
     e2_n = e_kn[1, n2_n1]
     fp2_nx = fp2_nx[n2_n1]
@@ -178,6 +185,10 @@ def main(data: dict,
 
     k_kc = k_ijkc.reshape((-1, 3))[:, axes]
     e_kn = e_ijkn.reshape((-1, e_ijkn.shape[3]))
+    if 0:
+        import matplotlib.pyplot as plt
+        plt.contourf(e_ijkn[:, :, 0, 0])
+        plt.show()
 
     things = []
     for e_k in e_kn.T:
@@ -203,9 +214,15 @@ def find_extrema(cell_cv,
                  npoints=3):
     assert kind in ['vbm', 'cbm']
 
+    if 0:
+        eig_ijkn = eig_ijkn[..., ::2]
+        proj_ijknI = proj_ijknI[..., ::2, :]
+
     nocc = (eig_ijkn[0, 0, 0] < fermilevel).sum()
+    gap = eig_ijkn[..., nocc].min() - eig_ijkn[..., nocc - 1].max()
     log(f'Occupied bands: {nocc}')
     log(f'Fermi level: {fermilevel} eV')
+    log(f'Gap: {gap} eV')
     log(proj_ijknI.shape)
     K1, K2, K3, N, _ = proj_ijknI.shape
 
@@ -226,7 +243,6 @@ def find_extrema(cell_cv,
 
     ijk = eig_ijkn[:, :, :, 0].ravel().argmin()
     i, j, k = np.unravel_index(ijk, (K1, K2, K3))
-    print(i, j, k)
 
     dk = 3
     r1 = [0] if K1 == 1 else [x % K1 for x in range(i - dk, i + dk + 1)]
@@ -287,7 +303,7 @@ def fit(k_kc, eig_k, spinproj_kv,
 
     try:
         # fit = Fit3D(k_kv, eig_k)
-        fit = PolyFit(k_kv, eig_k, 3)
+        fit = PolyFit(k_kv, eig_k, 4)
     except np.linalg.LinAlgError:
         log('   Bad minimum!')
         raise NoMinimum
@@ -404,16 +420,17 @@ def cli():
 
 
 if __name__ == '__main__':
-    if 0:
+    if 1:
         cli()
-    x = np.linspace(-1, 1, 5)
-    xy = np.empty((5, 5, 2))
-    xy[:, :, 0] = x[:, None]
-    xy[:, :, 1] = x
-    xy.shape = (25, 2)
-    z = xy[:, 0]**2 + 2 * xy[:, 1]**2
-    pf = PolyFit(xy, z, 2)
-    print(pf.value([1, 1]))
-    print(pf.gradient([1, 1]))
-    print(pf.hessian([1, 1]))
-    print(pf.find_minimum([1, 1]))
+    if 0:
+        x = np.linspace(-1, 1, 5)
+        xy = np.empty((5, 5, 2))
+        xy[:, :, 0] = x[:, None]
+        xy[:, :, 1] = x
+        xy.shape = (25, 2)
+        z = xy[:, 0]**2 + 2 * xy[:, 1]**2
+        pf = PolyFit(xy, z, 2)
+        print(pf.value([1, 1]))
+        print(pf.gradient([1, 1]))
+        print(pf.hessian([1, 1]))
+        print(pf.find_minimum([1, 1]))
