@@ -54,7 +54,7 @@ class Result(ASRResult):
          resources='1:1h',
          returns=Result)
 def main() -> Result:
-    """Create database links for the defect project."""
+    """Generate QPOD database links for the defect project."""
     # extract path of current directory
     p = Path('.')
 
