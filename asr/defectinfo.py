@@ -59,12 +59,14 @@ def webpanel(result, row, key_descriptions):
                 for altel in element['concentrations']:
                     if altel[1] == int(q):
                         concentration = altel[0]
-        defect_name = f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}</sub>'
+        defect_name = (f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}'
+                       '</sub>')
         conc_row = describe_entry(
             'Eq. concentration',
             'Equilibrium concentration at self-consistent Fermi level.')
         show_conc = True
-    except:
+    # to be fixed
+    except NameError:
         pass
 
     uid = result.host_uid
@@ -110,6 +112,7 @@ def webpanel(result, row, key_descriptions):
 @prepare_result
 class Result(ASRResult):
     """Container for asr.defectinfo results."""
+
     defect_name: str
     host_name: str
     charge_state: str
@@ -142,10 +145,11 @@ class Result(ASRResult):
          resources='1:10m',
          returns=Result)
 def main() -> Result:
-    """Extract defect and host name.
+    """Extract defect, host name, and host crystalproperties.
 
     Extract defect name and host hame based on the folder structure
-    created by asr.setup.defects."""
+    created by asr.setup.defects.
+    """
     p = Path('.')
     pathstr = str(p.absolute())
 

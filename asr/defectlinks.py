@@ -1,12 +1,14 @@
-from asr.core import command, ASRResult, prepare_result, chdir
+from ase.formula import Formula
+from asr.core import (command, ASRResult, prepare_result, chdir, read_json)
+from asr.database.browser import WebPanel, table
+from asr.database.material_fingerprint import main as material_fingerprint
+from asr.defect_symmetry import DefectInfo
+from pathlib import Path
 import typing
 
 
 def webpanel(result, row, key_description):
-    from asr.database.browser import (WebPanel,
-                                      table)
-
-    baselink = 'http://gauss:5000/database.db/row/'
+    baselink = 'http://sylg:5000/database.db/row/'
     charged_table = table(row, 'Charged systems', [])
     for element in result.chargedlinks:
         charged_table['rows'].extend(
@@ -33,6 +35,7 @@ def webpanel(result, row, key_description):
 @prepare_result
 class Result(ASRResult):
     """Container for defectlinks results."""
+
     chargedlinks: typing.List
     neutrallinks: typing.List
     pristinelinks: typing.List
@@ -40,7 +43,7 @@ class Result(ASRResult):
     key_descriptions = dict(
         chargedlinks='Links tuple for the charged states of the same defect.',
         neutrallinks='Links tuple for other defects within the same material.',
-        pristinelinks='Link for pristine material.')
+        pristinelinks='Link tuple for pristine material.')
 
     formats = {'ase_webpanel': webpanel}
 
@@ -52,61 +55,26 @@ class Result(ASRResult):
          returns=Result)
 def main() -> Result:
     """Create database links for the defect project."""
-    from ase.formula import Formula
-    from pathlib import Path
-    from asr.core import read_json
-    from asr.database.material_fingerprint import main as material_fingerprint
+    # extract path of current directory
     p = Path('.')
 
     # First, get charged links for the same defect system
     chargedlinks = []
     chargedlist = list(p.glob('./../charge_*'))
     for charged in chargedlist:
-        if (Path(charged / 'structure.json').is_file() and not
-           str(charged.absolute()).endswith('charge_0')):
-            with chdir(charged):
-                material_fingerprint()
-                res = read_json('results-asr.database.material_fingerprint.json')
-                uid = res['uid']
-            host = Formula(str(charged.absolute()).split('/')[-4].split(
-                'defects.')[-1].split('.')[0].split('_')[0])
-            defect = split(str(charged.absolute()).split('/')[-4].split(
-                '.')[-1].split('_'))
-            charge = str(charged.absolute()).split('charge_')[-1]
-            if defect[0] == 'v':
-                defect[0] = 'V'
-            defect = f"{defect[0]}<sub>{defect[1]}</sub> (charge {charge})"
-            host = f"{host:html}"
-            chargedlinks.append((uid, f"{defect} in {host}"))
+        chargedlinks = get_list_of_links(charged)
 
     # Second, get the neutral links of systems in the same host
     neutrallinks = []
     neutrallist = list(p.glob('./../../*/charge_0'))
     for neutral in neutrallist:
-        if (Path(neutral / 'structure.json').is_file()):
-            with chdir(neutral):
-                material_fingerprint()
-                res = read_json('results-asr.database.material_fingerprint.json')
-                uid = res['uid']
-            host = Formula(str(neutral.absolute()).split('/')[-2].split(
-                'defects.')[-1].split('.')[0].split('_')[0])
-            defect = split(str(neutral.absolute()).split('/')[-2].split(
-                '.')[-1].split('_'))
-            charge = str(neutral.absolute()).split('charge_')[-1]
-            if defect[0] == 'v':
-                defect[0] = 'V'
-            defect = f"{defect[0]}<sub>{defect[1]}</sub> (charge {charge})"
-            host = f"{host:html}"
-            neutrallinks.append((uid, f"{defect} in {host}"))
+        neutrallinks = get_list_of_links(neutral)
 
     # Third, the pristine material
     pristinelinks = []
     pristine = list(p.glob('./../../defects.pristine_sc*'))[0]
     if (Path(pristine / 'structure.json').is_file()):
-        with chdir(pristine):
-            material_fingerprint()
-            res = read_json('results-asr.database.material_fingerprint.json')
-            uid = res['uid']
+        uid = get_uid_from_fingerprint(pristine)
         pristinelinks.append((uid, f"pristine material"))
 
     return Result.fromdata(
@@ -115,8 +83,53 @@ def main() -> Result:
         pristinelinks=pristinelinks)
 
 
-def split(word):
-    return [char for char in word]
+def get_list_of_links(path, charge):
+    links = []
+    structurefile = Path(path / 'structure.json')
+    charge = get_charge_from_folder(path)
+    if structurefile.is_file() and charge != 0:
+        defectinfo = DefectInfo(defectpath=path)
+        uid = get_uid_from_fingerprint(path)
+        hostformula = get_hostformula_from_defectpath(path)
+        defectstring = get_defectstring_from_defectinfo(defectinfo, charge)
+        links.append((uid, f"{defectstring} in {hostformula:html}"))
+
+    return links
+
+
+def get_uid_from_fingerprint(path):
+    with chdir(path):
+        material_fingerprint()
+        res = read_json('results-asr.database.material_fingerprint.json')
+        uid = res['uid']
+
+    return uid
+
+
+def get_defectstring_from_defectinfo(defectinfo, charge):
+    defecttype = defectinfo.defecttype
+    defectkind = defectinfo.defectkind
+    if defecttype == 'v':
+        defecttype = 'V'
+    defectstring = f"{defecttype}<sub>{defectkind}</sub> (charge {charge})"
+
+    return defectstring
+
+
+def get_hostformula_from_defectpath(path):
+    fullpath = Path(path.absolute())
+    token = fullpath.parent.name
+    hostname = token.split('_')[0].split('defects.')[-1]
+
+    return Formula(hostname)
+
+
+def get_charge_from_folder(path):
+    fullpath = Path(path.absolute())
+    chargedstring = fullpath.name
+    charge = int(chargedstring.split('charge_')[-1])
+
+    return charge
 
 
 if __name__ == '__main__':
