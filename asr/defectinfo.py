@@ -165,19 +165,20 @@ def main(structurefile: str = 'structure.json',
     p = Path('.')
 
     # collect all relevant paths for defect info extraction
+    primitivepath, pristinepath = get_primitive_pristine_folderpaths(
+        pristine, p)
+
+    # obtain defectname and chargestate string
     if pristine:
         defectname = 'pristine'
         chargestate = ''
-        primitivepath = Path('../')
-        pristinepath = p
     else:
-        defectinfo = DefectInfo(defectpath=p)
-        defectname = defectinfo.defectname
-        charge = get_charge_from_folder(p)
-        chargestate = f'(charge {charge})'
-        primitivepath = Path('../../')
-        pristinepath = list(p.glob('../../defects.pristine_sc*'))[-1]
+        defectname, chargestate = get_defectinfo_from_path(p)
+
+    # calculation nearest neighbor distance for supercell structure
     R_nn = get_nearest_neighbor_distance(atoms)
+
+    # extract atomic structure and name of the host crystal
     hostatoms = read(primitivepath / 'unrelaxed.json')
     hostname = hostatoms.get_chemical_formula()
 
@@ -217,6 +218,26 @@ def main(structurefile: str = 'structure.json',
         host_gap_pbe=pbe,
         host_gap_hse=hse,
         R_nn=R_nn)
+
+
+def get_defectinfo_from_path(path):
+    defectinfo = DefectInfo(defectpath=path)
+    defectname = defectinfo.defectname
+    charge = get_charge_from_folder(path)
+    chargestate = f'(charge {charge})'
+
+    return defectname, chargestate
+
+
+def get_primitive_pristine_folderpaths(path, pristine):
+    if pristine:
+        primitivepath = Path('../')
+        pristinepath = path
+    else:
+        primitivepath = Path('../../')
+        pristinepath = list(path.glob('../../defects.pristine_sc*'))[-1]
+
+    return primitivepath, pristinepath
 
 
 def get_nearest_neighbor_distance(atoms):
