@@ -1,6 +1,11 @@
-from asr.core import command, ASRResult, prepare_result, read_json
-import typing
+from ase.db import connect
+from ase.io import read
+from asr.core import command, ASRResult, prepare_result, read_json, option
+from asr.defectlinks import get_charge_from_folder
+from asr.defect_symmetry import DefectInfo
+from asr.setup.defects import return_distances_cell
 from pathlib import Path
+import typing
 
 
 def webpanel(result, row, key_descriptions):
@@ -48,7 +53,7 @@ def webpanel(result, row, key_descriptions):
         'Defect-defect distance',
         result.key_descriptions['R_nn'])
 
-    show_conc = False
+    # only show results for the concentration if charge neutrality results present
     try:
         defect_name = row.defect_name
         charge_state = row.charge_state
@@ -65,9 +70,8 @@ def webpanel(result, row, key_descriptions):
             'Eq. concentration',
             'Equilibrium concentration at self-consistent Fermi level.')
         show_conc = True
-    # to be fixed
-    except NameError:
-        pass
+    except KeyError:
+        show_conc = False
 
     uid = result.host_uid
     uidstring = describe_entry(
@@ -144,64 +148,67 @@ class Result(ASRResult):
 @command(module='asr.defectinfo',
          resources='1:10m',
          returns=Result)
-def main() -> Result:
+@option('--structurefile', help='Structure file for the evaluation of '
+        'the nearest neighbor distance.', type=str)
+@option('--pristine/--no-pristine', help='Flag to treat systems '
+        'in the pristine folder of the set up tree structure '
+        'from asr.setup.defects.', is_flag=True)
+def main(structurefile: str = 'structure.json',
+         pristine: bool = False) -> Result:
     """Extract defect, host name, and host crystalproperties.
 
     Extract defect name and host hame based on the folder structure
     created by asr.setup.defects.
     """
+    atoms = read(structurefile)
+    # extract path of the current directory
     p = Path('.')
-    pathstr = str(p.absolute())
 
-    R_nn = None
-    if pathstr.split('/')[-1].startswith('defects.pristine_sc'):
-        host_name = pathstr.split('/')[-2].split('-')[0]
-        defect_name = 'pristine'
-        charge_state = ''
-        prispath = p
-        primpath = Path(p / '../')
-    elif pathstr.split('/')[-1].startswith('charge'):
-        host_name = pathstr.split('/')[-3].split('-')[0]
-        defect_name = pathstr.split('/')[-2].split('.')[-1]
-        charge_state = f"(charge {pathstr.split('/')[-1].split('_')[-1]})"
-        prispath = list(p.glob('../../defects.pristine_sc*'))[-1]
-        primpath = Path(p / '../../')
-        R_nn = get_nearest_neighbor_distance()
+    # collect all relevant paths for defect info extraction
+    if pristine:
+        defectname = 'pristine'
+        chargestate = ''
+        primitivepath = Path('../')
+        pristinepath = p
     else:
-        raise ValueError('ERROR: needs asr.setup.defects to extract'
-                         ' information on the defect system. Furthermore, '
-                         'asr.structureinfo needs to run for the pristine '
-                         'system and asr.database.material_fingerprint for '
-                         'the primitive structure.')
+        defectinfo = DefectInfo(defectpath=p)
+        defectname = defectinfo.defectname
+        charge = get_charge_from_folder(p)
+        chargestate = f'(charge {charge})'
+        primitivepath = Path('../../')
+        pristinepath = list(p.glob('../../defects.pristine_sc*'))[-1]
+    R_nn = get_nearest_neighbor_distance(atoms)
+    hostatoms = read(primitivepath / 'unrelaxed.json')
+    hostname = hostatoms.get_chemical_formula()
 
-    resfile = Path(prispath / 'results-asr.structureinfo.json')
-    if resfile.is_file():
-        res = read_json(resfile)
+    # collect all relevant results files
+    resultsfile = Path(pristinepath / 'results-asr.structureinfo.json')
+    if resultsfile.is_file():
+        res = read_json(resultsfile)
         host_pointgroup = res['pointgroup']
         host_spacegroup = res['spacegroup']
         host_crystal = res['crystal_type']
     else:
-        print('WARNING: no asr.structureinfo ran for the pristine system!')
-        host_pointgroup = None
-        host_spacegroup = None
-        host_crystal = None
+        raise FileNotFoundError(
+            'you need to run asr.structureinfo in the pristine folder!')
 
-    primres = Path(primpath / 'results-asr.database.material_fingerprint.json')
-    if primres.is_file():
-        res = read_json(primres)
+    resultsfile = Path(primitivepath / 'results-asr.database.material_fingerprint.json')
+    if resultsfile.is_file():
+        res = read_json(resultsfile)
         host_uid = res['uid']
     else:
-        raise ValueError('Error: no asr.database.material_fingerprint ran for '
+        raise ValueError('no asr.database.material_fingerprint ran for '
                          'primitive structure! Make sure to run it before '
                          'running asr.defectinfo.')
 
     # extract host crystal properties from C2DB
-    hof, pbe, hse = get_host_properties_from_C2DB(host_uid)
+    db = connect('/home/niflheim/fafb/db/c2db_july20.db')
+    hof, pbe, hse = get_host_properties_from_db(db, host_uid)
 
     return Result.fromdata(
-        defect_name=defect_name,
-        host_name=host_name,
-        charge_state=charge_state,
+        defect_name=defectname,
+        host_name=hostname,
+        charge_state=chargestate,
         host_pointgroup=host_pointgroup,
         host_spacegroup=host_spacegroup,
         host_crystal=host_crystal,
@@ -212,36 +219,18 @@ def main() -> Result:
         R_nn=R_nn)
 
 
-def get_nearest_neighbor_distance():
-    from ase.io import read
-    import numpy as np
-
-    try:
-        atoms = read('structure.json')
-    except FileNotFoundError:
-        atoms = read('unrelaxed.json')
+def get_nearest_neighbor_distance(atoms):
     cell = atoms.get_cell()
-    distance_xx = np.sqrt(cell[0][0]**2 + cell[0][1]**2 + cell[0][2]**2)
-    distance_yy = np.sqrt(cell[1][0]**2 + cell[1][1]**2 + cell[1][2]**2)
-    distance_xy = np.sqrt((
-        cell[0][0] + cell[1][0])**2 + (
-        cell[0][1] + cell[1][1])**2 + (
-        cell[0][2] + cell[1][2])**2)
-    distance_mxy = np.sqrt((
-        -cell[0][0] + cell[1][0])**2 + (
-        -cell[0][1] + cell[1][1])**2 + (
-        -cell[0][2] + cell[1][2])**2)
-    distances = [distance_xx, distance_yy, distance_xy, distance_mxy]
+    distances = return_distances_cell(cell)
 
     return min(distances)
 
 
-def get_host_properties_from_C2DB(uid):
-    """Extract host properties from C2DB."""
-    from ase.db import connect
+def get_host_properties_from_db(db, uid):
+    """Extract host properties from C2DB.
 
-    db = connect('/home/niflheim/fafb/db/c2db_july20.db')
-
+    The input database needs a uid, hform, and gap keyword.
+    """
     for row in db.select(uid=uid):
         hof = row.hform
         gap_pbe = row.gap
