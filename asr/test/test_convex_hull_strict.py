@@ -2,6 +2,7 @@ import pytest
 from asr.convex_hull import calculate_hof_and_hull, LOW, MEDIUM, HIGH
 
 
+@pytest.mark.ci
 def test_single_species():
     ref = mkref('A', 1, 0.0)
     energy = 42.0
@@ -51,6 +52,7 @@ delta_e_medium = stab_tolerance + 0.05
 # * Then "low"
 #
 # Note: The logic to establish the right referen
+@pytest.mark.ci
 @pytest.mark.parametrize(
     'energy, refs, hformref, e_over_hull_ref, rating',
     [(e0_gaas, stdrefs(), hform_gaas, hform_gaas, HIGH),
