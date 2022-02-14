@@ -335,7 +335,15 @@ def matrixtable(M, digits=2, unit='',
     for i in range(1, shape[0]):
         for j in range(1, shape[1]):
             value = M[i - 1][j - 1]
-            rows[i][j] = '{:.{}f}{}'.format(value, digits, unit)
+            if digits is None:
+                rows[i][j] = value
+                if unit != '':
+                    raise TypeError(
+                        f"input unit ({unit}) can't be set because digits "
+                        "is None! When setting 'unit' please specify 'digits' "
+                        "as well.")
+            else:
+                rows[i][j] = '{:.{}f}{}'.format(value, digits, unit)
 
     table = dict(type='table',
                  rows=rows)
