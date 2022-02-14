@@ -215,11 +215,13 @@ def main(databases: List[str]) -> Result:
     ref_database = databases[0]
     ref_metadata = dbdata[ref_database]['metadata']
     ref_energy_key = ref_metadata.get('energy_key', 'energy')
-    ref_energies = get_reference_energies(atoms, ref_database,
-                                          energy_key=ref_energy_key)
+    ref_energies = get_singlespecies_reference_energies(
+        atoms, ref_database, energy_key=ref_energy_key)
+
     hform = hof(energy,
                 count,
                 ref_energies)
+
     # Make a list of the relevant references
     references = []
     for data in dbdata.values():
@@ -241,6 +243,15 @@ def main(databases: List[str]) -> Result:
                 reference['link'] = reference['link'].format(row=row)
             references.append(reference)
 
+    return actually_do_things(hform, references, formula, len(atoms), count)
+
+
+def energy_above_hull(formula, pdrefs):
+    from ase.formula import Formula
+    formula = Formula(formula)
+    natoms = len(formula)
+
+def actually_do_things(hform, references, formula, natoms, count):
     pdrefs = []
     for reference in references:
         h = reference['natoms'] * reference['hform']
@@ -256,7 +267,7 @@ def main(databases: List[str]) -> Result:
     else:
         pd = PhaseDiagram(pdrefs, verbose=False)
         e0, indices, coefs = pd.decompose(formula)
-        ehull = hform - e0 / len(atoms)
+        ehull = hform - e0 / natoms #len(atoms)
         results['indices'] = indices.tolist()
         results['coefs'] = coefs.tolist()
 
@@ -283,7 +294,8 @@ def stability_rating(hform, ehull):
     return HIGH
 
 
-def get_reference_energies(atoms, references, energy_key='energy'):
+def get_singlespecies_reference_energies(
+        atoms, references, energy_key='energy'):
     count = Counter(atoms.get_chemical_symbols())
 
     # Get reference energies
