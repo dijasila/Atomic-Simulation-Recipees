@@ -3,7 +3,6 @@ from asr.convex_hull import calculate_hof_and_hull, LOW, MEDIUM, HIGH
 
 
 def test_single_species():
-    #ref = {'formula': 'A', 'natoms': 1, 'hform': 0.0}
     ref = mkref('A', 1, 0.0)
     energy = 42.0
     result = calculate_hof_and_hull('A', energy, [ref], {'A': energy})
@@ -60,8 +59,7 @@ delta_e_medium = stab_tolerance + 0.05
      (e0_gaas + natoms * delta_e_medium, refs_with_gaas(),
       hform_gaas + delta_e_medium, delta_e_medium, MEDIUM),
      (ref_energy_sum + natoms * stab_tolerance + 1e-10, refs_with_gaas(),
-      stab_tolerance, -hform_gaas + stab_tolerance, LOW),
-    ])
+      stab_tolerance, -hform_gaas + stab_tolerance, LOW)])
 def test(energy, refs, hformref, e_over_hull_ref, rating):
     formula = 'GaAs'
 
