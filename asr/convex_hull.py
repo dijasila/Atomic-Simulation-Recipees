@@ -218,10 +218,6 @@ def main(databases: List[str]) -> Result:
     ref_energies_per_atom = get_singlespecies_reference_energies_per_atom(
         atoms, ref_database, energy_key=ref_energy_key)
 
-    hform = hof(energy,
-                count,
-                ref_energies_per_atom)
-
     # Make a list of the relevant references
     references = []
     for data in dbdata.values():
@@ -243,15 +239,22 @@ def main(databases: List[str]) -> Result:
                 reference['link'] = reference['link'].format(row=row)
             references.append(reference)
 
-    return actually_do_things(hform, references, formula, len(atoms), count)
+    assert len(atoms) == len(Formula(formula))
+    return calculate_hof_and_hull(formula, energy, references,
+                                  ref_energies_per_atom)
 
 
-def energy_above_hull(formula, pdrefs):
-    from ase.formula import Formula
+def calculate_hof_and_hull(
+        formula, energy, references, ref_energies_per_atom):
     formula = Formula(formula)
-    natoms = len(formula)
 
-def actually_do_things(hform, references, formula, natoms, count):
+    natoms = len(formula)
+    count = formula.count()
+
+    hform = hof(energy,
+                count,
+                ref_energies_per_atom)
+
     pdrefs = []
     for reference in references:
         h = reference['natoms'] * reference['hform']
@@ -266,7 +269,7 @@ def actually_do_things(hform, references, formula, natoms, count):
         results['coefs'] = None
     else:
         pd = PhaseDiagram(pdrefs, verbose=False)
-        e0, indices, coefs = pd.decompose(formula)
+        e0, indices, coefs = pd.decompose(str(formula))
         ehull = hform - e0 / natoms #len(atoms)
         results['indices'] = indices.tolist()
         results['coefs'] = coefs.tolist()
@@ -296,12 +299,11 @@ def stability_rating(hform, ehull):
 
 def get_singlespecies_reference_energies_per_atom(
         atoms, references, energy_key='energy'):
-    count = Counter(atoms.get_chemical_symbols())
 
     # Get reference energies
     ref_energies_per_atom = {}
     refdb = connect(references)
-    for row in select_references(refdb, set(count)):
+    for row in select_references(refdb, set(atoms.symbols)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
             e_ref = row[energy_key] / row.natoms
@@ -311,9 +313,9 @@ def get_singlespecies_reference_energies_per_atom(
     return ref_energies_per_atom
 
 
-def hof(energy, count, ref_energies):
+def hof(energy, count, ref_energies_per_atom):
     """Heat of formation."""
-    energy = energy - sum(n * ref_energies[symbol]
+    energy = energy - sum(n * ref_energies_per_atom[symbol]
                           for symbol, n in count.items())
     return energy / sum(count.values())
 
