@@ -96,7 +96,7 @@ def test_return_defect_coordinates(defecttype, defectkind):
         position = return_defect_coordinates(
             system, atoms, supercell, defectinfo)
 
-        assert pytest.approx(position, ref_position)
+        assert position == pytest.approx(ref_position)
 
 
 @pytest.mark.ci
