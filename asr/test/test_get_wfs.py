@@ -26,9 +26,11 @@ def test_return_erange_states(ef, emin, emax):
         assert len(states) == 0
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize('setup_method', ['uni', 'gen'])
 @pytest.mark.ci
 def test_return_defect_index(asr_tmpdir, setup_method):
+    # XXX port from oldmaster
     from pathlib import Path
     from .materials import BN
     from ase.io import read, write

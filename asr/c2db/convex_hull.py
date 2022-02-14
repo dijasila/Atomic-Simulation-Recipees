@@ -326,11 +326,10 @@ def stability_rating(hform, energy_above_hull):
 
 
 def get_singlespecies_reference_energies_per_atom(
-        atoms, references, energy_key='energy'):
+        atoms, refdb, energy_key='energy'):
 
     # Get reference energies
     ref_energies_per_atom = {}
-    refdb = connect(references)
     for row in select_references(refdb, set(atoms.symbols)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
