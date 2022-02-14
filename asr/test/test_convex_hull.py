@@ -1,7 +1,7 @@
 import pytest
 from ase.db import connect
 from ase.build import bulk
-from asr.convex_hull import main
+from asr.c2db.convex_hull import main
 
 
 metal_alloys = ['Ag', 'Au', 'Ag,Au', 'Ag,Au,Al']

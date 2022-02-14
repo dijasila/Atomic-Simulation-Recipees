@@ -269,11 +269,11 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command(module='asr.defect_symmetry',
-         requires=['structure.json'],
-         dependencies=['asr.get_wfs'],
-         resources='1:1h',
-         returns=Result)
+@command(module='asr.defect_symmetry')
+# requires=['structure.json'],
+# dependencies=['asr.get_wfs'],
+# resources='1:1h',
+# returns=Result
 @option('--primitivefile', help='Path to the primitive structure file.',
         type=str)
 @option('--pristinefile', help='Path to the pristine supercell file'

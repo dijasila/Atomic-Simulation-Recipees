@@ -33,12 +33,12 @@ class Result(ASRResult):
         eref='Energy reference (vacuum level in 2D, 0 otherwise) [eV].')
 
 
-@command(module='asr.get_wfs',
-         requires=['gs.gpw', 'structure.json',
-                   'results-asr.gs.json'],
-         dependencies=['asr.gs@calculate', 'asr.gs'],
-         resources='1:10m',
-         returns=Result)
+@command(module='asr.get_wfs')
+# requires=['gs.gpw', 'structure.json',
+#           'results-asr.gs.json'],
+# dependencies=['asr.gs@calculate', 'asr.gs'],
+# resources='1:10m',
+# returns=Result)
 @option('--state', help='Specify state index that you want to '
         'write out. This option will not be used when '
         '"--get-gapstates" is used.', type=int)

@@ -1,5 +1,5 @@
 import pytest
-from asr.convex_hull import calculate_hof_and_hull, LOW, MEDIUM, HIGH
+from asr.c2db.convex_hull import calculate_hof_and_hull, LOW, MEDIUM, HIGH
 
 
 @pytest.mark.ci
