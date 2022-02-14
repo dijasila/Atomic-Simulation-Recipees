@@ -215,12 +215,12 @@ def main(databases: List[str]) -> Result:
     ref_database = databases[0]
     ref_metadata = dbdata[ref_database]['metadata']
     ref_energy_key = ref_metadata.get('energy_key', 'energy')
-    ref_energies = get_singlespecies_reference_energies(
+    ref_energies_per_atom = get_singlespecies_reference_energies_per_atom(
         atoms, ref_database, energy_key=ref_energy_key)
 
     hform = hof(energy,
                 count,
-                ref_energies)
+                ref_energies_per_atom)
 
     # Make a list of the relevant references
     references = []
@@ -229,7 +229,7 @@ def main(databases: List[str]) -> Result:
         energy_key = metadata.get('energy_key', 'energy')
         for row in data['rows']:
             hformref = hof(row[energy_key],
-                           row.count_atoms(), ref_energies)
+                           row.count_atoms(), ref_energies_per_atom)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
@@ -294,21 +294,21 @@ def stability_rating(hform, ehull):
     return HIGH
 
 
-def get_singlespecies_reference_energies(
+def get_singlespecies_reference_energies_per_atom(
         atoms, references, energy_key='energy'):
     count = Counter(atoms.get_chemical_symbols())
 
     # Get reference energies
-    ref_energies = {}
+    ref_energies_per_atom = {}
     refdb = connect(references)
     for row in select_references(refdb, set(count)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
             e_ref = row[energy_key] / row.natoms
-            assert symbol not in ref_energies
-            ref_energies[symbol] = e_ref
+            assert symbol not in ref_energies_per_atom
+            ref_energies_per_atom[symbol] = e_ref
 
-    return ref_energies
+    return ref_energies_per_atom
 
 
 def hof(energy, count, ref_energies):
