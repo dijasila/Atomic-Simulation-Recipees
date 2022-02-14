@@ -5,11 +5,28 @@ from ase import Atoms
 from asr.core import command, ASRResult, prepare_result, option, AtomsFile
 
 
+def get_spg_href(url):
+    from asr.database.browser import href
+
+    return href('SpgLib', url)
+
+
+def describe_pointgroup_entry(spglib):
+    from asr.database.browser import describe_entry
+
+    pointgroup = describe_entry(
+        'pointgroup',
+        f"Point group determined with {spglib}."
+    )
+
+    return pointgroup
+
+
 def webpanel(result, context):
     from asr.database.browser import (table, describe_entry, code, bold,
                                       br, href, dl, div)
 
-    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
+    spglib = get_spg_href('https://spglib.github.io/spglib/')
     crystal_type = describe_entry(
         'crystal_type',
         "The crystal type is defined as "
@@ -49,10 +66,7 @@ def webpanel(result, context):
         f"{spg_list_link} number determined with {spglib}."
     )
 
-    pointgroup = describe_entry(
-        'pointgroup',
-        f"Point group determined with {spglib}."
-    )
+    pointgroup = describe_pointgroup_entry(spglib)
 
     # XXX We should define a different panel for these external DB IDs
     # and DOI.  Those are not related to this recipe!
