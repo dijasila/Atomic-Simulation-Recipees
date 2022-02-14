@@ -245,14 +245,9 @@ def main(
     ref_database = databases[0]
     ref_metadata = dbdata[ref_database.filename]['metadata']
     ref_energy_key = ref_metadata.get('energy_key', 'energy')
-    ref_energies = get_reference_energies(
-        atoms,
-        ref_database,
-        energy_key=ref_energy_key,
-    )
-    hform = hof(energy,
-                count,
-                ref_energies)
+    ref_energies_per_atom = get_singlespecies_reference_energies_per_atom(
+        atoms, ref_database, energy_key=ref_energy_key)
+
     # Make a list of the relevant references
     references = []
     for data in dbdata.values():
@@ -260,7 +255,7 @@ def main(
         energy_key = metadata.get('energy_key', 'energy')
         for row in data['rows']:
             hformref = hof(row[energy_key],
-                           row.count_atoms(), ref_energies)
+                           row.count_atoms(), ref_energies_per_atom)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
@@ -274,6 +269,21 @@ def main(
                 reference['link'] = reference['link'].format(row=row)
             references.append(reference)
 
+    assert len(atoms) == len(Formula(formula))
+    return calculate_hof_and_hull(formula, energy, references,
+                                  ref_energies_per_atom)
+
+
+def calculate_hof_and_hull(
+        formula, energy, references, ref_energies_per_atom):
+    formula = Formula(formula)
+
+    species_counts = formula.count()
+
+    hform = hof(energy,
+                species_counts,
+                ref_energies_per_atom)
+
     pdrefs = []
     for reference in references:
         h = reference['natoms'] * reference['hform']
@@ -282,16 +292,14 @@ def main(
     results = {'hform': hform,
                'references': references}
 
-    if len(count) == 1:
-        ehull = hform
-        results['indices'] = None
-        results['coefs'] = None
-    else:
-        pd = PhaseDiagram(pdrefs, verbose=False)
-        e0, indices, coefs = pd.decompose(formula)
-        ehull = hform - e0 / len(atoms)
-        results['indices'] = indices.tolist()
-        results['coefs'] = coefs.tolist()
+    pd = PhaseDiagram(pdrefs, verbose=False)
+    e0, indices, coefs = pd.decompose(str(formula))
+    ehull = hform - e0 / len(formula)
+    if len(species_counts) == 1:
+        assert abs(ehull - hform) < 1e-10
+
+    results['indices'] = indices.tolist()
+    results['coefs'] = coefs.tolist()
 
     results['ehull'] = ehull
     results['thermodynamic_stability_level'] = stability_rating(hform, ehull)
@@ -308,32 +316,33 @@ stability_descriptions = {
     HIGH: 'Heat of formation < convex hull + 0.2 eV/atom'}
 
 
-def stability_rating(hform, ehull):
+def stability_rating(hform, energy_above_hull):
+    assert hform <= energy_above_hull
     if 0.2 < hform:
         return LOW
-    if ehull + 0.2 < hform:
+    if 0.2 < energy_above_hull:
         return MEDIUM
     return HIGH
 
 
-def get_reference_energies(atoms, refdb, energy_key='energy'):
-    count = Counter(atoms.get_chemical_symbols())
+def get_singlespecies_reference_energies_per_atom(
+        atoms, refdb, energy_key='energy'):
 
     # Get reference energies
-    ref_energies = {}
-    for row in select_references(refdb, set(count)):
+    ref_energies_per_atom = {}
+    for row in select_references(refdb, set(atoms.symbols)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
             e_ref = row[energy_key] / row.natoms
-            assert symbol not in ref_energies
-            ref_energies[symbol] = e_ref
+            assert symbol not in ref_energies_per_atom
+            ref_energies_per_atom[symbol] = e_ref
 
-    return ref_energies
+    return ref_energies_per_atom
 
 
-def hof(energy, count, ref_energies):
+def hof(energy, count, ref_energies_per_atom):
     """Heat of formation."""
-    energy = energy - sum(n * ref_energies[symbol]
+    energy = energy - sum(n * ref_energies_per_atom[symbol]
                           for symbol, n in count.items())
     return energy / sum(count.values())
 
