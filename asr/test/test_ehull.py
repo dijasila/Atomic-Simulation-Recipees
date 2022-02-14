@@ -10,6 +10,8 @@ def test_single_species():
     assert result['hform'] == pytest.approx(0.0)
     assert result['ehull'] == pytest.approx(0.0)
     assert result['thermodynamic_stability_level'] == HIGH
+    assert result['indices'] == [0]
+    assert result['coefs'] == [pytest.approx(1.0)]
 
 
 def mkref(formula, natoms, hform):

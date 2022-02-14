@@ -248,11 +248,10 @@ def calculate_hof_and_hull(
         formula, energy, references, ref_energies_per_atom):
     formula = Formula(formula)
 
-    natoms = len(formula)
-    count = formula.count()
+    species_counts = formula.count()
 
     hform = hof(energy,
-                count,
+                species_counts,
                 ref_energies_per_atom)
 
     pdrefs = []
@@ -263,16 +262,14 @@ def calculate_hof_and_hull(
     results = {'hform': hform,
                'references': references}
 
-    if len(count) == 1:
-        ehull = hform
-        results['indices'] = None
-        results['coefs'] = None
-    else:
-        pd = PhaseDiagram(pdrefs, verbose=False)
-        e0, indices, coefs = pd.decompose(str(formula))
-        ehull = hform - e0 / natoms #len(atoms)
-        results['indices'] = indices.tolist()
-        results['coefs'] = coefs.tolist()
+    pd = PhaseDiagram(pdrefs, verbose=False)
+    e0, indices, coefs = pd.decompose(str(formula))
+    ehull = hform - e0 / len(formula)
+    if len(species_counts) == 1:
+        assert abs(ehull - hform) < 1e-10
+
+    results['indices'] = indices.tolist()
+    results['coefs'] = coefs.tolist()
 
     results['ehull'] = ehull
     results['thermodynamic_stability_level'] = stability_rating(hform, ehull)
@@ -289,10 +286,11 @@ stability_descriptions = {
     HIGH: 'Heat of formation < convex hull + 0.2 eV/atom'}
 
 
-def stability_rating(hform, ehull):
+def stability_rating(hform, energy_above_hull):
+    assert hform <= energy_above_hull
     if 0.2 < hform:
         return LOW
-    if ehull + 0.2 < hform:
+    if 0.2 < energy_above_hull:
         return MEDIUM
     return HIGH
 
