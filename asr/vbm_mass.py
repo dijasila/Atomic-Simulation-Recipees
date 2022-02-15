@@ -26,7 +26,6 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import WebPanel
     
     data= row.data.get('results-asr.vbm_mass.json')
-
     extrematable = []
     for xfit, yfit, indices,x, eigs, k, energy, mass, spin  in data['extrema']:
         extrematable.append([f'{k:.3f}', f'{energy:.3f}', f'{mass:.3f}',f'{spin[0]:.1f},{spin[1]:.1f},{spin[2]:.1f}'])     
