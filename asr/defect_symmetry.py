@@ -322,7 +322,7 @@ def main(primitivefile: str = 'primitive.json',
     # construct mapped structure, or return relaxed defect structure in
     # case mapping is not needed
     if mapping:
-        mapped_structure = get_mapped_structure(structure,
+        mapped_structure = get_mapped_structure_new(structure,
                                                 unrelaxed,
                                                 primitive,
                                                 pristine,
@@ -455,22 +455,44 @@ def find_wf_result(wf_result, state, spin):
                     f'wavefunction no. {state}/{spin}!')
 
 
+def get_mapped_structure_new(structure, unrelaxed, primitive, pristine, defectinfo):
+    """Return centered and mapped structure."""
+    vac = defectinfo.is_vacancy
+    translation = return_defect_coordinates(structure, primitive, pristine, defectinfo)
+    rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
+        structure, unrelaxed, primitive, pristine, translation, delta=0)
+    from ase.visualize import view
+    for delta in [0.1, 0.3]:
+        for cutoff in np.arange(0.1, 1.2, 0.5):
+            rel_tmp = rel_struc.copy()
+            ref_tmp = ref_struc.copy()
+            art_tmp = art_struc.copy()
+            rel_tmp = apply_shift(rel_tmp, delta)
+            ref_tmp = apply_shift(ref_tmp, delta)
+            art_tmp = apply_shift(art_tmp, delta)
+            indexlist = compare_structures(art_tmp, ref_tmp, cutoff)
+            del ref_tmp[indexlist]
+            del rel_tmp[indexlist]
+            for threshold in [1.05, 1.01, 0.99]:
+                indexlist = indexlist_cut_atoms(ref_tmp, threshold)
+                del ref_tmp[indexlist]
+                del rel_tmp[indexlist]
+                if conserved_atoms(ref_tmp, primitive, N, vac):
+                    print(f'Parameters: delta {delta}, cutoff {cutoff}, threshold {threshold}')
+                    return rel_tmp
+
+    raise ValueError('number of atoms wrong! Mapping not correct!')
+
+
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     """Return centered and mapped structure."""
     vac = defectinfo.is_vacancy
     done = False
-    for delta in [0, 0.03, 0.5, 0.1, -0.03, -0.1]:
-        for cutoff in np.arange(0.1, 0.81, 0.05):
+    # for delta in [0, 0.03, 0.5, 0.1, -0.03, -0.1]:
+    for delta in [0]:
+        # for cutoff in np.arange(0.1, 0.81, 0.3):
+        for cutoff in [0.1]:
             for threshold in [0.99, 1.01]:
-                translation = return_defect_coordinates(structure, primitive,
-                                                        pristine, defectinfo)
-                rel_struc, ref_struc, artificial, N = recreate_symmetric_cell(
-                    structure,
-                    unrelaxed,
-                    primitive,
-                    pristine,
-                    translation,
-                    delta)
                 indexlist = compare_structures(artificial, ref_struc, cutoff)
                 del ref_struc[indexlist]
                 del rel_struc[indexlist]
@@ -508,7 +530,7 @@ def conserved_atoms(ref_struc, primitive, N, is_vacancy):
         print('INFO: number of atoms correct after mapping.')
         return True
     else:
-        print(len(ref_struc), len(primitive), N, removed)
+        # print(len(ref_struc), N * N * len(primitive) - removed)
         return False
 
 
@@ -555,30 +577,41 @@ def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
     scell = structure.get_cell()
 
     # create intermediate big structure for the relaxed structure
-    bigatoms_rel = structure.repeat((5, 5, 1))
-    positions = bigatoms_rel.get_positions()
+    rel_struc = structure.repeat((5, 5, 1))
+    positions = rel_struc.get_positions()
     positions += [-translation[0], -translation[1], 0]
     positions += -2.0 * scell[0] - 1.0 * scell[1]
-    positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
-    kinds = bigatoms_rel.get_chemical_symbols()
-    rel_struc = Atoms(symbols=kinds, positions=positions, cell=cell)
+    # positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
+    rel_struc.set_positions(positions)
+    rel_struc.set_cell(cell)
 
     # create intermediate big structure for the unrelaxed structure
-    bigatoms_rel = unrelaxed.repeat((5, 5, 1))
-    positions = bigatoms_rel.get_positions()
+    ref_struc = unrelaxed.repeat((5, 5, 1))
+    positions = ref_struc.get_positions()
     positions += [-translation[0], -translation[1], 0]
     positions += -2.0 * scell[0] - 1.0 * scell[1]
-    positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
-    kinds = bigatoms_rel.get_chemical_symbols()
-    ref_struc = Atoms(symbols=kinds, positions=positions, cell=cell)
+    # positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
+    ref_struc.set_positions(positions)
+    ref_struc.set_cell(cell)
 
     refpos = reference.get_positions()
     refpos += [-translation[0], -translation[1], 0]
-    refpos += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
+    # refpos += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
     reference.set_positions(refpos)
     reference.wrap()
 
     return rel_struc, ref_struc, reference, N
+
+
+def apply_shift(atoms, delta=0):
+    newatoms = atoms.copy()
+    positions = newatoms.get_positions()
+    cell = newatoms.cell
+    # positions += -2.0 * cell[0] - 1.0 * cell[1]
+    positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
+    newatoms.set_positions(positions)
+
+    return newatoms
 
 
 def get_supercell_shape(primitive, pristine):
