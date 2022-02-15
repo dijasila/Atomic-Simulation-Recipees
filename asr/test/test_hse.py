@@ -97,11 +97,10 @@ def test_hse(gsresult, asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         mag_ani=mag_ani)
     assert results['gap_hse_nosoc'] == pytest.approx(2 * bandgap)
     assert results['gap_dir_hse_nosoc'] == pytest.approx(2 * bandgap)
-    return
 
     # We need to call structureinfo in order to make the webpanel.
     # This should be fixed in the future.
-    structinfo(atoms=test_material)
+    # structinfo(atoms=test_material)
 
-    #html = get_webcontent()
-    #assert 'hse-bs.png' in html
+    # html = get_webcontent()
+    # assert 'hse-bs.png' in html

@@ -1,7 +1,7 @@
 """HSE06 band structure."""
 from asr.calculators import Calculation
 import asr
-from asr.core import command, option, ASRResult, prepare_result
+from asr.core import command, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
 from asr.c2db.bandstructure import legend_on_top
@@ -164,7 +164,6 @@ def MP_interpolate(
     dct = dict(e_int_skn=e_int_skn, path=path)
 
     # add SOC from bs.gpw
-    print('BSCALCULATERES', bscalculateres)
     calc = bscalculateres.calculation.load()
     theta, phi = mag_ani.spin_angles()
     soc = soc_eigenstates(calc, eigenvalues=e_int_skn,
