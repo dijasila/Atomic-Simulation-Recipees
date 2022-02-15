@@ -1,14 +1,10 @@
 """HSE06 band structure."""
-from ase import Atoms
 from asr.calculators import Calculation
 import asr
 from asr.core import command, option, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
-from asr.c2db.gs import calculate as calculategs
-from asr.c2db.bandstructure import (calculate as bscalculate, main as bsmain,
-                                    legend_on_top)
-from asr.c2db.magnetic_anisotropy import main as mag_ani_main
+from asr.c2db.bandstructure import legend_on_top
 from asr.database.browser import make_panel_description
 from asr.utils.gw_hse import GWHSEInfo
 from asr.utils.kpts import get_kpts_size
@@ -56,25 +52,21 @@ class HSECalculationResult(ASRResult):
 
 
 @command(module='asr.c2db.hse')
-@asr.atomsopt
-@asr.calcopt
-@option('--kptdensity', help='K-point density', type=float)
-@option('--emptybands', help='number of empty bands to include', type=int)
+#@option('--kptdensity', help='K-point density', type=float)
+#@option('--emptybands', help='number of empty bands to include', type=int)
 def calculate(
-        atoms: Atoms,
-        calculator: dict = calculategs.defaults.calculator,
+        gsresult,
+        mag_ani,
         kptdensity: float = 8.0,
         emptybands: int = 20,
 ) -> HSECalculationResult:
     """Calculate HSE06 corrections."""
-    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
     eigs, calc, hse_nowfs = hse(
-        atoms=atoms,
-        calculator=calculator,
         kptdensity=kptdensity,
         emptybands=emptybands,
+        gsresult=gsresult,
     )
-    eigs_soc = hse_spinorbit(atoms, calculator, eigs, calc, mag_ani=mag_ani)
+    eigs_soc = hse_spinorbit(e_skn=eigs.get('e_skn'), calc=calc, mag_ani=mag_ani)
     results = {
         'hse_eigenvalues': eigs,
         'hse_eigenvalues_soc': eigs_soc,
@@ -83,12 +75,12 @@ def calculate(
     return HSECalculationResult(data=results)
 
 
-def hse(atoms, calculator, kptdensity, emptybands):
+def hse(kptdensity, emptybands, gsresult):
     from gpaw.hybrids.eigenvalues import non_self_consistent_eigenvalues
 
     convbands = int(emptybands / 2)
-    gsresult = calculategs(atoms=atoms, calculator=calculator)
     calc = gsresult.calculation.load(parallel={'band': 1, 'kpt': 1})
+    atoms = calc.atoms
 
     ND = sum(atoms.pbc)
     if ND == 3 or ND == 1:
@@ -120,10 +112,9 @@ def hse(atoms, calculator, kptdensity, emptybands):
     return dct, calc, hse_nowfs
 
 
-def hse_spinorbit(atoms, calculator, dct, calc, mag_ani):
+def hse_spinorbit(e_skn, calc, mag_ani):
     from gpaw.spinorbit import soc_eigenstates
 
-    e_skn = dct.get('e_hse_skn')
     dct_soc = {}
     theta, phi = mag_ani.spin_angles()
 
@@ -138,11 +129,8 @@ def hse_spinorbit(atoms, calculator, dct, calc, mag_ani):
 
 
 def MP_interpolate(
-        atoms,
-        calculator,
-        bsrestart,
-        kptpath,
-        npoints,
+        results_bandstructure,
+        bscalculateres,
         calc,
         delta_skn,
         lb,
@@ -161,14 +149,8 @@ def MP_interpolate(
     from asr.core import singleprec_dict
 
     bandrange = np.arange(lb, ub)
-    # read SCF (without SOC)
-    results_bandstructure = bsmain(
-        atoms=atoms,
-        calculator=calculator,
-        bsrestart=bsrestart,
-        kptpath=kptpath,
-        npoints=npoints,
-    )
+
+    # SCF (without SOC)
     path = results_bandstructure['bs_nosoc']['path']
     e_scf_skn = results_bandstructure['bs_nosoc']['energies']
 
@@ -182,13 +164,7 @@ def MP_interpolate(
     dct = dict(e_int_skn=e_int_skn, path=path)
 
     # add SOC from bs.gpw
-    bscalculateres = bscalculate(
-        atoms=atoms,
-        calculator=calculator,
-        bsrestart=bsrestart,
-        kptpath=kptpath,
-        npoints=npoints,
-    )
+    print('BSCALCULATERES', bscalculateres)
     calc = bscalculateres.calculation.load()
     theta, phi = mag_ani.spin_angles()
     soc = soc_eigenstates(calc, eigenvalues=e_int_skn,
@@ -319,57 +295,39 @@ class Result(ASRResult):
 
 
 @command(module='asr.c2db.hse')
-@asr.atomsopt
-@asr.calcopt
-@option('--kptdensity', help='K-point density', type=float)
-@option('--emptybands', help='number of empty bands to include', type=int)
-@asr.calcopt(
-    aliases=['-b', '--bsrestart'],
-    help='Bandstructure Calculator params.',
-    matcher=asr.matchers.EQUAL,
-)
-@option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints',
-        type=int,
-        help='Number of points along k-point path.')
-def main(
-        atoms: Atoms,
-        calculator: dict = calculategs.defaults.calculator,
-        bsrestart: dict = bscalculate.defaults.bsrestart,
-        kptpath: typing.Union[str, None] = bscalculate.defaults.kptpath,
-        npoints: int = bscalculate.defaults.npoints,
-        kptdensity: float = 8.0,
-        emptybands: int = 20,
+#@option('--kptdensity', help='K-point density', type=float)
+#@option('--emptybands', help='number of empty bands to include', type=int)
+#@asr.calcopt(
+#    aliases=['-b', '--bsrestart'],
+#    help='Bandstructure Calculator params.',
+#    matcher=asr.matchers.EQUAL,
+    #)
+#@option('--kptpath', type=str, help='Custom kpoint path.')
+#@option('--npoints',
+#        type=int,
+#        help='Number of points along k-point path.')
+def postprocess(
+        results_hse,
+        results_bs_post,
+        results_bs_calculate,
+        mag_ani,
 ) -> Result:
     """Interpolate HSE band structure along a given path."""
     import numpy as np
     from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
 
-    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
-
-    # interpolate band structure
-    results_hse = calculate(
-        atoms=atoms,
-        calculator=calculator,
-        kptdensity=kptdensity,
-        emptybands=emptybands,
-    )
-
     calc = results_hse.calculation.load()
     data = results_hse['hse_eigenvalues']
     nbands = data['e_hse_skn'].shape[2]
     delta_skn = data['vxc_hse_skn'] - data['vxc_scf_skn']
     results = MP_interpolate(
-        atoms,
-        calculator,
-        bsrestart,
-        kptpath,
-        npoints,
-        calc,
-        delta_skn,
-        0,
-        nbands,
+        results_bandstructure=results_bs_post,
+        bscalculateres=results_bs_calculate,
+        calc=calc,
+        delta_skn=delta_skn,
+        lb=0,
+        ub=nbands,
         mag_ani=mag_ani)
 
     # get gap, cbm, vbm, etc...
@@ -472,7 +430,3 @@ def add_missing_hse_keys(record: asr.Record) -> asr.Record:
     new_result = Result.fromdata(**data)
     record.result = new_result
     return record
-
-
-if __name__ == '__main__':
-    main.cli()
