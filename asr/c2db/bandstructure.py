@@ -53,6 +53,16 @@ def remove_emptybands_and_make_bsrestart(record):
     return record
 
 
+bsrestart_defaults = {
+    'nbands': -20,
+    'txt': 'bs.txt',
+    'fixdensity': True,
+    'convergence': {
+        'bands': -10},
+    'symmetry': 'off'
+}
+
+
 @command(
     'asr.c2db.bandstructure',
 )
@@ -69,14 +79,7 @@ def calculate(
         gsresult,
         #atoms: Atoms,
         #calculator: dict = calculategs.defaults.calculator,
-        bsrestart: dict = {
-            'nbands': -20,
-            'txt': 'bs.txt',
-            'fixdensity': True,
-            'convergence': {
-                'bands': -10},
-            'symmetry': 'off'
-        },
+        bsrestart: dict = bsrestart_defaults,
         kptpath: Union[str, None] = None,
         npoints: int = 400,
 ) -> BandstructureCalculationResult:
