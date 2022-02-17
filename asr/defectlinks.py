@@ -32,7 +32,7 @@ def webpanel(result, row, key_description):
     return [panel]
 
 
-# @prepare_result
+@prepare_result
 class Result(ASRResult):
     """Container for defectlinks results."""
 
@@ -48,13 +48,21 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-# @command(module='asr.defectlinks',
-#          requires=['structure.json'],
-#          dependencies=['asr.relax'],
-#          resources='1:1h',
-#          returns=Result)
+@command(module='asr.defectlinks',
+         requires=['structure.json'],
+         dependencies=['asr.relax'],
+         resources='1:1h',
+         returns=Result)
 def main() -> Result:
-    # """Generate QPOD database links for the defect project."""
+    """Generate QPOD database links for the defect project.
+
+    This recipe is dependent on the folder structure created by
+    asr.setup.defects. Will generate links between different chargestates
+    of the same defect, neutral chargestates for different defects of the
+    same host material, and pristine structures. For your own project,
+    make sure to change the 'basepath' variable in the webpanel function
+    according to the location of your database.
+    """
     # extract path of current directory
     p = Path('.')
 
