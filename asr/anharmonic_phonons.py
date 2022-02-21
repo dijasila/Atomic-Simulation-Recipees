@@ -1,6 +1,5 @@
 # general python
 import numpy as np
-import matplotlib.pyplot as plt
 import h5py
 import typing
 import os.path as path
@@ -242,18 +241,17 @@ def main(
 
     # read the hdf5 file with the rta results
 
-    if nat_dim == 3:
-        # 3D calc
-        filename = 'kappa-m' + str(mesh_ph3) + str(mesh_ph3) + str(mesh_ph3) + '.hdf5'
-    else:
-        # 2D calc
-        filename = 'kappa-m' + str(mesh_ph3) + str(mesh_ph3) + str(1) + '.hdf5'
+    phonopy_mesh = np.ones(3, int)
+    phonopy_mesh[:nat_dim] = mesh_ph3
 
-    f = h5py.File(filename, 'r')
-    temperatures = f['temperature'][:]
-    frequency = f['frequency'][:]
-    gamma = f['gamma'][:]
-    kappa = f['kappa'][:]
+    label = ''.join(str(x) for x in phonopy_mesh)
+    phonopy_outputfilename = f'kappa-m{label}.hdf5'
+
+    with h5py.File(phonopy_outputfilename, 'r') as fd:
+        temperatures = fd['temperature'][:]
+        frequency = fd['frequency'][:]
+        gamma = fd['gamma'][:]
+        kappa = fd['kappa'][:]
 
     # write results to json file
 
