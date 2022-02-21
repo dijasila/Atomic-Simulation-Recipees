@@ -265,20 +265,6 @@ def main(
     }
     return results
 
-    # PLOT LIFETIMES
-    ms = 4
-    fs = 16
-    plt.figure()
-    plt.plot(frequency.flatten(), gamma[0].flatten(), 'o', ms=ms)
-    plt.xlabel('Frequency (THz)', fontsize=fs)
-    plt.ylabel('$\\Gamma$ (THz)', fontsize=fs)
-    plt.xlim(left=0)
-    plt.ylim(bottom=0)
-    plt.title('T={:d}K'.format(int(temperatures[0])))
-    plt.gca().tick_params(labelsize=fs)
-    plt.tight_layout()
-    plt.savefig('lifetime.pdf')
-
 
 if __name__ == "__main__":
     main.cli()
