@@ -2,13 +2,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-import os.path
-from os import path
 import typing
+import os.path as path
 
 # ase
 from ase import Atoms
-from ase.io import *
+from ase.io import read, write
 from ase.calculators.emt import EMT
 from ase.parallel import world
 from ase.build import make_supercell
@@ -16,34 +15,24 @@ from ase.build import make_supercell
 # hiphive
 from hiphive.structure_generation import generate_mc_rattled_structures
 from hiphive.utilities import prepare_structures
-from hiphive import ClusterSpace, StructureContainer, ForceConstantPotential, ForceConstants
+from hiphive import ClusterSpace, StructureContainer, ForceConstantPotential
 from hiphive.fitting import Optimizer
 
 # asr
 from asr.core import (
     command,
     option,
-    DictStr,
     ASRResult,
-    read_json,
-    write_json,
-    prepare_result,
-    AtomsFile)
+    prepare_result)
 
-#phonopy & phono3py
+# phonopy & phono3py
 from phonopy import Phonopy
 from phono3py import Phono3py
 from phonopy.structure.atoms import PhonopyAtoms
-import phono3py
-from phono3py.cui.create_force_constants import parse_forces, forces_in_dataset
 from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
-from phono3py.phonon3.fc3 import show_drift_fc3
-from phonopy.harmonic.force_constants import show_drift_force_constants
-from phonopy.interface.calculator import get_default_physical_units
-import phonopy.cui.load_helper as load_helper
 
 # gpaw
-from gpaw import GPAW, PW, FermiDirac, mpi
+from gpaw import GPAW, FermiDirac
 
 
 def hiphive_fc23(
@@ -91,7 +80,7 @@ def hiphive_fc23(
         calc = EMT()
     # create rattled structures or read them from file
 
-    if path.exists(structures_fname) == False:
+    if not path.exists(structures_fname):
         structures = generate_mc_rattled_structures(
             atoms_ideal, number_structures, rattle, mindistance)
         structures = prepare_structures(structures, atoms_ideal, calc)
@@ -215,7 +204,8 @@ class Result(ASRResult):
 @option("--mesh_ph3", help="phono3py mesh", type=int)
 @option("--t1", help="first temperature for thermal conductivity calculation", type=int)
 @option("--t2", help="last temperature for thermal conductivity calculation", type=int)
-@option("--tstep", help=" temperature step for thermal conductivity calculation", type=int)
+@option("--tstep", help=" temperature step for thermal conductivity calculation",
+        type=int)
 def main(
         atoms: Atoms,
         cellsize: int = 6,
