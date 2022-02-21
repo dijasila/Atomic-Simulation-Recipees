@@ -118,11 +118,9 @@ def hiphive_fc23(
 
 def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n, t1, t2, tstep):
     # get phono3py supercell
-    b = read(atoms)
-    prim = Atoms(b)
-    atoms_phonopy = PhonopyAtoms(symbols=prim.get_chemical_symbols(),
-                                 scaled_positions=prim.get_scaled_positions(),
-                                 cell=prim.cell)
+    atoms_phonopy = PhonopyAtoms(symbols=atoms.get_chemical_symbols(),
+                                 scaled_positions=atoms.get_scaled_positions(),
+                                 cell=atoms.cell)
     # 2D or 3D calculation
     if nat_dim == 3:
         # 3D calc
