@@ -50,8 +50,6 @@ def hiphive_fc23(
         calculator):
     structures_fname = str(cellsize) + '_' + str(number_structures) + \
         '_' + str(rattle) + '_' + str(mindistance) + '.extxyz'
-    a = read(atoms)
-    aa = Atoms(a)
 
     # 2D or 3D calculation
 
@@ -63,7 +61,7 @@ def hiphive_fc23(
         multiplier = np.array([[cellsize, 0, 0], [0, cellsize, 0], [0, 0, 1]])
     # calculator type
 
-    atoms_ideal = make_supercell(aa, multiplier)
+    atoms_ideal = make_supercell(atoms, multiplier)
     atoms_ideal.pbc = (1, 1, 1)
     print(atoms_ideal)
     if calculator == 'DFT':
@@ -103,11 +101,9 @@ def hiphive_fc23(
     # get phono3py supercell and build phonopy object. Done in series
 
     if world.rank == 0:
-        b = read(atoms)
-        prim = Atoms(b)
-        atoms_phonopy = PhonopyAtoms(symbols=prim.get_chemical_symbols(),
-                                     scaled_positions=prim.get_scaled_positions(),
-                                     cell=prim.cell)
+        atoms_phonopy = PhonopyAtoms(symbols=list(atoms.symbols),
+                                     scaled_positions=atoms.get_scaled_positions(),
+                                     cell=atoms.cell)
         phonopy = Phonopy(atoms_phonopy, supercell_matrix=multiplier,
                           primitive_matrix=None)
         supercell = phonopy.get_supercell()
@@ -221,6 +217,8 @@ def main(
         t1=300,
         t2=301,
         tstep=1) -> Result:
+
+    atoms = read(atoms)
 
     fc2n = 'fc2.hdf5'
     fc3n = 'fc3.hdf5'
