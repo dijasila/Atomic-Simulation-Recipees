@@ -18,8 +18,8 @@ def test_get_state_numbers_defect(asr_tmpdir, minband, maxband):
 
     defectpath = Path('.')
     n1, n2 = get_state_numbers_from_defectpath(defectpath)
-    assert n1 == pytest.approx(minband)
-    assert n2 == pytest.approx(maxband)
+    assert n1 == minband
+    assert n2 == maxband
 
 
 @pytest.mark.ci
