@@ -159,6 +159,18 @@ nuclear_abundance = {
 scale = units._e / units._hplanck * 1e-6
 
 
+class Error(Exception):
+    """Base class for other exceptions."""
+
+    pass
+
+
+class HyperfineNotCalculatedError(Error):
+    """Raised when hyperfine tensor could not be calculated."""
+
+    pass
+
+
 def get_atoms_close_to_center(center, atoms):
     """
     Return ordered list of the atoms closest to the defect.
@@ -351,8 +363,9 @@ def g_factors_from_gyromagnetic_ratios(gyromagnetic_ratios):
 def rescale_hyperfine_tensor(A_avv, g_factors, symbols, magmoms):
     """Rescale hyperfine tensor and diagonalize."""
     total_magmom = sum(magmoms)
-    assert total_magmom != 0.0, ('no hyperfine interaction for zero '
-                                 'total magnetic moment!')
+    if not abs(total_magmom) > 0.1:
+        raise HyperfineNotCalculatedError('no hyperfine interaction for'
+                                          ' zero total mag. moment!')
 
     used = {}
     hyperfine_results = []

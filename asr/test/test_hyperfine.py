@@ -4,7 +4,8 @@ from .materials import std_test_materials, BN
 from asr.hyperfine import (g_factors_from_gyromagnetic_ratios,
                            gyromagnetic_ratios,
                            rescale_hyperfine_tensor,
-                           get_gyro_results)
+                           get_gyro_results,
+                           HyperfineNotCalculatedError)
 
 
 @pytest.mark.ci
@@ -23,13 +24,8 @@ def test_paired_system(asr_tmpdir):
     magmoms = np.zeros(len(atoms))
     g_factors = g_factors_from_gyromagnetic_ratios(gyromagnetic_ratios)
     # recipe should raise an error for zero magnetic moment
-    try:
+    with pytest.raises(HyperfineNotCalculatedError):
         rescale_hyperfine_tensor(refarray, g_factors, symbols, magmoms)
-        calculated = True
-    except AssertionError:
-        calculated = False
-
-    assert not calculated
 
     # run the rescaling function for non-zero magnetic_moment
     magmoms = np.ones(len(atoms))
