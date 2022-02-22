@@ -200,13 +200,11 @@ def get_hf_matrixtable(hf_results, ordered_args):
 
     hf_array = np.zeros((10, 4))
     hf_atoms = []
-    for i, element in enumerate(ordered_args[:10]):
-        hf_atoms.append(hf_results[int(element)]['kind']
-                        + ' (' + str(hf_results[int(element)]['index']) + ')')
-        hf_array[i, 0] = f"{hf_results[int(element)]['magmom']:.2f}"
-        hf_array[i, 1] = f"{hf_results[int(element)]['eigenvalues'][0]:.2f}"
-        hf_array[i, 2] = f"{hf_results[int(element)]['eigenvalues'][1]:.2f}"
-        hf_array[i, 3] = f"{hf_results[int(element)]['eigenvalues'][2]:.2f}"
+    for i, arg in enumerate(ordered_args[:10]):
+        hf_result = hf_results[arg]
+        hf_atoms.append(hf_result['kind'] + ' (' + str(hf_result['index']) + ')')
+        for j, value in enumerate([hf_result['magmom'], *hf_result['eigenvalues']]):
+            hf_array[i, j] = f"{value:.2f}"
 
     hf_table = matrixtable(hf_array,
                            title='Symbol (index)',
@@ -237,13 +235,13 @@ def webpanel(result, row, key_description):
 
     hf_results = result.hyperfine
     center = result.center
-    if center is None:
+    if center[0] is None:
         center = [0, 0, 0]
 
     atoms = row.toatoms()
-    _, distances = get_atoms_close_to_center(center, atoms)
+    args, distances = get_atoms_close_to_center(center, atoms)
 
-    hf_table = get_hf_matrixtable(hf_results, distances)
+    hf_table = get_hf_matrixtable(hf_results, args)
     gyro_table = get_gyro_matrixtable(result)
 
     hyperfine = WebPanel(describe_entry('Hyperfine (HF) parameters',
@@ -323,7 +321,7 @@ def main() -> Result:
         def_res = read_json('results-asr.defect_symmetry.json')
         center = def_res['defect_center']
     else:
-        center = None
+        center = [None, None, None]
 
     return Result.fromdata(
         hyperfine=hf_results,
