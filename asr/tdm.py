@@ -107,6 +107,9 @@ def get_state_numbers_from_cubefilenames(cubefilenames):
 
     n1 = min(numlist)
     n2 = max(numlist)
+    # if there's only one state available from the cubefiles, then set n2 to n1 +2
+    # (include higher states such that a transition dipole moment between different
+    # states can be calculated)
     if n1 == n2:
         n2 = n1 + 2
 
