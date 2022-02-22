@@ -1,8 +1,8 @@
 import typing
 import numpy as np
 from pathlib import Path
-from ase import Atoms
 import ase.units as units
+from ase.geometry import get_distances
 from asr.core import (command, ASRResult, prepare_result,
                       read_json)
 from asr.database.browser import make_panel_description, href
@@ -178,22 +178,11 @@ def get_atoms_close_to_center(center, atoms):
     Note, that this is the case only if a previous defect calculation is present.
     Return list of atoms closest to the origin otherwise.
     """
-    distancelist = []
-    indexlist = []
-    ghost_atoms = atoms.copy()
-    ghost_atoms.append(Atoms('H', cell=atoms.get_cell(), positions=[center])[0])
-    for i, atom in enumerate(ghost_atoms[:-1]):
-        distance = ghost_atoms.get_distance(-1, i, mic=True)
-        distancelist.append(distance)
-        indexlist.append(i)
+    _, distances = get_distances(center, atoms.positions, cell=atoms.cell,
+                                 pbc=atoms.pbc)
+    args = np.argsort(distances[0])
 
-    orderarray = np.zeros((len(indexlist), 2))
-    for i, element in enumerate(indexlist):
-        orderarray[i, 0] = element
-        orderarray[i, 1] = distancelist[i]
-    orderarray = orderarray[orderarray[:, 1].argsort()]
-
-    return orderarray
+    return args, distances[0][args]
 
 
 def get_gyro_array(gfactors_results):
@@ -206,12 +195,12 @@ def get_gyro_array(gfactors_results):
     return array, symbollist
 
 
-def get_hf_matrixtable(hf_results, orderarray):
+def get_hf_matrixtable(hf_results, ordered_args):
     from asr.database.browser import matrixtable
 
     hf_array = np.zeros((10, 4))
     hf_atoms = []
-    for i, element in enumerate(orderarray[:10, 0]):
+    for i, element in enumerate(ordered_args[:10]):
         hf_atoms.append(hf_results[int(element)]['kind']
                         + ' (' + str(hf_results[int(element)]['index']) + ')')
         hf_array[i, 0] = f"{hf_results[int(element)]['magmom']:.2f}"
@@ -252,9 +241,9 @@ def webpanel(result, row, key_description):
         center = [0, 0, 0]
 
     atoms = row.toatoms()
-    orderarray = get_atoms_close_to_center(center, atoms)
+    _, distances = get_atoms_close_to_center(center, atoms)
 
-    hf_table = get_hf_matrixtable(hf_results, orderarray)
+    hf_table = get_hf_matrixtable(hf_results, distances)
     gyro_table = get_gyro_matrixtable(result)
 
     hyperfine = WebPanel(describe_entry('Hyperfine (HF) parameters',

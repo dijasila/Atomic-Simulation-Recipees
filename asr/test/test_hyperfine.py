@@ -5,7 +5,8 @@ from asr.hyperfine import (g_factors_from_gyromagnetic_ratios,
                            gyromagnetic_ratios,
                            rescale_hyperfine_tensor,
                            get_gyro_results,
-                           HyperfineNotCalculatedError)
+                           HyperfineNotCalculatedError,
+                           get_atoms_close_to_center)
 
 
 @pytest.mark.ci
@@ -54,3 +55,12 @@ def test_get_gyro_results(atoms):
         symbol = res['symbol']
         assert symbol in symbols
         assert g_factors[symbol] == res['g']
+
+
+@pytest.mark.ci
+def test_get_atoms_close_to_center():
+    atoms = BN.copy()
+    z = atoms.cell.lengths()[2] / 2.
+    supercell = atoms.repeat((4, 4, 1))
+    indices, distances = get_atoms_close_to_center([0, 0, z], supercell)
+    assert distances[0] == pytest.approx(0)
