@@ -16,7 +16,7 @@ class Result(ASRResult):
     n2: int
 
     key_descriptions = dict(
-        d_snnv='transition dipole matrix elements for both spin channels.',
+        d_snnv='transition dipole matrix elements.',
         n1='staterange minimum.',
         n2='staterange maximum.')
 
@@ -36,7 +36,7 @@ class Result(ASRResult):
         'defect system. Only works when asr.get_wfs ran before!', type=bool)
 def main(primitivefile: str = 'primitive.json',
          pristinefile: str = 'pristine.json',
-         unrelaxedfile: str = 'NO',
+         unrelaxedfile: str = None,
          defect: bool = False) -> Result:
     """Calculate HOMO-LUMO transition dipole moment for a given structure."""
     from gpaw import GPAW
@@ -44,6 +44,8 @@ def main(primitivefile: str = 'primitive.json',
 
     # collect relevant files and evaluate center of the defect structure
     structurefile = 'structure.json'
+    if unrelaxedfile is None:
+        unrelaxedfile = 'NO'
     structure, unrelaxed, primitive, pristine = check_and_return_input(
         structurefile, unrelaxedfile, primitivefile, pristinefile)
     calc = GPAW('gs.gpw', txt=None)
@@ -73,10 +75,7 @@ def main(primitivefile: str = 'primitive.json',
 
 def get_center_of_cell(atoms):
     """Return the center point of the cell of a given atoms object."""
-    cell = atoms.get_cell()
-    scaled_positions = [0.5, 0.5, 0.5]
-
-    return cell.cartesian_positions(scaled_positions)
+    return 0.5 * atoms.cell.sum(axis=0)
 
 
 def get_state_numbers_from_defectpath(path):
