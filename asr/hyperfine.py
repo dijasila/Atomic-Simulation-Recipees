@@ -1,6 +1,7 @@
 import typing
 import numpy as np
 from pathlib import Path
+from ase import Atoms
 import ase.units as units
 from asr.core import (command, ASRResult, prepare_result,
                       read_json)
@@ -158,19 +159,13 @@ nuclear_abundance = {
 scale = units._e / units._hplanck * 1e-6
 
 
-def get_atoms_close_to_center(center, row):
+def get_atoms_close_to_center(center, atoms):
     """
     Return ordered list of the atoms closest to the defect.
 
     Note, that this is the case only if a previous defect calculation is present.
     Return list of atoms closest to the origin otherwise.
     """
-    from ase import Atoms
-    atoms = row.toatoms()
-
-    if center[0] is None:
-        center = [0., 0., 0.]
-
     distancelist = []
     indexlist = []
     ghost_atoms = atoms.copy()
@@ -241,8 +236,11 @@ def webpanel(result, row, key_description):
 
     hf_results = result.hyperfine
     center = result.center
+    if center is None:
+        center = [0, 0, 0]
 
-    orderarray = get_atoms_close_to_center(center, row)
+    atoms = row.toatoms()
+    orderarray = get_atoms_close_to_center(center, atoms)
 
     hf_table = get_hf_matrixtable(hf_results, orderarray)
     gyro_table = get_gyro_matrixtable(result)
@@ -324,7 +322,7 @@ def main() -> Result:
         def_res = read_json('results-asr.defect_symmetry.json')
         center = def_res['defect_center']
     else:
-        center = [None, None, None]
+        center = None
 
     return Result.fromdata(
         hyperfine=hf_results,
