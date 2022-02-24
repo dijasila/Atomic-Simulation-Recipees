@@ -5,7 +5,7 @@ import ase.units as units
 from ase.geometry import get_distances
 from asr.core import (command, ASRResult, prepare_result,
                       read_json)
-from asr.database.browser import make_panel_description, href
+from asr.database.browser import make_panel_description, href, matrixtable, table
 
 
 panel_description = make_panel_description(
@@ -185,19 +185,7 @@ def get_atoms_close_to_center(center, atoms):
     return args, distances[0][args]
 
 
-def get_gyro_array(gfactors_results):
-    array = np.zeros((len(gfactors_results), 1))
-    symbollist = []
-    for i, g in enumerate(gfactors_results):
-        array[i, 0] = g['g']
-        symbollist.append(g['symbol'])
-
-    return array, symbollist
-
-
 def get_hf_matrixtable(hf_results, ordered_args):
-    from asr.database.browser import matrixtable
-
     hf_array = np.zeros((10, 4))
     hf_atoms = []
     for i, arg in enumerate(ordered_args[:10]):
@@ -217,14 +205,12 @@ def get_hf_matrixtable(hf_results, ordered_args):
     return hf_table
 
 
-def get_gyro_matrixtable(result):
-    from asr.database.browser import matrixtable
-
-    gyro_array, gyro_rownames = get_gyro_array(result.gfactors)
-    gyro_table = matrixtable(gyro_array,
-                             title='Symbol',
-                             columnlabels=['g-factor'],
-                             rowlabels=gyro_rownames)
+def get_gyro_table(row, result):
+    """Return table with gyromagnetic ratios for each chemical element."""
+    gyro_table = table(row, 'Gyromagnetic Ratios', [])
+    for i, g in enumerate(result.gfactors):
+        gyro_table['rows'].extend(
+            [[g['symbol'], f"{g['g']:.2f}"]])
 
     return gyro_table
 
@@ -242,7 +228,7 @@ def webpanel(result, row, key_description):
     args, distances = get_atoms_close_to_center(center, atoms)
 
     hf_table = get_hf_matrixtable(hf_results, args)
-    gyro_table = get_gyro_matrixtable(result)
+    gyro_table = get_gyro_table(row, result)
 
     hyperfine = WebPanel(describe_entry('Hyperfine (HF) parameters',
                                         panel_description),
