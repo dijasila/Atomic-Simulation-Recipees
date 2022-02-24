@@ -268,6 +268,17 @@ class GyromagneticResult(ASRResult):
         g='g-factor for the isotope.'
     )
 
+    @classmethod
+    def fromdict(cls, dct):
+        gyro_results = []
+        for symbol, g in dct.items():
+            gyro_result = GyromagneticResult.fromdata(
+                symbol=symbol,
+                g=g)
+        gyro_results.append(gyro_result)
+
+        return gyro_results
+
 
 @prepare_result
 class Result(ASRResult):
@@ -368,17 +379,6 @@ def rescale_hyperfine_tensor(A_avv, g_factors, symbols, magmoms):
     return hyperfine_results, used
 
 
-def get_gyro_results(used):
-    gyro_results = []
-    for symbol, g in used.items():
-        gyro_result = GyromagneticResult.fromdata(
-            symbol=symbol,
-            g=g)
-        gyro_results.append(gyro_result)
-
-    return gyro_results
-
-
 def calculate_hyperfine(atoms, calc):
     """Calculate hyperfine splitting from the calculator."""
     from gpaw.hyperfine import hyperfine_parameters
@@ -395,7 +395,7 @@ def calculate_hyperfine(atoms, calc):
     hyperfine_results, used = rescale_hyperfine_tensor(
         A_avv, g_factors, symbols, magmoms)
 
-    gyro_results = get_gyro_results(used)
+    gyro_results = GyromagneticResult.fromdict(used)
 
     # spin coherence time and hyperfine interaction energy to be implemented
     hf_int_en = None

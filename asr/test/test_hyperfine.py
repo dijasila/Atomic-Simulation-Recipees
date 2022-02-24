@@ -4,9 +4,9 @@ from .materials import std_test_materials, BN
 from asr.hyperfine import (g_factors_from_gyromagnetic_ratios,
                            gyromagnetic_ratios,
                            rescale_hyperfine_tensor,
-                           get_gyro_results,
                            HyperfineNotCalculatedError,
-                           get_atoms_close_to_center)
+                           get_atoms_close_to_center,
+                           GyromagneticResult)
 
 
 @pytest.mark.ci
@@ -50,7 +50,7 @@ def test_get_gyro_results(atoms):
     _, used = rescale_hyperfine_tensor(
         refarray, g_factors, symbols, magmoms)
 
-    res_gyro = get_gyro_results(used)
+    res_gyro = GyromagneticResult.fromdict(used)
     for res in res_gyro:
         symbol = res['symbol']
         assert symbol in symbols
