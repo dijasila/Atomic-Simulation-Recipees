@@ -78,11 +78,9 @@ def get_zfs_components(calc):
 
 def check_magmoms(magmom, target_magmom=2, threshold=1e-1):
     """Check whether input atoms are a triplet system."""
-    assert abs(magmom - target_magmom) < threshold, (
-        f'ZFS recipe only working for systems with '
-        f'a total magnetic moment of {target_magmom}!')
-
-    return True
+    if not abs(magmom - target_magmom) < threshold:
+        raise ValueError('ZFS recipe only working for systems with '
+                         f'a total magnetic moment of {target_magmom}!')
 
 
 if __name__ == '__main__':
