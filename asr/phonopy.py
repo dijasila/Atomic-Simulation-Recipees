@@ -38,7 +38,7 @@ def lattice_vectors(N_c):
 def calculate(dftd3: bool = False,
               displacement: float = 0.05,
               forcesname: str = 'phonons',
-              supercell: typing.List[int] = (2, 2, 2),
+              supercell: typing.List[int] = [2, 2, 2],
               calculator: dict = {'name': 'gpaw',
                                   'mode': {'name': 'pw', 'ecut': 800},
                                   'xc': 'PBE',
