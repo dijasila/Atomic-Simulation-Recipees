@@ -9,14 +9,14 @@ from asr.defectlinks import (get_list_of_links,
 from asr.defect_symmetry import DefectInfo
 from pathlib import Path
 
-basepath = Path('MoS2-XXX-X-X-X/')
-extension = 'defects.MoS2_X.'
-
 
 @pytest.mark.parametrize('defect', ['v_S', 'v_Mo', 'S_Mo', 'Mo_S'])
 @pytest.mark.parametrize('charge', [-1, 0, 1])
 @pytest.mark.ci
 def test_get_list_of_links(asr_tmpdir, defect, charge):
+    basepath = Path('MoS2-XXX-X-X-X/')
+    extension = 'defects.MoS2_X.'
+
     atoms = mx2('MoS2')
     basepath.mkdir()
     defectpath = Path(basepath / f'{extension}{defect}')
@@ -66,6 +66,8 @@ def test_get_defectstring_from_defectinfo(defect, charge):
 @pytest.mark.parametrize('defect', ['v_S', 'v_Mo', 'S_Mo', 'Mo_S'])
 @pytest.mark.ci
 def test_get_hostformula_from_defectpath(defect):
+    basepath = Path('MoS2-XXX-X-X-X/')
+    extension = 'defects.MoS2_X.'
     defectpath = Path(basepath / f'{extension}{defect}' / 'charge_0')
     get_hostformula_from_defectpath(defectpath)
 
@@ -73,6 +75,7 @@ def test_get_hostformula_from_defectpath(defect):
 @pytest.mark.parametrize('charge', [-2, -1, 0, 1, 2])
 @pytest.mark.ci
 def test_get_charge_from_folder(charge):
+    basepath = Path('MoS2-XXX-X-X-X/')
     defectpath = Path(basepath / '{extension}X_X' / f'charge_{charge}')
     refcharge = get_charge_from_folder(defectpath)
     assert refcharge == pytest.approx(charge)
