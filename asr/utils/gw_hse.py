@@ -3,8 +3,6 @@ from asr.utils.hacks import gs_xcname_from_row
 
 
 class GWHSEInfo:
-    bz_gaps_filename = 'bz-with-gaps.png'
-
     def __init__(self, row):
         self.row = row
 
@@ -62,8 +60,7 @@ def gw_hse_webpanel(result, row, key_descriptions, info, sort):
     title = f'Electronic band structure ({info.method_name}@{xcname})'
     panel = {'title': describe_entry(title, info.panel_description),
              'columns': [[fig(info.bs_filename)],
-                         [fig(info.bz_gaps_filename),
-                          tab]],
+                         [tab]],
              'plot_descriptions': [{'function': info.plot_bs,
                                     'filenames': [info.bs_filename]}],
              'sort': sort}

@@ -69,7 +69,7 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             'asr for BSE not implemented for 0D and 1D structures')
 
     calc_gs = GPAW(gs, txt=None)
-    spin = calc_gs.get_spin_polarized()
+    spin = calc_gs.get_number_of_spins() == 2
     nval = calc_gs.wfs.nvalence
     nocc = int(nval / 2)
     nbands = bandfactor * nocc
