@@ -13,7 +13,7 @@ def webpanel(result, row, key_description):
 
     zfs_table = matrixtable(zfs_array,
                             unit=' MHz',
-                            title='ZFS',
+                            title='ZFS Tensor',
                             columnlabels=['D<sub>xx</sub>',
                                           'D<sub>yy</sub>',
                                           'D<sub>zz</sub>'],
