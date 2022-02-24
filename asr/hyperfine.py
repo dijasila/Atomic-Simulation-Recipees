@@ -354,19 +354,19 @@ def g_factors_from_gyromagnetic_ratios(gyromagnetic_ratios):
 
 
 def rescale_hyperfine_tensor(A_avv, g_factors, symbols, magmoms):
-    """Rescale hyperfine tensor and diagonalize."""
+    """Rescale hyperfine tensor and diagonalize, return HF results, gyromag. factors."""
     total_magmom = sum(magmoms)
     if not abs(total_magmom) > 0.1:
         raise HyperfineNotCalculatedError('no hyperfine interaction for'
                                           ' zero total mag. moment!')
 
-    used = {}
+    g_factor_dict = {}
     hyperfine_results = []
     for a, A_vv in enumerate(A_avv):
         symbol = symbols[a]
         magmom = magmoms[a]
         g_factor = g_factors.get(symbol, 1.0)
-        used[symbol] = g_factor
+        g_factor_dict[symbol] = g_factor
         A_vv *= g_factor / total_magmom * scale
         numbers = np.linalg.eigvalsh(A_vv)
         hyperfine_result = HyperfineResult.fromdata(
@@ -376,7 +376,7 @@ def rescale_hyperfine_tensor(A_avv, g_factors, symbols, magmoms):
             eigenvalues=numbers)
         hyperfine_results.append(hyperfine_result)
 
-    return hyperfine_results, used
+    return hyperfine_results, g_factor_dict
 
 
 def calculate_hyperfine(atoms, calc):
@@ -392,10 +392,10 @@ def calculate_hyperfine(atoms, calc):
 
     magmoms = atoms.get_magnetic_moments()
     symbols = atoms.symbols
-    hyperfine_results, used = rescale_hyperfine_tensor(
+    hyperfine_results, g_factor_dict = rescale_hyperfine_tensor(
         A_avv, g_factors, symbols, magmoms)
 
-    gyro_results = GyromagneticResult.fromdict(used)
+    gyro_results = GyromagneticResult.fromdict(g_factor_dict)
 
     # spin coherence time and hyperfine interaction energy to be implemented
     hf_int_en = None
