@@ -8,7 +8,7 @@ import typing
 
 
 def webpanel(result, row, key_description):
-    baselink = 'http://sylg:5000/database.db/row/'
+    baselink = 'https://cmrdb.fysik.dtu.dk/qpod/row/'
     charged_table = table(row, 'Charged systems', [])
     for element in result.chargedlinks:
         charged_table['rows'].extend(
