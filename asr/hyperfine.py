@@ -1,10 +1,11 @@
+import click
 import typing
 import numpy as np
 from pathlib import Path
 import ase.units as units
 from ase.geometry import get_distances
 from asr.core import (command, ASRResult, prepare_result,
-                      read_json)
+                      read_json, option)
 from asr.database.browser import make_panel_description, href, matrixtable, table
 
 
@@ -293,7 +294,14 @@ class Result(ASRResult):
          dependencies=['asr.gs@calculate'],
          resources='1:1h',
          returns=Result)
-def main() -> Result:
+@option('--center', nargs=3, type=click.Tuple([float, float, float]),
+        help='Tuple of three spatial coordinates that should be considered '
+        'as the center (defaults to [0, 0, 0]).')
+@option('--defect/--no-defect', help='Flag to choose whether HF coupling should be '
+        'calculated for a defect. If so, the recipe will automatically extract the '
+        'defect position from asr.defect_symmetry.', is_flag=True)
+def main(center: typing.Sequence[float] = (0, 0, 0),
+         defect: bool = False) -> Result:
     """Calculate hyperfine splitting."""
     from gpaw import GPAW
     from ase.io import read
@@ -303,11 +311,12 @@ def main() -> Result:
     atoms = read('structure.json')
     hf_results, gfactor_results, ht_int_en, sct = calculate_hyperfine(atoms, calc)
 
-    if Path('results-asr.defect_symmetry.json').is_file():
-        def_res = read_json('results-asr.defect_symmetry.json')
+    if defect:
+        symmetryresults = 'results-asr.defect_symmetry.json'
+        assert Path(symmetryresults).is_file(), (
+            'asr.defect_symmetry has to run first!')
+        def_res = read_json(symmetryresults)
         center = def_res['defect_center']
-    else:
-        center = [None, None, None]
 
     return Result.fromdata(
         hyperfine=hf_results,
