@@ -224,7 +224,7 @@ def main() -> Result:
     # Get crystal symmetries
     from asr.utils.symmetry import atoms2symmetry
     symmetry = atoms2symmetry(atoms,
-                              tolerance=1e-3,
+                              tolerance=0.1,
                               angle_tolerance=0.1)
     info['has_inversion_symmetry'] = symmetry.has_inversion
     dataset = symmetry.dataset

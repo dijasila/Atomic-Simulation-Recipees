@@ -28,7 +28,7 @@ def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
     from ase.io import read
     atoms = read('structure.json')
     path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                               pbc=atoms.pbc)
+                               pbc=atoms.pbc, eps=0.1)
 
     convbands = emptybands // 2
     parms = {
@@ -472,7 +472,8 @@ def main() -> Result:
         else:
             path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
                                             path=path['path'],
-                                            npoints=path['npoints'])
+                                            npoints=path['npoints'],
+                                            eps=0.1)
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     results = {}

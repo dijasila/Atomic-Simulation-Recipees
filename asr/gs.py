@@ -199,7 +199,7 @@ def bz_with_band_extremums(row, fname):
     ndim = sum(row.pbc)
 
     # Standardize the cell rotation via Bravais lattice roundtrip:
-    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc)
+    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc, eps=0.1)
     cell = lat.tocell()
 
     plt.figure(figsize=(4, 4))
