@@ -198,11 +198,7 @@ def gw(atoms: Atoms,
 @option('-z', '--empz', type=float, default=0.75,
         help='Replacement Z for unphysical Zs')
 def empirical_mean_z(
-        atoms: Atoms,
-        calculator: dict = gw.defaults.calculator,
-        kptdensity: float = gw.defaults.kptdensity,
-        ecut: float = gw.defaults.ecut,
-        mode: str = gw.defaults.mode,
+        gwresults,
         correctgw: bool = True,
         empz: float = 0.75,
 ) -> dict:
@@ -227,13 +223,6 @@ def empirical_mean_z(
 
     new GW energy = E_KS + (Old GW - E_KS) * Z0 / Z
     """
-    gwresults = gw(
-        atoms=atoms,
-        calculator=calculator,
-        kptdensity=kptdensity,
-        ecut=ecut,
-        mode=mode,
-    )
     if not correctgw:
         return gwresults
 
@@ -373,12 +362,16 @@ def main(
     )
     calc = GPAW(gsres['gs_gw_nowfs.gpw'], txt=None)
 
-    gwresults = empirical_mean_z(
+    gwresults_no_mean_z = gw(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
         ecut=ecut,
         mode=mode,
+    )
+
+    gwresults = empirical_mean_z(
+        gwresults=gwresults_no_mean_z,
         correctgw=correctgw,
         empz=empz,
     )
