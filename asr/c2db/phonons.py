@@ -44,28 +44,12 @@ class CalculateResult(ASRResult):
     key_descriptions = {'forces': 'Forces.'}
 
 
-@command(
-    'asr.c2db.phonons',
-)
-@option('-a', '--atoms', help='Atomic structure.',
-        type=AtomsFile(), default='structure.json')
-@asr.calcopt
+@command('asr.c2db.phonons')
 @option('-n', help='Supercell size', type=int, nargs=1)
 def calculate(
-        atoms: Atoms,
-        calculator: dict = {
-            'name': 'gpaw',
-            'mode': {'name': 'pw', 'ecut': 800},
-            'xc': 'PBE',
-            'kpts': {'density': 6.0, 'gamma': True},
-            'occupations': {'name': 'fermi-dirac',
-                            'width': 0.05},
-            'convergence': {'forces': 1e-4},
-            'symmetry': {'point_group': False},
-            'nbands': '200%',
-            'txt': 'phonons.txt',
-            'charge': 0
-        },
+        atoms,
+        calculator,
+        magstate,  # XXX Should not depend on this exact object
         n: int = 2,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
@@ -76,8 +60,7 @@ def calculate(
     # XXX Here we should purge the cache
 
     # Set initial magnetic moments
-    magstateres = magstate(atoms=atoms, calculator=calculator)
-    if magstateres.is_magnetic:
+    if magstate.is_magnetic:
         magmoms_m = magstate.magmoms
         # Some calculators return magnetic moments resolved into their
         # cartesian components
@@ -201,35 +184,40 @@ def construct_calculator_from_old_parameters(record):
     return record
 
 
-@command(
-    'asr.c2db.phonons',
-)
-@option('-a', '--atoms', help='Atomic structure.',
-        type=AtomsFile(), default='structure.json')
-@asr.calcopt
-@option('-n', help='Supercell size', type=int)
-@option('--mingo/--no-mingo', is_flag=True,
-        help='Perform Mingo correction of force constant matrix')
-def main(
-        atoms: Atoms,
-        calculator: dict = {
-            'name': 'gpaw',
-            'mode': {'name': 'pw', 'ecut': 800},
-            'xc': 'PBE',
-            'kpts': {'density': 6.0, 'gamma': True},
-            'occupations': {'name': 'fermi-dirac',
-                            'width': 0.05},
-            'convergence': {'forces': 1e-4},
-            'symmetry': {'point_group': False},
-            'nbands': '200%',
-            'txt': 'phonons.txt',
-            'charge': 0
-        },
+@command('asr.c2db.phonons')
+#@option('-a', '--atoms', help='Atomic structure.',
+#        type=AtomsFile(), default='structure.json')
+#@asr.calcopt
+#@option('-n', help='Supercell size', type=int)
+#@option('--mingo/--no-mingo', is_flag=True,
+#        help='Perform Mingo correction of force constant matrix')
+def postprocess(
+        atoms,
+        phononresult,
+        #atoms: Atoms,
+        #calculator: dict = {
+        #    'name': 'gpaw',
+        #    'mode': {'name': 'pw', 'ecut': 800},
+        #    'xc': 'PBE',
+        #    'kpts': {'density': 6.0, 'gamma': True},
+        #    'occupations': {'name': 'fermi-dirac',
+        #                    'width': 0.05},
+        #    'convergence': {'forces': 1e-4},
+        #    'symmetry': {'point_group': False},
+        #    'nbands': '200%',
+        #    'txt': 'phonons.txt',
+        #    'charge': 0
+        #},
         n: int = 2,
         mingo: bool = True,
 ) -> Result:
-    calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
-    nd = sum(atoms.get_pbc())
+    # XXX both calculate and postprocess currently take n as an input, and can
+    # therefore be inconsistent.  Maybe n should be stored on the phononresult
+    # or we should otherwise have access to the inputs of the calculate step.
+
+    calculateresult = phononresult
+    # calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
+    nd = sum(atoms.pbc)
     if nd == 3:
         supercell = (n, n, n)
     elif nd == 2:
@@ -410,7 +398,3 @@ def mingocorrection(Cin_NVV, atoms, supercell):
                                                              na * 3,
                                                              na * 3)
     return Cout
-
-
-if __name__ == '__main__':
-    main.cli()
