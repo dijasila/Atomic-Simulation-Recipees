@@ -67,6 +67,7 @@ arXiv:2009.00314""",
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
 def gs_gw(
+        gsresult,
         atoms: Atoms,
         calculator: dict = calculategs.defaults.calculator,
         kptdensity: float = 5.0,
@@ -75,8 +76,7 @@ def gs_gw(
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
     # check that the system is a semiconductor
-    res = calculategs(atoms=atoms, calculator=calculator)
-    calc = res.calculation.load()
+    calc = gsresult.calculation.load()
     scf_gap, _, _ = bandgap(calc, output=None)
     if scf_gap < 0.05:
         raise Exception("GW: Only for semiconductors, SCF gap = "
@@ -104,7 +104,7 @@ def gs_gw(
         raise NotImplementedError('asr for dim=0 not implemented!')
 
     # we need energies/wavefunctions on the correct grid
-    calc = res.calculation.load()
+
     calc = calc.fixed_density(
         txt='gs_gw.txt',
         kpts=kpts,
@@ -138,8 +138,8 @@ def gw(atoms: Atoms,
     from gpaw.response.g0w0 import G0W0
 
     # check that the system is a semiconductor
-    res = calculategs(atoms=atoms, calculator=calculator)
-    calc = res.calculation.load()
+    gsresult = calculategs(atoms=atoms, calculator=calculator)
+    calc = gsresult.calculation.load()
     scf_gap, _, _ = bandgap(calc, output=None)
 
     if len(atoms) > 4:
@@ -151,6 +151,7 @@ def gw(atoms: Atoms,
                         + str(scf_gap) + " eV is too small!")
 
     res = gs_gw(
+        gsresult=gsresult,
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
@@ -367,8 +368,10 @@ def main(
     from types import SimpleNamespace
 
     mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
+    gsresult = calculategs(atoms=atoms, calculator=calculator)
 
     gsres = gs_gw(
+        gsresult=gsresult,
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
