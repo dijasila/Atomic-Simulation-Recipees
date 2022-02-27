@@ -612,5 +612,15 @@ def workflow(rn, atoms, calculator):
             'postprocess': post}
 
 
-if __name__ == '__main__':
-    main.cli()
+# Useful in the tests.
+class GS:
+    def __init__(self, atoms, calculator):
+        from asr.c2db.magnetic_anisotropy import main as mag_ani
+        from asr.c2db.magstate import main as magstate
+
+        self.gsresult = calculate(atoms=atoms, calculator=calculator)
+        self.magstate = magstate(groundstate=self.gsresult)
+        self.mag_ani = mag_ani(groundstate=self.gsresult,
+                               magnetic=self.magstate['is_magnetic'])
+        self.post = postprocess(groundstate=self.gsresult,
+                                mag_ani=self.mag_ani)

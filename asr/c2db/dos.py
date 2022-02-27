@@ -152,7 +152,3 @@ def add_calculator_to_params(record: asr.Record) -> asr.Record:
         "charge": 0,
     }
     return record
-
-
-if __name__ == "__main__":
-    main.cli()

@@ -117,24 +117,17 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.fermisurface')
-@atomsopt
-@calcopt
 def main(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+        gsresult, mag_ani,
 ) -> Result:
     from asr.utils.gpw2eigs import calc2eigs
     from gpaw.kpt_descriptor import to1bz
-    from asr.c2db.magnetic_anisotropy import main as mag_ani_main
+    # from asr.c2db.magnetic_anisotropy import main as mag_ani_main
+    from asr.c2db.gs import calculate
 
-    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
-
-    ndim = sum(atoms.pbc)
-    assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'
-    res = gscalculate(
-        atoms=atoms,
-        calculator=calculator,
-    )
+    #ndim = sum(atoms.pbc)
+    #assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'
+    res = gsresult
     theta, phi = mag_ani.spin_angles()
     calc = res.calculation.load(parallel=False)
     eigs_km, ef, s_kvm = calc2eigs(
@@ -185,7 +178,3 @@ def main(
     contours = np.concatenate(contours)
     data = {'contours': contours}
     return Result(data)
-
-
-if __name__ == '__main__':
-    main.cli()
