@@ -66,7 +66,7 @@ arXiv:2009.00314""",
 @calcopt
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
-def gs(
+def gs_gw(
         atoms: Atoms,
         calculator: dict = calculategs.defaults.calculator,
         kptdensity: float = 5.0,
@@ -150,7 +150,7 @@ def gw(atoms: Atoms,
         raise Exception("GW: Only for semiconductors, SCF gap = "
                         + str(scf_gap) + " eV is too small!")
 
-    res = gs(
+    res = gs_gw(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
@@ -368,7 +368,7 @@ def main(
 
     mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
 
-    gsres = gs(
+    gsres = gs_gw(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity,
