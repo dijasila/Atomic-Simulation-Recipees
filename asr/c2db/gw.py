@@ -393,16 +393,13 @@ def main(
 
     # Interpolate band structure
     results = MP_interpolate(
-        atoms,
-        calculator,
-        bsrestart,
-        kptpath,
-        npoints,
-        calc,
-        delta_skn,
-        lb,
-        ub,
-        mag_ani=mag_ani,
+        results_bandstructure=results_bandstructure,
+        bscalculateres=results_bandstructure,
+        calc=calc,
+        delta_skn=delta_skn,
+        lb=lb,
+        ub=ub,
+        mag_ani=mag_ani)
     )
 
     # First get stuff without SOC
@@ -439,7 +436,6 @@ def main(
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import soc_eigenstates
 
-    theta, phi = mag_ani_main(atoms=atoms, calculator=calculator).spin_angles()
     soc = soc_eigenstates(calc, eigenvalues=eps_skn,
                           n1=lb, n2=ub,
                           theta=theta, phi=phi)
