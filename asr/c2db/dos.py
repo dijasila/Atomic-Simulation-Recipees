@@ -49,18 +49,15 @@ class Result(asr.ASRResult):
 
 
 @asr.instruction("asr.c2db.dos")
-@asr.atomsopt
-@asr.calcopt
-@asr.option("--kptdensity", help="K point kptdensity", type=float)
+# @asr.option("--kptdensity", help="K point kptdensity", type=float)
 def main(
-    atoms: Atoms,
-    calculator: Dict = gscalculate.defaults.calculator,
-    kptdensity: float = 12.0,
+        gsresult,
+        kptdensity: float = 12.0,
 ) -> Result:
     """Calculate DOS."""
     from gpaw import GPAW  # noqa
 
-    result = gscalculate(atoms=atoms, calculator=calculator)
+    result = gsresult
     name = "dos.gpw"
     if not Path(name).is_file():
         calc = result.calculation.load(
