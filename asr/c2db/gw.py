@@ -68,8 +68,6 @@ arXiv:2009.00314""",
 @option('--ecut', help='Plane wave cutoff', type=float)
 def gs_gw(
         gsresult,
-        atoms: Atoms,
-        calculator: dict = calculategs.defaults.calculator,
         kptdensity: float = 5.0,
         ecut: float = 200.0,
 ) -> ASRResult:
@@ -152,8 +150,6 @@ def gw(atoms: Atoms,
 
     res = gs_gw(
         gsresult=gsresult,
-        atoms=atoms,
-        calculator=calculator,
         kptdensity=kptdensity,
         ecut=ecut,
     )
@@ -372,8 +368,6 @@ def main(
 
     gsres = gs_gw(
         gsresult=gsresult,
-        atoms=atoms,
-        calculator=calculator,
         kptdensity=kptdensity,
         ecut=ecut,
     )
