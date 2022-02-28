@@ -101,18 +101,17 @@ class Result(ASRResult):
 @command(
     'asr.c2db.polarizability',
 )
-@atomsopt
-@calcopt
-@option('--kptdensity', help='K-point density',
-        type=float)
-@option('--ecut', help='Plane wave cutoff',
-        type=float)
-@option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
-@option('--bandfactor', type=int,
-        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+#@atomsopt
+#@calcopt
+#@option('--kptdensity', help='K-point density',
+#        type=float)
+#@option('--ecut', help='Plane wave cutoff',
+#        type=float)
+#@option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
+#@option('--bandfactor', type=int,
+#        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def main(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+        gsresult,
         kptdensity: float = 20.0,
         ecut: float = 50.0,
         xc: str = 'RPA',
@@ -129,6 +128,9 @@ def main(
         'name': 'chi',
         'intraband': False
     }
+
+    calc_old = gsresult.calculation.load()
+    atoms = calc_old.get_atoms()
 
     ND = sum(atoms.pbc)
     if ND == 3 or ND == 1:
@@ -152,11 +154,9 @@ def main(
             'Polarizability not implemented for 1D and 2D structures')
 
     try:
-        res = gscalculate(atoms=atoms, calculator=calculator)
-        calc_old = res.calculation.load()
         nval = calc_old.wfs.nvalence
 
-        calc = res.calculation.load(
+        calc = gsresult.calculation.load(
             txt='es.txt',
             fixdensity=True,
             nbands=(bandfactor + 1) * nval,
