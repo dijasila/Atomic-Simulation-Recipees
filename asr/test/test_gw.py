@@ -13,7 +13,10 @@ def test_gw(asr_tmpdir_w_params, test_material,
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
     gpaw.GPAW._get_fermi_level.return_value = 0.5
 
-    from asr.c2db.gw import main
+    #gs = GS(atoms=test_material, calculator=fast_calc)
+    #bs = BS(gs=gs)
+
+    from asr.c2db.gw import gw_main
     ndim = sum(test_material.pbc)
 
     def calculate(self):
@@ -25,20 +28,20 @@ def test_gw(asr_tmpdir_w_params, test_material,
 
     mocker.patch.object(G0W0, "calculate", calculate)
     if ndim > 1:
-        results = main(
+        results = gw_main(
             atoms=test_material,
             calculator=fast_calc,
             npoints=10,
-            kptdensity=2,
+            kptdensity=2
         )
         assert results['gap_gw'] == pytest.approx(1)
         structinfo(atoms=test_material)
-        test_material.write("structure.json")
+        # test_material.write("structure.json")
 
-        get_webcontent()
+        # get_webcontent()
     else:
         with pytest.raises(NotImplementedError):
-            main(
+            gw_main(
                 atoms=test_material,
                 calculator=fast_calc,
                 npoints=10,
