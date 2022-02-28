@@ -2,8 +2,7 @@ from ase import Atoms
 
 import typing
 from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, calcopt)
-from asr.c2db.gs import calculate as gscalculate, main as gsmain
+    command, option, ASRResult, prepare_result)
 
 import numpy as np
 
@@ -162,20 +161,17 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.shg')
-@atomsopt
-@calcopt
-@option('--kptdensity', help='K-point density [1/Ang]', type=float)
-@option('--gauge', help='Selected gauge (length "lg" or velocity "vg")',
-        type=str)
-@option('--bandfactor', type=int,
-        help='Number of unoccupied bands = (#occ. bands) * bandfactor')
-@option('--eta', help='Broadening [eV]', type=float)
-@option('--maxomega', help='Max pump frequency [eV]', type=float)
-@option('--nromega', help='Number of pump frequencies', type=int)
-@option('--removefiles', help='Remove created files', type=bool)
+#@option('--kptdensity', help='K-point density [1/Ang]', type=float)
+#@option('--gauge', help='Selected gauge (length "lg" or velocity "vg")',
+#        type=str)
+#@option('--bandfactor', type=int,
+#        help='Number of unoccupied bands = (#occ. bands) * bandfactor')
+#@option('--eta', help='Broadening [eV]', type=float)
+#@option('--maxomega', help='Max pump frequency [eV]', type=float)
+#@option('--nromega', help='Number of pump frequencies', type=int)
+#@option('--removefiles', help='Remove created files', type=bool)
 def main(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+        gsresult,
         kptdensity: float = 25.0,
         gauge: str = 'lg',
         bandfactor: int = 4,
@@ -216,6 +212,8 @@ def main(
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.nlopt.shg import get_shg
 
+    calc_old = gsresult.calculation.load()
+    atoms = calc_old.get_atoms()
     nd = sum(atoms.pbc)
     kpts = get_kpts(kptdensity, nd, atoms.cell)
     sym_chi = get_chi_symmetry(atoms)
@@ -231,13 +229,12 @@ def main(
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
             if not Path('es.gpw').is_file():
-                res = gscalculate(atoms=atoms, calculator=calculator)
-                # Since we depend on gap for plotting, we need to run main:
-                gsmain(atoms=atoms, calculator=calculator)
-                calc_old = res.calculation.load()
+                # We depend on gap for plotting, we need to run gs main.
+                # Or something.  Currently removed, and we just depend on calculate.
+
                 nval = calc_old.wfs.nvalence
 
-                calc = res.calculation.load(
+                calc = gsresult.calculation.load(
                     txt='es.txt',
                     symmetry={'point_group': False, 'time_reversal': True},
                     fixdensity=True,
@@ -510,7 +507,3 @@ def calc_polarized_shg(
         raise NotImplementedError
 
     return chipol_new
-
-
-if __name__ == '__main__':
-    main.cli()

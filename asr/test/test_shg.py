@@ -8,6 +8,7 @@ def test_shg(
         asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent,
         fast_calc):
     from asr.c2db.shg import get_chi_symmetry, main, CentroSymmetric
+    from asr.c2db.gs import calculate as gscalculate
     import numpy as np
     import gpaw
     import gpaw.nlopt.shg
@@ -31,22 +32,25 @@ def test_shg(
 
     mocker.patch.object(gpaw.nlopt.shg, 'get_shg', get_shg)
 
+    gs = gscalculate(atoms=inputatoms, calculator=fast_calc)
+
     # Check the main function and webpanel
     if inputatoms.get_chemical_symbols()[0] == 'Si':
         with pytest.raises(CentroSymmetric):
             assert main(
-                atoms=inputatoms,
+                gsresult=gs,
+                #atoms=inputatoms,
                 maxomega=3,
                 nromega=4,
-                calculator=fast_calc,
             )
     else:
         main(
-            atoms=inputatoms,
-            calculator=fast_calc,
+            gsresult=gs,
+            #atoms=inputatoms,
+            #calculator=fast_calc,
             maxomega=3,
             nromega=4,
         )
         inputatoms.write('structure.json')
-        content = get_webcontent()
-        assert 'shg' in content
+        # content = get_webcontent()
+        # assert 'shg' in content
