@@ -496,7 +496,3 @@ def main(atoms: Atoms,
         images=images,
         magmoms=magmoms,
     )
-
-
-if __name__ == '__main__':
-    main.cli()

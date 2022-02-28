@@ -249,7 +249,3 @@ def main(
             'eps_clamped_vvv': eps_clamped_vvv}
 
     return Result(data=data)
-
-
-if __name__ == '__main__':
-    main.cli()
