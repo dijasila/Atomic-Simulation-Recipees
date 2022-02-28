@@ -13,9 +13,6 @@ def test_gw(asr_tmpdir_w_params, test_material,
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
     gpaw.GPAW._get_fermi_level.return_value = 0.5
 
-    #gs = GS(atoms=test_material, calculator=fast_calc)
-    #bs = BS(gs=gs)
-
     from asr.c2db.gw import gw_main
     ndim = sum(test_material.pbc)
 

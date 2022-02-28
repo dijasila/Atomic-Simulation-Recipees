@@ -62,6 +62,7 @@ arXiv:2009.00314""",
 
 
 default_ecut = 200.0
+default_kptdensity = 5.0
 
 @command()
 #@atomsopt
@@ -70,7 +71,7 @@ default_ecut = 200.0
 #@option('--ecut', help='Plane wave cutoff', type=float)
 def gs_gw(
         gsresult,
-        kptdensity: float = 5.0,
+        kptdensity: float = default_kptdensity,
         ecut: float = default_ecut,
 ) -> ASRResult:
     """Calculate GW underlying ground state."""
@@ -123,16 +124,15 @@ def gs_gw(
 
 default_mode = 'G0W0'
 
+
 @command()
-#@atomsopt
-#@calcopt
 #@option('--kptdensity', help='K-point density', type=float)
 #@option('--ecut', help='Plane wave cutoff', type=float)
 #@option('--mode', help='GW mode',
 #        type=Choice(['G0W0', 'GWG']))
 def gw(gs_gw_result,
        gsresult,
-       kptdensity: float = gs_gw.defaults.kptdensity,
+       kptdensity: float = default_kptdensity,
        ecut: float = default_ecut,
        mode: str = default_mode) -> dict:
     """Calculate GW corrections."""
@@ -189,8 +189,6 @@ def gw(gs_gw_result,
 default_correctgw = True
 
 @command()
-#@atomsopt
-#@calcopt
 #@option('--kptdensity', help='K-point density', type=float)
 #@option('--ecut', help='Plane wave cutoff', type=float)
 #@option('--mode', help='GW mode',
@@ -319,8 +317,6 @@ def migrate_1(record):
 default_empz = 0.75
 
 @command()
-#@atomsopt
-#@calcopt
 #@asr.calcopt(
 #    aliases=['-b', '--bsrestart'],
 #    help='Bandstructure Calculator params.',
@@ -338,11 +334,6 @@ default_empz = 0.75
 #@option('-z', '--empz', type=float, default=0.75,
 #        help='Replacement Z for unphysical Zs')
 def postprocess(
-        #atoms: Atoms,
-        #calculator: dict = gw.defaults.calculator,
-        #bsrestart: dict = bsmain.defaults.calculator,
-        #kptpath: dict = bsmain.defaults.kptpath,
-        #npoints: dict = bsmain.defaults.npoints,
         *,
         gs_gw_result,
         gsresult,
@@ -350,20 +341,12 @@ def postprocess(
         gwresults,
         results_bspost,
         results_bscalculate
-        #kptdensity: float = gw.defaults.kptdensity,
-        #ecut: float = gw.defaults.ecut,
-        #mode: str = gw.defaults.mode,
-        #correctgw: bool = True,
-        #empz: float = 0.75,
 ) -> Result:
     from gpaw import GPAW
     from asr.utils import fermi_level
     from ase.dft.bandgap import bandgap
     from asr.c2db.hse import MP_interpolate
     from types import SimpleNamespace
-
-    #mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
-    # gsresult = calculategs(atoms=atoms, calculator=calculator)
 
     gwresults = SimpleNamespace(**gwresults)
     lb = gwresults.minband
@@ -456,8 +439,9 @@ def postprocess(
     return Result(data=results)
 
 
-def gw_main(*, atoms, calculator, kptdensity=gw.defaults.kptdensity, ecut=default_ecut,
+def gw_main(*, atoms, calculator, kptdensity=default_kptdensity, ecut=default_ecut,
             mode=default_mode, npoints, correctgw=default_correctgw, empz=default_empz):
+    # Defaults and other parameters from BS?  Such as bsrestart.
     from asr.c2db.gs import GS
     from asr.c2db.bandstructure import BS
 
@@ -473,8 +457,6 @@ def gw_main(*, atoms, calculator, kptdensity=gw.defaults.kptdensity, ecut=defaul
     gwresults_no_mean_z = gw(
         gsresult=gs.gsresult,
         gs_gw_result=gs_gw_result,
-        #atoms=atoms,
-        #calculator=calculator,
         kptdensity=kptdensity,
         ecut=ecut,
         mode=mode,
