@@ -398,3 +398,20 @@ def mingocorrection(Cin_NVV, atoms, supercell):
                                                              na * 3,
                                                              na * 3)
     return Cout
+
+
+class PhononWorkflow:  # not actually a workflow yet
+    def __init__(self, atoms, calculator):
+        from asr.c2db.gs import GS
+        from ase.utils import workdir
+        self.gs = GS(atoms=atoms, calculator=calculator)
+
+        with workdir('calculate', mkdir=True):
+            self.phononresult = calculate(atoms=atoms, calculator=calculator,
+                                          magstate=self.gs.magstate)
+
+
+        # XXX duplicate passing of atoms.  (Also the "n" parameter has this problem)
+        # Maybe define a container class for this definition.
+        with workdir('post', mkdir=True):
+            self.post = postprocess(phononresult=self.phononresult, atoms=atoms)
