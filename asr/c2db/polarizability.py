@@ -98,9 +98,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command(
-    'asr.c2db.polarizability',
-)
+@command('asr.c2db.polarizability')
 #@atomsopt
 #@calcopt
 #@option('--kptdensity', help='K-point density',

@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 import numpy as np
 
-from asr.c2db.infraredpolarizability import create_plot_simple
+from asr.c2db.infraredpolarizability import (
+    create_plot_simple, InfraredPolarizability)
 
 
 @pytest.mark.ci
@@ -21,3 +22,10 @@ def test_plot(asr_tmpdir, ndim):
         axisname='x',
         omegatmp_w=omega_w.copy())
     assert Path(fname).is_file()  # XXX not a very thorough test.
+
+
+def test_infrared_polarizability(mockgpaw, asr_tmpdir, test_material, fast_calc):
+    InfraredPolarizability(atoms=test_material,
+                           polarizabilitycalculator=fast_calc,
+                           phononcalculator=fast_calc,
+                           borncalculator=fast_calc)

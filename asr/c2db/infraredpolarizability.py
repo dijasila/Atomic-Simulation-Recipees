@@ -12,9 +12,10 @@ import numpy as np
 from click import Choice
 
 from ase import Atoms
-from asr.c2db.phonons import main as phonons
+from asr.c2db.phonons import PhononWorkflow
+#from asr.c2db.phonons import main as phonons
 from asr.c2db.borncharges import main as borncharges
-from asr.c2db.polarizability import main as polarizability
+#from asr.c2db.polarizability import main as polarizability
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the infrared (IR) frequency regime
@@ -205,50 +206,92 @@ def prepare_for_resultfile_mutation(record):
     return record
 
 
+
+from asr.c2db.gs import calculate as gscalculate
+from asr.c2db.polarizability import main as polarizability
+
+
+class InfraredPolarizability:
+    def __init__(self,
+                 atoms: Atoms,
+                 nfreq: int = 300,
+                 eta: float = 1e-2,
+                 polarizabilitycalculator: dict = gscalculate.defaults.calculator,
+                 phononcalculator: dict = PhononWorkflow.default_calculator,
+                 borncalculator: dict = borncharges.defaults.calculator,
+                 n: int = PhononWorkflow.default_n,
+                 mingo: bool = PhononWorkflow.default_mingo,
+                 displacement: float = borncharges.defaults.displacement,
+                 kptdensity: float = polarizability.defaults.kptdensity,
+                 ecut: float = polarizability.defaults.ecut,
+                 xc: float = polarizability.defaults.xc,
+                 bandfactor: float = polarizability.defaults.bandfactor):
+
+        self.phonons = PhononWorkflow(atoms=atoms, calculator=phononcalculator,
+                                      n=n, mingo=mingo)
+
+        self.borndict = borncharges(
+            atoms=atoms,
+            calculator=borncalculator,
+            displacement=displacement)
+
+        self.polarizability_gs = gscalculate(
+            atoms=atoms,
+            calculator=polarizabilitycalculator)
+
+        self.elecdict = polarizability(
+            gsresult=self.polarizability_gs,
+            kptdensity=kptdensity,
+            ecut=ecut,
+            xc=xc,
+            bandfactor=bandfactor)
+
+        self.post = postprocess(
+            atoms=atoms,
+            phresults=self.phonons.post,
+            borndict=self.borndict,
+            elecdict=self.elecdict,
+            nfreq=nfreq,
+            eta=eta)
+
+
+
 @command(
     "asr.c2db.infraredpolarizability",
 )
-@atomsopt
-@asr.calcopt(aliases=['-b', '--borncalculator'], help='Born calculator.')
-@asr.calcopt(aliases=['-p', '--phononcalculator'], help='Phonon calculator.')
-@asr.calcopt(aliases=['-a', '--polarizabilitycalculator'],
-             help='Polarizability calculator.')
-@option("--nfreq", help="Number of frequency points", type=int)
-@option("--eta", help="Relaxation rate", type=float)
-@option('-n', help='Supercell size', type=int)
-@option('--mingo/--no-mingo', is_flag=True,
-        help='Perform Mingo correction of force constant matrix')
-@option('--displacement', help='Atomic displacement (Å)', type=float)
-@option('--kptdensity', help='K-point density',
-        type=float)
-@option('--ecut', help='Plane wave cutoff',
-        type=float)
-@option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
-@option('--bandfactor', type=int,
-        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(
+# @atomsopt
+# @asr.calcopt(aliases=['-b', '--borncalculator'], help='Born calculator.')
+# @asr.calcopt(aliases=['-p', '--phononcalculator'], help='Phonon calculator.')
+# @asr.calcopt(aliases=['-a', '--polarizabilitycalculator'],
+#              help='Polarizability calculator.')
+# @option("--nfreq", help="Number of frequency points", type=int)
+# @option("--eta", help="Relaxation rate", type=float)
+# @option('-n', help='Supercell size', type=int)
+# @option('--mingo/--no-mingo', is_flag=True,
+#         help='Perform Mingo correction of force constant matrix')
+# @option('--displacement', help='Atomic displacement (Å)', type=float)
+# @option('--kptdensity', help='K-point density',
+#         type=float)
+# @option('--ecut', help='Plane wave cutoff',
+#         type=float)
+# @option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
+# @option('--bandfactor', type=int,
+#         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+def postprocess(
+        phresults,
+        borndict,
+        elecdict,  #
         atoms: Atoms,
-        nfreq: int = 300,
-        eta: float = 1e-2,
-        polarizabilitycalculator: dict = polarizability.defaults.calculator,
-        phononcalculator: dict = phonons.defaults.calculator,
-        borncalculator: dict = borncharges.defaults.calculator,
-        n: int = phonons.defaults.n,
-        mingo: bool = phonons.defaults.mingo,
-        displacement: float = borncharges.defaults.displacement,
-        kptdensity: float = polarizability.defaults.kptdensity,
-        ecut: float = polarizability.defaults.ecut,
-        xc: float = polarizability.defaults.xc,
-        bandfactor: float = polarizability.defaults.bandfactor,
+        nfreq: int,
+        eta: float,
+        #n: int = phonons.defaults.n,
+        #mingo: bool = phonons.defaults.mingo,
+        # displacement: float = borncharges.defaults.displacement,
+        # kptdensity: float = polarizability.defaults.kptdensity,
+        # ecut: float = polarizability.defaults.ecut,
+        # xc: float = polarizability.defaults.xc,
+        # bandfactor: float = polarizability.defaults.bandfactor,
 ) -> Result:
-
-    # Get phonons
-    phresults = phonons(
-        atoms=atoms,
-        calculator=phononcalculator,
-        n=n,
-        mingo=mingo,
-    )
 
     u_ql = phresults["modes_kl"]
     q_qc = phresults["q_qc"]
@@ -271,16 +314,12 @@ def main(
     fmax = omega_ql[0].max() * 3  # Factor of 3 should be enough
     omega_w = np.linspace(fmin, fmax, nfreq)
 
-    borndct = borncharges(
-        atoms=atoms,
-        calculator=borncalculator,
-        displacement=displacement,
-    )
-
     # Get other relevant quantities
     m_a = atoms.get_masses()
     cell_cv = atoms.get_cell()
-    Z_avv = borndct["Z_avv"]
+
+    # XXX take Z_avv as input instead of tightly coupling to "borndict"
+    Z_avv = borndict["Z_avv"]
 
     # Get phonon polarizability
     alpha_wvv = get_phonon_pol(
@@ -300,14 +339,6 @@ def main(
     alphay_lat = alpha_wvv[0, 1, 1].real
     alphaz_lat = alpha_wvv[0, 2, 2].real
 
-    elecdict = polarizability(
-        atoms=atoms,
-        calculator=polarizabilitycalculator,
-        kptdensity=kptdensity,
-        ecut=ecut,
-        xc=xc,
-        bandfactor=bandfactor,
-    )
     alphax_el = elecdict["alphax_el"]
     alphay_el = elecdict["alphay_el"]
     alphaz_el = elecdict["alphaz_el"]
