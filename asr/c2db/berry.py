@@ -63,26 +63,27 @@ class CalculateResult(ASRResult):
 
 
 @command(module='asr.c2db.berry')
-@atomsopt
-@calcopt
-@option('--kpar', help='K-points along path', type=int)
-@option('--kperp', help='K-points orthogonal to path', type=int)
+# @atomsopt
+# @calcopt
+# @option('--kpar', help='K-points along path', type=int)
+# @option('--kperp', help='K-points orthogonal to path', type=int)
 def calculate(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+        #atoms: Atoms,
+        #calculator: dict = gscalculate.defaults.calculator,
+        gsresult,
+        mag_ani,
         kpar: int = 120,
         kperp: int = 7
 ) -> CalculateResult:
     """Calculate ground state on specified k-point grid."""
-    import os
+    from pathlib import Path
     from gpaw.berryphase import parallel_transport
     from gpaw.mpi import world
     from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 
     nd = sum(atoms.pbc)
 
-    """Find the easy axis of magnetic materials"""
-    theta, phi = mag_ani_main(atoms=atoms, calculator=calculator).spin_angles()
+    theta, phi = mag_ani.spin_angles()
 
     results = {}
     results['phi0_km'] = None
@@ -94,10 +95,18 @@ def calculate(
     results['phi0_pi_km'] = None
     results['s0_pi_km'] = None
 
-    gsres = gscalculate(atoms=atoms, calculator=calculator)
+    berry_gpw = Path('gs_berry.gpw')
 
+    try:
+        return _berry(nd, results, berry_gpw, theta, phi)
+    finally:
+        if world.rank == 0:
+            berry_gpw.unlink()
+
+
+def _berry(nd, results, berry_gpw, theta, phi):
     if nd == 2:
-        calc = gsres.calculation.load(
+        calc = gsresult.calculation.load(
             kpts=(kperp, kpar, 1),
             fixdensity=True,
             symmetry='off',
@@ -105,19 +114,16 @@ def calculate(
         )
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
-        phi_km, s_km = parallel_transport('gs_berry.gpw',
+        phi_km, s_km = parallel_transport(berry_gpw,
                                           direction=0,
                                           theta=theta,
                                           phi=phi)
         results['phi0_km'] = phi_km
         results['s0_km'] = s_km
 
-        if world.rank == 0:
-            os.system('rm gs_berry.gpw')
-
     elif nd == 3:
         """kx = 0"""
-        calc = gsres.calculation.load(
+        calc = gsresult.calculation.load(
             kpts=(1, kperp, kpar),
             fixdensity=True,
             symmetry='off',
@@ -125,7 +131,7 @@ def calculate(
         )
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
-        phi_km, s_km = parallel_transport('gs_berry.gpw',
+        phi_km, s_km = parallel_transport(berry_gpw,
                                           direction=1,
                                           theta=theta,
                                           phi=phi)
@@ -136,7 +142,7 @@ def calculate(
         calc.set(kpts=(kpar, 1, kperp))
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
-        phi_km, s_km = parallel_transport('gs_berry.gpw',
+        phi_km, s_km = parallel_transport(berry_gpw,
                                           direction=2,
                                           theta=theta,
                                           phi=phi)
@@ -147,7 +153,7 @@ def calculate(
         calc.set(kpts=(kperp, kpar, 1))
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
-        phi_km, s_km = parallel_transport('gs_berry.gpw',
+        phi_km, s_km = parallel_transport(berry_gpw,
                                           direction=0,
                                           theta=theta,
                                           phi=phi)
@@ -160,15 +166,12 @@ def calculate(
         calc.set(kpts=kpts)
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
-        phi_km, s_km = parallel_transport('gs_berry.gpw',
+        phi_km, s_km = parallel_transport(berry_gpw,
                                           direction=0,
                                           theta=theta,
                                           phi=phi)
         results['phi0_pi_km'] = phi_km
         results['s0_pi_km'] = s_km
-
-        if world.rank == 0:
-            os.system('rm gs_berry.gpw')
     else:
         raise NotImplementedError('asr.c2db.berry@calculate is not implemented '
                                   'for <2D systems.')
