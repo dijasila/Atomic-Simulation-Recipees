@@ -2,7 +2,7 @@ import pytest
 from ase.build import bulk
 
 
-@pytest.mark.xfail('TODO')
+@pytest.mark.xfail(reason='TODO')
 @pytest.mark.acceptance_test
 def test_bandstructure_gpaw(asr_tmpdir):
     from asr.c2db.bandstructure import main
