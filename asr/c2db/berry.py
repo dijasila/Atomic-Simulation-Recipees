@@ -63,13 +63,9 @@ class CalculateResult(ASRResult):
 
 
 @command(module='asr.c2db.berry')
-# @atomsopt
-# @calcopt
 # @option('--kpar', help='K-points along path', type=int)
 # @option('--kperp', help='K-points orthogonal to path', type=int)
 def calculate(
-        #atoms: Atoms,
-        #calculator: dict = gscalculate.defaults.calculator,
         gsresult,
         mag_ani,
         kpar: int = 120,
@@ -79,7 +75,6 @@ def calculate(
     from pathlib import Path
     from gpaw.berryphase import parallel_transport
     from gpaw.mpi import world
-    from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 
     nd = sum(atoms.pbc)
 
@@ -293,31 +288,6 @@ class Result(ASRResult):
 
     key_descriptions = {'Topology': 'Band topology.'}
     formats = {'webpanel2': webpanel}
-
-
-@command(module='asr.c2db.berry')
-@atomsopt
-@calcopt
-@option('--kpar', help='K-points along path', type=int)
-@option('--kperp', help='K-points orthogonal to path', type=int)
-@option('--topology', help='Specify topology', type=str)
-def main(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
-        kpar: int = 120,
-        kperp: int = 7,
-        topology: str = 'Not checked!',
-) -> Result:
-    calculate(
-        atoms=atoms,
-        calculator=calculator,
-        kpar=kpar,
-        kperp=kperp,
-    )
-
-    # XXX Note I changed this behaviour Thomas. We need to talk.
-    data = {'Topology': topology}
-    return Result(data=data)
 
 
 sel = asr.Selector()
