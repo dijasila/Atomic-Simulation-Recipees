@@ -8,6 +8,9 @@ def test_berry(test_material, mockgpaw, mocker,
                get_webcontent, fast_calc, topology):
     import numpy as np
     from asr.c2db.berry import calculate
+    from asr.c2db.gs import GS
+
+    gs = GS(atoms=test_material, calculator=fast_calc)
 
     kpar = 10
     nbands = 2
@@ -23,8 +26,7 @@ def test_berry(test_material, mockgpaw, mocker,
 
     mocker.patch('gpaw.berryphase.parallel_transport', create=True,
                  new=parallel_transport)
-    results = calculate(atoms=test_material,
-                        calculator=fast_calc)
+    results = calculate(gsresult=gs.gsresult, mag_ani=gs.mag_ani)
 
     # check that all phi_km and s_km are returned by asr.c2db.berry@calculate
     # note that asr.c2db.berry@calculate does not return
@@ -38,12 +40,11 @@ def test_berry(test_material, mockgpaw, mocker,
         assert results[f'phi{d}_km'] == approx(np.zeros([kpar, nbands]))
         assert results[f's{d}_km'] == approx(np.zeros([kpar, nbands]))
 
-    from asr.c2db.berry import main
-    results = main(
-        atoms=test_material,
-        topology=topology,
-        calculator=fast_calc,
-    )
-    assert results['Topology'] == topology
-    test_material.write('structure.json')
-    get_webcontent()
+
+    results = calculate(
+        gsresult=gs.gsresult,
+        mag_ani=gs.mag_ani)
+
+    # assert results['Topology'] == topology
+    # test_material.write('structure.json')
+    # get_webcontent()

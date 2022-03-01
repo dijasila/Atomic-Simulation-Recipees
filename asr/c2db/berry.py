@@ -73,8 +73,21 @@ def calculate(
 ) -> CalculateResult:
     """Calculate ground state on specified k-point grid."""
     from pathlib import Path
-    from gpaw.berryphase import parallel_transport
     from gpaw.mpi import world
+
+    berry_gpw = Path('gs_berry.gpw')
+
+    try:
+        return _berry(gsresult, mag_ani, kperp, kpar, berry_gpw)
+    finally:
+        if world.rank == 0 and berry_gpw.exists():
+            berry_gpw.unlink()
+
+
+def _berry(gsresult, mag_ani, kperp, kpar, berry_gpw):
+    from gpaw.berryphase import parallel_transport
+    calc = gsresult.calculation.load()
+    atoms = calc.get_atoms()
 
     nd = sum(atoms.pbc)
 
@@ -90,16 +103,6 @@ def calculate(
     results['phi0_pi_km'] = None
     results['s0_pi_km'] = None
 
-    berry_gpw = Path('gs_berry.gpw')
-
-    try:
-        return _berry(nd, results, berry_gpw, theta, phi)
-    finally:
-        if world.rank == 0:
-            berry_gpw.unlink()
-
-
-def _berry(nd, results, berry_gpw, theta, phi):
     if nd == 2:
         calc = gsresult.calculation.load(
             kpts=(kperp, kpar, 1),
