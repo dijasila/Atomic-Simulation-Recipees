@@ -23,7 +23,8 @@ def extract_stuff_from_gpw_file(gpwpath: Path,
     from gpaw.calculator import GPAW
     calc = GPAW(gpwpath)
     stuff = extract_stuff_from_gpaw_calculation(calc, soc)
-    # outpath.write_bytes(pickle.dumps(stuff))
+    outpath.write_bytes(pickle.dumps(stuff))
+    return stuff
 
 
 def extract_stuff_from_gpaw_calculation(calc: GPAW,
@@ -74,18 +75,16 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
 
     nocc = (eig_kn[0] < fermilevel).sum()
     N = range(nocc - 4, nocc + 4)
-    print(nocc, fermilevel)
-    print(eig_kn[:, nocc].min() - eig_kn[:, nocc - 1].max())
     K1, K2, K3 = tuple(kd.N_c)
-    _, N, nI = proj_knI.shape
+    _, _, nI = proj_knI.shape
     return {'cell_cv': calc.atoms.cell,
             'kpt_ijkc': k_kc.reshape((K1, K2, K3, 3)),
             'fermilevel': fermilevel,
-            'eig_ijkn': eig_kn.reshape((K1, K2, K3, N)),
-            'proj_ijknI': proj_knI.reshape((K1, K2, K3, N, nI)).astype(
-                np.complex64),
-            'spinproj_ijknv': spinproj_knv.reshape((K1, K2, K3, N, 3)).astype(
-                np.float16)}
+            'eig_ijkn': eig_kn.reshape((K1, K2, K3, -1))[..., N],
+            'proj_ijknI': proj_knI.reshape(
+                (K1, K2, K3, -1, nI))[..., N, :].astype(np.complex64),
+            'spinproj_ijknv': spinproj_knv.reshape(
+                (K1, K2, K3, -1, 3))[..., N, :].astype(np.float16)}
 
 
 def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
@@ -141,7 +140,7 @@ def con2(e_kn, fp_knx, verbose=False):
 
     ovl_n1n2 = abs(fp_knx[0] @ fp_knx[1].conj().T)
 
-    c2 = []#clusters(e_kn[1])
+    c2 = []  # clusters(e_kn[1])
 
     for a, b in c2:
         o = ovl_n1n2[:, a:b]
@@ -379,8 +378,8 @@ class PolyFit:
 
         if verbose:
             print(f'[{s0}]')
-            print(f'[[{s0}]]')
-            print(f'[[[{s0}]]]')
+            print(f'[[{s1}]]')
+            print(f'[[[{s2}]]]')
             print(self.coefs)
 
     def value(self, k_v):
@@ -409,14 +408,15 @@ def cli():
     import sys
     path = Path(sys.argv[1])
     if path.suffix == '.gpw':
-        soc = bool(sys.argv[2])
-        extract_stuff_from_gpw_file(path, soc, path.with_suffix('.pckl'))
+        stuff = extract_stuff_from_gpw_file(path, True,
+                                            path.with_suffix('.pckl'))
     else:
-        kind = sys.argv[2]
-        data = pickle.loads(path.read_bytes())
+        stuff = pickle.loads(path.read_bytes())
+
+    for kind in ['vbm', 'cbm']:
         # k_v, energy, mass_w, direction_wv, error_k = ...
-        things = main(data, kind)
-        path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(things))
+        things = main(stuff, kind)
+        # path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(things))
 
 
 if __name__ == '__main__':
