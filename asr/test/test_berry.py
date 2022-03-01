@@ -2,6 +2,7 @@ import pytest
 from pytest import approx
 
 
+@pytest.mark.xfail(reason='TODO')
 @pytest.mark.ci
 @pytest.mark.parametrize('topology', ['Not checked', 'Z2=1,C_M=1'])
 def test_berry(asr_tmpdir_w_params, test_material, mockgpaw, mocker,
