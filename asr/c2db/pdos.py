@@ -110,37 +110,19 @@ class Result(ASRResult):
 
 
 @command(module='asr.c2db.pdos')
-#@atomsopt
-#@calcopt
 #@option('-k', '--kptdensity', type=float, help='K-point density')
 #@option('--emptybands', type=int, help='number of empty bands to include')
 def postprocess(
-        gpwfile,
+        gpwfile,  # gpwfile would typically come from pdos calculate()
         mag_ani,
         erange,
-        calculator,
-        #atoms: Atoms,
-        #calculator: dict = gscalculate.defaults.calculator,
-        #kptdensity: float = 20.0,
-        #emptybands: int = 20,
 ) -> Result:
     from gpaw import GPAW
     from ase.parallel import parprint
-    # from asr.c2db.magnetic_anisotropy import main as mag_ani_main
-
-    # Get refined ground state with more k-points
-    #res = calculate(
-    #    atoms=atoms,
-    #    calculator=calculator,
-    #    kptdensity=kptdensity,
-    #    emptybands=emptybands,
-    #    )
-
     calc = GPAW(gpwfile)
     atoms = calc.get_atoms()
 
     dos1 = calc.dos(shift_fermi_level=False)
-    # mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
     theta, phi = mag_ani.spin_angles()
     dos2 = calc.dos(soc=True, theta=theta, phi=phi, shift_fermi_level=False)
 
@@ -156,9 +138,9 @@ def postprocess(
 
     # Calculate pdos
     parprint('\nComputing pdos', flush=True)
-    results['pdos_nosoc'] = pdos(atoms, calculator, dos1, calc, erange)
+    results['pdos_nosoc'] = pdos(atoms, dos1, calc, erange)
     parprint('\nComputing pdos with spin-orbit coupling', flush=True)
-    results['pdos_soc'] = pdos(atoms, calculator, dos2, calc, erange)
+    results['pdos_soc'] = pdos(atoms, dos2, calc, erange)
 
     return Result(results)
 
@@ -175,7 +157,7 @@ class PDOS:
 
         self.pdos_gpwfile = calculate(atoms=atoms, calculator=calculator,
                                       kptdensity=kptdensity, emptybands=emptybands)
-        self.post = postprocess(gpwfile=self.pdos_gpwfile, calculator=calculator,
+        self.post = postprocess(gpwfile=self.pdos_gpwfile,
                                 mag_ani=gs.mag_ani, erange=erange)
 
 
@@ -185,7 +167,7 @@ class PDOS:
 # ----- PDOS ----- #
 
 
-def pdos(atoms, calculator, dos, calc, erange):
+def pdos(atoms, dos, calc, erange):
     """Do a single pdos calculation.
 
     Main functionality to do a single pdos calculation.
@@ -193,7 +175,7 @@ def pdos(atoms, calculator, dos, calc, erange):
     from asr.core import singleprec_dict
 
     # Do calculation
-    e_e, pdos_syl, symbols, ef = calculate_pdos(atoms, calculator, dos, calc, erange)
+    e_e, pdos_syl, symbols, ef = calculate_pdos(atoms, dos, calc, erange)
 
     return PdosResult.fromdata(
         efermi=ef,
@@ -202,7 +184,7 @@ def pdos(atoms, calculator, dos, calc, erange):
         pdos_syl=singleprec_dict(pdos_syl))
 
 
-def calculate_pdos(atoms, calculator, dos, calc, erange):
+def calculate_pdos(atoms, dos, calc, erange):
     """Calculate the projected density of states.
 
     Returns
@@ -227,9 +209,6 @@ def calculate_pdos(atoms, calculator, dos, calc, erange):
     l_a = get_l_a(zs)
 
     ns = calc.get_number_of_spins()
-    # gaps = gsmain(atoms=atoms, calculator=calculator).gaps_nosoc
-    # e1 = gaps.get('vbm') or gaps.get('efermi')
-    # e2 = gaps.get('cbm') or gaps.get('efermi')
     e_e = erange  # np.linspace(e1 - 3, e2 + 3, 500)
 
     # We distinguish in (spin(s), chemical symbol(y), angular momentum (l)),
