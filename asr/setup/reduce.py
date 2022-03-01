@@ -88,7 +88,3 @@ def main(atoms: Atoms) -> Atoms:
     atoms.set_pbc(pbc)
 
     return atoms
-
-
-if __name__ == '__main__':
-    main.cli()

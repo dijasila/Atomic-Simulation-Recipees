@@ -339,7 +339,3 @@ def dynamic_stability_stiffness(mineig):
         return 'high'
     else:
         return 'low'
-
-
-if __name__ == '__main__':
-    main.cli()

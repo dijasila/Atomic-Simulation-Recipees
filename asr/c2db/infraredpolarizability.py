@@ -354,7 +354,3 @@ def get_phonon_pol(omega_w, Z_avv, freqs_l, modes_xl, m_a, cell_cv, eta):
 
     alpha_wvv /= vol
     return alpha_wvv
-
-
-if __name__ == "__main__":
-    main()

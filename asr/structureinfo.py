@@ -188,7 +188,3 @@ def main(atoms: Atoms) -> Result:
         info['cell_area'] = None
 
     return Result(data=info)
-
-
-if __name__ == '__main__':
-    main.cli()

@@ -42,7 +42,3 @@ def main(
     else:
         raise ValueError(msg)
     return atoms
-
-
-if __name__ == '__main__':
-    main.cli()

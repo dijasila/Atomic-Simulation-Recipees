@@ -37,7 +37,3 @@ def main(
     atoms.set_cell(strained_cell_cv, scale_atoms=True)
 
     return atoms
-
-
-if __name__ == '__main__':
-    main.cli()

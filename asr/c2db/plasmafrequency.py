@@ -140,7 +140,3 @@ def main(
         data['plasmafrequency_y'] = plasmafreq_v[1].real
 
     return data
-
-
-if __name__ == '__main__':
-    main.cli()

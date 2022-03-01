@@ -403,7 +403,3 @@ def main(
         data['E_B'] = None
 
     return Result(data=data)
-
-
-if __name__ == '__main__':
-    main.cli()

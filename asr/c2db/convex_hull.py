@@ -576,7 +576,3 @@ def convex_hull_tables(record) -> List[Dict[str, Any]]:
                              'header': [title, ''],
                              'rows': rows})
     return final_tables
-
-
-if __name__ == '__main__':
-    main.cli()

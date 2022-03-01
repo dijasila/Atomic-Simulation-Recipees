@@ -181,7 +181,3 @@ def main(
     assert (dpos_a < 10 * tolerance).all(), \
         'Some atoms moved too much! See output above.'
     return idealized
-
-
-if __name__ == '__main__':
-    main.cli()

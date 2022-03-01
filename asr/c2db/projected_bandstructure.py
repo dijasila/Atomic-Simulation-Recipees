@@ -502,7 +502,3 @@ def projected_bs_scf(context, filename,
 
     # ax.figure.set_figheight(1.2 * ax.figure.get_figheight())
     plt.savefig(filename, bbox_inches='tight')
-
-
-if __name__ == '__main__':
-    main.cli()

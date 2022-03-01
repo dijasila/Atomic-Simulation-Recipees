@@ -185,7 +185,3 @@ def main(groundstate, # : GroundStateCalculationResult,
         'dE_zx': dE_zx * 1e3,
         'dE_zy': dE_zy * 1e3}
     return Result(data=results)
-
-
-if __name__ == '__main__':
-    main.cli()

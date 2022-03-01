@@ -337,7 +337,3 @@ def remove_gs_param(record: asr.Record) -> asr.Record:
     except (KeyError, AttributeError):
         pass
     return record
-
-
-if __name__ == '__main__':
-    main.cli()

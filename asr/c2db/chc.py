@@ -876,7 +876,3 @@ def tuplespermuted(t1, t2):
         elif count(item, t1) != count(item, t2):
             return False
     return True
-
-
-if __name__ == "__main__":
-    main.cli()

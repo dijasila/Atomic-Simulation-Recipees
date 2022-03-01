@@ -113,7 +113,3 @@ def main(groundstate: GroundStateCalculationResult):
                'nspins': nspins}
 
     return Result(data=results)
-
-
-if __name__ == '__main__':
-    main.cli()

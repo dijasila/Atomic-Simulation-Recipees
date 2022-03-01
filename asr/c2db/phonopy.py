@@ -510,7 +510,3 @@ def make_supercell_argument(record: asr.Record):
     record.parameters.sc = supercell
     del record.parameters.n
     return record
-
-
-if __name__ == "__main__":
-    main.cli()

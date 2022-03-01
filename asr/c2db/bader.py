@@ -101,7 +101,3 @@ def main(
 
     return Result(data=dict(bader_charges=charges,
                             sym_a=sym_a))
-
-
-if __name__ == '__main__':
-    main.cli()
