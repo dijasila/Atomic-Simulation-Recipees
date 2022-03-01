@@ -331,7 +331,3 @@ def remove_gs_parameter(record):
     """Remove "gs" parameter."""
     del record.parameters["gs"]
     return record
-
-
-if __name__ == '__main__':
-    main.cli()
