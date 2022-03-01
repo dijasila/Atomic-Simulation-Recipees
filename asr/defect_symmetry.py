@@ -459,8 +459,8 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     """Return centered and mapped structure."""
     vac = defectinfo.is_vacancy
     done = False
-    for delta in [0, 0.03, -0.03]:
-        for cutoff in np.arange(0.1, 0.81, 0.2):
+    for delta in [0, 0.03, 0.5, 0.1, -0.03, -0.1]:
+        for cutoff in np.arange(0.1, 0.81, 0.05):
             for threshold in [0.99, 1.01]:
                 translation = return_defect_coordinates(structure, primitive,
                                                         pristine, defectinfo)
