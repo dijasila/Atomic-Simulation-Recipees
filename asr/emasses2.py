@@ -174,32 +174,45 @@ def con2(e_kn, fp_knx, verbose=False):
 
 
 def main(data: dict,
-         kind='cbm',
          log=print):
-    k_ijkc, e_ijkn, axes = find_extrema(kind=kind,
-                                        log=log,
-                                        **data)
+    for kind in ['vbm', 'cbm']:
+        k_ijkc, e_ijkn, axes, gap = find_extrema(kind=kind,
+                                                 log=log,
+                                                 **data)
 
-    cell_cv = data['cell_cv'][axes][:, axes]
+        cell_cv = data['cell_cv'][axes][:, axes]
 
-    k_kc = k_ijkc.reshape((-1, 3))[:, axes]
-    e_kn = e_ijkn.reshape((-1, e_ijkn.shape[3]))
-    if 0:
-        import matplotlib.pyplot as plt
-        plt.contourf(e_ijkn[:, :, 0, 0])
-        plt.show()
+        k_kc = k_ijkc.reshape((-1, 3))[:, axes]
+        e_kn = e_ijkn.reshape((-1, e_ijkn.shape[3]))
 
-    things = []
-    for e_k in e_kn.T:
-        try:
-            k_v, energy, mass_w, direction_wv, error_k = fit(
-                k_kc, e_k, None, cell_cv,
-                log=log)
-        except NoMinimum:
-            pass
+        extrema = []
+        for e_k in e_kn.T:
+            try:
+                k_v, energy, mass_w, direction_wv, error_k = fit(
+                    k_kc, e_k, None, cell_cv,
+                    log=log)
+            except NoMinimum:
+                pass
+            else:
+                if kind == 'vbm':
+                    energy *= -1
+                extrema.append((k_v, energy, mass_w, direction_wv, error_k))
+
+        if kind == 'vbm':
+            vbm = bm = max(extrema, key=lambda x: x[1])
         else:
-            things.append((k_v, energy, mass_w, direction_wv, error_k))
-    return things
+            cbm = bm = min(extrema, key=lambda x: x[1])
+
+        k_v, energy, mass_w, direction_wv, error_k = bm
+        log(f'{kind}:')
+        log('K-point:', k2str(k_v, cell_cv))
+        log(f'Energy: {energy:.3f} eV')
+        log(f'Mass:   {mass_w} m_e')
+
+    diff = cbm[1] - vbm[1] - gap
+    assert -0.01 < diff <= 0.0, diff
+
+    return vbm, cbm
 
 
 def find_extrema(cell_cv,
@@ -212,10 +225,6 @@ def find_extrema(cell_cv,
                  log=print,
                  npoints=3):
     assert kind in ['vbm', 'cbm']
-
-    if 0:
-        eig_ijkn = eig_ijkn[..., ::2]
-        proj_ijknI = proj_ijknI[..., ::2, :]
 
     nocc = (eig_ijkn[0, 0, 0] < fermilevel).sum()
     gap = eig_ijkn[..., nocc].min() - eig_ijkn[..., nocc - 1].max()
@@ -257,7 +266,7 @@ def find_extrema(cell_cv,
 
     axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
 
-    return k_ijkc, e_ijkn, axes
+    return k_ijkc, e_ijkn, axes, gap
 
 
 class NoMinimum(ValueError):
@@ -273,29 +282,22 @@ def k2str(k_v, cell_cv):
 
 def fit(k_kc, eig_k, spinproj_kv,
         cell_cv,
-        npoints=None,
-        log=print):
+        npoints=None):
     dims = k_kc.shape[1]
     npoints = npoints or [7, 25, 55][dims - 1]
 
-    def K(k_v):
-        return k2str(k_v, cell_cv)
-
     k0_c = k_kc[eig_k.argmin()]
     if (k0_c <= k_kc.min(0)).any() or (k0_c >= k_kc.max(0)).any():
-        log('  Minimum too close to edge of box!')
-        raise NoMinimum
+        raise NoMinimum('Minimum too close to edge of box!')
 
     k_kv = k_kc @ np.linalg.inv(cell_cv).T * 2 * pi
     k0_v = k_kv[eig_k.argmin()].copy()
 
     k_kv -= k0_v
     k = (k_kv**2).sum(1).argsort()[:npoints]
-    log(f'Fitting to {len(k)} points close to {K(k0_v)}:')
 
     if len(k) < npoints:
-        log('  Too few points!')
-        raise NoMinimum
+        raise NoMinimum('Too few points!')
 
     k_kv = k_kv[k]
     eig_k = eig_k[k]
@@ -304,17 +306,14 @@ def fit(k_kc, eig_k, spinproj_kv,
         # fit = Fit3D(k_kv, eig_k)
         fit = PolyFit(k_kv, eig_k, 4)
     except np.linalg.LinAlgError:
-        log('   Bad minimum!')
-        raise NoMinimum
+        raise NoMinimum('Bad minimum!')
 
     hessian_vv = fit.hessian(np.zeros(dims))
     eval_w = np.linalg.eigvalsh(hessian_vv)
     if eval_w.min() <= 0.0:
-        log('  Not a minimum')
-        raise NoMinimum
+        raise NoMinimum('Not a minimum')
 
     error_k = np.array([fit.value(k_v) - e for k_v, e in zip(k_kv, eig_k)])
-    log(f'  Maximum error: {abs(error_k).max() * 1000:.3f} meV')
 
     k_v = fit.find_minimum()
     emin = fit.value(k_v)
@@ -322,13 +321,8 @@ def fit(k_kc, eig_k, spinproj_kv,
     evals_w, evec_vw = np.linalg.eigh(hessian_vv)
     mass_w = Bohr**2 * Ha / evals_w
 
-    log(f'  Found minimum: {K(k_v + k0_v)}, {emin:.3f} eV')
-    for w, (mass, evec_v) in enumerate(zip(mass_w, evec_vw.T)):
-        log(f'    Mass #{w}: {mass:.3f} m_e, {K(evec_v)}')
-
     if (mass_w < 0.01).any():
-        log('  Unrealistic mass!')
-        raise NoMinimum
+        raise NoMinimum('Unrealistic mass!')
 
     return k_v + k0_v, emin, mass_w, evec_vw.T, error_k
 
@@ -413,24 +407,8 @@ def cli():
     else:
         stuff = pickle.loads(path.read_bytes())
 
-    for kind in ['vbm', 'cbm']:
-        # k_v, energy, mass_w, direction_wv, error_k = ...
-        things = main(stuff, kind)
-        # path.with_suffix(f'.{kind}.pckl').write_bytes(pickle.dumps(things))
+    main(stuff)
 
 
 if __name__ == '__main__':
-    if 1:
-        cli()
-    if 0:
-        x = np.linspace(-1, 1, 5)
-        xy = np.empty((5, 5, 2))
-        xy[:, :, 0] = x[:, None]
-        xy[:, :, 1] = x
-        xy.shape = (25, 2)
-        z = xy[:, 0]**2 + 2 * xy[:, 1]**2
-        pf = PolyFit(xy, z, 2)
-        print(pf.value([1, 1]))
-        print(pf.gradient([1, 1]))
-        print(pf.hessian([1, 1]))
-        print(pf.find_minimum([1, 1]))
+    cli()
