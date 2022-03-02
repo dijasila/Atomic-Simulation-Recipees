@@ -176,9 +176,10 @@ def con2(e_kn, fp_knx, verbose=False):
 def main(data: dict,
          log=print):
     for kind in ['vbm', 'cbm']:
-        k_ijkc, e_ijkn, axes, gap = find_extrema(kind=kind,
-                                                 log=log,
-                                                 **data)
+        k_ijkc, e_ijkn, axes, gap = find_extrema(
+            kind=kind,
+            log=lambda *args: None,
+            **data)
 
         cell_cv = data['cell_cv'][axes][:, axes]
 
@@ -189,8 +190,7 @@ def main(data: dict,
         for e_k in e_kn.T:
             try:
                 k_v, energy, mass_w, direction_wv, error_k = fit(
-                    k_kc, e_k, None, cell_cv,
-                    log=log)
+                    k_kc, e_k, None, cell_cv)
             except NoMinimum:
                 pass
             else:
@@ -206,8 +206,8 @@ def main(data: dict,
         k_v, energy, mass_w, direction_wv, error_k = bm
         log(f'{kind}:')
         log('K-point:', k2str(k_v, cell_cv))
-        log(f'Energy: {energy:.3f} eV')
-        log(f'Mass:   {mass_w} m_e')
+        log(f'Energy:  {energy:.3f} eV')
+        log(f'Mass:    {mass_w} m_e')
 
     diff = cbm[1] - vbm[1] - gap
     assert -0.01 < diff <= 0.0, diff
