@@ -42,11 +42,11 @@ def is_almost_hexagonal(atoms):
 
 def update_with_soc(dct, calc):
     """ Calculates spin-orbit coupling, 
-        dumps eigenvalues, gaps and band edges to dictionary
+        saves eigenvalues, gaps and band edges into dictionary
     """
-    calc_soc = soc_eigenstates(calc)
-    ev_soc = calc_soc.eigenvalues()
-    ef_soc = calc_soc.fermi_level
+    from asr.utils.gpw2eigs import calc2eigs
+
+    ev_soc, ef_soc, spin_projections = calc2eigs(calc, soc=True, return_spin=True)
     hl_soc, vbm_k_soc, cbm_k_soc = bandgap(eigenvalues=ev_soc, efermi=ef_soc, direct=False)
     dir_soc, _, _ = bandgap(eigenvalues=ev_soc, efermi=ef_soc, direct=True)
 
@@ -59,7 +59,7 @@ def update_with_soc(dct, calc):
         'vbm_k_soc': vbm_k_soc,
         'cbm_k_soc': cbm_k_soc,
         'eigenvalues_soc': ev_soc,
-        'spin_projections': calc_soc.spin_projections()
+        'spin_projections': spin_projections
     })
     return dct
 
@@ -111,8 +111,9 @@ def get_scissors_operator(atoms, shifts):
 
 def calculate_gs(atoms, kpts, calculator, scs):
     """ Calculates the SCS ground state """
-    kpts = get_kpts_size(atoms, kpts)
-    calculator.update({'kpts': kpts})
+    #kpts = get_kpts_size(atoms, kpts)
+    calculator.update({'kpts': {'density': kpts,
+                                'gamma': True}})
     if scs:
         calculator.update({'eigensolver': scs})
         filename = 'gs_scs.gpw'
@@ -149,9 +150,9 @@ def calculate_bs(gpw, kptpath, npoints, eps, scs):
     }
     if scs:
         parms.update({'eigensolver': scs})
-        filename = 'gs_scs.gpw'
+        filename = 'bs_scs.gpw'
     else:
-        filename = 'gs_pbe.gpw'
+        filename = 'bs_pbe.gpw'
     calc.set(**parms)
     calc.get_potential_energy()
     calc.write(filename, mode='')
@@ -159,7 +160,7 @@ def calculate_bs(gpw, kptpath, npoints, eps, scs):
 
 
 @command('asr.scs')
-@option('--structure')
+@option('-s', '--structure')
 @option('--shifts')
 @option('--kptpath', help='Custom kpoint path.')
 @option('--npoints')
@@ -175,7 +176,7 @@ def main(structure: str = 'structure.json',
          shifts: str = 'shifts.json',
          kptpath: Union[str, None] = None,
          npoints: int = 200,
-         kpts: int = 12,
+         kpts: int = 24,
          gs: bool = False,
          bs: bool = False,
          soc: bool = False,
@@ -186,7 +187,6 @@ def main(structure: str = 'structure.json',
              'mode': {'name': 'lcao'},
              'xc': 'PBE',
              'basis': 'dzp',
-             'kpts': {'density': 12.0, 'gamma': True},
              'occupations': {'name': 'fermi-dirac',
                              'width': 0.05},
              'nbands': 'nao',
@@ -197,24 +197,22 @@ def main(structure: str = 'structure.json',
     atoms = read(structure)
     if no_scs:
         SCS = None
+        suffix = 'pbe'
     else:
         SCS = get_scissors_operator(atoms, shifts)
-
+        suffix = 'scs'
     if gs:
         calc = calculate_gs(atoms, kpts, calculator, SCS)
-        if no_scs:
-            filename = 'gs_pbe.json'
-        else:
-            filename = 'gs_scs.json'
-        dump_to_json(filename, calc, soc, bs)
-
+        prefix = 'gs'
     if bs:
         calc = calculate_bs(gpw, kptpath, npoints, eps, SCS)
-        if no_scs:
-            filename = 'bs_pbe.json'
-        else:
-            filename = 'bs_scs.json'
-        dump_to_json(filename, calc, soc, bs)
+        prefix = 'bs'
+    if soc and not gs and not bs:
+        calc = GPAW(gpw)
+        prefix = 'gs'
+
+    filename = f'{prefix}_{suffix}.json'
+    dump_to_json(filename, calc, soc, bs)
 
 
 if __name__ == "__main__":

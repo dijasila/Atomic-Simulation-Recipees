@@ -28,7 +28,7 @@ def calculate(calculator: dict = {
         'convergence': {'bands': 'CBM+3.0'},
         'nbands': '200%',
         'txt': 'gs.txt',
-        'maxiter': 333,
+        'maxiter': 999,
         'charge': 0}) -> ASRResult:
     """Calculate ground state file.
 

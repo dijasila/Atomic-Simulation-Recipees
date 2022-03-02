@@ -94,108 +94,6 @@ def get_gw_soc(dft, gw, nbands: int=10):
     return qp_soc, efermi_soc
 
 
-def find_local_band_extrema(calc):
-    '''Find local extrema for both the conduction and valence bands.'''
-
-    def split_kpts(kpts, column):
-        kpts_tmp = np.array([tuple(i) for i in kpts], 
-                            dtype = np.dtype([('x', float), ('y', float), ('z', float)]))
-    
-        if column == 0:
-            order = ('x', 'y', 'z')
-        if column == 1:
-            order = ('y', 'x', 'z')
-    
-        # Sorting kpts along x/y direction
-        sorter = np.argsort(kpts_tmp, order=order)
-        kpts_sorted = kpts[sorter]
-    
-        # Grouping indexes of kpoints that share same kx/ky component
-        uniq, counts = np.unique(kpts_sorted[:, column], return_counts=True)
-        splitter = []
-        indx = 0
-        # This is necessary to relate np.unique to np.split
-        for i, c in enumerate(counts):
-            indx += c
-            splitter.append(indx)
-        return np.split(sorter, splitter[:-1])
-
-    '''
-    def find_extrema_bandwise(kpts, band, indexes):
-        split_indexes_x = split_kpts(kpts, 1)
-        split_indexes_x = split_kpts(kpts, 0)
-        for index_group in indexes:
-            group_energies = energies[index_group]
-    '''
-
-    def find_local_extrema_1D(energies, index_group):
-        group_energies = energies[index_group] 
-        maxima = []
-        minima = []
-
-        # Check if the first and/or last points are local extrema
-        if group_energies[0] > group_energies[1]:
-            maxima.append(index_group[0])
-        if group_energies[0] < group_energies[1]:
-            minima.append(index_group[0])
-
-        if group_energies[-1] > group_energies[-2]:
-            maxima.append(index_group[-1])
-        if group_energies[-1] < group_energies[-2]:
-            minima.append(index_group[-1])
-
-        # Search for extrema among the other points
-        for i in np.arange(1, len(group_energies) - 1):
-            if group_energies[i] > group_energies[i-1] and group_energies[i] > group_energies[i+1]:
-                maxima.append(index_group[i])
-            if group_energies[i] < group_energies[i-1] and group_energies[i] < group_energies[i+1]:
-                minima.append(index_group[i])
-        
-        return maxima, minima
-
-
-
-    kpts, cb, vb = get_cb_vb_surface(calc, all_bz=True)
-    split_indexes_x = split_kpts(kpts, 0)
-    split_indexes_y = split_kpts(kpts, 1)
-
-    maxima_x = []
-    minima_x = []
-    maxima_y = []
-    minima_y = []
-    for index_group in split_indexes_x:
-        maxima_x += find_local_extrema_1D(vb, index_group)[0]
-        minima_x += find_local_extrema_1D(cb, index_group)[1]
-    for index_group in split_indexes_y:
-        maxima_y += find_local_extrema_1D(vb, index_group)[0]
-        minima_y += find_local_extrema_1D(cb, index_group)[1]
-
-    print(maxima_x)
-    print(maxima_y)
-    print(set(maxima_x) & set(maxima_y))
-
-        
-
-
-    
-
-    '''
-    kpts_tmp = np.array([tuple(i) for i in kpts], dtype = np.dtype([('0', float), ('1', float), ('2', float)]))
-    sort_x = np.argsort(kpts_tmp, order=('0', '1', '2'))
-    sort_y = np.argsort(kpts_tmp, order=('2', '1', '0'))
-    print(kpts[sort_x])
-    print(kpts[sort_y])
-    '''
-
-
-    '''
-    for kx in kx_vals
-    sorted_kx = sorted(bz, key = lambda x: x[0])
-    sorted_ky = sorted(bz, key = lambda x: x[1])
-    print(sorted_ky)
-    '''
-
-
 def get_cb_vb_surface(calc: Union[GPAW, None] = None, ef = None, eigenvalues = None, kpts = None, all_bz: bool = True, soc: bool = False):
     '''Returns the surface formed by the edge states of CB and VB
        calculated on a 2D k-point grid
@@ -263,6 +161,8 @@ def is_gap_direct(calc):
 
 def multiplot(*toplot,
               reference=None,
+              eigs=None,
+              nbands=0,
               ylim=None,
               title=None,
               xtitle=None,
@@ -276,6 +176,7 @@ def multiplot(*toplot,
               show=True,
               legend=True,
               soc=False,
+              text=None,
               fontsize1=24,
               fontsize2=22,
               loc='best'):
@@ -290,9 +191,14 @@ def multiplot(*toplot,
     ax = plt.figure(figsize=(12, 9)).add_subplot(111)
 
     items = []
-    for tp in toplot:
+
+    if isinstance(soc, bool):
+        socs = [soc for i in toplot]
+    else:
+        socs=soc
+    for tp, s in zip(toplot, socs):
         if isinstance(tp, str):
-            items.append(Bands(tp, soc))
+            items.append(Bands(tp, soc=s))
         elif isinstance(tp, Bands):
             items.append(tp)
         else:
@@ -325,7 +231,10 @@ def multiplot(*toplot,
             ref = 0.0
             ytitle = r'$\mathrm{E-E_{vac}}$'
 
-        energies = item.get_energies() - ref
+        if not eigs:
+            energies = item.get_energies(nbands=nbands) - ref
+        else:
+            energies = eigs[index]
         efermi = item.get_efermi() - ref
         allfermi.append(efermi)
 
@@ -363,11 +272,13 @@ def multiplot(*toplot,
     ax.yaxis.set_tick_params(width=3, length=10)
     plt.setp(ax.spines.values(), linewidth=3)
 
+    if text:
+        plt.text(**text)
     if legend:
-        plt.legend(loc=loc, fontsize=fontsize2 - 2)
-
+        plt.legend(loc=loc, fontsize=fontsize2 - 6)
     if show:
         plt.show()
+    return ax
 
 
 class Bands:
@@ -381,7 +292,6 @@ class Bands:
         self._basename, self._ext = splitext(filename)
 
         print(f'Reading stuff from file {filename}...')
-
         if self._ext == '.gpw':
             if soc:
                 raise NotImplementedError('SOC not implemented yet for bandstructures from .gpw files')
@@ -389,26 +299,18 @@ class Bands:
 
         if self._ext == '.json':
             self.bandstructure = bs_from_json(self.filename, soc)
-
-        '''
-        if gw:
-            gsdct = read_json(gs)
-            gsdata = gsdct["kwargs"]["data"]
-            evac = gsdata["evac"]
-            dct = read_json(self.filename)
-            data = dct["kwargs"]["data"]
-            path = data['bandstructure']['path']
-            ef = data['efermi_gw_soc'] - evac1
-            e1 = data1['bandstructure']['e_int_mk'] - evac1
-            vbm1 = data1["vbm_gw"] - evac1
-            cbm1 = data1["cbm_gw"] - evac1
-            edg1 = get_edges(e1, ef1)
-            x1, X1, labels1 = path1.get_linear_kpoint_axis()
-        '''
-
         print("Done")
 
-    def get_energies(self):
+    def get_energies(self, nbands=0):
+        energies = self.bandstructure.energies.T
+        if nbands:
+            enrg_ref = energies - self.get_efermi()
+            band_maxes = [i.max() if i.max() < 0 else i.min() for i in enrg_ref]
+            for i, _ in enumerate(band_maxes):
+                if band_maxes[i] > 0 and band_maxes[i-1] < 0:
+                    arg = i
+                    break
+            return energies[arg-nbands:arg+nbands]
         return self.bandstructure.energies.T
 
     def get_efermi(self):

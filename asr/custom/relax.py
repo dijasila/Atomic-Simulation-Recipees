@@ -327,10 +327,10 @@ def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'lcao'},
                              'xc': 'PBE',
-                             'kpts': {'density': 6.0, 'gamma': True},
+                             'kpts': {'density': 3.0, 'gamma': True},
                              'basis': 'dzp',
                              'symmetry': {'symmorphic': False},
-                             'convergence': {'forces': 1e-4},
+                             'convergence': {'forces': 1e-3},
                              'txt': 'relax.txt',
                              'occupations': {'name': 'fermi-dirac',
                                              'width': 0.05},
@@ -341,8 +341,8 @@ def main(atoms: Atoms,
          d3: bool = False,
          fixcell: bool = True,
          allow_symmetry_breaking: bool = True,
-         fmax: float = 0.01,
-         enforce_symmetry: bool = True) -> Result:
+         fmax: float = 0.04,
+         enforce_symmetry: bool = False) -> Result:
     """Relax atomic positions and unit cell.
 
     The relaxed structure is saved to `structure.json` which can be processed

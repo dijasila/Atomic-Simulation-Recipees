@@ -13,7 +13,7 @@ def timed_print(*args, wait=20):
         _LATEST_PRINT = now
 
 
-def extract_structure(traj='relax.traj', tol=0.02, dest='structure.json'):
+def extract_structure(folder='./', traj='relax.traj', tol=0.02, dest='structure.json'):
     """Extract the structure with lowest fmax from a trajectory file 
        if the lowest fmax is less than the requested tolerance,
        Then write it to file.
@@ -25,12 +25,12 @@ def extract_structure(traj='relax.traj', tol=0.02, dest='structure.json'):
         forces = atoms.get_forces()
         return np.sqrt((forces**2).sum(axis=1).max())
     
-    traj = Trajectory(traj)
+    traj = Trajectory(folder + traj)
     forces = np.asarray([fmax(atoms) for atoms in traj])
     fmin = forces.min()
     if fmin <= tol:
         print(fmin)
         struct = traj[forces.argmin()]
-        struct.write(dest)
+        struct.write(folder + dest)
     else:
         print(f'Lowest fmax found: {fmin}, larger than requested {tol}')

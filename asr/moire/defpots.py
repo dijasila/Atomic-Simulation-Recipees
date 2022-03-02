@@ -111,7 +111,6 @@ class Result(ASRResult):
 @command('asr.moire.defpots',
          returns=Result)
 @option('-s', '--strain_percent', help='Strain percentage', type=float)
-#@option('--no-restart', is_flag=True, help="Don't recalculate band edges at the special points", type=bool)
 @option('--special-kpts-only', is_flag=True, help="Calculate deformation potentials only at the special points.", type=bool)
 #@option('--soc', is_flag=True, help='Calculate spin-orbit coupling eigenvalues and corresponding deformation potentials', type=bool)
 def main(strain_percent = 1.0,
@@ -183,8 +182,6 @@ def main(strain_percent = 1.0,
 
                 vb, cb = get_edges(calc, soc)
                 evac = calculate_evac(calc)
-                if not soc:
-                    print(f'{perc}%, {ind}: {evac}')
                 for k in range(len(kpts)):
                     edges_kpin[k, p, i, 0] = vb[k] - evac
                     edges_kpin[k, p, i, 1] = cb[k] - evac

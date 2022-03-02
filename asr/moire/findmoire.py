@@ -6,6 +6,7 @@ from tqdm import tqdm
 from pathlib import Path
 from pandas import DataFrame
 from asr.core import command, option
+from typing import Union
 
 
 class Lincomb:
@@ -94,7 +95,6 @@ def get_atoms_and_stiffness(uid_a, uid_b, db):
 
 # Angle between two vectors, measured counter-clockwise.
 def angle_between(v1, v2):
-
     # Moified sign function that returns 1 also if the value is 0
     def sign(num):
         if num >= 0:
@@ -148,8 +148,24 @@ def match_components(lcs_a, lcs_b, max_strain):
     return matches
 
 
+'''
 # Look for supercells, i.e. LC pairs with matching rotation angle
 def find_supercells(matches, tol_theta, const):
+    matches.sort(key=lambda x: x.angle)
+    supercells = []
+    rng = len(matches)
+    for i in tqdm(range(rng)):
+        for j in range(i + 1, rng):
+            if abs(matches[i].angle - matches[j].angle) >= tol_theta:
+                break
+            supercells.append(Supercell(matches[i], matches[j], const))
+    return supercells
+'''
+# Look for supercells, i.e. LC pairs with matching rotation angle
+def find_supercells(matches, tol_theta, const, twist_angle_interval):
+    matches = [m for m in matches \
+               if m.angle > twist_angle_interval[0] \
+               and m.angle < twist_angle_interval[1]]
     matches.sort(key=lambda x: x.angle)
     supercells = []
     rng = len(matches)
@@ -206,6 +222,8 @@ def filter_dataframe(df, natoms, internal, asym):
         help='Store only supercells with max (percent) strain lower than the specified one')
 @option('--max-natoms', type=float,
         help='Store only supercells with lower number f atoms than the specified one')
+@option('--twist-angle-interval', type=list,
+        help='Lower and upper limits for the supercell twist angle (in degrees)')
 @option('--min-internal-angle', type=float,
         help='Lower limit for the supercell internal angle (in degrees)')
 @option('--max-internal-angle', type=float,
@@ -216,28 +234,33 @@ def filter_dataframe(df, natoms, internal, asym):
         help='Regenerate directory structure overwriting old files')
 @option('--database', type=str,
         help='Path of the .db database file for retrieving structural information')
+@option('--directory',
+        help='Path of the .db database file for retrieving structural information')
 def main(uid_a: str = None,
          uid_b: str = None,
          max_coef: int = 15,
          tol_theta: float = 0.05,
          max_strain: float = 1.0,
          max_natoms: int = 300,
+         twist_angle_interval: list = [-360, 360],
          min_internal_angle: float = 30.0,
          max_internal_angle: float = 150.0,
          keep_asymmetrical: bool = False,
          overwrite: bool = False,
+         directory: Union[str, None] = None,
          database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/c2db.db"):
 
     layer_a, layer_b, stif_a, stif_b = get_atoms_and_stiffness(uid_a, uid_b, database)
     name_a = layer_a.get_chemical_formula()
     name_b = layer_b.get_chemical_formula()
-    workdir = f"{name_a}-{name_b}"
-    Path(workdir).mkdir(exist_ok=True)
 
+    if not directory:
+        directory = f"{name_a}-{name_b}"
+    Path(directory).mkdir(exist_ok=True)
     if overwrite == True:
         try:
-            Path(f"{workdir}/moirecells.json").unlink()
-            Path(f"{workdir}/moirecells.cells").unlink()
+            Path(f"{directory}/moirecells.json").unlink()
+            Path(f"{directory}/moirecells.cells").unlink()
         except:
             pass
 
@@ -248,7 +271,7 @@ def main(uid_a: str = None,
     print(f"Obtained {len(matches)} LCs matches")
 
     print("\nSearching for supercells...")
-    cells = find_supercells(matches, tol_theta, get_const(layer_a, layer_b))
+    cells = find_supercells(matches, tol_theta, get_const(layer_a, layer_b), twist_angle_interval)
     print(f"\nFound a total of {len(cells)} supercells!\nFiltering results...")
 
     df = generate_dataframe(cells)
@@ -256,21 +279,14 @@ def main(uid_a: str = None,
                      max_internal_angle], keep_asymmetrical)
     print(f"\nFound {df.shape[0]} supercells that satisfy the requested conditions!!!")
 
-    df.to_string(f"{workdir}/cells.txt", header=True, index=True, float_format='%.2f')
-    df.to_json(f"{workdir}/cells.json", orient='index')
-    dct = read_json(f"{workdir}/cells.json")
+    df.to_string(f"{directory}/cells.txt", header=True, index=True, float_format='%.2f')
+    df.to_json(f"{directory}/cells.json", orient='index')
+    dct = read_json(f"{directory}/cells.json")
     dct.update({
         'uid_a': uid_a,
         'uid_b': uid_b
     })
-    write_json(f"{workdir}/cells.json", dct)
-
-
-    '''
-    print("\nCalculating cell components and strains...")
-    for cell in tqdm(cells):
-        cell.set_cell_and_strain(stif_a, stif_b)
-    '''
+    write_json(f"{directory}/cells.json", dct)
 
     '''
     TODO:
@@ -295,8 +311,8 @@ def main(uid_a: str = None,
 
     '''
     cells_sorted = SortResults(cells, sort)
-    SaveJson(cells, monos[i], monos[j], workdir)
-    save_human_readable(cells, uid_a, uid_b, workdir)
+    SaveJson(cells, monos[i], monos[j], directory)
+    save_human_readable(cells, uid_a, uid_b, directory)
     '''
 
 

@@ -1,5 +1,5 @@
 import json
-import typing
+from typing import Union
 import numpy as np
 from pathlib import Path
 from ase.db import connect
@@ -167,18 +167,26 @@ class Result(ASRResult):
 @command('asr.makemoire')
 @option('-s', '--solution', type=int)
 @option('--filename', type=str)
-@option('--stacking', type=str)
+@option('--root', type=str)
+@option('--make-subdirectory')
+@option('--stacking')
 @option('--database', type=str)
 def main(solution,
-         filename: str = 'cells.json',
-         stacking: str = 'AB',
-         database: str = '/home/niflheim/steame/hetero-bilayer-project/databases/c2db.db'):
+         filename: str='initial.json',
+         root: str='.',
+         make_subdirectory: bool=False,
+         stacking=None,
+         database: str='/home/niflheim/steame/hetero-bilayer-project/databases/c2db.db'):
 
-    uid_a, uid_b, coeffs_a, coeffs_b, twist = get_parameters(solution, filename)
+    cellfile = f'{root}/cells.json'
+    uid_a, uid_b, coeffs_a, coeffs_b, twist = get_parameters(solution, cellfile)
     atoms_a, atoms_b, stif_a, stif_b = get_atoms_and_stiffness(uid_a, uid_b, database)
     atoms_a.cell[2, 2] = 1.0
     atoms_b.cell[2, 2] = 1.0
-    atoms_a, atoms_b = stack_TMDs(atoms_a, atoms_b, stacking)
+
+    if stacking:
+        atoms_a, atoms_b = stack_TMDs(atoms_a, atoms_b, stacking)
+
     atoms_a_sc = build_supercell(atoms_a, coeffs_a)
     atoms_b_sc = build_supercell(atoms_b, coeffs_b)
     atoms_a_sc.set_tags(1)
@@ -190,15 +198,18 @@ def main(solution,
     bilayer = Bilayer(atoms_a_sc + atoms_b_sc)
     bilayer.set_interlayer_distance(3.0)
     bilayer.set_vacuum(15.0)
-    new_cell[2, 2] = bilayer.cell[2, 2]    # This is to correct a stupid bug
+    new_cell[2, 2] = bilayer.cell[2, 2]    # This is to correct a weird i/o bug
     bilayer.set_cell(new_cell, scale_atoms=True)
 
     assert np.allclose(bilayer.cell[:2, :2], new_cell[:2, :2])
     assert new_cell[2, 2] == bilayer.cell[2, 2]
 
-    direc = f'{len(bilayer)}_{twist:.1f}_{maxstrain:.2f}'
-    Path(direc).mkdir(exist_ok=True)
-    bilayer.write(f'{direc}/initial.json')
+    if make_subdirectory:
+        direc = f'{root}/{len(bilayer)}_{twist:.1f}_{maxstrain:.2f}'
+    else:
+        direc = f'{root}'
+    Path(direc).mkdir(exist_ok=True, parents=True)
+    bilayer.write(f'{direc}/{filename}')
 
     results = {
         'uid_a': uid_a,
