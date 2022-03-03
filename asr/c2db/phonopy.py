@@ -292,30 +292,11 @@ def postprocess(
         sc,
         d,
         dist_max,
-        #atoms: Atoms,
         rc: float = None,
-        #d: float = calculate.defaults.d,
-        #sc: typing.List[int] = calculate.defaults.sc,
-        #dist_max: float = calculate.defaults.dist_max,
-        #calculator: dict = calculate.defaults.calculator,
-        #magstatecalculator: dict = calculate.defaults.magstatecalculator,
 ) -> Result:
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
-
-    #calculaterec = calculate.get(
-    #    atoms=atoms,
-    #    d=d,
-    #    sc=sc, dist_max=dist_max,
-    #    calculator=calculator,
-    #    magstatecalculator=magstatecalculator,
-    #    )
-    #calculateres = calculaterec.result
-    #params = calculaterec.parameters
-    #sc = params["sc"]
-    #d = params["d"]
-    #dist_max = params["dist_max"]
 
     nd = sum(atoms.pbc)
 
