@@ -10,7 +10,7 @@ import typing
 
 from asr.database.browser import (make_panel_description,
                                   fig, describe_entry, WebPanel)
-from asr.c2db.bandstructure import calculate as bscalculate, main as bsmain
+# from asr.c2db.bandstructure import calculate as bscalculate, main as bsmain
 
 
 panel_description = make_panel_description(
@@ -94,43 +94,13 @@ def add_bsrestart(record):
     return record
 
 
-@command(
-    module='asr.c2db.projected_bandstructure',
-)
-@atomsopt
-@calcopt
-@asr.calcopt(
-    aliases=['-b', '--bsrestart'],
-    help='Bandstructure Calculator params.',
-    matcher=asr.matchers.EQUAL,
-)
-@option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints',
-        type=int,
-        help='Number of points along k-point path.')
-def main(
-        atoms: Atoms,
-        calculator: dict = bscalculate.defaults.calculator,
-        bsrestart: dict = bscalculate.defaults.bsrestart,
-        kptpath: typing.Union[str, None] = bscalculate.defaults.kptpath,
-        npoints: int = bscalculate.defaults.npoints,
-) -> Result:
-    # Get bandstructure calculation
-
-    args = dict(
-        atoms=atoms,
-        calculator=calculator,
-        bsrestart=bsrestart,
-        kptpath=kptpath,
-        npoints=npoints,
-    )
-    res = bscalculate(**args)
-
+@command()
+def main(bscalculateresult) -> Result:
     # We need to depend on bsmain, otherwise we cannot make the web panels
     # since we do not have the requisite metadata.
-    bsmain(**args)
+    # bsmain(**args)
 
-    calc = res.calculation.load()
+    calc = bscalculateresult.calculation.load()
     # calc = GPAW('bs.gpw', txt=None)
 
     results = {}
