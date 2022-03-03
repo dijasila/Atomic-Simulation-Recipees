@@ -1,11 +1,12 @@
 import pytest
 
 
-@pytest.mark.xfail(reason='TODO')
 @pytest.mark.ci
 def test_bse(
         asr_tmpdir_w_params, test_material, fast_calc,
         mockgpaw, mocker, get_webcontent):
+    from asr.c2db.bse import BSEWorkflow
+
     import gpaw
     import gpaw.occupations
     from gpaw.response.bse import BSE
@@ -16,7 +17,6 @@ def test_bse(
     mocker.patch.object(gpaw.occupations, "FermiDirac")
     gpaw.occupations.FermiDirac.return_value = None
 
-    from asr.c2db.bse import main
     ndim = sum(test_material.pbc)
 
     def calculate(self):
@@ -30,20 +30,14 @@ def test_bse(
         return data
 
     mocker.patch.object(BSE, "calculate", calculate)
-    if ndim > 1:
-        main(
-            atoms=test_material,
-            calculator=fast_calc,
-            kptdensity=2,
-        )
 
-        test_material.write("structure.json")
-        get_webcontent()
+    if ndim > 1:
+        BSEWorkflow(atoms=test_material, calculator=fast_calc,
+                    kptdensity=2)
+
+        #test_material.write("structure.json")
+        #get_webcontent()
     else:
         with pytest.raises(NotImplementedError):
-            main(
-                atoms=test_material,
-                calculator=fast_calc,
-                kptdensity=2,
-
-            )
+            BSEWorkflow(atoms=test_material, calculator=fast_calc,
+                        kptdensity=2)
