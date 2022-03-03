@@ -68,47 +68,77 @@ def distance_to_sc(nd, atoms, dist_max):
     return supercell
 
 
-@command(
-    "asr.c2db.phonopy",
-)
-@atomsopt
-@option("--d", type=float, help="Displacement size")
-@option("--dist_max", type=float,
-        help="Maximum distance between atoms in the supercell")
-@option("--fsname", help="Name for forces file", type=str)
-@option('--sc', nargs=3, type=int,
-        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-@asr.calcopt
-@asr.calcopt(aliases=['--magstatecalculator'], help='Magstate calculator params.')
+from asr.c2db.phonons import PhononWorkflow as _PhononWorkflow
+from asr.c2db.gs import GS, default_calculator as gs_default_calculator
+
+
+class PhonopyWorkflow:
+    # XXX not entirely ported to workflow yet
+    default_calculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 6.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'forces': 1.0e-4},
+        'symmetry': {'point_group': False},
+        'txt': 'phonons.txt',
+        'charge': 0}
+
+    def __init__(
+            self,
+            atoms,
+            calculator=default_calculator,
+            magstatecalculator=gs_default_calculator,
+            d=0.05,
+            rc=None,
+            sc=(0, 0, 0),
+            dist_max=7.0):
+
+
+        self.gs = GS(atoms=atoms, calculator=gs_default_calculator)
+
+        self.calculateresult = calculate(
+            atoms=atoms,
+            d=d,
+            sc=sc,
+            magstateres=self.gs.magstate,
+            calculator=calculator,
+            dist_max=dist_max)
+
+        self.post = postprocess(
+            calculateresult=self.calculateresult,
+            atoms=atoms,
+            sc=sc,
+            rc=rc,
+            d=d,
+            dist_max=dist_max)
+
+
+@command('asr.c2db.phonopy')
+#@atomsopt
+#@option("--d", type=float, help="Displacement size")
+#@option("--dist_max", type=float,
+#        help="Maximum distance between atoms in the supercell")
+#@option('--sc', nargs=3, type=int,
+#        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
+#@asr.calcopt
+#@asr.calcopt(aliases=['--magstatecalculator'], help='Magstate calculator params.')
 def calculate(
         atoms: Atoms,
-        d: float = 0.05, fsname: str = 'phonons',
-        sc: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
-        calculator: dict = {'name': 'gpaw',
-                            'mode': {'name': 'pw', 'ecut': 800},
-                            'xc': 'PBE',
-                            'kpts': {'density': 6.0, 'gamma': True},
-                            'occupations': {'name': 'fermi-dirac',
-                                            'width': 0.05},
-                            'convergence': {'forces': 1.0e-4},
-                            'symmetry': {'point_group': False},
-                            'txt': 'phonons.txt',
-                            'charge': 0},
-        magstatecalculator: dict = magstate.defaults.calculator,
+        d,
+        sc,
+        dist_max,
+        calculator,
+        magstateres,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
-    # Remove empty files:
-    if world.rank == 0:
-        for f in Path().glob(fsname + ".*.json"):
-            if f.stat().st_size == 0:
-                f.unlink()
-    world.barrier()
 
     calc = construct_calculator(calculator)
 
-    magstateres = magstate(atoms=atoms, calculator=magstatecalculator)
     if magstateres.is_magnetic:
         magmoms_m = magstate.magmoms
         # Some calculators return magnetic moments resolved into their
@@ -117,7 +147,7 @@ def calculate(
             magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    nd = sum(atoms.get_pbc())
+    nd = sum(atoms.pbc)
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
         sc = distance_to_sc(nd, atoms, dist_max)
@@ -153,7 +183,7 @@ def calculate(
         # Sign of the displacement
         sign = ["+", "-"][n % 2]
 
-        filename = fsname + ".{0}{1}.json".format(a, sign)
+        filename = "phonons.{0}{1}.json".format(a, sign)
 
         # if Path(filename).is_file():
         #     forces = read_json(filename)["force"]
@@ -245,50 +275,49 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command(
-    "asr.c2db.phonopy",
-)
-@atomsopt
-@option("--rc", type=float, help="Cutoff force constants matrix")
-@option("--d", type=float, help="Displacement size")
-@option("--dist_max", type=float,
-        help="Maximum distance between atoms in the supercell")
-@option("--fsname", help="Name for forces file", type=str)
-@option('--sc', nargs=3, type=int,
-        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-@asr.calcopt
-@option('--magstatecalculator',
-        help='Magstate calculator params.', type=DictStr())
-def main(
-        atoms: Atoms,
+@command('asr.c2db.phonopy')
+#@atomsopt
+#@option("--rc", type=float, help="Cutoff force constants matrix")
+#@option("--d", type=float, help="Displacement size")
+#@option("--dist_max", type=float,
+#        help="Maximum distance between atoms in the supercell")
+#@option('--sc', nargs=3, type=int,
+#        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
+#@asr.calcopt
+#@option('--magstatecalculator',
+#        help='Magstate calculator params.', type=DictStr())
+def postprocess(
+        atoms,
+        calculateresult,
+        sc,
+        d,
+        dist_max,
+        #atoms: Atoms,
         rc: float = None,
-        d: float = calculate.defaults.d,
-        fsname: str = calculate.defaults.fsname,
-        sc: typing.List[int] = calculate.defaults.sc,
-        dist_max: float = calculate.defaults.dist_max,
-        calculator: dict = calculate.defaults.calculator,
-        magstatecalculator: dict = calculate.defaults.magstatecalculator,
+        #d: float = calculate.defaults.d,
+        #sc: typing.List[int] = calculate.defaults.sc,
+        #dist_max: float = calculate.defaults.dist_max,
+        #calculator: dict = calculate.defaults.calculator,
+        #magstatecalculator: dict = calculate.defaults.magstatecalculator,
 ) -> Result:
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv
 
-    calculaterec = calculate.get(
-        atoms=atoms,
-        d=d,
-        fsname=fsname,
-        sc=sc, dist_max=dist_max,
-        calculator=calculator,
-        magstatecalculator=magstatecalculator,
-    )
-    calculateres = calculaterec.result
-    params = calculaterec.parameters
-    sc = params["sc"]
-    d = params["d"]
-    dist_max = params["dist_max"]
-    fsname = params["fsname"]
+    #calculaterec = calculate.get(
+    #    atoms=atoms,
+    #    d=d,
+    #    sc=sc, dist_max=dist_max,
+    #    calculator=calculator,
+    #    magstatecalculator=magstatecalculator,
+    #    )
+    #calculateres = calculaterec.result
+    #params = calculaterec.parameters
+    #sc = params["sc"]
+    #d = params["d"]
+    #dist_max = params["dist_max"]
 
-    nd = sum(atoms.get_pbc())
+    nd = sum(atoms.pbc)
 
     sc = list(map(int, sc))
     if np.array(sc).any() == 0:
@@ -323,9 +352,9 @@ def main(
         # Sign of the diplacement
         sign = ["+", "-"][i % 2]
 
-        filename = fsname + ".{0}{1}.json".format(a, sign)
+        filename = "phonons.{0}{1}.json".format(a, sign)
 
-        forces = calculateres[filename]
+        forces = calculateresult[filename]
         # Number of forces equals to the number of atoms in the supercell
         assert len(forces) == len(atoms) * np.prod(sc), "Wrong supercell size!"
 
