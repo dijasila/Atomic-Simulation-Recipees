@@ -54,6 +54,7 @@ def calculate(excitation: str = 'alpha') -> ASRResult:
     atoms.calc = calc
     calc.initialize(atoms)
     atoms.get_potential_energy()
+    write('ground.json', atoms)
  
     if excitation == 'alpha':
         excite_and_sort(calc.wfs, 0, 0, (0, 0), 'fdpw')
@@ -96,7 +97,7 @@ class ExcitedResults(ASRResult):
          dependencies=["asr.excited@calculate"])
 def main() -> ExcitedResults:
 
-    ground = read('../structure.json')
+    ground = read('ground.json')
     excited = read('structure.json')
 
     energy_ground = ground.get_potential_energy()
