@@ -11,11 +11,6 @@ from ase.calculators.emt import EMT
 from ase.parallel import world
 from ase.build import make_supercell
 
-# hiphive
-from hiphive.structure_generation import generate_mc_rattled_structures
-from hiphive.utilities import prepare_structures
-from hiphive import ClusterSpace, StructureContainer, ForceConstantPotential
-from hiphive.fitting import Optimizer
 
 # asr
 from asr.core import (
@@ -23,12 +18,6 @@ from asr.core import (
     option,
     ASRResult,
     prepare_result)
-
-# phonopy & phono3py
-from phonopy import Phonopy
-from phono3py import Phono3py
-from phonopy.structure.atoms import PhonopyAtoms
-from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
 
 # gpaw
 from gpaw import GPAW, FermiDirac
@@ -47,6 +36,16 @@ def hiphive_fc23(
         fc2n,
         fc3n,
         calculator):
+
+    from phonopy.structure.atoms import PhonopyAtoms
+    from phonopy import Phonopy
+
+    from hiphive.structure_generation import generate_mc_rattled_structures
+    from hiphive.utilities import prepare_structures
+    from hiphive import (ClusterSpace, StructureContainer,
+                         ForceConstantPotential)
+    from hiphive.fitting import Optimizer
+
     structures_fname = str(cellsize) + '_' + str(number_structures) + \
         '_' + str(rattle) + '_' + str(mindistance) + '.extxyz'
 
@@ -100,11 +99,13 @@ def hiphive_fc23(
     # get phono3py supercell and build phonopy object. Done in series
 
     if world.rank == 0:
-        atoms_phonopy = PhonopyAtoms(symbols=list(atoms.symbols),
-                                     scaled_positions=atoms.get_scaled_positions(),
-                                     cell=atoms.cell)
-        phonopy = Phonopy(atoms_phonopy, supercell_matrix=multiplier,
-                          primitive_matrix=None)
+        atoms_phonopy = PhonopyAtoms(
+            symbols=list(atoms.symbols),
+            scaled_positions=atoms.get_scaled_positions(),
+            cell=atoms.cell)
+        phonopy = Phonopy(
+            atoms_phonopy, supercell_matrix=multiplier,
+            primitive_matrix=None)
         supercell = phonopy.get_supercell()
         supercell = Atoms(cell=supercell.cell, numbers=supercell.numbers, pbc=True,
                           scaled_positions=supercell.get_scaled_positions())
@@ -116,15 +117,23 @@ def hiphive_fc23(
         fcs.write_to_phono3py(fc3n)
 
 
-def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n, t1, t2, tstep):
+def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n,
+                      t1, t2, tstep):
+    from phono3py import Phono3py
+    from phonopy.structure.atoms import PhonopyAtoms
+    from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
+
     # get phono3py supercell
-    atoms_phonopy = PhonopyAtoms(symbols=atoms.get_chemical_symbols(),
-                                 scaled_positions=atoms.get_scaled_positions(),
-                                 cell=atoms.cell)
+    atoms_phonopy = PhonopyAtoms(
+        symbols=atoms.get_chemical_symbols(),
+        scaled_positions=atoms.get_scaled_positions(),
+        cell=atoms.cell)
+
     # 2D or 3D calculation
     if nat_dim == 3:
         # 3D calc
-        multiplier = np.array([[cellsize, 0, 0], [0, cellsize, 0], [0, 0, cellsize]])
+        multiplier = np.array([[cellsize, 0, 0], [0, cellsize, 0],
+                               [0, 0, cellsize]])
         meshnu = [mesh_ph3, mesh_ph3, mesh_ph3]
     else:
         # 2D calc
@@ -235,7 +244,8 @@ def main(
         fc2n,
         fc3n,
         calculator)
-    phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n, t1, t2, tstep)
+    phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n,
+                      t1, t2, tstep)
 
     # read the hdf5 file with the rta results
 
