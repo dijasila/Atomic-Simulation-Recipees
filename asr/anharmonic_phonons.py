@@ -116,11 +116,11 @@ def hiphive_fc23(
         fcs.write_to_phono3py(fc3n)
 
 
-def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n,
+def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3,
+                      fc2, fc3,
                       t1, t2, tstep):
     from phono3py import Phono3py
     from phonopy.structure.atoms import PhonopyAtoms
-    from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
 
     # get phono3py supercell
     atoms_phonopy = PhonopyAtoms(
@@ -139,10 +139,6 @@ def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n,
         multiplier = np.array([[cellsize, 0, 0], [0, cellsize, 0], [0, 0, 1]])
         meshnu = [mesh_ph3, mesh_ph3, 1]
     if world.rank == 0:
-
-        # read force constants from hdf5
-        fc3 = read_fc3_from_hdf5(filename=fc3n)
-        fc2 = read_fc2_from_hdf5(filename=fc2n)
 
         # create phono3py object
         ph3 = Phono3py(
@@ -224,6 +220,8 @@ def main(
         tstep=1) -> Result:
 
     import h5py
+    from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
+
     atoms = read(atoms)
 
     fc2n = 'fc2.hdf5'
@@ -244,7 +242,12 @@ def main(
         fc2n,
         fc3n,
         calculator)
-    phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2n, fc3n,
+
+    # read force constants from hdf5
+    fc3 = read_fc3_from_hdf5(filename=fc3n)
+    fc2 = read_fc2_from_hdf5(filename=fc2n)
+
+    phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2, fc3,
                       t1, t2, tstep)
 
     # read the hdf5 file with the rta results
