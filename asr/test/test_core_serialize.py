@@ -13,7 +13,6 @@ def serialize_deserialize(obj):
     return deserialized
 
 
-@pytest.mark.xfail(reason='TODO')
 @pytest.mark.ci
 def test_encode_decode(various_object_types):
 

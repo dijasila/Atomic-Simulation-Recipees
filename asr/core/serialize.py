@@ -6,18 +6,19 @@ import typing
 import ase
 import numpy as np
 import simplejson as json
-from ase.io.jsonio import object_hook as ase_object_hook
+from ase.io.jsonio import (object_hook as ase_object_hook,
+                           default as ase_default)
 
 from asr.core.results import get_object_matching_obj_id
 
 from .results import obj_to_id
 
 
-def encode(obj):
+def asr_default(obj):
     try:
         return object_to_dict(obj)
     except ValueError:
-        return ase.io.jsonio.encode(obj)
+        return ase_default(obj)
 
 
 class ASRJSONEncoder(json.JSONEncoder):
@@ -99,14 +100,10 @@ def dict_to_object(json_object) -> typing.Any:
 
 
 class JSONSerializer:
-
-    encoder = ASRJSONEncoder(tuple_as_array=False).encode
-    decoder = json.JSONDecoder(object_hook=json_hook).decode
-
     def serialize(self, obj) -> str:
         """Serialize object to JSON."""
-        return self.encoder(obj)
+        return json.dumps(obj, tuple_as_array=False, default=asr_default)
 
     def deserialize(self, serialized: str) -> typing.Any:
         """Deserialize json object."""
-        return self.decoder(serialized)
+        return json.loads(serialized, object_hook=json_hook)
