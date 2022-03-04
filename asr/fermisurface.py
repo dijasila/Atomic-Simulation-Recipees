@@ -149,9 +149,6 @@ def main() -> Result:
     selection = ~np.logical_or(eigs_mk.max(1) < 0, eigs_mk.min(1) > 0)
     eigs_mk = eigs_mk[selection, :]
     s_mk = s_mk[selection, :]
-    bz2ibz_k = calc.get_bz_to_ibz_map()
-    eigs_mk = eigs_mk[:, bz2ibz_k]
-    s_mk = s_mk[:, bz2ibz_k]
 
     n = 5
     N_xc = np.indices((n, n, 1)).reshape((3, n**2)).T - n // 2
