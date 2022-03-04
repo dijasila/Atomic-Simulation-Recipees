@@ -1,6 +1,5 @@
 # general python
 import numpy as np
-import h5py
 import typing
 import os.path as path
 
@@ -224,6 +223,7 @@ def main(
         t2=301,
         tstep=1) -> Result:
 
+    import h5py
     atoms = read(atoms)
 
     fc2n = 'fc2.hdf5'
