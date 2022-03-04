@@ -65,8 +65,8 @@ def main() -> Result:
         if (Path(charged / 'structure.json').is_file() and not
            str(charged.absolute()).endswith('charge_0')):
             with chdir(charged):
-                material_fingerprint()
-                res = read_json('results-asr.database.material_fingerprint.json')
+                res = material_fingerprint()
+                # res = read_json('results-asr.database.material_fingerprint.json')
                 uid = res['uid']
             host = Formula(str(charged.absolute()).split('/')[-4].split(
                 'defects.')[-1].split('.')[0].split('_')[0])
@@ -85,8 +85,8 @@ def main() -> Result:
     for neutral in neutrallist:
         if (Path(neutral / 'structure.json').is_file()):
             with chdir(neutral):
-                material_fingerprint()
-                res = read_json('results-asr.database.material_fingerprint.json')
+                res = material_fingerprint()
+                # res = read_json('results-asr.database.material_fingerprint.json')
                 uid = res['uid']
             host = Formula(str(neutral.absolute()).split('/')[-2].split(
                 'defects.')[-1].split('.')[0].split('_')[0])
@@ -104,8 +104,8 @@ def main() -> Result:
     pristine = list(p.glob('./../../defects.pristine_sc*'))[0]
     if (Path(pristine / 'structure.json').is_file()):
         with chdir(pristine):
-            material_fingerprint()
-            res = read_json('results-asr.database.material_fingerprint.json')
+            res = material_fingerprint()
+            # res = read_json('results-asr.database.material_fingerprint.json')
             uid = res['uid']
         pristinelinks.append((uid, f"pristine material"))
 
