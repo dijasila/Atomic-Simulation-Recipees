@@ -784,7 +784,3 @@ def return_distances_cell(cell):
             sign * cell[0][2] + cell[1][2])**2))
 
     return distances
-
-
-if __name__ == '__main__':
-    main.cli()

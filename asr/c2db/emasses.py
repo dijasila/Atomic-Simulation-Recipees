@@ -1681,7 +1681,3 @@ def fix_settings_parameters(record):
                 del values['settings']
 
     return record
-
-
-if __name__ == '__main__':
-    validate.cli()

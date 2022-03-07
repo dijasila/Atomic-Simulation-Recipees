@@ -76,7 +76,3 @@ def main(
     newatoms.set_positions(pos_Nav + mode_Nav.real)
 
     return newatoms
-
-
-if __name__ == '__main__':
-    main.cli()

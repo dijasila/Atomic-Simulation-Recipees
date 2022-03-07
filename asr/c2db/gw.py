@@ -6,9 +6,9 @@ from asr.core import (
     command, option, ASRResult, prepare_result,
     atomsopt, calcopt, ExternalFile,
 )
-from asr.c2db.gs import calculate as calculategs
-from asr.c2db.bandstructure import main as bsmain
-from asr.c2db.magnetic_anisotropy import main as mag_ani_main
+# from asr.c2db.gs import calculate as calculategs
+# from asr.c2db.bandstructure import main as bsmain
+# from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
 import typing
@@ -61,15 +61,18 @@ arXiv:2009.00314""",
                        vbm=result['vbm_gw'])
 
 
+default_ecut = 200.0
+default_kptdensity = 5.0
+
 @command()
-@atomsopt
-@calcopt
-@option('--kptdensity', help='K-point density', type=float)
-@option('--ecut', help='Plane wave cutoff', type=float)
+#@atomsopt
+#@calcopt
+#@option('--kptdensity', help='K-point density', type=float)
+#@option('--ecut', help='Plane wave cutoff', type=float)
 def gs_gw(
         gsresult,
-        kptdensity: float = 5.0,
-        ecut: float = 200.0,
+        kptdensity: float = default_kptdensity,
+        ecut: float = default_ecut,
 ) -> ASRResult:
     """Calculate GW underlying ground state."""
     from ase.dft.bandgap import bandgap
@@ -119,25 +122,27 @@ def gs_gw(
     }
 
 
+default_mode = 'G0W0'
+
+
 @command()
-@atomsopt
-@calcopt
-@option('--kptdensity', help='K-point density', type=float)
-@option('--ecut', help='Plane wave cutoff', type=float)
-@option('--mode', help='GW mode',
-        type=Choice(['G0W0', 'GWG']))
-def gw(atoms: Atoms,
-       calculator: dict = gs.defaults.calculator,
-       kptdensity: float = gs.defaults.kptdensity,
-       ecut: float = gs.defaults.ecut,
-       mode: str = 'G0W0') -> dict:
+#@option('--kptdensity', help='K-point density', type=float)
+#@option('--ecut', help='Plane wave cutoff', type=float)
+#@option('--mode', help='GW mode',
+#        type=Choice(['G0W0', 'GWG']))
+def gw(gs_gw_result,
+       gsresult,
+       kptdensity: float = default_kptdensity,
+       ecut: float = default_ecut,
+       mode: str = default_mode) -> dict:
     """Calculate GW corrections."""
     from ase.dft.bandgap import bandgap
     from gpaw.response.g0w0 import G0W0
 
     # check that the system is a semiconductor
-    gsresult = calculategs(atoms=atoms, calculator=calculator)
+    # gsresult = calculategs(atoms=atoms, calculator=calculator)
     calc = gsresult.calculation.load()
+    atoms = calc.get_atoms()
     scf_gap, _, _ = bandgap(calc, output=None)
 
     if len(atoms) > 4:
@@ -147,12 +152,6 @@ def gw(atoms: Atoms,
     if scf_gap < 0.05:
         raise Exception("GW: Only for semiconductors, SCF gap = "
                         + str(scf_gap) + " eV is too small!")
-
-    res = gs_gw(
-        gsresult=gsresult,
-        kptdensity=kptdensity,
-        ecut=ecut,
-    )
 
     # Setup parameters
     dim = sum(atoms.pbc)
@@ -170,7 +169,7 @@ def gw(atoms: Atoms,
 
     lb, ub = max(calc.wfs.nvalence // 2 - 8, 0), calc.wfs.nvalence // 2 + 4
 
-    calc = G0W0(calc=res['gs_gw.gpw'],
+    calc = G0W0(calc=gs_gw_result['gs_gw.gpw'],
                 bands=(lb, ub),
                 ecut=ecut,
                 ecut_extrapolation=True,
@@ -187,19 +186,19 @@ def gw(atoms: Atoms,
     return results
 
 
+default_correctgw = True
+
 @command()
-@atomsopt
-@calcopt
-@option('--kptdensity', help='K-point density', type=float)
-@option('--ecut', help='Plane wave cutoff', type=float)
-@option('--mode', help='GW mode',
-        type=Choice(['G0W0', 'GWG']))
-@option('-c', '--correctgw', is_flag=True, default=False)
-@option('-z', '--empz', type=float, default=0.75,
-        help='Replacement Z for unphysical Zs')
+#@option('--kptdensity', help='K-point density', type=float)
+#@option('--ecut', help='Plane wave cutoff', type=float)
+#@option('--mode', help='GW mode',
+#        type=Choice(['G0W0', 'GWG']))
+#@option('-c', '--correctgw', is_flag=True, default=False)
+#@option('-z', '--empz', type=float, default=0.75,
+#        help='Replacement Z for unphysical Zs')
 def empirical_mean_z(
         gwresults,
-        correctgw: bool = True,
+        correctgw: default_correctgw,
         empz: float = 0.75,
 ) -> dict:
     """Apply the empirical-Z method.
@@ -315,36 +314,33 @@ def migrate_1(record):
     return record
 
 
+default_empz = 0.75
+
 @command()
-@atomsopt
-@calcopt
-@asr.calcopt(
-    aliases=['-b', '--bsrestart'],
-    help='Bandstructure Calculator params.',
-    matcher=asr.matchers.EQUAL,
-)
-@option('--kptpath', type=str, help='Custom kpoint path.')
-@option('--npoints',
-        type=int,
-        help='Number of points along k-point path.')
-@option('--kptdensity', help='K-point density', type=float)
-@option('--ecut', help='Plane wave cutoff', type=float)
-@option('--mode', help='GW mode',
-        type=Choice(['G0W0', 'GWG']))
-@option('-c', '--correctgw', is_flag=True, default=False)
-@option('-z', '--empz', type=float, default=0.75,
-        help='Replacement Z for unphysical Zs')
-def main(
-        atoms: Atoms,
-        calculator: dict = gw.defaults.calculator,
-        bsrestart: dict = bsmain.defaults.calculator,
-        kptpath: dict = bsmain.defaults.kptpath,
-        npoints: dict = bsmain.defaults.npoints,
-        kptdensity: float = gw.defaults.kptdensity,
-        ecut: float = gw.defaults.ecut,
-        mode: str = gw.defaults.mode,
-        correctgw: bool = True,
-        empz: float = 0.75,
+#@asr.calcopt(
+#    aliases=['-b', '--bsrestart'],
+#    help='Bandstructure Calculator params.',
+#    matcher=asr.matchers.EQUAL,
+#)
+#@option('--kptpath', type=str, help='Custom kpoint path.')
+#@option('--npoints',
+#        type=int,
+#        help='Number of points along k-point path.')
+#@option('--kptdensity', help='K-point density', type=float)
+#@option('--ecut', help='Plane wave cutoff', type=float)
+#@option('--mode', help='GW mode',
+#        type=Choice(['G0W0', 'GWG']))
+#@option('-c', '--correctgw', is_flag=True, default=False)
+#@option('-z', '--empz', type=float, default=0.75,
+#        help='Replacement Z for unphysical Zs')
+def postprocess(
+        *,
+        gs_gw_result,
+        gsresult,
+        mag_ani,
+        gwresults,
+        results_bspost,
+        results_bscalculate
 ) -> Result:
     from gpaw import GPAW
     from asr.utils import fermi_level
@@ -352,45 +348,22 @@ def main(
     from asr.c2db.hse import MP_interpolate
     from types import SimpleNamespace
 
-    mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
-    gsresult = calculategs(atoms=atoms, calculator=calculator)
-
-    gsres = gs_gw(
-        gsresult=gsresult,
-        kptdensity=kptdensity,
-        ecut=ecut,
-    )
-    calc = GPAW(gsres['gs_gw_nowfs.gpw'], txt=None)
-
-    gwresults_no_mean_z = gw(
-        atoms=atoms,
-        calculator=calculator,
-        kptdensity=kptdensity,
-        ecut=ecut,
-        mode=mode,
-    )
-
-    gwresults = empirical_mean_z(
-        gwresults=gwresults_no_mean_z,
-        correctgw=correctgw,
-        empz=empz,
-    )
     gwresults = SimpleNamespace(**gwresults)
     lb = gwresults.minband
     ub = gwresults.maxband
 
     delta_skn = gwresults.qp - gwresults.eps
 
-    # Interpolate band structure
+
+    calc = GPAW(gs_gw_result['gs_gw_nowfs.gpw'], txt=None)
     results = MP_interpolate(
-        results_bandstructure=results_bandstructure,
-        bscalculateres=results_bandstructure,
+        results_bandstructure=results_bspost,
+        bscalculateres=results_bscalculate,
         calc=calc,
         delta_skn=delta_skn,
         lb=lb,
         ub=ub,
         mag_ani=mag_ani)
-    )
 
     # First get stuff without SOC
     eps_skn = gwresults.qp
@@ -426,6 +399,7 @@ def main(
     # Get the SO corrected GW QP energires
     from gpaw.spinorbit import soc_eigenstates
 
+    theta, phi = mag_ani.spin_angles()
     soc = soc_eigenstates(calc, eigenvalues=eps_skn,
                           n1=lb, n2=ub,
                           theta=theta, phi=phi)
@@ -465,5 +439,39 @@ def main(
     return Result(data=results)
 
 
-if __name__ == '__main__':
-    main.cli()
+def gw_main(*, atoms, calculator, kptdensity=default_kptdensity, ecut=default_ecut,
+            mode=default_mode, npoints, correctgw=default_correctgw, empz=default_empz):
+    # Defaults and other parameters from BS?  Such as bsrestart.
+    from asr.c2db.gs import GS
+    from asr.c2db.bandstructure import BS
+
+    gs = GS(atoms=atoms, calculator=calculator)
+    bs = BS(gs=gs, npoints=npoints)
+
+    gs_gw_result = gs_gw(
+        gsresult=gs.gsresult,
+        kptdensity=kptdensity,
+        ecut=ecut,
+    )
+
+    gwresults_no_mean_z = gw(
+        gsresult=gs.gsresult,
+        gs_gw_result=gs_gw_result,
+        kptdensity=kptdensity,
+        ecut=ecut,
+        mode=mode,
+    )
+
+    gwresults = empirical_mean_z(
+        gwresults=gwresults_no_mean_z,
+        correctgw=correctgw,
+        empz=empz,
+    )
+
+    return postprocess(
+        gsresult=gs.gsresult,
+        gs_gw_result=gs_gw_result,
+        gwresults=gwresults,
+        results_bscalculate=bs.calculateresult,
+        results_bspost=bs.post,
+        mag_ani=gs.mag_ani)

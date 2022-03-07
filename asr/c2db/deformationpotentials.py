@@ -2,15 +2,18 @@
 from typing import List
 import numpy as np
 
-from ase import Atoms
+# from ase import Atoms
 
 from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, calcopt
+    command,
+    #option,
+    ASRResult, prepare_result,
+    #atomsopt, calcopt
 )
 
 from asr.setup.strains import main as make_strained_atoms
 from asr.setup.strains import get_relevant_strains
-from asr.c2db.gs import main as groundstate
+#from asr.c2db.gs import main as groundstate
 
 
 def webpanel(result, context):
@@ -34,26 +37,51 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.c2db.deformationpotentials')
-@atomsopt
-@calcopt
-@option('--strains', help='Strain percentages', type=float)
-@option('--ktol',
-        help='Distance in k-space that extremum is allowed to move.',
-        type=float)
-def main(
-        atoms: Atoms,
-        calculator: dict = groundstate.defaults.calculator,
-        strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1) -> Result:
+# @command('asr.c2db.deformationpotentials')
+#@atomsopt
+#@calcopt
+#@option('--strains', help='Strain percentages', type=float)
+#@option('--ktol',
+#        help='Distance in k-space that extremum is allowed to move.',
+#        type=float)
+
+
+class DeformationPotentials:
     """Calculate deformation potentials.
 
     Calculate the deformation potential both with and without spin orbit
     coupling, for both the conduction band and the valence band, and return as
     a dictionary.
     """
-    strains = sorted(strains)
-    ij = get_relevant_strains(atoms.pbc)
 
+    def __init__(atoms, calculator,
+                 strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1):
+
+        from asr.c2db.gs import GS
+        gs = GS(atoms=atoms, calculator=calculator)
+
+        strains = sorted(strains)
+        ij = get_relevant_strains(atoms.pbc)
+
+        self.strained = {}
+        for i, j in ij:
+            for ip, strain in enumerate(strains):
+                strained_atoms = make_strained_atoms(
+                    atoms,
+                    strain_percent=strain,
+                    i=i, j=j)
+
+                strained_gs = GS(atoms=strained_atoms, calculator=calculator)
+
+                # Should use a simpler key, most likely.
+                self.strained[(i, j, ip, strain)] = strained_gs.post
+
+        self.post = postprocess(gs_post_results=gs.post,
+                                strained_gs_post_results=self.strained,
+                                ktol=ktol, strains=strains)
+
+
+def postprocess(*, gs_post_results, strained_gs_post_results, ktol, strains):
     ij_to_voigt = [[0, 5, 4],
                    [5, 1, 3],
                    [4, 3, 2]]
@@ -64,46 +92,31 @@ def main(
     edges_pin = np.zeros((3, 6, 2), float)
     edges_nosoc_pin = np.zeros((3, 6, 2), float)
 
-    gsresults = groundstate(
-        atoms=atoms,
-        calculator=calculator,
-    )
+    k0_vbm_c = gs_post_results['k_vbm_c']
+    k0_cbm_c = gs_post_results['k_cbm_c']
 
-    k0_vbm_c = gsresults['k_vbm_c']
-    k0_cbm_c = gsresults['k_cbm_c']
-
-    for i, j in ij:
-        for ip, strain in enumerate(strains):
-            strained_atoms = make_strained_atoms(
-                atoms,
-                strain_percent=strain,
-                i=i, j=j)
-
-            gsresults = groundstate(
-                atoms=strained_atoms,
-                calculator=calculator,
-            )
-            k_vbm_c = gsresults['k_vbm_c']
-            k_cbm_c = gsresults['k_cbm_c']
-            difference = k_vbm_c - k0_vbm_c
-            difference -= np.round(difference)
-            assert (np.abs(difference) < ktol).all(), \
-                (f'i={i} j={j} strain={strain}: VBM has '
-                 f'changed location in reciprocal space upon straining. '
-                 f'{k0_vbm_c} -> {k_vbm_c} (Delta_c={difference})')
-            difference = k_cbm_c - k0_cbm_c
-            difference -= np.round(difference)
-            assert (np.abs(difference) < ktol).all(), \
-                (f'i={i} j={j} strain={strain}: CBM has '
-                 f'changed location in reciprocal space upon straining. '
-                 f'{k0_cbm_c} -> {k_cbm_c} (Delta_c={difference})')
-            evac = gsresults['evac']
-            edges_pin[ip, ij_to_voigt[i][j], 0] = gsresults['vbm'] - evac
-            edges_nosoc_pin[ip, ij_to_voigt[i][j], 0] = \
-                gsresults['gaps_nosoc']['vbm'] - evac
-            edges_pin[ip, ij_to_voigt[i][j], 1] = gsresults['cbm'] - evac
-            edges_nosoc_pin[ip, ij_to_voigt[i][j], 1] = \
-                gsresults['gaps_nosoc']['cbm'] - evac
+    for (i, j, ip, strain), gs_strained in strained_gs_post_results.items():
+        k_vbm_c = gs_strained['k_vbm_c']
+        k_cbm_c = gs_strained['k_cbm_c']
+        difference = k_vbm_c - k0_vbm_c
+        difference -= np.round(difference)
+        assert (np.abs(difference) < ktol).all(), \
+            (f'i={i} j={j} strain={strain}: VBM has '
+             f'changed location in reciprocal space upon straining. '
+             f'{k0_vbm_c} -> {k_vbm_c} (Delta_c={difference})')
+        difference = k_cbm_c - k0_cbm_c
+        difference -= np.round(difference)
+        assert (np.abs(difference) < ktol).all(), \
+            (f'i={i} j={j} strain={strain}: CBM has '
+             f'changed location in reciprocal space upon straining. '
+             f'{k0_cbm_c} -> {k_cbm_c} (Delta_c={difference})')
+        evac = gs_strained['evac']
+        edges_pin[ip, ij_to_voigt[i][j], 0] = gs_strained['vbm'] - evac
+        edges_nosoc_pin[ip, ij_to_voigt[i][j], 0] = \
+            gs_strained['gaps_nosoc']['vbm'] - evac
+        edges_pin[ip, ij_to_voigt[i][j], 1] = gs_strained['cbm'] - evac
+        edges_nosoc_pin[ip, ij_to_voigt[i][j], 1] = \
+            gs_strained['gaps_nosoc']['cbm'] - evac
 
     results = {'edges': edges_pin,
                'edges_nosoc': edges_nosoc_pin}
@@ -123,7 +136,3 @@ def main(
             deformation_potentials.tolist()
 
     return results
-
-
-if __name__ == '__main__':
-    main.cli()

@@ -12,8 +12,6 @@ import typing
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 
-from asr.c2db.formalpolarization import main as formalpolarization
-from asr.c2db.relax import main as relax
 
 import asr
 
@@ -185,6 +183,13 @@ def main(
         Calculator parameters.
 
     """
+    # XXX This recipe forgets to actually assign values to the result arrays,
+    # so the outputs eps_clamped_vvv and eps_vvv are always zero.
+    #
+    # Also not sure what happens with "vol" and "N".
+    # Also this unnecessarily replicates the straining incantations.
+    # Let's ignore this recipe for now.
+
     import numpy as np
     from ase.units import Bohr
     from asr.setup.strains import main as make_strained_atoms
@@ -249,7 +254,3 @@ def main(
             'eps_clamped_vvv': eps_clamped_vvv}
 
     return Result(data=data)
-
-
-if __name__ == '__main__':
-    main.cli()

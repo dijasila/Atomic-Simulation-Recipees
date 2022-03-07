@@ -24,6 +24,44 @@ from asr.database.browser import (
 from asr.c2db.magstate import main as magstate
 
 
+class PhononWorkflow:  # not actually a workflow yet
+    default_n = 2
+    default_mingo = True
+    default_calculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 6.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'forces': 1e-4},
+        'symmetry': {'point_group': False},
+        'nbands': '200%',
+        'txt': 'phonons.txt',
+        'charge': 0
+    }
+
+    def __init__(self, atoms, calculator=default_calculator, n=default_n,
+                 mingo=default_mingo):
+        from asr.c2db.gs import GS
+        from ase.utils import workdir
+
+        if calculator is None:
+            calculator = dict(self.phonons_calculator_default)
+
+        self.gs = GS(atoms=atoms, calculator=calculator)
+
+        with workdir('calculate', mkdir=True):
+            self.phononresult = calculate(atoms=atoms, calculator=calculator,
+                                          magstate=self.gs.magstate, n=n)
+
+
+        # XXX duplicate passing of atoms.  (Also the "n" parameter has this problem)
+        # Maybe define a container class for this definition.
+        with workdir('post', mkdir=True):
+            self.post = postprocess(phononresult=self.phononresult, atoms=atoms)
+
+
 panel_description = make_panel_description(
     """
 The Gamma-point phonons of a supercell containing the primitive unit cell
@@ -50,7 +88,7 @@ def calculate(
         atoms,
         calculator,
         magstate,  # XXX Should not depend on this exact object
-        n: int = 2,
+        n=PhononWorkflow.default_n,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import construct_calculator
@@ -208,8 +246,8 @@ def postprocess(
         #    'txt': 'phonons.txt',
         #    'charge': 0
         #},
-        n: int = 2,
-        mingo: bool = True,
+        n: int = PhononWorkflow.default_n,
+        mingo: bool = PhononWorkflow.default_mingo,
 ) -> Result:
     # XXX both calculate and postprocess currently take n as an input, and can
     # therefore be inconsistent.  Maybe n should be stored on the phononresult

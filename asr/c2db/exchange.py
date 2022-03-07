@@ -277,7 +277,3 @@ def main(
                'N_nn': N}
 
     return Result(data=results)
-
-
-if __name__ == '__main__':
-    main.cli()

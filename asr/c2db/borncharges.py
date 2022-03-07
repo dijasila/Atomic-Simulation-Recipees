@@ -126,7 +126,3 @@ def main(
     data = {'Z_avv': Z_avv, 'sym_a': sym_a}
 
     return Result(data=data)
-
-
-if __name__ == '__main__':
-    main.cli()

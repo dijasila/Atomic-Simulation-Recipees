@@ -119,7 +119,3 @@ def main(
         decoration = dict(atoms=structure, substitutions=substitutions)
         decorated.append(decoration)
     return decorated
-
-
-if __name__ == "__main__":
-    main.cli()

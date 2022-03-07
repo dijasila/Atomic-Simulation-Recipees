@@ -35,6 +35,19 @@ class GroundStateCalculationResult(ASRResult):
     key_descriptions = dict(calculation='Calculation object')
 
 
+default_calculator = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'kpts': {'density': 12.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'bands': 'CBM+3.0'},
+        'nbands': '200%',
+        'txt': 'gs.txt',
+        'charge': 0}
+
+
 @asr.instruction(
     module='asr.c2db.gs',
 )
@@ -42,18 +55,7 @@ class GroundStateCalculationResult(ASRResult):
 @asr.calcopt
 def calculate(
         atoms: Atoms,
-        calculator: dict = {
-            'name': 'gpaw',
-            'mode': {'name': 'pw', 'ecut': 800},
-            'xc': 'PBE',
-            'kpts': {'density': 12.0, 'gamma': True},
-            'occupations': {'name': 'fermi-dirac',
-                            'width': 0.05},
-            'convergence': {'bands': 'CBM+3.0'},
-            'nbands': '200%',
-            'txt': 'gs.txt',
-            'charge': 0
-        }) -> GroundStateCalculationResult:
+        calculator=default_calculator) -> GroundStateCalculationResult:
     """Calculate ground state file.
 
     This recipe saves the ground state to a file gs.gpw based on the

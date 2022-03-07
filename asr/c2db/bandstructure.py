@@ -63,6 +63,8 @@ bsrestart_defaults = {
 }
 
 
+default_npoints = 400
+
 @command(
     'asr.c2db.bandstructure',
 )
@@ -81,7 +83,7 @@ def calculate(
         #calculator: dict = calculategs.defaults.calculator,
         bsrestart: dict = bsrestart_defaults,
         kptpath: Union[str, None] = None,
-        npoints: int = 400,
+        npoints: int = default_npoints,
 ) -> BandstructureCalculationResult:
     """Calculate electronic band structure."""
 
@@ -626,3 +628,12 @@ def workflow(rn, gsresult, mag_ani, gspostprocess,
                    mag_ani=mag_ani,
                    gspostprocess=gspostprocess)
     return {'bs': bs, 'postprocess': post}
+
+
+# Temporary class for porting to htw
+class BS:
+    def __init__(self, gs, **kwargs):
+        self.calculateresult = calculate(gsresult=gs.gsresult, **kwargs)
+        self.post = postprocess(
+            bsresult=self.calculateresult, gsresult=gs.gsresult,
+            mag_ani=gs.mag_ani, gspostprocess=gs.post)

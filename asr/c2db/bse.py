@@ -15,9 +15,6 @@ from asr.database.browser import (
     fig, table, make_panel_description, describe_entry)
 from asr.utils.kpts import get_kpts_size
 
-from asr.c2db.gs import calculate as gscalculate
-from asr.c2db.gs import main as gsmain
-from asr.c2db.magstate import main as calcmagstate
 
 panel_description = make_panel_description(
     """The optical absorption calculated from the Bethe–Salpeter Equation
@@ -55,8 +52,6 @@ class BSECalculateResult(ASRResult):
 
 
 @command()
-@atomsopt
-@calcopt
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
 @option('--nv_s', help='Valence bands included', type=float)
@@ -66,8 +61,7 @@ class BSECalculateResult(ASRResult):
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def calculate(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+        gsresult,
         kptdensity: float = 20.0,
         ecut: float = 50.0,
         mode: str = 'BSE',
@@ -80,6 +74,9 @@ def calculate(
     from gpaw.mpi import world
     from gpaw.response.bse import BSE
     from gpaw.occupations import FermiDirac
+
+    calc_gs = gsresult.calculation.load()
+    atoms = calc_gs.get_atoms()
 
     ND = sum(atoms.pbc)
     if ND == 3:
@@ -95,8 +92,6 @@ def calculate(
         raise NotImplementedError(
             'asr for BSE not implemented for 0D and 1D structures')
 
-    gsres = gscalculate(atoms=atoms, calculator=calculator)
-    calc_gs = gsres.calculation.load()
     spin = calc_gs.get_number_of_spins() == 2
     nval = calc_gs.wfs.nvalence
     nocc = int(nval / 2)
@@ -138,7 +133,7 @@ def calculate(
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
 
     if not Path('gs_bse.gpw').is_file():
-        calc = gsres.calculation.load(
+        calc = gsresult.calculation.load(
             txt='gs_bse.txt',
             fixdensity=True,
             nbands=int(nbands * 1.5),
@@ -336,37 +331,8 @@ class Result(ASRResult):
 
 
 @command()
-@atomsopt
-@calcopt
-@option('--kptdensity', help='K-point density', type=float)
-@option('--ecut', help='Plane wave cutoff', type=float)
-@option('--nv_s', help='Valence bands included', type=float)
-@option('--nc_s', help='Conduction bands included', type=float)
-@option('--mode', help='Irreducible response',
-        type=Choice(['RPA', 'BSE', 'TDHF']))
-@option('--bandfactor', type=int,
-        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def main(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
-        kptdensity: float = 6.0,
-        ecut: float = 50.0,
-        mode: str = 'BSE',
-        bandfactor: int = 6,
-        nv_s: float = -2.3,
-        nc_s: float = 2.3,
-) -> Result:
-
-    res = calculate(
-        atoms=atoms,
-        calculator=calculator,
-        kptdensity=kptdensity,
-        ecut=ecut,
-        mode=mode,
-        bandfactor=bandfactor,
-        nv_s=nv_s,
-        nc_s=nc_s,
-    )
+def postprocess(bsecalculateresult, gs_post_result, magstateresult) -> Result:
+    res = bsecalculateresult
 
     alphax_w = np.loadtxt(res.bse_polx, delimiter=',')
     data = {'bse_alphax_w': alphax_w.astype(np.float32)}
@@ -386,17 +352,12 @@ def main(
     if Path(res.bse_eigx).is_file():
         E = np.loadtxt(res.bse_eigx)[0, 1]
 
-        magstateresults = calcmagstate(
-            atoms=atoms, calculator=calculator)
-        magstate = magstateresults['magstate']
-
-        gsresults = gsmain(
-            atoms=atoms, calculator=calculator)
+        magstate = magstateresult['magstate']
 
         if magstate == 'NM':
-            E_B = gsresults['gap_dir'] - E
+            E_B = gs_post_result['gap_dir'] - E
         else:
-            E_B = gsresults['gap_dir_nosoc'] - E
+            E_B = gs_post_result['gap_dir_nosoc'] - E
 
         data['E_B'] = E_B
     else:
@@ -405,5 +366,13 @@ def main(
     return Result(data=data)
 
 
-if __name__ == '__main__':
-    main.cli()
+class BSEWorkflow:
+    # TODO convert into actual workflow
+    def __init__(self, atoms, calculator, **kwargs):
+        from asr.c2db.gs import GS
+        self.gs = GS(atoms=atoms, calculator=calculator)
+        self.calculateresult = calculate(gsresult=self.gs.gsresult, **kwargs)
+        self.post = postprocess(
+            bsecalculateresult=self.calculateresult,
+            magstateresult=self.gs.magstate,
+            gs_post_result=self.gs.post)

@@ -8,7 +8,7 @@ from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt,
 )
 from asr.c2db.shg import CentroSymmetric, get_chi_symmetry, get_kpts
-from asr.c2db.gs import main as gsmain, calculate as gscalculate
+from asr.c2db.gs import calculate as gscalculate
 
 
 def webpanel(result, context):
@@ -77,8 +77,6 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.shift')
-@atomsopt
-@calcopt
 @option('--kptdensity', help='K-point density', type=float)
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
@@ -88,8 +86,7 @@ class Result(ASRResult):
 @option('--energytol', help='Energy tolernce [eV]', type=float)
 @option('--removefiles', help='Remove created files', type=bool)
 def main(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+        gsresult,
         kptdensity: float = 25.0,
         bandfactor: int = 4,
         eta: float = 0.05,
@@ -128,6 +125,9 @@ def main(
     from gpaw.nlopt.matrixel import make_nlodata
     from gpaw.nlopt.shift import get_shift
 
+    calc_old = gsresult.calculation.load()
+    atoms = calc_old.get_atoms()
+
     nd = sum(atoms.pbc)
     kpts = get_kpts(kptdensity, nd, atoms.cell)
     sym_chi = get_chi_symmetry(atoms)
@@ -143,13 +143,9 @@ def main(
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
             if not Path('es.gpw').is_file():
-                res = gscalculate(atoms=atoms, calculator=calculator)
-                # We want the gap for plotting, so do the postprocessing:
-                gsmain(atoms=atoms, calculator=calculator)
-                calc_old = res.calculation.load()
-                nval = calc_old.wfs.nvalence
 
-                calc = res.calculation.load(
+                nval = calc_old.wfs.nvalence
+                calc = gsresult.calculation.load(
                     txt='es.txt',
                     symmetry={'point_group': False, 'time_reversal': True},
                     fixdensity=True,
@@ -272,7 +268,3 @@ def plot_shift(context, *filename):
         plt.close()
 
     return tuple(axes)
-
-
-if __name__ == '__main__':
-    main.cli()

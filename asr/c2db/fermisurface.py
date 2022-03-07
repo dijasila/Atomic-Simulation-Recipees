@@ -1,7 +1,5 @@
 """Fermi surfaces."""
 import numpy as np
-from ase import Atoms
-from asr.c2db.gs import calculate as gscalculate
 from asr.core import command, ASRResult, prepare_result, atomsopt, calcopt
 from asr.database.browser import fig, make_panel_description, describe_entry
 
@@ -122,14 +120,16 @@ def main(
 ) -> Result:
     from asr.utils.gpw2eigs import calc2eigs
     from gpaw.kpt_descriptor import to1bz
-    # from asr.c2db.magnetic_anisotropy import main as mag_ani_main
     from asr.c2db.gs import calculate
 
-    #ndim = sum(atoms.pbc)
-    #assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'
     res = gsresult
     theta, phi = mag_ani.spin_angles()
     calc = res.calculation.load(parallel=False)
+
+    atoms = calc.get_atoms()
+    ndim = sum(atoms.pbc)
+    assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'
+
     eigs_km, ef, s_kvm = calc2eigs(
         calc,
         return_spin=True,
