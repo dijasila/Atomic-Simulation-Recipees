@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 
-def make_folder_tree(*, folders, chunks,
+def make_folder_tree(*, repo, folders, chunks,
                      copy,
                      patterns,
                      atomsfile,
@@ -27,12 +27,15 @@ def make_folder_tree(*, folders, chunks,
             folder = str(Path().joinpath(*parts))
 
         folder = Path(folder)
+        atoms = row.toatoms()
+        yield atoms, folder
 
-        if not update_tree and atomsfile:
-            if not folder.is_dir():
-                makedirs(folder)
-            write(folder / atomsfile, row.toatoms())
+    return
 
+    # Disable old loop code temporarily:
+    for nothing in []:
+        # XXX old code to unpack trees with records in them.
+        # We need to rehabilitate this as well.
         records = row.records
 
         from asr.core import get_cache, chdir
@@ -122,16 +125,25 @@ def make_folder_dict(rows, tree_structure):
     return folders
 
 
+# XXX Has the effect of "tagging" the atoms as a task without actually
+# calculating anything.  Should be changed so htw framework can do this
+# "tagging" in a less roundabout way.
+def structure(atoms):
+    return atoms
+
+
 def main(
         database: str, run: bool = False, selection: str = '',
-        tree_structure: str = (
-            'tree/{stoi}/{reduced_formula:abc}'
-        ),
+        tree_structure: str = '{stoi}/{reduced_formula:abc}',
         sort: str = None, atomsfile: str = 'structure.json',
         chunks: int = 1, copy: bool = False,
         patterns: str = '*', update_tree: bool = False) -> ASRResult:
     from pathlib import Path
     from asr.database import connect
+
+    from htwutil.repository import Repository
+
+    repo = Repository.find(Path.cwd())
 
     if selection:
         print(f'Selecting {selection}')
@@ -159,7 +171,19 @@ def main(
         print('To run the command use the --run option')
         return
 
-    make_folder_tree(folders=folders, chunks=chunks,
-                     atomsfile=atomsfile, copy=copy,
-                     patterns=patterns,
-                     update_tree=update_tree)
+    from htwutil.runner import Runner
+
+    for atoms, directory in make_folder_tree(
+            repo=repo, folders=folders, chunks=chunks,
+            atomsfile=atomsfile, copy=copy,
+            patterns=patterns,
+            update_tree=update_tree):
+        print(atoms, directory)
+
+        rn = Runner(repo.cache, tasks={'structure': structure},
+                    directory=directory)
+        future = rn.task('structure', atoms=atoms)
+
+        # XXX need better interface, WIP in htw-util
+        entry = future._entry
+        entry.dump_output(atoms)

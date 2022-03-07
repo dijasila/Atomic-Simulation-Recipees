@@ -1053,7 +1053,7 @@ def with_docstring(doc):
               default='')
 @click.option('-t', '--tree-structure', type=str, metavar='TREE',
               help='Specify folder tree structure (see description).',
-              default='tree/{stoi}/{reduced_formula:abc}')
+              default='{stoi}/{reduced_formula:abc}')
 @click.option('--sort', help='Sort the generated materials '
               '(only useful when dividing chunking tree)', type=str)
 @click.option(
