@@ -131,7 +131,7 @@ def structure(atoms):
     from ase.io import write
     # We write the atoms to a file in ASE format so it can be inspected
     # in ASE GUI.
-    path = Path('atoms.json')
+    path = Path('structure.json')
     write(path, atoms)
     return atoms
 
@@ -193,6 +193,10 @@ def main(
         # The name "structure" should likely be a choice
         future = rn.task('structure', atoms=atoms)
 
-        # XXX need better interface, WIP in htw-util
+        # Here we are manually hacking the basic how-to-run-a-task
+        # Must refactor in htw-util
+        from ase.utils import workdir
         entry = future._entry
-        entry.dump_output(atoms)
+        with workdir(entry.directory):
+            structure(atoms)
+            entry.dump_output(atoms)

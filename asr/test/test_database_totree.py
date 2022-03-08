@@ -3,7 +3,7 @@ from .materials import std_test_materials
 
 
 @pytest.mark.ci
-def test_database_totree(asr_tmpdir_w_params):
+def test_database_totree(repo):
     from ase.db import connect
     from asr.database.totree import main
     from pathlib import Path
@@ -13,18 +13,24 @@ def test_database_totree(asr_tmpdir_w_params):
     for atoms in std_test_materials:
         db.write(atoms)
 
+    tree = repo.root / 'tree'
+    assert tree.is_dir()
+
     main(database=dbname,
          tree_structure='tree/{stoi}/{spg}/{formula:abc}')
 
-    assert not Path('tree').is_dir()
+    assert len(list(tree.glob('*'))) == 0  # No files after dry run
 
-    main(database=dbname, run=True, atomsfile='structure.json',
-         tree_structure='tree/{stoi}/{spg}/{formula:abc}')
+    main(database=dbname, run=True,
+         tree_structure='{stoi}/{spg}/{formula:abc}')
 
-    assert Path('tree').is_dir()
-    assert Path('tree/A/123/Ag/structure.json').is_file()
-    assert Path('tree/A/227/Si2/structure.json').is_file()
-    assert Path('tree/AB/187/BN/structure.json').is_file()
+    for nesting in ['A/123/Ag',
+                    'A/227/Si2',
+                    'AB/187/BN']:
+        structuredirs = list((tree / nesting).glob('structure-*'))
+        assert len(structuredirs) == 1
+        structurefile = structuredirs[0] / 'structure.json'
+        assert structurefile.is_file()
 
 
 @pytest.fixture
