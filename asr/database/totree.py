@@ -128,6 +128,11 @@ def make_folder_dict(rows, tree_structure):
 # calculating anything.  Should be changed so htw framework can do this
 # "tagging" in a less roundabout way.
 def structure(atoms):
+    from ase.io import write
+    # We write the atoms to a file in ASE format so it can be inspected
+    # in ASE GUI.
+    path = Path('atoms.json')
+    write(path, atoms)
     return atoms
 
 
