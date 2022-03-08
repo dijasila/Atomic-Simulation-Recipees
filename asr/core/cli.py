@@ -1013,13 +1013,18 @@ Don't actually unpack the database but do a dry-run:
 
 Only select a part of the database to unpack:
 
-  $ asr database totree database.db --selection "natoms<3" --run
+  $ asr database totree database.db --select "natoms<3" --run
 
 Set custom folder tree-structure:
 
   $ asr database totree database.db \
---tree-structure "tree/{stoi}/{spg}/{formula:metal}" --run
+--tree-structure "{stoi}/{spg}/{formula:metal}" --run
+"""
 
+
+# Examples that are not currently supported, but we should maybe reenable:
+
+"""
 Divide the tree into 2 chunks (in case the study of the materials
 is divided between 2 people). Also sort after number of atoms,
 so computationally expensive materials are divided evenly::
@@ -1049,52 +1054,55 @@ def with_docstring(doc):
 @click.option('--run/--dry-run', is_flag=True,
               help='use --run to actually unpack the database.  Default is '
               '--dry-run which only simulates what would happen with --run.')
-@click.option('-s', '--selection', help='ASE-DB selection', type=str,
+@click.option('--select', help='ASE-DB selection', type=str,
               default='')
-@click.option('-t', '--tree-structure', type=str, metavar='TREE',
+@click.option('--tree-structure', type=str, metavar='TREE',
               help='Specify folder tree structure (see description).',
-              default='tree/{stoi}/{reduced_formula:abc}')
-@click.option('--sort', help='Sort the generated materials '
-              '(only useful when dividing chunking tree)', type=str)
-@click.option(
-    '--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
-@click.option('--atomsfile',
-              metavar='FILE',
-              help='Filename to unpack atomic structure to. '
-              'By default, do not write atoms file.',
-              type=str)
-@click.option(
-    '-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
-    type=int, default=1)
-@click.option(
-    '--patterns',
-    help="Comma separated patterns. Only unpack files matching patterns",
-    type=str,
-    default='*')
-@click.option('--update-tree', is_flag=True,
-              help='Update results files in existing folder tree.')
+              default='{stoi}/{reduced_formula:abc}')
+#@click.option('--sort', help='Sort the generated materials '
+#              '(only useful when dividing chunking tree)', type=str)
+#@click.option(
+#    '--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
+#@click.option('--atomsfile',
+#              metavar='FILE',
+#              help='Filename to unpack atomic structure to. '
+#              'By default, do not write atoms file.',
+#              type=str)
+#@click.option(
+#    '-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
+#    type=int, default=1)
+#@click.option(
+#    '--patterns',
+#    help="Comma separated patterns. Only unpack files matching patterns",
+#    type=str,
+#    default='*')
+#@click.option('--update-tree', is_flag=True,
+#              help='Update results files in existing folder tree.')
 @with_docstring(totree_help)
 def totree(
-        database: str, run: bool, selection: str,
+        database: str,
+        run: bool,
+        select: str,
         tree_structure: str,
-        sort: str,
-        atomsfile: str,
-        chunks: int,
-        copy: bool,
-        patterns: str,
-        update_tree: bool):
+        # sort: str,
+        # atomsfile: str,
+        # chunks: int,
+        # copy: bool,
+        # patterns: str,
+        # update_tree: bool
+):
     from asr.database.totree import main as totree
     totree(
         database=database,
         run=run,
-        selection=selection,
+        select=select,
         tree_structure=tree_structure,
-        sort=sort,
-        atomsfile=atomsfile,
-        chunks=chunks,
-        copy=copy,
-        patterns=patterns,
-        update_tree=update_tree,
+        # sort=sort,
+        # atomsfile=atomsfile,
+        # chunks=chunks,
+        # copy=copy,
+        # patterns=patterns,
+        # update_tree=update_tree,
     )
 
 
