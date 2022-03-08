@@ -8,7 +8,6 @@ from datetime import datetime
 def make_folder_tree(*, repo, folders, chunks,
                      copy,
                      patterns,
-                     atomsfile,
                      update_tree):
     """Write folder tree to disk."""
     from os import makedirs
@@ -133,20 +132,27 @@ def structure(atoms):
 
 
 def main(
-        database: str, run: bool = False, selection: str = '',
+        database: str, run: bool = False, select: str = '',
         tree_structure: str = '{stoi}/{reduced_formula:abc}',
-        sort: str = None, atomsfile: str = 'structure.json',
-        chunks: int = 1, copy: bool = False,
-        patterns: str = '*', update_tree: bool = False) -> ASRResult:
-    from pathlib import Path
-    from asr.database import connect
-
+        # sort: str = None,
+        # chunks: int = 1, copy: bool = False,
+        #patterns: str = '*', update_tree: bool = False
+) -> ASRResult:
     from htwutil.repository import Repository
+    from htwutil.runner import Runner
+    from asr.database import connect
 
     repo = Repository.find(Path.cwd())
 
-    if selection:
-        print(f'Selecting {selection}')
+    if select:
+        print(f'Selecting {select}')
+
+    # Defaults for functionality not currently accessible:
+    chunks = 1
+    sort = None
+    copy = False
+    patterns = '*'
+    update_tree = False
 
     if sort:
         print(f'Sorting after {sort}')
@@ -154,7 +160,7 @@ def main(
     assert Path(database).exists(), f'file: {database} does not exist'
 
     db = connect(database)
-    rows = list(db.select(selection, sort=sort))
+    rows = list(db.select(select, sort=sort))
 
     patterns = patterns.split(',')
     folders = make_folder_dict(rows, tree_structure)
@@ -171,17 +177,15 @@ def main(
         print('To run the command use the --run option')
         return
 
-    from htwutil.runner import Runner
-
     for atoms, directory in make_folder_tree(
-            repo=repo, folders=folders, chunks=chunks,
-            atomsfile=atomsfile, copy=copy,
+            repo=repo, folders=folders, chunks=chunks, copy=copy,
             patterns=patterns,
             update_tree=update_tree):
-        print(atoms, directory)
 
         rn = Runner(repo.cache, tasks={'structure': structure},
                     directory=directory)
+
+        # The name "structure" should likely be a choice
         future = rn.task('structure', atoms=atoms)
 
         # XXX need better interface, WIP in htw-util
