@@ -1013,13 +1013,18 @@ Don't actually unpack the database but do a dry-run:
 
 Only select a part of the database to unpack:
 
-  $ asr database totree database.db --selection "natoms<3" --run
+  $ asr database totree database.db --select "natoms<3" --run
 
 Set custom folder tree-structure:
 
   $ asr database totree database.db \
---tree-structure "tree/{stoi}/{spg}/{formula:metal}" --run
+--tree-structure "{stoi}/{spg}/{formula:metal}" --run
+"""
 
+
+# Examples that are not currently supported, but we should maybe reenable:
+
+"""
 Divide the tree into 2 chunks (in case the study of the materials
 is divided between 2 people). Also sort after number of atoms,
 so computationally expensive materials are divided evenly::
