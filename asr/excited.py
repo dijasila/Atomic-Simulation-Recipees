@@ -39,14 +39,8 @@ def calculate(excitation: str = 'alpha') -> ASRResult:
                 )
 
     f_sn = []
-    for spin in range(old_calc.get_number_of_spins()):
-        f_n = []
-        for nband in range(old_calc.get_number_of_bands()):
-            occ = old_calc.get_occupation_numbers(kpt=0, spin=spin)[nband]
-            if occ > 0.1:
-                f_n.append(1.)
-            else:
-                f_n.append(0.)
+    for spin in range(calc.get_number_of_spins()):
+        f_n = [[0,1][e < ef] for e in calc.get_eigenvalues(kpt=0, spin=spin)]
         f_sn.append(f_n)
 
     prepare_mom_calculation(calc, atoms, f_sn)
