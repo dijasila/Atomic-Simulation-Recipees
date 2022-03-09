@@ -104,3 +104,13 @@ def restrict_spin_projection_2d(kpt, op_scc, s_vm):
         s_vm[2, :] = 0
 
     return s_vm
+
+
+# In C2DB, the relaxation is not so strict that we can use a very strict
+# symmetry criterion.  Therefore we have a hardcoded default here
+# that recipes can use.
+#
+# Ideally the criterion would probably depend on the Hessian or stiffness,
+# but 0.1 works reasonably well according to tests by Thomas Olsen.
+
+c2db_symmetry_eps = 0.1
