@@ -11,6 +11,7 @@ import numpy as np
 from ase.io import read
 from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
+from ase.parallel import paropen
 
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
@@ -66,7 +67,7 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
     # Make sure to converge forces! Can be important
     params['convergence'] = {'forces': fconverge}
 
-    with open('phonons.txt'.format(n), 'a') as fd:
+    with paropen('phonons.txt', mode='a') as fd:
         params['txt'] = fd
         calc = get_calculator()(**params)
 
