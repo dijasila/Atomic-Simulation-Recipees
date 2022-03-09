@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.ci
-def test_phonopy(mockgpaw, get_webcontent, fast_calc):
+def test_phonopy(mockgpaw, get_webcontent, fast_calc, in_tempdir):
     """Simple test of phononpy recipe."""
     from asr.c2db.phonopy import PhonopyWorkflow
     from ase.build import bulk

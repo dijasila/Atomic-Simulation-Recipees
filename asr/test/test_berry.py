@@ -4,7 +4,7 @@ from pytest import approx
 
 @pytest.mark.ci
 @pytest.mark.parametrize('topology', ['Not checked', 'Z2=1,C_M=1'])
-def test_berry(test_material, mockgpaw, mocker,
+def test_berry(test_material, mockgpaw, mocker, in_tempdir,
                get_webcontent, fast_calc, topology):
     import numpy as np
     from asr.c2db.berry import calculate

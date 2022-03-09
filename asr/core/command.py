@@ -288,9 +288,9 @@ class ASRCommand:
                 run_specification=run_spec,
             )
 
-            from asr.core.serialize import encode
+            from asr.core.serialize import asr_default
             import json
-            txt = json.dumps(run_spec, default=encode)
+            txt = json.dumps(run_spec, default=asr_default)
             spec = Path('spec.json')
             spec.write_text(txt)
             return record

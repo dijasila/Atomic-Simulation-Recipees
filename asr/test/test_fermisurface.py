@@ -6,6 +6,7 @@ from .materials import BN
 
 @pytest.mark.ci
 def test_fermisurface(
+        in_tempdir,
         mockgpaw,
         mocker,
         get_webcontent,

@@ -5,6 +5,7 @@ import numpy as np
 
 @pytest.mark.ci
 def test_stiffness_gpaw(mockgpaw, mocker, test_material, fast_calc,
+                        in_tempdir,
                         get_webcontent):
     from asr.c2db.stiffness import Stiffness
 
@@ -48,7 +49,7 @@ def test_stiffness_gpaw(mockgpaw, mocker, test_material, fast_calc,
 # @pytest.mark.parametrize('name', ['Al', 'Cu', 'Ag', 'Au', 'Ni',
 #                                   'Pd', 'Pt', 'C'])
 @pytest.mark.parametrize('name', ['Al'])
-def test_stiffness_emt(name, mockgpaw, get_webcontent):
+def test_stiffness_emt(name, mockgpaw, get_webcontent, in_tempdir):
     from ase.build import bulk
     from asr.c2db.stiffness import Stiffness
     atoms = bulk(name)
