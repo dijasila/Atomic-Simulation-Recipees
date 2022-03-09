@@ -196,10 +196,13 @@ def bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     import numpy as np
+    from asr.utils.symmetry import c2db_symmetry_eps
+
     ndim = sum(row.pbc)
 
     # Standardize the cell rotation via Bravais lattice roundtrip:
-    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc, eps=0.1)
+    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc,
+                                             eps=c2db_symmetry_eps)
     cell = lat.tocell()
 
     plt.figure(figsize=(4, 4))

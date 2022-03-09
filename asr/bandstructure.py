@@ -5,6 +5,8 @@ from ase.dft.kpoints import labels_from_kpts
 from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
 from asr.database.browser import fig, make_panel_description, describe_entry
 from asr.utils.hacks import gs_xcname_from_row
+from asr.utils.symmetry import c2db_symmetry_eps
+
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
@@ -26,9 +28,10 @@ def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
     """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
+
     atoms = read('structure.json')
     path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                               pbc=atoms.pbc, eps=0.1)
+                               pbc=atoms.pbc, eps=c2db_symmetry_eps)
 
     convbands = emptybands // 2
     parms = {
@@ -473,7 +476,7 @@ def main() -> Result:
             path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
                                             path=path['path'],
                                             npoints=path['npoints'],
-                                            eps=0.1)
+                                            eps=c2db_symmetry_eps)
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     results = {}
