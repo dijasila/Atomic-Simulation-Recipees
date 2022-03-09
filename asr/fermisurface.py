@@ -82,8 +82,9 @@ def webpanel(result, row, key_descriptions):
 def plot_fermi(row, fname, sfs=1, dpi=200):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
+    from asr.utils.symmetry import c2db_symmetry_eps
     cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
+    lat = cell.get_bravais_lattice(pbc=row.pbc, eps=c2db_symmetry_eps)
     plt.figure(figsize=(5, 4))
     ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
     add_fermi(row, ax=ax, s=sfs)
