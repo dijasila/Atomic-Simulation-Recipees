@@ -69,7 +69,8 @@ def test_get_hostformula_from_defectpath(defect):
     basepath = Path('MoS2-XXX-X-X-X/')
     extension = 'defects.MoS2_X.'
     defectpath = Path(basepath / f'{extension}{defect}' / 'charge_0')
-    get_hostformula_from_defectpath(defectpath)
+    hostformula = get_hostformula_from_defectpath(defectpath)
+    assert hostformula.format('reduce') == 'MoS2'
 
 
 @pytest.mark.parametrize('charge', [-2, -1, 0, 1, 2])

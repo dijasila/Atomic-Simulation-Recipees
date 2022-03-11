@@ -105,7 +105,7 @@ def main() -> Result:
 
 def get_list_of_links(path, charge):
     links = []
-    structurefile = Path(path / 'structure.json')
+    structurefile = path / 'structure.json'
     charge = get_charge_from_folder(path)
     if structurefile.is_file() and charge != 0:
         defectinfo = DefectInfo(defectpath=path)
