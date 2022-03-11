@@ -225,9 +225,9 @@ class Result(ASRResult):
     returns=Result,
     dependencies=["asr.phonopy@calculate"],
 )
-@option("-rc", '--cutoff', type=float, help="Cutoff for the force constants matrix")
+@option("--cutoff", type=float, help="Cutoff for the force constants matrix")
 @option("--nac", type=bool, help="Non-analytical term correction")
-@option('--nqpts', type=int, help='Number of q-points along the path')
+@option("--nqpts", type=int, help="Number of q-points along the path")
 def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
     import phonopy
     from phonopy.units import THzToEv
