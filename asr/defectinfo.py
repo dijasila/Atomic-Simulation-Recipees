@@ -139,8 +139,11 @@ class Result(ASRResult):
 @option('--pristine/--no-pristine', help='Flag to treat systems '
         'in the pristine folder of the set up tree structure '
         'from asr.setup.defects.', is_flag=True)
+@option('--dbpath', help='Path to C2DB database file for host '
+        'property extraction.', type=str)
 def main(structurefile: str = 'structure.json',
-         pristine: bool = False) -> Result:
+         pristine: bool = False,
+         dbpath: str = '/home/niflheim/fafb/db/c2db_july20.db') -> Result:
     """Extract defect, host name, and host crystalproperties.
 
     Extract defect name and host hame based on the folder structure
@@ -177,19 +180,18 @@ def main(structurefile: str = 'structure.json',
         host_crystal = res['crystal_type']
     else:
         raise FileNotFoundError(
-            'you need to run asr.structureinfo in the pristine folder!')
+            f'did not find {resultsfile.name} in {pristinepath}!')
 
     resultsfile = Path(primitivepath / 'results-asr.database.material_fingerprint.json')
     if resultsfile.is_file():
         res = read_json(resultsfile)
         host_uid = res['uid']
     else:
-        raise ValueError('no asr.database.material_fingerprint ran for '
-                         'primitive structure! Make sure to run it before '
-                         'running asr.defectinfo.')
+        raise FileNotFoundError(
+            f'Did not find {resultsfile.name} in {primitivepath}!')
 
     # extract host crystal properties from C2DB
-    db = connect('/home/niflheim/fafb/db/c2db_july20.db')
+    db = connect(dbpath)
     hof, pbe, hse = get_host_properties_from_db(db, host_uid)
 
     return Result.fromdata(
