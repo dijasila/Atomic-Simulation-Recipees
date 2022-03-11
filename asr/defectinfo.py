@@ -10,6 +10,19 @@ from asr.database.browser import (table, describe_entry, href)
 from asr.structureinfo import describe_crystaltype_entry
 
 
+def get_concentration_row(conc_res, defect_name, q):
+    for i, element in enumerate(conc_res['defect_concentrations']):
+        if element['defect_name'] == defect_name:
+            for altel in element['concentrations']:
+                if altel[1] == int(q):
+                    concentration = altel[0]
+    conc_row = describe_entry(
+        'Eq. concentration',
+        'Equilibrium concentration at self-consistent Fermi level.')
+
+    return [[conc_row, f'{concentration:.1e} cm<sup>-2</sup>']]
+
+
 def webpanel(result, row, key_descriptions):
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)
@@ -36,42 +49,34 @@ def webpanel(result, row, key_descriptions):
         'Defect-defect distance',
         result.key_descriptions['R_nn'])
 
+    # extract defect name, charge state, and format it
+    defect_name = row.defect_name
+    defect_name = (f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}'
+                   '</sub>')
+    charge_state = row.charge_state
+    q = charge_state.split()[-1].split(')')[0]
+
     # only show results for the concentration if charge neutrality results present
-    try:
-        defect_name = row.defect_name
-        charge_state = row.charge_state
-        q = charge_state.split()[-1].split(')')[0]
+    show_conc = 'results-asr.charge_neutrality.json' in row.data
+    if show_conc:
         conc_res = row.data['results-asr.charge_neutrality.json']
-        for i, element in enumerate(conc_res['defect_concentrations']):
-            if element['defect_name'] == defect_name:
-                for altel in element['concentrations']:
-                    if altel[1] == int(q):
-                        concentration = altel[0]
-        defect_name = (f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}'
-                       '</sub>')
-        conc_row = describe_entry(
-            'Eq. concentration',
-            'Equilibrium concentration at self-consistent Fermi level.')
-        show_conc = True
-    except KeyError:
-        show_conc = False
+        conc_row = get_concentration_row(conc_res, defect_name, q)
 
     uid = result.host_uid
     uidstring = describe_entry(
         'C2DB link',
         'Link to C2DB entry of the host material.')
 
-    basictable = table(result, 'Pristine crystal', [])
-    basictable['rows'].extend(
-        [[crystal_type, result.host_crystal]])
-    basictable['rows'].extend(
-        [[spacegroup, result.host_spacegroup]])
-    basictable['rows'].extend(
-        [[pointgroup, result.host_pointgroup]])
-    basictable['rows'].extend(
-        [[host_hof, f'{result.host_hof:.2f} eV/atom']])
-    basictable['rows'].extend(
-        [[host_gap_pbe, f'{result.host_gap_pbe:.2f} eV']])
+    # define overview table with described entries and corresponding results
+    lines = [[crystal_type, result.host_crystal],
+             [spacegroup, result.host_spacegroup],
+             [pointgroup, result.host_pointgroup],
+             [host_hof, f'{result.host_hof:.2f} eV/atom'],
+             [host_gap_pbe, f'{result.host_gap_pbe:.2f} eV']]
+    basictable = table(result, 'Pristine crystal', lines)
+
+    # add additional data to the table if HSE gap, defect-defect distance,
+    # concentration, and host uid are present
     if result.host_gap_hse is not None:
         basictable['rows'].extend(
             [[host_gap_hse, f'{result.host_gap_hse:.2f} eV']])
@@ -80,9 +85,7 @@ def webpanel(result, row, key_descriptions):
         defecttable['rows'].extend(
             [[R_nn, f'{result.R_nn:.2f} Å']])
     if show_conc:
-        defecttable['rows'].extend(
-            [[conc_row, f'{concentration:.1e} cm<sup>-2</sup>']])
-
+        defecttable['rows'].extend(conc_row)
     if uid:
         basictable['rows'].extend(
             [[uidstring,
