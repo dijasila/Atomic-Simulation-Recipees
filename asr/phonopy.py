@@ -31,13 +31,13 @@ def lattice_vectors(N_c):
 )
 @option('--dftd3', type=bool, help='Enable DFT-D3 for phonon calculations')
 @option('--displacement', type=float, help='Displacement size')
-@option('--forcesname', help='Name for forces file', type=str)
+@option('--forcesfolder', help='Name for forces file', type=str)
 @option('--supercell', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(dftd3: bool = False,
               displacement: float = 0.05,
-              forcesname: str = 'phonons',
+              forcesfolder: str = 'phonons',
               supercell: typing.List[int] = (2, 2, 2),
               calculator: dict = {'name': 'gpaw',
                                   'mode': {'name': 'pw', 'ecut': 800},
@@ -55,9 +55,10 @@ def calculate(dftd3: bool = False,
     from ase.calculators.dftd3 import DFTD3
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
+
     # Remove empty files:
     if world.rank == 0:
-        for f in Path().glob(forcesname + '.*.json'):
+        for f in Path().glob(forcesfolder + '/phonons.*.json'):
             if f.stat().st_size == 0:
                 f.unlink()
     world.barrier()
@@ -108,19 +109,22 @@ def calculate(dftd3: bool = False,
 
     set_of_forces = []
 
+    folder = Path("phonons")
+    folder.mkdir(parents=True, exist_ok=True)
+
     for n, cell in enumerate(displaced_sc):
         # Displacement number
         a = n // 2
         # Sign of the displacement
         sign = ['+', '-'][n % 2]
 
-        filename = forcesname + '.{0}{1}.json'.format(a, sign)
+        filename = forcesfolder + '/phonons.{0}{1}.json'.format(a, sign)
 
         if Path(filename).is_file():
             forces = read_json(filename)['force']
             set_of_forces.append(forces)
             # Number of forces equals to the number of atoms in the supercell
-            assert len(forces) == len(atoms) * np.prod(sc), (
+            assert len(forces) == len(atoms) * np.prod(supercell), (
                 'Wrong supercell size!')
             continue
 
