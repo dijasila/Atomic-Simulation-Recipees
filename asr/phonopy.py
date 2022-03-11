@@ -30,9 +30,9 @@ def lattice_vectors(N_c):
     dependencies=['asr.gs@calculate'],
 )
 @option('--dftd3', type=bool, help='Enable DFT-D3 for phonon calculations')
-@option('-d', '--displacement', type=float, help='Displacement size')
-@option('-f', '--forcesname', help='Name for forces file', type=str)
-@option('-s', '--supercell', nargs=3, type=int,
+@option('--displacement', type=float, help='Displacement size')
+@option('--forcesname', help='Name for forces file', type=str)
+@option('--supercell', nargs=3, type=int,
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(dftd3: bool = False,
@@ -78,15 +78,12 @@ def calculate(dftd3: bool = False,
         magmoms_m = gsold.get_magnetic_moments()
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    nd = sum(atoms.get_pbc())
-    sc = list(map(int, supercell))
+    ndim = sum(atoms.pbc)
+    assert all(atoms.pbc[:ndim])
 
-    if nd == 3:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
-    elif nd == 2:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]]
-    elif nd == 1:
-        supercell = [[sc[0], 0, 0], [0, 1, 0], [0, 0, 1]]
+    supercell_triple = np.ones(3)
+    supercell_triple[:ndim] = supercell
+    supercell_matrix = np.diag(supercell_triple)
 
     phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
                                  cell=atoms.get_cell(),
@@ -94,7 +91,7 @@ def calculate(dftd3: bool = False,
     if is_magnetic():
         phonopy_atoms.magnetic_moments = atoms.get_initial_magnetic_moments()
 
-    phonon = Phonopy(phonopy_atoms, supercell)
+    phonon = Phonopy(phonopy_atoms, supercell_matrix)
 
     phonon.generate_displacements(distance=displacement, is_plusminus=True)
     displaced_sc = phonon.get_supercells_with_displacements()
