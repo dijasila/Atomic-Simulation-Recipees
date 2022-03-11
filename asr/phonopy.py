@@ -272,7 +272,7 @@ def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
     for q, q_c in enumerate(path.kpts):
         if (nac and q_c.any() == 0):
             print('Avoid Gamma point if NAC is included!')
-            q_c = [1e-3, 0, 0]
+            q_c = (q_c - path.kpts[q+1]) / 2
 
         omega_l = phonon.get_frequencies(q_c)
         omega_kl[q] = omega_l * THzToEv
