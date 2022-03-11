@@ -6,31 +6,13 @@ from asr.defect_symmetry import DefectInfo
 from asr.setup.defects import return_distances_cell
 from pathlib import Path
 import typing
+from asr.database.browser import (table, describe_entry, href)
+from asr.structureinfo import describe_crystaltype_entry
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table, describe_entry, code, bold,
-                                      br, href, dl, div)
-
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
-    crystal_type = describe_entry(
-        'Crystal type',
-        "The crystal type is defined as "
-        + br
-        + div(bold('-'.join([code('stoi'),
-                             code('spg no.'),
-                             code('occ. wyck. pos.')])), 'well well-sm text-center')
-        + 'where'
-        + dl(
-            [
-                [code('stoi'), 'Stoichiometry.'],
-                [code('spg no.'), f'The spacegroup calculated with {spglib}.'],
-                [code('occ. wyck. pos.'),
-                 'Alphabetically sorted list of occupied '
-                 f'wyckoff positions determined with {spglib}.'],
-            ]
-        )
-    )
+    crystal_type = describe_crystaltype_entry(spglib)
 
     spg_list_link = href(
         'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups')
@@ -43,6 +25,7 @@ def webpanel(result, row, key_descriptions):
     host_hof = describe_entry(
         'Heat of formation',
         result.key_descriptions['host_hof'])
+    # XXX get correct XC name
     host_gap_pbe = describe_entry(
         'PBE band gap',
         'PBE band gap of the host crystal [eV].')
