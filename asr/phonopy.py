@@ -232,6 +232,8 @@ def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
     import phonopy
     from phonopy.units import THzToEv
 
+    from math import pi
+
     calculateresult = read_json("results-asr.phonopy@calculate.json")
     atoms = read("structure.json")
     params = calculateresult.metadata.params
@@ -240,15 +242,23 @@ def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
     phonon = phonopy.load('phonopy_params.yaml')
 
     if nac:
-        Z_avv = read_json('results-asr.borncharges.json')['Z_avv']
-        ex = 4 * np.pi * read_json('results-asr.polarizability.json')['alphax_el'] + 1
-        ey = 4 * np.pi * read_json('results-asr.polarizability.json')['alphay_el'] + 1
-        ez = 4 * np.pi * read_json('results-asr.polarizability.json')['alphaz_el'] + 1
+        results_borncharges = "results-asr.borncharges.json"
+        if not Path(results_borncharges).is_file():
+            print("Calculate born charges first!")
 
-        nac = {'born': Z_avv,
-               'factor': 14.4,
-               'dielectric': np.diag([ex, ey, ez])}
-        phonon.set_nac_params(nac)
+        Z_avv = read_json(results_borncharges)["Z_avv"]
+
+        results_polarizability = "results-asr.polarizability.json"
+        if not Path(results_polarizability).is_file():
+            print("Calculate polarizability first!")
+ 
+        e_v = []
+        for mu in ["x", "y", "z"]:
+             e = 4 * pi * read_json(results_polarizability)[f"alpha{mu}_el"] + 1
+             e_v.append(e)
+
+        nac_params = {"born": Z_avv, "factor": 14.4, "dielectric": np.diag(e_v)}
+        phonon.set_nac_params(nac_params)
 
     if cutoff is not None:
         phonon.set_force_constants_zero_with_radius(cutoff)
