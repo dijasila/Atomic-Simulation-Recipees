@@ -125,7 +125,7 @@ def get_defectstring_from_defectinfo(defectinfo, charge):
 
 
 def get_hostformula_from_defectpath(path):
-    fullpath = Path(path.absolute())
+    fullpath = path.absolute()
     token = fullpath.parent.name
     hostname = token.split('_')[0].split('defects.')[-1]
 
@@ -133,7 +133,7 @@ def get_hostformula_from_defectpath(path):
 
 
 def get_charge_from_folder(path):
-    fullpath = Path(path.absolute())
+    fullpath = path.absolute()
     chargedstring = fullpath.name
     charge = int(chargedstring.split('charge_')[-1])
 
