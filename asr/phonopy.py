@@ -4,12 +4,15 @@ from pathlib import Path
 
 import numpy as np
 
+from ase.atoms import Atoms
 from ase.parallel import world
 from ase.io import read
 from ase.dft.kpoints import BandPath
 
 from asr.core import (command, option, DictStr, ASRResult,
                       read_json, write_json, prepare_result)
+
+import phonopy
 
 
 def lattice_vectors(N_c):
@@ -97,7 +100,6 @@ def calculate(dftd3: bool = False,
     phonon.generate_displacements(distance=displacement, is_plusminus=True)
     displaced_sc = phonon.get_supercells_with_displacements()
 
-    from ase.atoms import Atoms
     scell = displaced_sc[0]
     atoms_N = Atoms(symbols=scell.get_chemical_symbols(),
                     scaled_positions=scell.get_scaled_positions(),
@@ -229,7 +231,6 @@ class Result(ASRResult):
 @option("--nac", type=bool, help="Non-analytical term correction")
 @option("--nqpts", type=int, help="Number of q-points along the path")
 def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
-    import phonopy
     from phonopy.units import THzToEv
 
     from math import pi
@@ -251,11 +252,11 @@ def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
         results_polarizability = "results-asr.polarizability.json"
         if not Path(results_polarizability).is_file():
             print("Calculate polarizability first!")
- 
+
         e_v = []
         for mu in ["x", "y", "z"]:
-             e = 4 * pi * read_json(results_polarizability)[f"alpha{mu}_el"] + 1
-             e_v.append(e)
+            e = 4 * pi * read_json(results_polarizability)[f"alpha{mu}_el"] + 1
+            e_v.append(e)
 
         nac_params = {"born": Z_avv, "factor": 14.4, "dielectric": np.diag(e_v)}
         phonon.set_nac_params(nac_params)
@@ -272,7 +273,7 @@ def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
     for q, q_c in enumerate(path.kpts):
         if (nac and q_c.any() == 0):
             print('Avoid Gamma point if NAC is included!')
-            q_c = (q_c - path.kpts[q+1]) / 2
+            q_c = (q_c - path.kpts[q + 1]) / 2
 
         omega_l = phonon.get_frequencies(q_c)
         omega_kl[q] = omega_l * THzToEv
@@ -383,55 +384,51 @@ def plot_bandstructure(row, fname):
     requires=requires,
     dependencies=['asr.phonopy'],
 )
-@option('-q', '--momentum', nargs=3, type=float,
+@option('--momentum', nargs=3, type=float,
         help='Phonon momentum')
-@option('-s', '--supercell', nargs=3, type=int,
+@option('--supercell', nargs=3, type=int,
         help='Supercell sizes')
-@option('-m', '--mode', type=int, help='Mode index')
-@option('-a', '--amplitude', type=float,
-        help='Maximum distance an atom will be displaced')
+@option('--mode', type=int, help='Mode index')
+@option('--amplitude', type=float,
+        help='Amplitude of oscillation in amu^1/2 A')
 @option('--nimages', type=int, help='Mode index')
-def write_mode(momentum: typing.List[float] = [0., 0., 0.], mode: int = 0,
-               supercell: typing.List[int] = [1, 1, 1], amplitude: float = 0.1,
-               nimages: int = 30):
+def write_mode(momentum: typing.List[float] = (0., 0., 0.), mode: int = 0,
+               supercell: typing.List[int] = (1, 1, 1), amplitude: float = 1,
+               nimages: int = 15):
 
     from ase.io.trajectory import Trajectory
 
-    q_c = momentum
-    atoms = read('structure.json')
-    data = read_json('results-asr.phonopy.json')
-    u_klav = data['u_klav']
-    q_qc = data['q_qc']
-    diff_kc = np.array(list(q_qc)) - q_c
-    diff_kc -= np.round(diff_kc)
-    ind = np.argwhere(np.all(np.abs(diff_kc) < 1e-2, 1))[0, 0]
+    from math import sqrt
 
-    # Repeat atoms
-    repeat_c = supercell
-    newatoms = atoms * repeat_c
-    # Here `Na` refers to a composite unit cell/atom dimension
-    pos_Nav = newatoms.get_positions()
-    # Total number of unit cells
-    N = np.prod(repeat_c)
-    # Corresponding lattice vectors R_m
-    R_cN = np.indices(repeat_c).reshape(3, -1)
-    # Bloch phase
-    phase_N = np.exp(2j * np.pi * np.dot(q_c, R_cN))
-    phase_Na = phase_N.repeat(len(atoms))
-    m_Na = newatoms.get_masses()
-    # Repeat and multiply by Bloch phase factor
-    mode_av = u_klav[ind, mode]
-    n_a = np.linalg.norm(mode_av, axis=1)
-    mode_av /= np.max(n_a)
-    mode_Nav = np.vstack(N * [mode_av]) * phase_Na[:, np.newaxis] \
-                                        * amplitude / m_Na[:, np.newaxis]
+    atoms = read('structure.json')
+    Na = len(atoms)
+
+    phonon = phonopy.load('phonopy_params.yaml')
+
+    amplitudes2_n = np.linspace(-amplitude, amplitude, 16, endpoint=True)
+    amplitudes_n = np.hstack((amplitudes2_n[:-1], amplitudes2_n[::-1]))
+    q_c = momentum
 
     filename = 'mode-q-{}-{}-{}-mode-{}.traj'.format(q_c[0], q_c[1], q_c[2], mode)
-    traj = Trajectory(filename, 'w')
 
-    for x in np.linspace(0, 2 * np.pi, nimages, endpoint=False):
-        newatoms.set_positions((pos_Nav + np.exp(1.j * x) * mode_Nav).real)
-        traj.write(newatoms)
+    with Trajectory(filename, 'w') as traj:
+        for amplitude in amplitudes_n:
+
+            phonon.set_modulations(dimension=supercell,
+                                   phonon_modes=[[momentum,
+                                                  mode,
+                                                  amplitude,
+                                                  0]])
+
+            delta_R_ai = phonon.get_modulations_and_supercell()[0][0] * sqrt(Na)
+            scell = phonon.get_modulations_and_supercell()[1]
+
+            atoms_q = Atoms(symbols=scell.get_chemical_symbols(),
+                            positions=scell.get_positions() + delta_R_ai,
+                            cell=scell.get_cell(),
+                            pbc=atoms.pbc)
+
+            traj.write(atoms_q)
 
     traj.close()
 
