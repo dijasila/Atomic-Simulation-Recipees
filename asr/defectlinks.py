@@ -9,27 +9,39 @@ import typing
 
 def webpanel(result, row, key_description):
     baselink = 'https://cmrdb.fysik.dtu.dk/qpod/row/'
+
+    # initialize table for charged and neutral systems
     charged_table = table(row, 'Charged systems', [])
-    for element in result.chargedlinks:
-        charged_table['rows'].extend(
-            [[f'{element[1]}',
-              f'<a href="{baselink}{element[0]}">link</a>']])
-
     neutral_table = table(row, 'Within the same material', [])
-    for element in result.neutrallinks:
-        neutral_table['rows'].extend(
-            [[f'{element[1]}',
-              f'<a href="{baselink}{element[0]}">link</a>']])
-    for element in result.pristinelinks:
-        neutral_table['rows'].extend(
-            [[f'{element[1]}',
-              f'<a href="{baselink}{element[0]}">link</a>']])
+    # fill in values for the two tables from the result object
+    charged_table = extend_table(charged_table, result, 'charged', baselink)
+    neutral_table = extend_table(neutral_table, result, 'neutral', baselink)
+    neutral_table = extend_table(neutral_table, result, 'pristine', baselink)
 
+    # define webpanel
     panel = WebPanel('Related materials',
                      columns=[[charged_table], [neutral_table]],
                      sort=45)
 
     return [panel]
+
+
+def extend_table(table, result, resulttype, baselink):
+    if resulttype == 'pristine':
+        tmpresult = result.pristinelinks
+    elif resulttype == 'neutral':
+        tmpresult = result.neutrallinks
+    elif resulttype == 'charged':
+        tmpresult = result.chargedlinks
+    else:
+        raise RuntimeError('did not find {resulttype} results!')
+
+    for element in tmpresult:
+        table['rows'].extend(
+            [[f'{element[1]}',
+              f'<a href="{baselink}{element[0]}">link</a>']])
+
+    return table
 
 
 @prepare_result
