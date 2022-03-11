@@ -80,6 +80,7 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
             supercell = (n, 1, 1)
 
         p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
+        p.cache.strip_empties()
         p.run()
 
 
