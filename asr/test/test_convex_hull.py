@@ -1,6 +1,7 @@
 import pytest
 from ase.db import connect
 from ase.build import bulk
+from asr.convex_hull import main
 
 
 metal_alloys = ['Ag', 'Au', 'Ag,Au', 'Ag,Au,Al']
@@ -39,7 +40,6 @@ def refdb(asr_tmpdir_w_params):
 def test_convex_hull(refdb, mockgpaw, get_webcontent,
                      metals, energy_key, fast_calc):
     from asr.c2db.convex_hull import main
-
     db, dbname, energies = refdb
 
     metadata = db.metadata
@@ -114,7 +114,6 @@ def refdbwithalloys(refdb):
 def test_convex_hull_with_two_reference_databases(
         refdbwithalloys, mockgpaw, get_webcontent, alloy, fast_calc):
     from asr.c2db.convex_hull import main
-
     db, dbname, alloydbname, energies = refdbwithalloys
 
     atoms = make_alloy(alloy)

@@ -185,6 +185,7 @@ def webpanel(result, context):
 
 def bz_with_band_extrema(context, fname):
     from matplotlib import pyplot as plt
+    from asr.utils.symmetry import c2db_symmetry_eps
 
     assert context.name == 'asr.c2db.gs:main', context.name
     gsresults = context.result
@@ -192,7 +193,8 @@ def bz_with_band_extrema(context, fname):
     atoms = context.atoms
 
     # Standardize the cell rotation via Bravais lattice roundtrip:
-    lat = atoms.cell.get_bravais_lattice(pbc=atoms.pbc)
+    lat = atoms.cell.get_bravais_lattice(pbc=atoms.pbc,
+                                         eps=c2db_symmetry_eps)
     cell = lat.tocell()
 
     plt.figure(figsize=(4, 4))

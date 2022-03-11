@@ -8,10 +8,9 @@ import typing
 
 import numpy as np
 
-from ase.parallel import world
+from ase.parallel import world, paropen
 from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
-from ase import Atoms
 
 import asr
 from asr.core import (
@@ -74,7 +73,6 @@ indicates a dynamical instability.
     articles=['C2DB'],
 )
 
-
 @prepare_result
 class CalculateResult(ASRResult):
     forces: typing.Dict
@@ -91,9 +89,7 @@ def calculate(
         n=PhononWorkflow.default_n,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
-    from asr.calculators import construct_calculator
-    # XXX code does not handle n being three integers.
-    # We should probably support that.
+    from gpaw import GPAW
 
     # XXX Here we should purge the cache
 
@@ -106,14 +102,20 @@ def calculate(
             magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    calc = construct_calculator(calculator)
+    with paropen('phonons.txt', mode='a') as fd:
+        params['txt'] = fd
 
-    ndim = sum(atoms.pbc)
-    supercell = np.ones(3, int)
-    supercell[:ndim] = n
+        calcname = calculator.pop('name')
+        assert calcname == 'gpaw'
+        calc = GPAW(**params)
 
-    phonons = Phonons(atoms=atoms, calc=calc, supercell=supercell)
-    phonons.run()
+        ndim = sum(atoms.pbc)
+        supercell = np.ones(3, int)
+        supercell[:ndim] = n
+
+        phonons = Phonons(atoms=atoms, calc=calc, supercell=supercell)
+        phonons.cache.strip_empties()
+        phonons.run()
 
     forces = dict(phonons.cache)
     return CalculateResult.fromdata(forces=forces)
@@ -288,7 +290,6 @@ def postprocess(
     q_qc = np.indices(N_c).reshape(3, -1).T / N_c
     out = phonons.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
-
     R_cN = phonons.compute_lattice_vectors()
     eigs = []
     for q_c in q_qc:

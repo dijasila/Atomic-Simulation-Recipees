@@ -12,6 +12,8 @@ from asr.core import (
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
 from asr.database.browser import fig, make_panel_description, describe_entry
+from asr.utils.symmetry import c2db_symmetry_eps
+
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
@@ -86,7 +88,6 @@ def calculate(
         npoints: int = default_npoints,
 ) -> BandstructureCalculationResult:
     """Calculate electronic band structure."""
-
     calculation = gsresult.calculation
 
     # XXX somewhat hacky way to get the atoms.
@@ -94,7 +95,7 @@ def calculate(
     # calculation, and that should be more easily expressible.
     atoms = calculation.load().get_atoms()
     path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                               pbc=atoms.pbc)
+                               pbc=atoms.pbc, eps=c2db_symmetry_eps)
 
     bsrestart['kpts'] = path
     calc = calculation.load(**bsrestart)
@@ -556,7 +557,8 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
         else:
             path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
                                             path=path['path'],
-                                            npoints=path['npoints'])
+                                            npoints=path['npoints'],
+                                            eps=c2db_symmetry_eps)
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     results = {}
