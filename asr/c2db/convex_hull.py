@@ -26,7 +26,7 @@ from matplotlib import patches
 # from matplotlib.legend_handler import HandlerLine2D, HandlerTuple
 
 
-from asr.c2db.gs import main as groundstate
+# from asr.c2db.gs import main as groundstate
 
 known_methods = ['DFT', 'DFT+D3']
 
@@ -154,7 +154,8 @@ def convert_database_parameter_to_file(record):
 @argument('databases', nargs=-1, type=FileStr())
 def main(
         atoms: Atoms,
-        calculator: dict = groundstate.defaults.calculator,
+        calculator: dict = None,  # XXXX
+#        calculator: dict = groundstate.defaults.calculator,
         databases: List[File] = [],
 ) -> Result:
     """Calculate convex hull energies.

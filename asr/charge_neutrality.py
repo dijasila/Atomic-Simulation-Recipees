@@ -238,11 +238,11 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.charge_neutrality',
-         requires=['gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         resources='1:10m',
-         returns=ASRResult)
+@command(module='asr.charge_neutrality')
+#         requires=['gs.gpw'],
+#         dependencies=['asr.gs@calculate'],
+#         resources='1:10m',
+#         returns=ASRResult)
 @option('--temp', help='Temperature [K]', type=float)
 @option('--defects', help='Defect dictionary.', type=DictStr())
 @option('--dosfile', help='DOS results file. DOS will be generated '

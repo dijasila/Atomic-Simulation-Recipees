@@ -204,11 +204,11 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.sj_analyze',
-         requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
-                   '../../unrelaxed.json', 'gs.gpw'],
-         resources='24:2h',
-         returns=Result)
+@command(module='asr.sj_analyze')
+#         requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
+#                   '../../unrelaxed.json', 'gs.gpw'],
+#         resources='24:2h',
+#         returns=Result)
 @option('--index', help='Specify index of the atom in the pristine supercell '
         'that you want to use as a potential reference. Will be chosen '
         'automatically if nothing is set.', type=int)

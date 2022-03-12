@@ -300,11 +300,11 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command(module='asr.hyperfine',
-         requires=['structure.json', 'gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         resources='1:1h',
-         returns=Result)
+@command(module='asr.hyperfine')
+#         requires=['structure.json', 'gs.gpw'],
+#         dependencies=['asr.gs@calculate'],
+#         resources='1:1h',
+#         returns=Result)
 @option('--center', nargs=3, type=click.Tuple([float, float, float]),
         help='Tuple of three spatial coordinates that should be considered '
         'as the center (defaults to [0, 0, 0]).')

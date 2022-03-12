@@ -21,11 +21,11 @@ class Result(ASRResult):
         n2='staterange maximum.')
 
 
-@command(module='asr.tdm',
-         requires=['gs.gpw', 'structure.json'],
-         dependencies=['asr.gs@calculate'],
-         resources='1:1h',
-         returns=Result)
+@command(module='asr.tdm')
+#         requires=['gs.gpw', 'structure.json'],
+#         dependencies=['asr.gs@calculate'],
+#         resources='1:1h',
+#         returns=Result)
 @option('--primitivefile', help='Path to the primitive structure file.',
         type=str)
 @option('--pristinefile', help='Path to the pristine supercell file'
