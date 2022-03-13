@@ -39,8 +39,8 @@ def calculate(excitation: str = 'alpha') -> ASRResult:
                 )
 
     f_sn = []
-    for spin in range(calc.get_number_of_spins()):
-        f_n = [[0,1][e < ef] for e in calc.get_eigenvalues(kpt=0, spin=spin)]
+    for spin in range(olc_calc.get_number_of_spins()):
+        f_n = [[0,1][e < ef] for e in olc_calc.get_eigenvalues(kpt=0, spin=spin)]
         f_sn.append(f_n)
 
     prepare_mom_calculation(calc, atoms, f_sn)
