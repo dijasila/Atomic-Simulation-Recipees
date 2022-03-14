@@ -62,9 +62,6 @@ def webpanel(result, row, key_descriptions):
 
     # only show results for the concentration if charge neutrality results present
     show_conc = 'results-asr.charge_neutrality.json' in row.data
-    if show_conc and defect_name != 'pristine':
-        conc_res = row.data['results-asr.charge_neutrality.json']
-        conc_row = get_concentration_row(conc_res, defect_name, q)
 
     uid = result.host_uid
     uidstring = describe_entry(
@@ -86,11 +83,13 @@ def webpanel(result, row, key_descriptions):
         basictable['rows'].extend(
             [[host_gap_hse, f'{result.host_gap_hse:.2f} eV']])
     defecttable = table(result, 'Defect properties', [])
+    if show_conc and defect_name != 'pristine':
+        conc_res = row.data['results-asr.charge_neutrality.json']
+        conc_row = get_concentration_row(conc_res, defect_name, q)
+        defecttable['rows'].extend(conc_row)
     if result.R_nn is not None:
         defecttable['rows'].extend(
             [[R_nn, f'{result.R_nn:.2f} Å']])
-    if show_conc:
-        defecttable['rows'].extend(conc_row)
     if uid:
         basictable['rows'].extend(
             [[uidstring,

@@ -22,6 +22,14 @@ key_descriptions = {
         "hform": "KVP: Heat of formation [eV/atom]",
         "thermodynamic_stability_level": "KVP: Thermodynamic stability level",
     },
+    "defectinfo": {
+        "defect_name": "KVP: Defect name {type}_{position} !Defect name!",
+        "host_name": "KVP: Host formula",
+        "charge_state": "KVP: Charge state"
+    },
+    "defect_symmetry": {
+        "defect_pointgroup": "KVP: Defect point group !Point group!"
+    },
     "magstate": {
         "magstate": "KVP: Magnetic state",
         "is_magnetic": "KVP: Material is magnetic !Magnetic!",
