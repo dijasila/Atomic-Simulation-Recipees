@@ -153,44 +153,39 @@ def requires():
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
+    phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
-    phonontable = table(row, "Property", ["minhessianeig"], key_descriptions)
+    panel = {'title': describe_entry('Phonons', panel_description),
+             'columns': [[fig('phonon_bs.png')], [phonontable]],
+             'plot_descriptions': [{'function': plot_bandstructure,
+                                    'filenames': ['phonon_bs.png']}],
+             'sort': 3}
 
-    panel = {
-        "title": "Phonon bandstructure",
-        "columns": [[fig("phonon_bs.png")], [phonontable]],
-        "plot_descriptions": [
-            {"function": plot_bandstructure, "filenames": ["phonon_bs.png"]}
-        ],
-        "sort": 3,
-    }
+    dynstab = row.get('dynamic_stability_phonons')
 
-    dynstab = row.get("dynamic_stability_phonons")
-    stabilities = {1: "low", 2: "medium", 3: "high"}
-    high = "Minimum eigenvalue of Hessian > -0.01 meV/Å² AND elastic const. > 0"
-    medium = "Minimum eigenvalue of Hessian > -2 eV/Å² AND elastic const. > 0"
-    low = "Minimum eigenvalue of Hessian < -2 eV/Å² OR elastic const. < 0"
+    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Å²'
+    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Å²'
+
     row = [
-        "Phonons",
-        '<a href="#" data-toggle="tooltip" data-html="true" '
-        + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-            low, medium, high, stabilities[dynstab].upper()
+        describe_entry(
+            'Dynamical (phonons)',
+            'Classifier for the dynamical stability of a material '
+            'based on the minimum eigenvalue of the Hessian.'
+            + dl(
+                [
+                    ["LOW", low],
+                    ["HIGH", high],
+                ]
+            )
         ),
+        dynstab.upper()
     ]
 
-    summary = {
-        "title": "Summary",
-        "columns": [
-            [
-                {
-                    "type": "table",
-                    "header": ["Stability", "Category"],
-                    "rows": [row],
-                }
-            ]
-        ],
-    }
+    summary = {'title': 'Summary',
+               'columns': [[{'type': 'table',
+                             'header': ['Stability', 'Category'],
+                             'rows': [row]}]],
+               'sort': 2}
     return [panel, summary]
 
 
