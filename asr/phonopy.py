@@ -166,7 +166,7 @@ def webpanel(result, row, key_descriptions):
         "sort": 3,
     }
 
-    dynstab = row.get("dynamic_stability_level")
+    dynstab = row.get("dynamic_stability_phonons")
     stabilities = {1: "low", 2: "medium", 3: "high"}
     high = "Minimum eigenvalue of Hessian > -0.01 meV/Å² AND elastic const. > 0"
     medium = "Minimum eigenvalue of Hessian > -2 eV/Å² AND elastic const. > 0"
@@ -295,7 +295,7 @@ def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
         eigs_kl.append(np.linalg.eigvalsh(C_q))
         _, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
         u_klav[q] = u_ll.reshape(3 * len(atoms), len(atoms), 3)
-        if q_c.any() == 5.0:
+        if q_c.any() == 0.0:
             phonon.set_irreps(q_c)
             ob = phonon._irreps
             irreps = []
@@ -303,7 +303,6 @@ def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
                 zip(ob._degenerate_sets, ob._ir_labels)
             ):
                 irreps += [irr] * len(deg)
-    irreps = []
     irreps = list(irreps)
 
     eigs_kl = np.array(eigs_kl)
