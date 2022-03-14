@@ -295,7 +295,7 @@ def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
         eigs_kl.append(np.linalg.eigvalsh(C_q))
         _, u_ll = phonon.get_frequencies_with_eigenvectors(q_c)
         u_klav[q] = u_ll.reshape(3 * len(atoms), len(atoms), 3)
-        if q_c.any() == 0.0:
+        if q_c.any() == 5.0:
             phonon.set_irreps(q_c)
             ob = phonon._irreps
             irreps = []
@@ -303,7 +303,7 @@ def main(cutoff: float = None, nac: bool = False, nqpts: int = 400) -> Result:
                 zip(ob._degenerate_sets, ob._ir_labels)
             ):
                 irreps += [irr] * len(deg)
-
+    irreps = []
     irreps = list(irreps)
 
     eigs_kl = np.array(eigs_kl)
@@ -394,7 +394,7 @@ def plot_bandstructure(row, fname):
 @option('--nimages', type=int, help='Mode index')
 def write_mode(momentum: typing.List[float] = (0., 0., 0.), mode: int = 0,
                supercell: typing.List[int] = (1, 1, 1), amplitude: float = 1,
-               nimages: int = 15):
+               nimages: int = 15) -> None:
 
     from ase.io.trajectory import Trajectory
 
