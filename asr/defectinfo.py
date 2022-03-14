@@ -11,16 +11,21 @@ from asr.structureinfo import describe_crystaltype_entry
 
 
 def get_concentration_row(conc_res, defect_name, q):
-    for i, element in enumerate(conc_res['defect_concentrations']):
-        if element['defect_name'] == defect_name:
-            for altel in element['concentrations']:
-                if altel[1] == int(q):
-                    concentration = altel[0]
-    conc_row = describe_entry(
-        'Eq. concentration',
-        'Equilibrium concentration at self-consistent Fermi level.')
+    rowlist = []
+    for scresult in conc_res.scresults:
+        condition = scresult.condition
+        for i, element in enumerate(scresult['defect_concentrations']):
+            conc_row = describe_entry(
+                f'Eq. concentration ({condition})',
+                'Equilibrium concentration at self-consistent Fermi level.')
+            if element['defect_name'] == defect_name:
+                for altel in element['concentrations']:
+                    if altel[1] == int(q):
+                        concentration = altel[0]
+                        rowlist.append([conc_row,
+                                        f'{concentration:.1e} cm<sup>-2</sup>'])
 
-    return [[conc_row, f'{concentration:.1e} cm<sup>-2</sup>']]
+    return rowlist
 
 
 def webpanel(result, row, key_descriptions):
@@ -51,14 +56,15 @@ def webpanel(result, row, key_descriptions):
 
     # extract defect name, charge state, and format it
     defect_name = row.defect_name
-    defect_name = (f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}'
-                   '</sub>')
-    charge_state = row.charge_state
-    q = charge_state.split()[-1].split(')')[0]
+    if defect_name != 'pristine':
+        defect_name = (f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}'
+                       '</sub>')
+        charge_state = row.charge_state
+        q = charge_state.split()[-1].split(')')[0]
 
     # only show results for the concentration if charge neutrality results present
     show_conc = 'results-asr.charge_neutrality.json' in row.data
-    if show_conc:
+    if show_conc and defect_name != 'pristine':
         conc_res = row.data['results-asr.charge_neutrality.json']
         conc_row = get_concentration_row(conc_res, defect_name, q)
 
@@ -73,7 +79,8 @@ def webpanel(result, row, key_descriptions):
              [pointgroup, result.host_pointgroup],
              [host_hof, f'{result.host_hof:.2f} eV/atom'],
              [host_gap_pbe, f'{result.host_gap_pbe:.2f} eV']]
-    basictable = table(result, 'Pristine crystal', lines)
+    basictable = table(result, 'Pristine crystal', [])
+    basictable['rows'].extend(lines)
 
     # add additional data to the table if HSE gap, defect-defect distance,
     # concentration, and host uid are present
