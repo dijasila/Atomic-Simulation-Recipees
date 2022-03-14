@@ -50,7 +50,7 @@ def get_spg_href(url):
 
 def describe_pointgroup_entry(spglib):
     pointgroup = describe_entry(
-        'pointgroup',
+        'Point group',
         f"Point group determined with {spglib}."
     )
 
@@ -214,7 +214,6 @@ def main() -> Result:
     """
     import numpy as np
     from ase.io import read
-    from asr.utils.symmetry import c2db_symmetry_eps
 
     atoms = read('structure.json')
     info = {}
@@ -226,12 +225,8 @@ def main() -> Result:
 
     # Get crystal symmetries
     from asr.utils.symmetry import atoms2symmetry
-    # According to tests by Thomas Olsen on C2DB, having a coarse
-    # angle tolerance is not important for solving the issue documented
-    # for asr.utils.symmetry.c2db_symmetry_eps.  So we still use a very
-    # strict symmetry.
     symmetry = atoms2symmetry(atoms,
-                              tolerance=c2db_symmetry_eps,
+                              tolerance=1e-3,
                               angle_tolerance=0.1)
     info['has_inversion_symmetry'] = symmetry.has_inversion
     dataset = symmetry.dataset

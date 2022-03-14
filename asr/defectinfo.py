@@ -7,7 +7,7 @@ from asr.setup.defects import return_distances_cell
 from pathlib import Path
 import typing
 from asr.database.browser import (table, describe_entry, href)
-from asr.structureinfo import describe_crystaltype_entry
+from asr.structureinfo import describe_crystaltype_entry, describe_pointgroup_entry
 
 
 def get_concentration_row(conc_res, defect_name, q):
@@ -37,9 +37,7 @@ def webpanel(result, row, key_descriptions):
     spacegroup = describe_entry(
         'Space group',
         f"The {spg_list_link} is determined with {spglib}.")
-    pointgroup = describe_entry(
-        'Point group',
-        f"The point group is determined with {spglib}.")
+    pointgroup = describe_pointgroup_entry(spglib)
     host_hof = describe_entry(
         'Heat of formation',
         result.key_descriptions['host_hof'])
