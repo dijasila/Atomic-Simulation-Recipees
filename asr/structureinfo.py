@@ -50,7 +50,7 @@ def get_spg_href(url):
 
 def describe_pointgroup_entry(spglib):
     pointgroup = describe_entry(
-        'pointgroup',
+        'Point group',
         f"Point group determined with {spglib}."
     )
 
