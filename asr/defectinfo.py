@@ -51,14 +51,15 @@ def webpanel(result, row, key_descriptions):
 
     # extract defect name, charge state, and format it
     defect_name = row.defect_name
-    defect_name = (f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}'
-                   '</sub>')
-    charge_state = row.charge_state
-    q = charge_state.split()[-1].split(')')[0]
+    if defect_name != 'pristine':
+        defect_name = (f'{defect_name.split("_")[0]}<sub>{defect_name.split("_")[1]}'
+                       '</sub>')
+        charge_state = row.charge_state
+        q = charge_state.split()[-1].split(')')[0]
 
     # only show results for the concentration if charge neutrality results present
     show_conc = 'results-asr.charge_neutrality.json' in row.data
-    if show_conc:
+    if show_conc and defect_name != 'pristine':
         conc_res = row.data['results-asr.charge_neutrality.json']
         conc_row = get_concentration_row(conc_res, defect_name, q)
 
