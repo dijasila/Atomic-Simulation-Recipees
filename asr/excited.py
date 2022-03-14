@@ -20,9 +20,9 @@ def calculate(excitation: str = 'alpha') -> ASRResult:
 
     old_calc = GPAW('../gs.gpw')
 
-    old_params = old_calc.todict()
-
-    charge = old_params['charge']
+    #old_params = old_calc.todict()
+    old_params = read_json('../params.json')
+    charge = old_params['asr.relax']['calculator']['charge']
 
     calc = GPAW(mode=PW(600),
                 xc='PBE',
@@ -39,8 +39,9 @@ def calculate(excitation: str = 'alpha') -> ASRResult:
                 )
 
     f_sn = []
-    for spin in range(olc_calc.get_number_of_spins()):
-        f_n = [[0,1][e < ef] for e in olc_calc.get_eigenvalues(kpt=0, spin=spin)]
+    ef=old_calc.get_fermi_level()
+    for spin in range(old_calc.get_number_of_spins()):
+        f_n = [[0,1][e < ef] for e in old_calc.get_eigenvalues(kpt=0, spin=spin)]
         f_sn.append(f_n)
 
     prepare_mom_calculation(calc, atoms, f_sn)
@@ -49,7 +50,8 @@ def calculate(excitation: str = 'alpha') -> ASRResult:
     calc.initialize(atoms)
     atoms.get_potential_energy()
     write('ground.json', atoms)
- 
+    params = read_json('params.json')
+    excitation=params['asr.excite@calculate']['excitation']
     if excitation == 'alpha':
         excite_and_sort(calc.wfs, 0, 0, (0, 0), 'fdpw')
     if excitation == 'beta':
