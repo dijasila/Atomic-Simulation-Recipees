@@ -73,7 +73,8 @@ def webpanel(result, row, key_descriptions):
              [pointgroup, result.host_pointgroup],
              [host_hof, f'{result.host_hof:.2f} eV/atom'],
              [host_gap_pbe, f'{result.host_gap_pbe:.2f} eV']]
-    basictable = table(result, 'Pristine crystal', lines)
+    basictable = table(result, 'Pristine crystal', [])
+    basictable['rows'].extend(lines)
 
     # add additional data to the table if HSE gap, defect-defect distance,
     # concentration, and host uid are present
