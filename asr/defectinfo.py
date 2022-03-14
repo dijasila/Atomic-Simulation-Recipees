@@ -11,16 +11,21 @@ from asr.structureinfo import describe_crystaltype_entry
 
 
 def get_concentration_row(conc_res, defect_name, q):
-    for i, element in enumerate(conc_res['defect_concentrations']):
-        if element['defect_name'] == defect_name:
-            for altel in element['concentrations']:
-                if altel[1] == int(q):
-                    concentration = altel[0]
-    conc_row = describe_entry(
-        'Eq. concentration',
-        'Equilibrium concentration at self-consistent Fermi level.')
+    rowlist = []
+    for scresult in conc_res.scresults:
+        condition = scresult.condition
+        for i, element in enumerate(scresult['defect_concentrations']):
+            conc_row = describe_entry(
+                f'Eq. concentration ({condition})',
+                'Equilibrium concentration at self-consistent Fermi level.')
+            if element['defect_name'] == defect_name:
+                for altel in element['concentrations']:
+                    if altel[1] == int(q):
+                        concentration = altel[0]
+                        rowlist.append([conc_row,
+                                        f'{concentration:.1e} cm<sup>-2</sup>'])
 
-    return [[conc_row, f'{concentration:.1e} cm<sup>-2</sup>']]
+    return rowlist
 
 
 def webpanel(result, row, key_descriptions):
