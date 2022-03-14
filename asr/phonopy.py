@@ -11,6 +11,8 @@ from ase.dft.kpoints import BandPath
 
 from asr.core import (command, option, DictStr, ASRResult,
                       read_json, write_json, prepare_result)
+from asr.database.browser import (
+    table, fig, describe_entry, dl, make_panel_description)
 
 import phonopy
 
