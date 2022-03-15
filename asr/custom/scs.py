@@ -114,8 +114,18 @@ def get_scissors_operator(atoms, shifts):
 def calculate_gs(atoms, kpts, calculator, scs):
     """ Calculates the SCS ground state """
     #kpts = get_kpts_size(atoms, kpts)
-    calculator.update({'kpts': {'density': kpts,
-                                'gamma': True}})
+    #
+    X = Y = np.linspace(0.27, 0.47, 20)
+    kptgrid = np.asarray([[x, y, 0.0] for x in X for y in Y])
+
+    calculator.update({'kpts': kptgrid})
+    calc = GPAW('gs_scs.gpw').fixed_density(kpts=kptgrid,
+                                            symmetry='off')
+
+    calc.get_potential_energy()
+    calc.write('gs_scs_custom.gpw', mode='')
+
+    '''
     if scs:
         calculator.update({'eigensolver': scs})
         filename = 'gs_scs.gpw'
@@ -124,7 +134,8 @@ def calculate_gs(atoms, kpts, calculator, scs):
     calc = GPAW(**calculator)
     atoms.calc = calc
     atoms.get_potential_energy()
-    atoms.calc.write(filename, mode='')
+    #atoms.calc.write(filename, mode='')
+    '''
     return calc
 
 
@@ -217,7 +228,7 @@ def main(structure: str = 'structure.json',
 
     if name:
         prefix = name
-    filename = f'{prefix}_{suffix}.json'
+    filename = f'{prefix}_{suffix}_custom.json'
     dump_to_json(filename, calc, soc, bs)
 
 

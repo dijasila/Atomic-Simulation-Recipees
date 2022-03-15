@@ -133,8 +133,7 @@ def main(strain_percent = 1.0,
         atoms = calc.get_atoms()
         specpts = atoms.cell.bandpath(pbc=atoms.pbc).special_points
         kpts = [specpts[i] for i in specpts.keys()]
-        kpts.append(np.asarray([1/6, 1/6, 0.0]))
-        print(kpts)
+        #kpts.append(np.asarray([1/6, 1/6, 0.0]))
         calc_nostrain = calc.fixed_density(kpts=kpts, symmetry='off', txt='-')
         calc_nostrain.get_potential_energy()
         calc_nostrain.write('gs_spec.gpw')

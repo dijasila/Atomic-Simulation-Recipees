@@ -6,12 +6,14 @@ essential arguments. Additional, non-essential arguments are allowed.
 """
 
 
-def get_eigenvalues(calc):
+def get_eigenvalues(calc, all_bz=False):
     """Get eigenvalues from calculator.
 
     Parameters
     ----------
-    calc : Calculator
+    calc :   Calculator
+    all_bz : return eigenvalues over all
+             the Brillouin zone
 
     Returns
     -------
@@ -19,7 +21,10 @@ def get_eigenvalues(calc):
     """
     import numpy as np
     rs = range(calc.get_number_of_spins())
-    rk = range(len(calc.get_ibz_k_points()))
+    if all_bz:
+        rk = calc.get_bz_to_ibz_map()
+    else:
+        rk = range(len(calc.get_ibz_k_points()))
     e = calc.get_eigenvalues
     return np.asarray([[e(spin=s, kpt=k) for k in rk] for s in rs])
 

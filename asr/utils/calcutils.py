@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Union
-from gpaw import GPAW
+from gpaw.calculator import GPAW
 
 
 def bs_from_gpw(fname):
@@ -263,40 +263,59 @@ def multiplot(*toplot,
     return ax
 
 
-class Bands:
-    def __init__(self,
-                 filename,
-                 soc=False,
-                 gs='results-asr.gs.json'):
-        from os.path import splitext
+def extract(filename, soc, all_bz):
+    from os.path import splitext
+    root, ext = splitext(filename)
 
-        self.filename = filename
-        self._basename, self._ext = splitext(filename)
+    if ext == '.gpw':
+        from gpaw import GPAW
+        from asr.utils.gpw2eigs import calc2eigs
+        from asr.utils.calculator_utils import get_eigenvalues
+        calc = GPAW(filename)
+        ef = calc.get_fermi_level()
+        eigs1 = get_eigenvalues(calc, all_bz=all_bz)
+        eigs21 = calc2eigs(calc, soc=soc)[0]
+        eigs2 = [eigs21[i] for i in calc.get_bz_to_ibz_map()]
+        print(eigs1.shape)
+        print(eigs2.shape)
+        path = calc.band_structure().path
+        if soc:
+            raise ValueError('SOC not implemented for .gpw files')
+        return (*calc2eigs(calc, soc=soc), calc.band_structure().path)
 
-        print(f'Reading stuff from file {filename}...')
-        if self._ext == '.gpw':
-            if soc:
-                raise NotImplementedError('SOC not implemented yet for bandstructures from .gpw files')
-            self.bandstructure = bs_from_gpw(self.filename)
+    if ext == '.json':
+        from ase.io.jsonio import read_json
+        calc = read_json(filename)
+        if soc:
+            suffix = 'soc'
+        else:
+            suffix = 'nosoc'
+        eigs = calc[f'eigenvalues_{suffix}'][np.newaxis]
+        ef = calc[f'efermi_{suffix}']
+        try:
+            path = calc['path']
+        except KeyError:
+            path = None
 
-        if self._ext == '.json':
-            self.bandstructure = bs_from_json(self.filename, soc)
-        print("Done")
+        return eigs, ef, path
 
-    def get_energies(self, nbands=0):
-        energies = self.bandstructure.energies.T
-        if nbands:
-            enrg_ref = energies - self.get_efermi()
-            band_maxes = [i.max() if i.max() < 0 else i.min() for i in enrg_ref]
-            for i, _ in enumerate(band_maxes):
-                if band_maxes[i] > 0 and band_maxes[i-1] < 0:
-                    arg = i
-                    break
-            return energies[arg-nbands:arg+nbands]
-        return self.bandstructure.energies.T
 
-    def get_efermi(self):
-        return self.bandstructure.reference
+class Calc:
+    def __init__(self, filename, soc=False, all_bz=True):
+        self.eigenvalues, self.efermi, self.path = extract(filename, soc, all_bz)
+
+    def get_bandgap(self, direct=False, kpts=False):
+        from ase.dft.bandgap import bandgap
+        return bandgap(eigenvalues=self.eigenvalues,
+                      efermi=self.efermi,
+                      direct=direct,
+                      output=None)
+
+    def get_bandstructure(self):
+        from ase.spectrum.band_structure import BandStructure
+        return BandStructure(self.path,
+                             self.eigenvalues,
+                             self.efermi)
 
     def get_kpts_and_labels(self, normalize=False):
         x, X, lbls = self.bandstructure.get_labels()
