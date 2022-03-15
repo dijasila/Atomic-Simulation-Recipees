@@ -280,8 +280,9 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
         "row_to_dict_function": partial(
             row_to_dict, layout_function=layout, tmpdir=tmpdir,
         ),
-        "default_columns": metadata.get("default_columns", ["host_name", "defect_name",
-                                                            "charge_state"]),
+        "default_columns": metadata.get("default_columns",
+                                        ["host_name", "defect_name",
+                                         "charge_state", "defect_pointgroup"]),
         "table_template": str(
             metadata.get(
                 "table_template", f"asr/database/templates/table.html",
