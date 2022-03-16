@@ -189,6 +189,12 @@ def get_recipe_modules():
     return names
 
 
+def get_module_docstring_title(mod):
+    mod = importlib.import_module(mod)
+    if mod.__doc__:
+        return mod.__doc__.split('\n')[0]
+
+
 def generate_recipe_summary():
     """Generate recipes.rst."""
     rst = ['.. _recipes:',
@@ -202,13 +208,25 @@ def generate_recipe_summary():
            '']
 
     modules = get_recipe_modules()
+    modnames = [get_module_docstring_title(mod) for mod in modules]
 
     rst.extend(
         ['.. toctree::',
          '   :maxdepth: 1',
+         '   :hidden:',
          '']
-        + [f'   recipe_{module}.rst' for module in modules]
+        + [f'   recipe_{module}'
+           for module in modules]
     )
+
+    rst.extend(['',
+                '.. csv-table::',
+                '   :header: "Recipe", "Description"',
+                '   :widths: 1, 2',
+                ''] +
+               [f'   :ref:`{module} <recipe_{module}>`, {modname}'
+                if modname else f'   :ref:`{module} <recipe_{module}>`, '
+                for modname, module in zip(modnames, modules)])
     rst = '\n'.join(rst)
     write_file('recipes.rst', rst)
 

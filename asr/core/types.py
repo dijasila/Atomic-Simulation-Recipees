@@ -37,6 +37,17 @@ class AtomsFile(click.ParamType):
             return None
 
 
+class CommaStr(click.ParamType):
+    """Read in a comma-separated strings and return a list of strings."""
+
+    name = "comma_string"
+
+    def convert(self, value, param, ctx):
+        """Convert string with commas to list of strings."""
+        if isinstance(value, str):
+            return value.split(',')
+
+
 class DictStr(click.ParamType):
     """Read atoms object from filename and return Atoms object."""
 

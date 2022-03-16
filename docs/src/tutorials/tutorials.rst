@@ -10,3 +10,4 @@ Tutorials
    intro-to-testing
    asr-run-command
    setup-params
+   result-objects-and-web-panels

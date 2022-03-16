@@ -181,3 +181,51 @@ def duplicates_test_db(request, asr_tmpdir):
     db.write(stretch_nonpbc_atoms)
 
     return (atoms, db)
+
+
+@pytest.fixture()
+def crosslinks_test_dbs(asr_tmpdir):
+    """Set up database for testing the crosslinks recipe."""
+    from pathlib import Path
+    from ase.io import write
+    from ase.db import connect
+    from asr.core import chdir
+    from asr.database.material_fingerprint import main as material_fingerprint
+    from asr.database.treelinks import main as treelinks
+    from asr.database.fromtree import main as fromtree
+
+    write('structure.json', std_test_materials[0])
+    p = Path('.')
+
+    for i in range(1, len(std_test_materials)):
+        dirpath = Path(p / f'folder_{i - 1}')
+        dirpath.mkdir()
+        write(dirpath / 'structure.json', std_test_materials[i])
+
+    pathlist = list(p.glob('folder_*'))
+    for path in pathlist:
+        with chdir(path):
+            material_fingerprint()
+    material_fingerprint()
+
+    # run asr.database.treelinks to create results and links.json files
+    treelinks(include=['folder_*'], exclude=[''])
+
+    # first, create one database based on the tree structure
+    fromtree(recursive=True, dbname='db.db')
+    # second, create one database with only the parent structure present
+    fromtree(recursive=True, dbname='dbref.db')
+
+    # set metadata in such a way that asr.database.crosslinks can work correctly
+    db = connect('db.db')
+    db.delete([1])
+    dbref = connect('dbref.db')
+    dbref.delete([2, 3, 4])
+    db.metadata = {'title': 'Example DB',
+                   'link_name': '{row.formula}-{row.uid}',
+                   'link_url': 'test/test/{row.uid}'}
+    dbref.metadata = {'title': 'Example Reference DB',
+                      'link_name': '{row.uid}-{row.formula}',
+                      'link_url': 'testref/testref/{row.uid}'}
+
+    return None

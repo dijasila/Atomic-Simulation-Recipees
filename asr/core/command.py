@@ -373,7 +373,8 @@ class ASRCommand:
             tend = time.time()
 
         if not isinstance(result, self.returns):
-            result = self.returns(**result)
+            assert isinstance(result, dict)
+            result = self.returns(data=result)
 
         from ase.parallel import world
         metadata = dict(asr_name=self.name,

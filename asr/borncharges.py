@@ -1,5 +1,25 @@
 """Effective Born charges."""
-from asr.core import command, option, ASRResult
+from asr.core import command, option, ASRResult, prepare_result
+import numpy as np
+import typing
+from asr.database.browser import make_panel_description, href, describe_entry
+
+
+panel_description = make_panel_description(
+    """The Born charge of an atom is defined as the derivative of the static
+macroscopic polarization w.r.t. its displacements u_i (i=x,y,z). The
+polarization in a periodic direction is calculated as an integral over Berry
+phases. The polarization in a non-periodic direction is obtained by direct
+evaluation of the first moment of the electron density. The Born charge is
+obtained as a finite difference of the polarization for displaced atomic
+configurations.  """,
+    articles=[
+        href("""M. N. Gjerding et al. Efficient Ab Initio Modeling of Dielectric Screening
+in 2D van der Waals Materials: Including Phonons, Substrates, and Doping,
+J. Phys. Chem. C 124 11609 (2020)""",
+             'https://doi.org/10.1021/acs.jpcc.0c01635')
+    ]
+)
 
 
 def webpanel(result, row, key_descriptions):
@@ -39,13 +59,20 @@ def webpanel(result, row, key_descriptions):
 
         columns[a % 2].append(Ztable)
 
-    panel = {'title': 'Born charges',
+    panel = {'title': describe_entry('Born charges', panel_description),
              'columns': columns,
              'sort': 17}
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
+
+    Z_avv: np.ndarray
+    sym_a: typing.List[str]
+
+    key_descriptions = {'Z_avv': 'Array of borncharges.',
+                        'sym_a': 'Chemical symbols.'}
 
     formats = {"ase_webpanel": webpanel}
 
@@ -57,7 +84,6 @@ class Result(ASRResult):
 @option('--displacement', help='Atomic displacement (Å)', type=float)
 def main(displacement: float = 0.01) -> Result:
     """Calculate Born charges."""
-    import numpy as np
     from gpaw import GPAW
 
     from ase.units import Bohr

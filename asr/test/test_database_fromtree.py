@@ -9,7 +9,7 @@ from .materials import Si, Fe
 
 
 @pytest.fixture
-def folder_tree():
+def folder_tree(asr_tmpdir):
     """Set up a tree like folder structure."""
     from asr.setup.displacements import main as displacements
     folders = [('materials/Si2', Si),
@@ -43,7 +43,7 @@ def make_tree(folder: str):
 
 @pytest.mark.ci
 @pytest.mark.parametrize('njobs', [1, 2, 8])
-def test_database_fromtree_totree(asr_tmpdir, folder_tree, njobs):
+def test_database_fromtree_totree(folder_tree, njobs):
     """Make sure a database can be packed and unpacked faithfully."""
     from asr.database.fromtree import main as fromtree
     from asr.database.totree import main as totree

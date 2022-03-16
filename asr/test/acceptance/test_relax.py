@@ -1,6 +1,7 @@
 import pytest
 
 
+@pytest.mark.skip
 @pytest.mark.acceptance_test
 def test_relax_fe_gpaw(asr_tmpdir):
     from asr.relax import main

@@ -11,6 +11,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Union, List
+import warnings
 
 import numpy as np
 from ase.io import jsonio
@@ -92,21 +93,36 @@ def write_file(filename, text):
 
 def dct_to_object(dct):
     """Convert dictionary to object."""
-    from .results import dct_to_result, UnknownDataFormat
+    from .results import decode_object, UnknownDataFormat
+    warnings.warn(
+        "asr.core.dct_to_object is renamed to asr.core.decode_object. "
+        "This function will be removed in a future release."
+        "Please update your scripts accordingly.",
+        DeprecationWarning)
 
     try:
-        obj = dct_to_result(dct)
+        obj = decode_object(dct)
         return obj
     except UnknownDataFormat:
         assert isinstance(dct, dict), 'Cannot convert dct to object!'
         return dct
 
 
+def read_file(filename: str) -> str:
+    return Path(filename).read_text()
+
+
+def decode_json(text: str) -> dict:
+    dct = jsonio.decode(text)
+    return dct
+
+
 def read_json(filename):
     """Read json file."""
-    from pathlib import Path
-    dct = jsonio.decode(Path(filename).read_text())
-    obj = dct_to_object(dct)
+    from .results import decode_object
+    text = read_file(filename)
+    literal_object = decode_json(text)
+    obj = decode_object(literal_object)
     return obj
 
 
@@ -189,6 +205,8 @@ def singleprec_dict(dct):
 def get_recipe_from_name(name):
     # Get a recipe from a name like asr.gs@postprocessing
     import importlib
+    assert name.startswith('asr.'), \
+        'Not allowed to load recipe from outside of ASR.'
     mod, func = parse_mod_func(name)
     module = importlib.import_module(mod)
     return getattr(module, func)

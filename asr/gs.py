@@ -1,7 +1,23 @@
 """Electronic ground state properties."""
 from asr.core import command, option, DictStr, ASRResult, prepare_result
+from asr.database.browser import (
+    table, fig,
+    entry_parameter_description,
+    describe_entry, WebPanel,
+    make_panel_description
+)
+
+
 import numpy as np
 import typing
+
+panel_description = make_panel_description(
+    """
+Electronic properties derived from a ground state density functional theory
+calculation.
+""",
+    articles=['C2DB'],
+)
 
 
 @command(module='asr.gs',
@@ -58,44 +74,121 @@ def calculate(calculator: dict = {
     return ASRResult()
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
+def _get_parameter_description(row):
+    desc = entry_parameter_description(
+        row.data,
+        'asr.gs@calculate',
+        exclude_keys=set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                          'idiotproof', 'maxiter', 'hund', 'random',
+                          'experimental', 'basis', 'setups']))
+    return desc
 
-    t = table(row, 'Property',
-              ['gap', 'gap_dir',
-               'dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc'],
+
+def _explain_bandgap(row, gap_name):
+    parameter_description = _get_parameter_description(row)
+
+    if gap_name == 'gap':
+        name = 'Band gap'
+        adjective = ''
+    elif gap_name == 'gap_dir':
+        name = 'Direct band gap'
+        adjective = 'direct '
+    else:
+        raise ValueError(f'Bad gapname {gap_name}')
+
+    txt = (f'The {adjective}electronic single-particle band gap '
+           'including spin–orbit effects.')
+
+    description = f'{txt}\n\n{parameter_description}'
+    return describe_entry(name, description=description)
+
+
+def vbm_or_cbm_row(title, quantity_name, reference_explanation, value):
+    description = (f'Energy of the {quantity_name} relative to the '
+                   f'{reference_explanation}. '
+                   'Spin–orbit coupling is included.')
+    return [describe_entry(title, description=description), f'{value:.2f} eV']
+
+
+def webpanel(result, row, key_descriptions):
+    parameter_description = _get_parameter_description(row)
+
+    explained_keys = []
+
+    def make_gap_row(name):
+        value = result[name]
+        description = _explain_bandgap(row, name)
+        return [description, f'{value:0.2f} eV']
+
+    gap_row = make_gap_row('gap')
+    direct_gap_row = make_gap_row('gap_dir')
+
+    for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
+        if key in result.key_descriptions:
+            key_description = result.key_descriptions[key]
+            explanation = (f'{key_description} '
+                           '(Including spin–orbit effects).\n\n'
+                           + parameter_description)
+            explained_key = describe_entry(key, description=explanation)
+        else:
+            explained_key = key
+        explained_keys.append(explained_key)
+
+    t = table(result, 'Property',
+              explained_keys,
               key_descriptions)
 
-    gap = row.get('gap')
+    t['rows'] += [gap_row, direct_gap_row]
 
-    if gap > 0:
-        if row.get('evac'):
-            t['rows'].extend(
-                [['Valence band maximum wrt. vacuum level',
-                  f'{row.vbm - row.evac:.2f} eV'],
-                 ['Conduction band minimum wrt. vacuum level',
-                  f'{row.cbm - row.evac:.2f} eV']])
+    if result.gap > 0:
+        if result.get('evac'):
+            eref = result.evac
+            vbm_title = 'Valence band maximum relative to vacuum level'
+            cbm_title = 'Conduction band minimum relative to vacuum level'
+            reference_explanation = (
+                'the asymptotic value of the '
+                'electrostatic potential in the vacuum region')
         else:
-            t['rows'].extend(
-                [['Valence band maximum wrt. Fermi level',
-                  f'{row.vbm - row.efermi:.2f} eV'],
-                 ['Conduction band minimum wrt. Fermi level',
-                  f'{row.cbm - row.efermi:.2f} eV']])
-    panel = {'title': 'Basic electronic properties (PBE)',
-             'columns': [[t], [fig('bz-with-gaps.png')]],
-             'sort': 10}
+            eref = result.efermi
+            vbm_title = 'Valence band maximum relative to Fermi level'
+            cbm_title = 'Conduction band minimum relative to Fermi level'
+            reference_explanation = 'the Fermi level'
 
-    row = ['Band gap (PBE)', f'{row.gap:0.2f} eV']
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Electronic properties', ''],
-                             'rows': [row]}]],
-               'plot_descriptions': [{'function': bz_with_band_extremums,
-                                      'filenames': ['bz-with-gaps.png']}],
-               'sort': 10}
+        vbm_displayvalue = result.vbm - eref
+        cbm_displayvalue = result.cbm - eref
+        info = [
+            vbm_or_cbm_row(vbm_title, 'valence band maximum (VBM)',
+                           reference_explanation, vbm_displayvalue),
+            vbm_or_cbm_row(cbm_title, 'conduction band minimum (CBM)',
+                           reference_explanation, cbm_displayvalue)
+        ]
 
-    print('panel', panel)
-    print('summary', summary)
+        t['rows'].extend(info)
+
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+    title = f'Basic electronic properties ({xcname})'
+
+    panel = WebPanel(
+        title=describe_entry(title, panel_description),
+        columns=[[t], [fig('bz-with-gaps.png')]],
+        sort=10)
+
+    summary = WebPanel(
+        title=describe_entry(
+            'Summary',
+            description='This panel contains a summary of '
+            'basic properties of the material.'),
+        columns=[[{
+            'type': 'table',
+            'header': ['Electronic properties', ''],
+            'rows': [gap_row],
+            'columnwidth': 3,
+        }]],
+        plot_descriptions=[{'function': bz_with_band_extremums,
+                            'filenames': ['bz-with-gaps.png']}],
+        sort=10)
+
     return [panel, summary]
 
 
@@ -103,18 +196,28 @@ def bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     import numpy as np
-    cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
+    from asr.utils.symmetry import c2db_symmetry_eps
+
+    ndim = sum(row.pbc)
+
+    # Standardize the cell rotation via Bravais lattice roundtrip:
+    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc,
+                                             eps=c2db_symmetry_eps)
+    cell = lat.tocell()
+
     plt.figure(figsize=(4, 4))
     lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
+
     gsresults = row.data.get('results-asr.gs.json')
     cbm_c = gsresults['k_cbm_c']
     vbm_c = gsresults['k_vbm_c']
     op_scc = row.data[
         'results-asr.structureinfo.json']['spglib_dataset']['rotations']
     if cbm_c is not None:
+        if not row.is_magnetic:
+            op_scc = np.concatenate([op_scc, -op_scc])
         ax = plt.gca()
-        icell_cv = np.linalg.inv(row.cell).T
+        icell_cv = cell.reciprocal()
         vbm_style = {'marker': 'o', 'facecolor': 'w',
                      'edgecolors': 'C0', 's': 50, 'lw': 2,
                      'zorder': 4}
@@ -123,13 +226,24 @@ def bz_with_band_extremums(row, fname):
         vbm_sc = np.dot(op_scc.transpose(0, 2, 1), vbm_c)
         cbm_sv = np.dot(cbm_sc, icell_cv)
         vbm_sv = np.dot(vbm_sc, icell_cv)
-        ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
-        ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
-        xlim = np.array(ax.get_xlim()) * 1.4
-        ylim = np.array(ax.get_ylim()) * 1.4
-        ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
-        plt.legend(loc='upper center', ncol=3)
+
+        if ndim < 3:
+            ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]], **vbm_style, label='VBM')
+            ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]], **cbm_style, label='CBM')
+
+            # We need to keep the limits set by ASE in 3D, else the aspect
+            # ratio goes haywire.  Hence this bit is also for ndim < 3 only.
+            xlim = np.array(ax.get_xlim()) * 1.4
+            ylim = np.array(ax.get_ylim()) * 1.4
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
+        else:
+            ax.scatter([vbm_sv[:, 0]], [vbm_sv[:, 1]],
+                       [vbm_sv[:, 2]], **vbm_style, label='VBM')
+            ax.scatter([cbm_sv[:, 0]], [cbm_sv[:, 1]],
+                       [cbm_sv[:, 2]], **cbm_style, label='CBM')
+
+        plt.legend(loc='upper center', ncol=3, prop={'size': 9})
 
     plt.tight_layout()
     plt.savefig(fname)
@@ -209,21 +323,23 @@ def gaps(calc, soc=True) -> GapsResult:
     else:
         efermi = calc.get_fermi_level()
 
-    return GapsResult(gap=evbm_ecbm_gap[2],
-                      vbm=evbm_ecbm_gap[0],
-                      cbm=evbm_ecbm_gap[1],
-                      gap_dir=evbm_ecbm_direct_gap[2],
-                      vbm_dir=evbm_ecbm_direct_gap[0],
-                      cbm_dir=evbm_ecbm_direct_gap[1],
-                      k_vbm_c=k_vbm_c,
-                      k_cbm_c=k_cbm_c,
-                      k_vbm_dir_c=direct_k_vbm_c,
-                      k_cbm_dir_c=direct_k_cbm_c,
-                      skn1=skn_vbm,
-                      skn2=skn_cbm,
-                      skn1_dir=direct_skn_vbm,
-                      skn2_dir=direct_skn_cbm,
-                      efermi=efermi)
+    return GapsResult.fromdata(
+        gap=evbm_ecbm_gap[2],
+        vbm=evbm_ecbm_gap[0],
+        cbm=evbm_ecbm_gap[1],
+        gap_dir=evbm_ecbm_direct_gap[2],
+        vbm_dir=evbm_ecbm_direct_gap[0],
+        cbm_dir=evbm_ecbm_direct_gap[1],
+        k_vbm_c=k_vbm_c,
+        k_cbm_c=k_cbm_c,
+        k_vbm_dir_c=direct_k_vbm_c,
+        k_cbm_dir_c=direct_k_cbm_c,
+        skn1=skn_vbm,
+        skn2=skn_cbm,
+        skn1_dir=direct_skn_vbm,
+        skn2_dir=direct_skn_cbm,
+        efermi=efermi
+    )
 
 
 def get_1bz_k(ibzkpts, calc, k_index):
@@ -278,7 +394,7 @@ class VacuumLevelResults(ASRResult):
         'z_z': 'Grid points for potential [Å].',
         'v_z': 'Electrostatic potential [eV].',
         'evacdiff': 'Difference of vacuum levels on both sides of slab [eV].',
-        'dipz': 'Out-of-plane dipole [e * Ang].',
+        'dipz': 'Out-of-plane dipole [e · Å].',
         'evac1': 'Top side vacuum level [eV].',
         'evac2': 'Bottom side vacuum level [eV]',
         'evacmean': 'Average vacuum level [eV].',
@@ -310,28 +426,30 @@ def vacuumlevels(atoms, calc, n=8):
     import numpy as np
 
     if not np.sum(atoms.get_pbc()) == 2:
-        return VacuumLevelResults(z_z=None,
-                                  v_z=None,
-                                  evacdiff=None,
-                                  dipz=None,
-                                  evac1=None,
-                                  evac2=None,
-                                  evacmean=None,
-                                  efermi_nosoc=None)
+        return VacuumLevelResults.fromdata(
+            z_z=None,
+            v_z=None,
+            evacdiff=None,
+            dipz=None,
+            evac1=None,
+            evac2=None,
+            evacmean=None,
+            efermi_nosoc=None)
 
     # Record electrostatic potential as a function of z
     v_z = calc.get_electrostatic_potential().mean(0).mean(0)
     z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
 
     # Store data
-    return VacuumLevelResults(z_z=z_z,
-                              v_z=v_z,
-                              dipz=atoms.get_dipole_moment()[2],
-                              evacdiff=evacdiff(atoms),
-                              evac1=v_z[n],
-                              evac2=v_z[-n],
-                              evacmean=(v_z[n] + v_z[-n]) / 2,
-                              efermi_nosoc=calc.get_fermi_level())
+    return VacuumLevelResults.fromdata(
+        z_z=z_z,
+        v_z=v_z,
+        dipz=atoms.get_dipole_moment()[2],
+        evacdiff=evacdiff(atoms),
+        evac1=v_z[n],
+        evac2=v_z[-n],
+        evacmean=(v_z[n] + v_z[-n]) / 2,
+        efermi_nosoc=calc.get_fermi_level())
 
 
 def evacdiff(atoms):
@@ -361,7 +479,7 @@ class Result(ASRResult):
 
     Examples
     --------
-    >>> res = Result(etot=0, _strict=False)
+    >>> res = Result(data=dict(etot=0), strict=False)
     >>> res.etot
     0
     """
@@ -394,12 +512,13 @@ class Result(ASRResult):
     vacuumlevels: VacuumLevelResults
 
     key_descriptions = dict(
-        forces='Forces on atoms [eV/Angstrom].',
-        stresses='Stress on unit cell [eV/Angstrom^dim].',
         etot='Total energy [eV].',
+        workfunction="Workfunction [eV]",
+        forces='Forces on atoms [eV/Å].',
+        stresses='Stress on unit cell [eV/Å^dim].',
         evac='Vacuum level [eV].',
         evacdiff='Vacuum level shift (Vacuum level shift) [eV].',
-        dipz='Out-of-plane dipole [e * Ang].',
+        dipz='Out-of-plane dipole [e · Å].',
         efermi='Fermi level [eV].',
         gap='Band gap [eV].',
         vbm='Valence band maximum [eV].',
@@ -419,7 +538,6 @@ class Result(ASRResult):
         skn2="(spin,k-index,band-index)-tuple for conduction band minimum.",
         skn1_dir="(spin,k-index,band-index)-tuple for direct valence band maximum.",
         skn2_dir="(spin,k-index,band-index)-tuple for direct conduction band minimum.",
-        workfunction="Workfunction [eV]",
     )
 
     formats = {"ase_webpanel": webpanel}
@@ -435,12 +553,10 @@ def main() -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
     from ase.io import read
     from asr.calculators import get_calculator
-    from gpaw.mpi import serial_comm
 
     # Just some quality control before we start
     atoms = read('structure.json')
-    calc = get_calculator()('gs.gpw', txt=None,
-                            communicator=serial_comm)
+    calc = get_calculator()('gs.gpw')
     pbc = atoms.pbc
     ndim = np.sum(pbc)
 
@@ -469,32 +585,33 @@ def main() -> Result:
     gaps_soc = gaps(calc, soc=True)
     vac = vacuumlevels(atoms, calc)
     workfunction = vac.evacmean - gaps_soc.efermi if vac.evacmean else None
-    return Result(forces=forces,
-                  stresses=stresses,
-                  etot=etot,
-                  gaps_nosoc=gaps_nosoc,
-                  gap_dir_nosoc=gaps_nosoc.gap_dir,
-                  gap_nosoc=gaps_nosoc.gap,
-                  gap=gaps_soc.gap,
-                  vbm=gaps_soc.vbm,
-                  cbm=gaps_soc.cbm,
-                  gap_dir=gaps_soc.gap_dir,
-                  vbm_dir=gaps_soc.vbm_dir,
-                  cbm_dir=gaps_soc.cbm_dir,
-                  k_vbm_c=gaps_soc.k_vbm_c,
-                  k_cbm_c=gaps_soc.k_cbm_c,
-                  k_vbm_dir_c=gaps_soc.k_vbm_dir_c,
-                  k_cbm_dir_c=gaps_soc.k_cbm_dir_c,
-                  skn1=gaps_soc.skn1,
-                  skn2=gaps_soc.skn2,
-                  skn1_dir=gaps_soc.skn1_dir,
-                  skn2_dir=gaps_soc.skn2_dir,
-                  efermi=gaps_soc.efermi,
-                  vacuumlevels=vac,
-                  dipz=vac.dipz,
-                  evac=vac.evacmean,
-                  evacdiff=vac.evacdiff,
-                  workfunction=workfunction)
+    return Result.fromdata(
+        forces=forces,
+        stresses=stresses,
+        etot=etot,
+        gaps_nosoc=gaps_nosoc,
+        gap_dir_nosoc=gaps_nosoc.gap_dir,
+        gap_nosoc=gaps_nosoc.gap,
+        gap=gaps_soc.gap,
+        vbm=gaps_soc.vbm,
+        cbm=gaps_soc.cbm,
+        gap_dir=gaps_soc.gap_dir,
+        vbm_dir=gaps_soc.vbm_dir,
+        cbm_dir=gaps_soc.cbm_dir,
+        k_vbm_c=gaps_soc.k_vbm_c,
+        k_cbm_c=gaps_soc.k_cbm_c,
+        k_vbm_dir_c=gaps_soc.k_vbm_dir_c,
+        k_cbm_dir_c=gaps_soc.k_cbm_dir_c,
+        skn1=gaps_soc.skn1,
+        skn2=gaps_soc.skn2,
+        skn1_dir=gaps_soc.skn1_dir,
+        skn2_dir=gaps_soc.skn2_dir,
+        efermi=gaps_soc.efermi,
+        vacuumlevels=vac,
+        dipz=vac.dipz,
+        evac=vac.evacmean,
+        evacdiff=vac.evacdiff,
+        workfunction=workfunction)
 
 
 if __name__ == '__main__':

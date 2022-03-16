@@ -1,50 +1,38 @@
-"""Phonon band structure and dynamical stability."""
-from pathlib import Path
+"""Phonon band structure and dynamical stability.
+
+Deprecated: Please use the more efficient and optimized asr.phonopy
+recipe for calculating phonon properties instead.
+
+"""
+import typing
 
 import numpy as np
 
-from ase.parallel import world
 from ase.io import read
 from ase.phonons import Phonons
+from ase.dft.kpoints import BandPath
+from ase.parallel import paropen
 
-from asr.core import command, option, ASRResult
+from asr.core import command, option, ASRResult, prepare_result
+from asr.database.browser import (
+    table, fig, describe_entry, dl, make_panel_description)
 
-
-def creates():
-    atoms = read('structure.json')
-    natoms = len(atoms)
-    filenames = ['phonon.eq.pckl']
-    for a in range(natoms):
-        for v in 'xyz':
-            for pm in '+-':
-                # Atomic forces for a displacement of atom a in direction v
-                filenames.append(f'phonon.{a}{v}{pm}.pckl')
-    return filenames
-
-
-def todict(filename):
-    from ase.utils import pickleload
-    with open(filename, 'rb') as fd:
-        content = pickleload(fd)
-    return {'content': content}
-
-
-def topckl(filename, dct):
-    from ase.utils import opencew
-    import pickle
-    if Path(filename).is_file():
-        return
-    contents = dct['content']
-    fd = opencew(filename)
-    if world.rank == 0:
-        pickle.dump(contents, fd, protocol=2)
-        fd.close()
+panel_description = make_panel_description(
+    """
+The Gamma-point phonons of a supercell containing the primitive unit cell
+repeated 2 times along each periodic direction. In the Brillouin zone (BZ) of
+the primitive cell, this yields the phonons at the Gamma-point and
+high-symmetry points at the BZ boundary. A negative eigenvalue of the Hessian
+matrix (the second derivative of the energy w.r.t. to atomic displacements)
+indicates a dynamical instability.
+""",
+    articles=['C2DB'],
+)
 
 
 @command('asr.phonons',
          requires=['structure.json', 'gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         creates=creates)
+         dependencies=['asr.gs@calculate'])
 @option('-n', help='Supercell size', type=int)
 @option('--ecut', help='Energy cutoff', type=float)
 @option('--kptdensity', help='Kpoint density', type=float)
@@ -53,12 +41,6 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
               fconverge: float = 1e-4) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
-    # Remove empty files:
-    if world.rank == 0:
-        for f in Path().glob('phonon.*.pckl'):
-            if f.stat().st_size == 0:
-                f.unlink()
-    world.barrier()
 
     atoms = read('structure.json')
     gsold = get_calculator()('gs.gpw', txt=None)
@@ -85,53 +67,55 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
     # Make sure to converge forces! Can be important
     params['convergence'] = {'forces': fconverge}
 
-    fd = open('phonons.txt'.format(n), 'a')
-    params['txt'] = fd
-    calc = get_calculator()(**params)
+    with paropen('phonons.txt', mode='a') as fd:
+        params['txt'] = fd
+        calc = get_calculator()(**params)
 
-    nd = sum(atoms.get_pbc())
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
+        nd = sum(atoms.get_pbc())
+        if nd == 3:
+            supercell = (n, n, n)
+        elif nd == 2:
+            supercell = (n, n, 1)
+        elif nd == 1:
+            supercell = (n, 1, 1)
 
-    p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
-    p.run()
-
-    # Read creates files
-    files = {}
-    for filename in creates():
-        dct = todict(filename)
-        dct['__tofile__'] = 'asr.phonons@topckl'
-        files[filename] = dct
-    data = {'__files__': files}
-    fd.close()
-    return data
+        p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
+        p.cache.strip_empties()
+        p.run()
 
 
 def requires():
-    return creates() + ['results-asr.phonons@calculate.json']
+    return ['results-asr.phonons@calculate.json']
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
-    panel = {'title': 'Phonons',
+    panel = {'title': describe_entry('Phonons', panel_description),
              'columns': [[fig('phonon_bs.png')], [phonontable]],
              'plot_descriptions': [{'function': plot_bandstructure,
                                     'filenames': ['phonon_bs.png']}],
              'sort': 3}
 
     dynstab = row.get('dynamic_stability_phonons')
-    high = 'Min. Hessian eig. > -0.01 meV/Ang^2'
-    low = 'Min. Hessian eig. <= -0.01 meV/Ang^2'
-    row = ['Dynamical (phonons)',
-           '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;HIGH: {}">{}</a>'.format(
-               low, high, dynstab.upper())]
+
+    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Å²'
+    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Å²'
+
+    row = [
+        describe_entry(
+            'Dynamical (phonons)',
+            'Classifier for the dynamical stability of a material '
+            'based on the minimum eigenvalue of the Hessian.'
+            + dl(
+                [
+                    ["LOW", low],
+                    ["HIGH", high],
+                ]
+            )
+        ),
+        dynstab.upper()
+    ]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -141,8 +125,26 @@ def webpanel(result, row, key_descriptions):
     return [panel, summary]
 
 
+@prepare_result
 class Result(ASRResult):
 
+    minhessianeig: float
+    dynamic_stability_phonons: str
+    q_qc: typing.List[typing.Tuple[float, float, float]]
+    omega_kl: typing.List[typing.List[float]]
+    path: BandPath
+    modes_kl: typing.List[typing.List[float]]
+    interp_freqs_kl: typing.List[typing.List[float]]
+
+    key_descriptions = {
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
+        "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
+        "q_qc": "List of momenta consistent with supercell.",
+        "omega_kl": "Phonon frequencies.",
+        "modes_kl": "Phonon modes.",
+        "interp_freqs_kl": "Interpolated phonon frequencies.",
+        "path": "Interpolated phonon bandstructure path.",
+    }
     formats = {"ase_webpanel": webpanel}
 
 
@@ -183,11 +185,12 @@ def main(mingo: bool = True) -> Result:
             p.D_N = D_N
 
     # First calculate the exactly known q-points
-    q_qc = np.indices(p.N_c).reshape(3, -1).T / p.N_c
+    N_c = p.supercell
+    q_qc = np.indices(N_c).reshape(3, -1).T / N_c
     out = p.band_structure(q_qc, modes=True, born=False, verbose=False)
     omega_kl, u_kl = out
 
-    R_cN = p.lattice_vectors()
+    R_cN = p.compute_lattice_vectors()
     eigs = []
     for q_c in q_qc:
         phase_N = np.exp(-2j * np.pi * np.dot(q_c, R_cN))

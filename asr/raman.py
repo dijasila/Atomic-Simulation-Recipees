@@ -1,10 +1,24 @@
 """Raman spectrum."""
-from asr.core import command, ASRResult
+import typing
 import numpy as np
+from asr.core import command, ASRResult, prepare_result
+from asr.database.browser import fig, make_panel_description, href, describe_entry
+
+
+panel_description = make_panel_description(
+    """Raman spectroscopy relies on inelastic scattering of photons by optical
+phonons. The Stokes part of the Raman spectrum, corresponding to emission of a
+single Gamma-point phonon is calculated for different incoming/outgoing photon
+polarizations using third order perturbation theory.""",
+    articles=[
+        href("""A. Taghizadeh et al.  A library of ab initio Raman spectra for automated
+identification of 2D materials. Nat Commun 11, 3011 (2020).""",
+             'https://doi.org/10.1038/s41467-020-16529-6'),
+    ],
+)
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
 
     # Make a table from the phonon modes
     data = row.data.get('results-asr.raman.json')
@@ -30,18 +44,28 @@ def webpanel(result, row, key_descriptions):
     else:
         opt = None
     # Make the panel
-    panel = {'title': 'Raman spectrum (RPA)',
+    panel = {'title': describe_entry('Raman spectrum', panel_description),
              'columns': [[fig('Raman.png')], [opt]],
              'plot_descriptions':
                  [{'function': raman,
                    'filenames': ['Raman.png']}],
-             'sort': 20}
+             'sort': 22}
 
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
+    freqs_l: typing.List[float]
+    wavelength_w: typing.List[float]
+    amplitudes_vvwl: typing.List[typing.List[typing.List[typing.List[complex]]]]
+
+    key_descriptions = {
+        "freqs_l": "Phonon frequencies (the Gamma point) [1/cm]",
+        "wavelength_w": "Laser excitation wavelength [nm]",
+        "amplitudes_vvwl": "Raman tensor [a.u.]",
+    }
     formats = {"ase_webpanel": webpanel}
 
 

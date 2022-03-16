@@ -1,18 +1,26 @@
 """Bethe Salpeter absorption spectrum."""
-from asr.core import command, option, file_barrier, ASRResult
 from click import Choice
+import typing
+
+import numpy as np
+from ase.units import alpha, Ha, Bohr
+
+from asr.core import command, option, file_barrier, ASRResult, prepare_result
+from asr.database.browser import (
+    fig, table, make_panel_description, describe_entry)
+from asr.utils.kpts import get_kpts_size
 
 
-def get_kpts_size(atoms, kptdensity):
-    """Try to get a reasonable monkhorst size which hits high symmetry points."""
-    from gpaw.kpt_descriptor import kpts2sizeandoffsets as k2so
-    size, offset = k2so(atoms=atoms, density=kptdensity)
-    size[2] = 1
-    for i in range(2):
-        if size[i] % 6 != 0:
-            size[i] = 6 * (size[i] // 6 + 1)
-    kpts = {'size': size, 'gamma': True}
-    return kpts
+panel_description = make_panel_description(
+    """The optical absorption calculated from the Bethe–Salpeter Equation
+(BSE). The BSE two-particle Hamiltonian is constructed using the wave functions
+from a DFT calculation with the direct band gap adjusted to match the direct
+band gap from a G0W0 calculation. Spin–orbit interactions are included.  The
+result of the random phase approximation (RPA) with the same direct band gap
+adjustment as used for BSE but without spin–orbit interactions, is also shown.
+""",
+    articles=['C2DB'],
+)
 
 
 @command(creates=['bse_polx.csv', 'bse_eigx.dat',
@@ -30,7 +38,7 @@ def get_kpts_size(atoms, kptdensity):
         type=Choice(['RPA', 'BSE', 'TDHF']))
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
+def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
               mode: str = 'BSE', bandfactor: int = 6,
               nv_s: float = -2.3, nc_s: float = 2.3) -> ASRResult:
     """Calculate BSE polarizability."""
@@ -53,7 +61,7 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
         truncation = None
     elif ND == 2:
         eta = 0.05
-        kpts = get_kpts_size(atoms=atoms, kptdensity=20)
+        kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
         truncation = '2D'
 
     else:
@@ -61,7 +69,7 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
             'asr for BSE not implemented for 0D and 1D structures')
 
     calc_gs = GPAW(gs, txt=None)
-    spin = calc_gs.get_spin_polarized()
+    spin = calc_gs.get_number_of_spins() == 2
     nval = calc_gs.wfs.nvalence
     nocc = int(nval / 2)
     nbands = bandfactor * nocc
@@ -93,16 +101,13 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
 
     nv_s = [np.max(nv_s), np.max(nv_s)]
     nc_s = [np.max(nc_s), np.max(nc_s)]
-    print('nv_s, nc_s', nv_s, nc_s)
+
     valence_bands = []
     conduction_bands = []
     for s in range(spin + 1):
         gap, v, c = bandgap(calc_gs, direct=True, spin=s, output=None)
         valence_bands.append(range(c[2] - nv_s[s], c[2]))
         conduction_bands.append(range(c[2], c[2] + nc_s[s]))
-
-    print(valence_bands)
-    print(conduction_bands)
 
     if not Path('gs_bse.gpw').is_file():
         calc = GPAW(
@@ -168,26 +173,35 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 6.0, ecut: float = 50.0,
 
 
 def absorption(row, filename, direction='x'):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from ase.units import alpha, Ha, Bohr
+    delta_bse, delta_rpa = gaps_from_row(row)
+    return _absorption(
+        dim=sum(row.toatoms().pbc),
+        magstate=row.magstate,
+        gap_dir=row.gap_dir,
+        gap_dir_nosoc=row.gap_dir_nosoc,
+        bse_data=np.array(
+            row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']),
+        pol_data=row.data.get('results-asr.polarizability.json'),
+        delta_bse=delta_bse,
+        delta_rpa=delta_rpa,
+        direction=direction,
+        filename=filename)
 
-    atoms = row.toatoms()
-    pbc = atoms.pbc.tolist()
-    dim = np.sum(pbc)
 
-    magstate = row.magstate
-
-    gap_dir = row.gap_dir
-    gap_dir_nosoc = row.gap_dir_nosoc
-
+def gaps_from_row(row):
     for method in ['_gw', '_hse', '_gllbsc', '']:
         gapkey = f'gap_dir{method}'
         if gapkey in row:
-            gap_dir_x = row.get(gapkey)
-            delta_bse = gap_dir_x - gap_dir
-            delta_rpa = gap_dir_x - gap_dir_nosoc
-            break
+            gap_dir_x = row[gapkey]
+            delta_bse = gap_dir_x - row.gap_dir
+            delta_rpa = gap_dir_x - row.gap_dir_nosoc
+            return delta_bse, delta_rpa
+
+
+def _absorption(*, dim, magstate, gap_dir, gap_dir_nosoc,
+                bse_data, pol_data,
+                delta_bse, delta_rpa, filename, direction):
+    import matplotlib.pyplot as plt
 
     qp_gap = gap_dir + delta_bse
 
@@ -197,32 +211,35 @@ def absorption(row, filename, direction='x'):
 
     ax = plt.figure().add_subplot(111)
 
-    data = row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']
-    wbse_w = data[:, 0] + delta_bse
-    absbse_w = 4 * np.pi * data[:, 2]
+    wbse_w = bse_data[:, 0] + delta_bse
     if dim == 2:
-        absbse_w *= wbse_w * alpha / Ha / Bohr * 100
+        sigma_w = -1j * 4 * np.pi * (bse_data[:, 1] + 1j * bse_data[:, 2])
+        sigma_w *= wbse_w * alpha / Ha / Bohr
+        absbse_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+    else:
+        absbse_w = 4 * np.pi * bse_data[:, 2]
     ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
     xmax = wbse_w[-1]
 
     # TODO: Sometimes RPA pol doesn't exist, what to do?
-    data = row.data.get('results-asr.polarizability.json')
-    if data:
-        wrpa_w = data['frequencies'] + delta_rpa
-        absrpa_w = 4 * np.pi * data[f'alpha{direction}_w'].imag
+    if pol_data:
+        wrpa_w = pol_data['frequencies'] + delta_rpa
+        sigma_w = -1j * 4 * np.pi * pol_data[f'alpha{direction}_w']
         if dim == 2:
-            absrpa_w *= wrpa_w * alpha / Ha / Bohr * 100
+            sigma_w *= wrpa_w * alpha / Ha / Bohr
+        absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
         ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
         ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
                                    absrpa_w[wrpa_w < xmax]])) * 1.05
     else:
         ymax = max(absbse_w[wbse_w < xmax]) * 1.05
+
     ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
             label='Direct QP gap')
 
     ax.set_xlim(0.0, xmax)
     ax.set_ylim(0.0, ymax)
-    ax.set_title(f'{direction}-polarization')
+    ax.set_title(f'Polarization: {direction}')
     ax.set_xlabel('Energy [eV]')
     if dim == 2:
         ax.set_ylabel('Absorbance [%]')
@@ -238,7 +255,6 @@ def absorption(row, filename, direction='x'):
 def webpanel(result, row, key_descriptions):
     import numpy as np
     from functools import partial
-    from asr.database.browser import fig, table
 
     E_B = table(row, 'Property', ['E_B'], key_descriptions)
 
@@ -250,7 +266,8 @@ def webpanel(result, row, key_descriptions):
         funcx = partial(absorption, direction='x')
         funcz = partial(absorption, direction='z')
 
-        panel = {'title': 'Optical absorption (BSE and RPA)',
+        panel = {'title': describe_entry('Optical absorption (BSE and RPA)',
+                                         panel_description),
                  'columns': [[fig('absx.png'), E_B],
                              [fig('absz.png')]],
                  'plot_descriptions': [{'function': funcx,
@@ -274,7 +291,20 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
+
+    E_B: float
+    bse_alphax_w: typing.List[float]
+    bse_alphay_w: typing.List[float]
+    bse_alphaz_w: typing.List[float]
+
+    key_descriptions = {
+        "E_B": ('The exciton binding energy from the Bethe–Salpeter '
+                'equation (BSE) [eV].'),
+        'bse_alphax_w': 'BSE polarizability x-direction.',
+                        'bse_alphay_w': 'BSE polarizability y-direction.',
+                        'bse_alphaz_w': 'BSE polarizability z-direction.'}
 
     formats = {"ase_webpanel": webpanel}
 
@@ -311,8 +341,6 @@ def main() -> Result:
             E_B = gsresults['gap_dir_nosoc'] - E
 
         data['E_B'] = E_B
-        data['__key_descriptions__'] = \
-            {'E_B': 'KVP: BSE binding energy (Exc. bind. energy) [eV]'}
 
     return data
 

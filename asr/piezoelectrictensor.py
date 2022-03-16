@@ -6,50 +6,92 @@ tensor. The central recipe of this module is
 
 """
 
-from asr.core import command, option, DictStr, ASRResult
+import itertools
+import typing
+from asr.core import command, option, DictStr, ASRResult, prepare_result
+from asr.database.browser import matrixtable, make_panel_description, describe_entry
+
+
+panel_description = make_panel_description("""
+The piezoelectric tensor, c, is a rank-3 tensor relating the macroscopic
+polarization to an applied strain. In Voigt notation, c is expressed as a 3xN
+matrix relating the (x,y,z) components of the polarizability to the N
+independent components of the strain tensor. The polarization in a periodic
+direction is calculated as an integral over Berry phases. The polarization in a
+non-periodic direction is obtained by direct evaluation of the first moment of
+the electron density.
+""")
+
+
+all_voigt_labels = ['xx', 'yy', 'zz', 'yz', 'xz', 'xy']
+all_voigt_indices = [[0, 1, 2, 1, 0, 0],
+                     [0, 1, 2, 2, 2, 1]]
+
+
+def get_voigt_mask(pbc_c: typing.List[bool]):
+    non_pbc_axes = set(char for char, pbc in zip('xyz', pbc_c) if not pbc)
+
+    mask = [False
+            if set(voigt_label).intersection(non_pbc_axes)
+            else True
+            for voigt_label in all_voigt_labels]
+    return mask
+
+
+def get_voigt_indices(pbc: typing.List[bool]):
+    mask = get_voigt_mask(pbc)
+    return [list(itertools.compress(indices, mask)) for indices in all_voigt_indices]
+
+
+def get_voigt_labels(pbc: typing.List[bool]):
+    mask = get_voigt_mask(pbc)
+    return list(itertools.compress(all_voigt_labels, mask))
 
 
 def webpanel(result, row, key_descriptions):
-    def matrixtable(M, digits=2):
-        table = M.tolist()
-        shape = M.shape
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                value = table[i][j]
-                table[i][j] = '{:.{}f}'.format(value, digits)
-        return table
 
     piezodata = row.data['results-asr.piezoelectrictensor.json']
     e_vvv = piezodata['eps_vvv']
     e0_vvv = piezodata['eps_clamped_vvv']
 
+    voigt_indices = get_voigt_indices(row.pbc)
+    voigt_labels = get_voigt_labels(row.pbc)
+
     e_ij = e_vvv[:,
-                 [0, 1, 2, 1, 0, 0],
-                 [0, 1, 2, 2, 2, 1]]
+                 voigt_indices[0],
+                 voigt_indices[1]]
     e0_ij = e0_vvv[:,
-                   [0, 1, 2, 1, 0, 0],
-                   [0, 1, 2, 2, 2, 1]]
+                   voigt_indices[0],
+                   voigt_indices[1]]
 
-    etable = dict(
-        header=['Piezoelectric tensor (e/Å<sup>dim-1</sup>)', '', ''],
-        type='table',
-        rows=matrixtable(e_ij))
+    etable = matrixtable(e_ij,
+                         columnlabels=voigt_labels,
+                         rowlabels=['x', 'y', 'z'],
+                         title='c<sub>ij</sub> (e/Å<sup>dim-1</sup>)')
 
-    e0table = dict(
-        header=['Clamped piezoelectric tensor (e/Å<sup>dim-1</sup>)', ''],
-        type='table',
-        rows=matrixtable(e0_ij))
+    e0table = matrixtable(
+        e0_ij,
+        columnlabels=voigt_labels,
+        rowlabels=['x', 'y', 'z'],
+        title='c<sup>clamped</sup><sub>ij</sub> (e/Å<sup>dim-1</sup>)')
 
-    columns = [[etable, e0table], []]
+    columns = [[etable], [e0table]]
 
-    panel = {'title': 'Piezoelectric tensor',
+    panel = {'title': describe_entry('Piezoelectric tensor',
+                                     panel_description),
              'columns': columns}
 
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
+    eps_vvv: typing.List[typing.List[typing.List[float]]]
+    eps_clamped_vvv: typing.List[typing.List[typing.List[float]]]
+
+    key_descriptions = {'eps_vvv': 'Piezoelectric tensor.',
+                        'eps_clamped_vvv': 'Piezoelectric tensor.'}
     formats = {"ase_webpanel": webpanel}
 
 
@@ -87,13 +129,6 @@ def main(strain_percent: float = 1,
         Amount of strain applied to the material.
     calculator : dict
         Calculator parameters.
-
-    Returns
-    -------
-    dict
-        Keys:
-            - ``eps_vvv``: Piezoelectric tensor in cartesian basis.
-            - ``eps_clamped_vvv``: Clamped piezoelectric tensor in cartesian basis.
 
     """
     import numpy as np

@@ -1,6 +1,7 @@
-from asr.core import command, option, argument, AtomsFile, ASRResult
+from asr.core import command, option, argument, AtomsFile, ASRResult, prepare_result
+from ase.formula import Formula
 import numpy as np
-from typing import List
+from typing import List, Tuple
 from ase import Atoms
 
 
@@ -354,7 +355,6 @@ class LeanIntermediate:
 
 class Reference:
     def __init__(self, formula, hform):
-        from ase.formula import Formula
         from collections import defaultdict
 
         self.formula = formula
@@ -454,10 +454,10 @@ class ConvexHullReference(Reference):
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig as asrfig
 
-    fname = './convexhullcut.png'
+    fname = 'convexhullcut.png'
 
     panel = {'title': 'Convex Hull Cut',
-             'columns': [asrfig(fname)],
+             'columns': [[asrfig(fname)]],
              'plot_descriptions':
              [{'function': chcut_plot,
                'filenames': [fname]}]}
@@ -489,7 +489,7 @@ def filrefs(refs):
     return nrefs
 
 
-def chcut_plot(row, *args):
+def chcut_plot(row, fname):
     import matplotlib.pyplot as plt
     from ase import Atoms
 
@@ -534,10 +534,30 @@ def chcut_plot(row, *args):
     plt.xlabel(f'{reactant_ref.formula} content')
     plt.ylabel(f"Heat of formation")
     plt.tight_layout()
-    plt.savefig('./convexhullcut.png', bbox_inches='tight')
+    plt.savefig(fname, bbox_inches='tight')
 
 
+@prepare_result
 class Result(ASRResult):
+    intermediates: List[Intermediate]
+    material_info: str  # Reference?
+    reactant: str
+    mu_measure: float
+    _matref: dict
+    _intermediates: List[dict]
+    _reactant_ref: dict
+    _refs: List[Tuple[Formula, float]]
+
+    key_descriptions = dict(
+        intermediates='List of intermediates along convex hull cut.',
+        material_info='Reference',
+        reactant='Name of reactant to calculate cut against. E.g. "O".',
+        mu_measure='Mu stability measure.',
+        _matref='Material references.',
+        _intermediates='List of intermediates.',
+        _reactant_ref='Reference for reactant.',
+        _refs='(formula, hform) list of relevant references.',
+    )
 
     formats = {'ase_webpanel': webpanel}
 

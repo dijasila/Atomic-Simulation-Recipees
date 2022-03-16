@@ -1,9 +1,10 @@
 import numpy as np
-from asr.core import command, option, ASRResult
+from asr.core import command, option, ASRResult, prepare_result
 
 
 @command(module='asr.exchange',
          creates=['gs_2mag.gpw', 'exchange.gpw'],
+         dependencies=['asr.gs@calculate'],
          requires=['gs.gpw'],
          resources='40:10h')
 @option('--gs', help='Ground state on which exchange calculation is based',
@@ -15,6 +16,13 @@ def calculate(gs: str = 'gs.gpw') -> ASRResult:
 
     calc = GPAW(gs, fixdensity=False, txt=None)
     atoms = calc.atoms
+    pbc = atoms.pbc.tolist()
+
+    nd = np.sum(pbc)
+    if nd != 2:
+        raise NotImplementedError('asr.exchange is only implemented '
+                                  'for 2D systems.')
+
     magnetic = magnetic_atoms(atoms)
     assert sum(magnetic) in [1, 2], \
         ('Cannot handle %d magnetic atoms' % sum(magnetic))
@@ -76,6 +84,7 @@ def get_parameters(gs, exchange, txt=False,
                    dis_cut=0.2, line=False, a0=None):
     """Extract Heisenberg parameters."""
     from gpaw import GPAW
+    from gpaw.occupations import create_occ_calc
     from gpaw.spinorbit import soc_eigenstates
     from ase.dft.bandgap import bandgap
 
@@ -94,6 +103,7 @@ def get_parameters(gs, exchange, txt=False,
         calc_afm = calc_gs_2mag
         calc_fm = calc_exchange
 
+    nbands = calc_afm.get_number_of_bands()
     atoms = calc_fm.atoms
     if a0 is None:
         a0 = np.argmax(np.abs(calc_fm.get_magnetic_moments()))
@@ -103,7 +113,7 @@ def get_parameters(gs, exchange, txt=False,
         if atoms[i].symbol == el:
             a_i.append(i)
     atoms = atoms[a_i].repeat((3, 3, 1))
-    dis_i = atoms.get_distances(a0, range(len(atoms)), mic=True)
+    dis_i = atoms.get_distances(0, range(len(atoms)), mic=True)
     dis0 = np.sort(dis_i)[1]
     N = len(np.where(np.sort(dis_i)[1:] / dis0 - 1 < dis_cut)[0])
 
@@ -112,14 +122,24 @@ def get_parameters(gs, exchange, txt=False,
 
     gap_fm, p1, p2 = bandgap(calc_fm, output=None)
     gap_afm, p1, p2 = bandgap(calc_afm, output=None)
+    if gap_fm > 0 and gap_afm > 0:
+        occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': 0.001})
+    else:
+        occcalc = None
+
+    E0_fm = soc_eigenstates(calc_fm, scale=0.0, occcalc=occcalc, n2=nbands,
+                            theta=0, phi=0).calculate_band_energy() / 2
+
+    E0_afm = soc_eigenstates(calc_afm, scale=0.0, occcalc=occcalc, n2=nbands,
+                             theta=0, phi=0).calculate_band_energy() / 2
 
     E_fm_x, E_fm_y, E_fm_z = (
-        soc_eigenstates(calc_fm,
+        soc_eigenstates(calc_fm, occcalc=occcalc, n2=nbands,
                         theta=theta, phi=phi).calculate_band_energy() / 2
         for theta, phi in [(90, 0), (90, 90), (0, 0)])
 
     E_afm_x, E_afm_y, E_afm_z = (
-        soc_eigenstates(calc_afm,
+        soc_eigenstates(calc_afm, occcalc=occcalc, n2=nbands,
                         theta=theta, phi=phi).calculate_band_energy() / 2
         for theta, phi in [(90, 0), (90, 90), (0, 0)])
 
@@ -142,7 +162,6 @@ def get_parameters(gs, exchange, txt=False,
             N_afm = 4
             N_fm = 2
         else:
-            print('Line not recognized')
             N_afm = N
             N_fm = 0
     else:
@@ -156,7 +175,7 @@ def get_parameters(gs, exchange, txt=False,
             N_afm = N
             N_fm = 0
 
-    J = (E_afm + E_afm_x - E_fm - E_fm_x) / (N_afm * S**2)
+    J = (E_afm + E_afm_x - E0_afm - E_fm - E_fm_x + E0_fm) / (N_afm * S**2)
 
     if np.abs(S - 0.5) < 0.1:
         A = 0
@@ -169,32 +188,90 @@ def get_parameters(gs, exchange, txt=False,
         A /= (2 * S - 1) * S
         B = (dE_fm - dE_afm) / (N_afm * S**2)
 
-    return J, A, B
+    return J, A, B, S, N
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (table,
+                                      entry_parameter_description,
+                                      describe_entry, WebPanel)
+    if row.get('magstate', 'NM') == 'NM':
+        return []
+
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.exchange@calculate')
+    explanation_J = ('The nearest neighbor exchange coupling\n\n'
+                     + parameter_description)
+    explanation_lam = ('The nearest neighbor isotropic exchange coupling\n\n'
+                       + parameter_description)
+    explanation_A = ('The single ion anisotropy\n\n'
+                     + parameter_description)
+    explanation_spin = ('The spin of magnetic atoms\n\n'
+                        + parameter_description)
+    explanation_N = ('The number of nearest neighbors\n\n'
+                     + parameter_description)
+    J = describe_entry('J', description=explanation_J)
+    lam = describe_entry('lam', description=explanation_lam)
+    A = describe_entry('A', description=explanation_A)
+    spin = describe_entry('spin', description=explanation_spin)
+    N_nn = describe_entry('N_nn', description=explanation_N)
+
+    heisenberg_table = table(row, 'Heisenberg model',
+                             [J, lam, A, spin, N_nn],
+                             kd=key_descriptions)
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+    panel = WebPanel(title=f'Basic magnetic properties ({xcname})',
+                     columns=[[heisenberg_table], []],
+                     sort=11)
+    return [panel]
+
+
+@prepare_result
+class Result(ASRResult):
+
+    J: float
+    A: float
+    lam: float
+    spin: float
+    N_nn: int
+
+    key_descriptions = {
+        'J': "Nearest neighbor exchange coupling [meV]",
+        'A': "Single-ion anisotropy (out-of-plane) [meV]",
+        'lam': "Anisotropic exchange (out-of-plane) [meV]",
+        'spin': "Maximum value of S_z at magnetic sites",
+        'N_nn': "Number of nearest neighbors",
+    }
+
+    formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.exchange',
+         dependencies=['asr.exchange@calculate'],
          requires=['gs_2mag.gpw', 'exchange.gpw'],
-         dependencies=['asr.exchange@calculate', 'asr.gs'])
-def main() -> ASRResult:
-    """Collect data."""
+         returns=Result)
+def main() -> Result:
+    """Extract Heisenberg parameters."""
     from ase.io import read
-    N_gs = len(read('gs.gpw'))
+
+    N_gs = len(read('structure.json'))
     N_exchange = len(read('gs_2mag.gpw'))
     if N_gs == N_exchange:
         line = False
     else:
         line = True
 
-    J, A, B = get_parameters('gs_2mag.gpw', 'exchange.gpw', line=line)
+    J, A, B, S, N = get_parameters('gs_2mag.gpw', 'exchange.gpw', line=line)
 
-    data = {}
-    data['J'] = J * 1000
-    data['__key_descriptions__'] = {'J': 'KVP: Exchange coupling [meV]'}
-    data['A'] = A * 1000
-    data['__key_descriptions__'] = {'A': 'KVP: Single-ion anisotropy [meV]'}
-    data['B'] = B * 1000
-    data['__key_descriptions__'] = {'B': 'KVP: Anisotropic exchange [meV]'}
-    return data
+    results = {'J': J * 1000,
+               'A': A * 1000,
+               'lam': B * 1000,
+               'spin': S,
+               'N_nn': N}
+
+    return Result(data=results)
 
 
 if __name__ == '__main__':

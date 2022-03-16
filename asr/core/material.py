@@ -2,7 +2,9 @@
 
 A material object closely mimics the behaviour of an ase.db.atomsrow.
 """
+import warnings
 from pathlib import Path
+from ase.db.row import AtomsRow
 
 
 class Material:
@@ -22,34 +24,35 @@ class Material:
             Raw data associated with atomic structure-
 
         """
-        self.__dict__.update(kvp)
-        self.atoms = atoms
-        self.data = data
-        self.kvp = kvp
-        self.cell = atoms.get_cell()
-        self.pbc = atoms.get_pbc()
+        row = AtomsRow(atoms)
+        row.__dict__.update(kvp)
+        row._data = data
+        self.row = row
+        # self.atoms = atoms
+        # self.data = data
+        # self.kvp = kvp
+        # self.cell = atoms.get_cell()
+        # self.pbc = atoms.get_pbc()
+
+    def __getattr__(self, key):
+        """Wrap row get attribute."""
+        return getattr(self.row, key)
 
     def __contains__(self, key):
         """Is property in key-value-pairs."""
-        return key in self.kvp
+        return key in self.row
 
     def __iter__(self):
         """Iterate over material attributes."""
-        return (key for key in self.__dict__ if key[0] != '_')
+        return self.row.__iter__()
 
     def __getitem__(self, key):
         """Get material attribute."""
-        return getattr(self, key)
+        return self.row[key]
 
     def __setitem__(self, key, value):
         """Set material attribute."""
-        setattr(self, key, value)
-
-    def get(self, key, default=None):
-        return self.kvp.get(key, default)
-
-    def toatoms(self):
-        return self.atoms
+        self.row[key] = value
 
 
 def get_material_from_folder(folder='.'):
@@ -69,19 +72,27 @@ def get_material_from_folder(folder='.'):
         Output material instance
 
     """
-    from asr.core import dct_to_object
+    from asr.core import decode_object
     from asr.database.fromtree import collect_file
     from ase.io import read
     kvp = {}
     data = {}
     for filename in Path(folder).glob('results-*.json'):
-        tmpkvp, tmpdata = collect_file(filename)
+        try:
+            tmpkvp, tmpdata = collect_file(filename)
+        except ModuleNotFoundError as err:
+            # If there are result files named after recipes that are not
+            # in the source code, it will trigger import errors.
+            # We just warn instead.
+            warnings.warn(f'No recipe for resultfile {filename}: {err}')
+            continue
+
         if tmpkvp or tmpdata:
             kvp.update(tmpkvp)
             data.update(tmpdata)
 
     for key, value in data.items():
-        obj = dct_to_object(value)
+        obj = decode_object(value)
         data[key] = obj
 
     atoms = read('structure.json', parallel=False)
@@ -128,7 +139,7 @@ def make_panel_figures(material, panels):
         pd = panel.get('plot_descriptions', [])
         if pd:
             pds.extend(pd)
-            panel.pop('plot_descriptions')
+            # panel.pop('plot_descriptions')
 
     for pd in pds:
         pd['function'](material, *pd['filenames'])

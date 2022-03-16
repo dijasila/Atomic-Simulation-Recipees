@@ -1,45 +1,83 @@
 """Convex hull stability analysis."""
 from collections import Counter
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
+import functools
 
-from asr.core import command, argument, ASRResult
+import numpy as np
+
+from asr.core import command, argument, ASRResult, prepare_result
+from asr.database.browser import (
+    fig, table, describe_entry, dl, br, make_panel_description
+)
 
 from ase.db import connect
 from ase.io import read
 from ase.phasediagram import PhaseDiagram
 from ase.db.row import AtomsRow
+from ase.formula import Formula
+
+# from matplotlib.legend_handler import HandlerPatch
+from matplotlib import patches
+# from matplotlib.legend_handler import HandlerLine2D, HandlerTuple
+
 
 known_methods = ['DFT', 'DFT+D3']
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig, table
+def get_hull_energies(pd: PhaseDiagram):
+    hull_energies = []
+    for ref in pd.references:
+        count = ref[0]
+        refenergy = ref[1]
+        natoms = ref[3]
+        decomp_energy, indices, coefs = pd.decompose(**count)
+        ehull = (refenergy - decomp_energy) / natoms
+        hull_energies.append(ehull)
 
-    caption = """
-    The convex hull describes stability
-    with respect to other phases."""
+    return hull_energies
+
+
+panel_description = make_panel_description(
+    """The heat of formation (ΔH) is the internal energy of a compound relative to
+the standard states of the constituent elements at T=0 K.  The energy above the
+convex hull is the internal energy relative to the most stable (possibly mixed)
+phase of the constituent elements at T=0 K.""",
+    articles=['C2DB'],
+)
+
+
+def webpanel(result, row, key_descriptions):
     hulltable1 = table(row,
                        'Stability',
                        ['hform', 'ehull'],
                        key_descriptions)
     hulltables = convex_hull_tables(row)
-    panel = {'title': 'Thermodynamic stability',
-             'columns': [[fig('convex-hull.png', caption=caption)],
-                         [hulltable1] + hulltables],
-             'plot_descriptions': [{'function': plot,
-                                    'filenames': ['convex-hull.png']}],
-             'sort': 1}
+    panel = {
+        'title': describe_entry(
+            'Thermodynamic stability', panel_description),
+        'columns': [[fig('convex-hull.png')],
+                    [hulltable1] + hulltables],
+        'plot_descriptions': [{'function':
+                               functools.partial(plot, thisrow=row),
+                               'filenames': ['convex-hull.png']}],
+        'sort': 1,
+    }
 
     thermostab = row.get('thermodynamic_stability_level')
-    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
-    high = 'Heat of formation < convex hull + 0.2 eV/atom'
-    medium = 'Heat of formation < 0.2 eV/atom'
-    low = 'Heat of formation > 0.2 eV/atom'
-    row = ['Thermodynamic',
-           '<a href="#" data-toggle="tooltip" data-html="true" '
-           + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-               low, medium, high, stabilities[thermostab].upper())]
+
+    stability_texts = [
+        [stability_names[stab], stability_descriptions[stab]]
+        for stab in [LOW, MEDIUM, HIGH]
+    ]
+
+    thermodynamic = describe_entry(
+        'Thermodynamic',
+        'Classifier for the thermodynamic stability of a material.'
+        + br
+        + dl(stability_texts)
+    )
+    row = [thermodynamic, stability_names[thermostab]]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -50,7 +88,24 @@ def webpanel(result, row, key_descriptions):
     return [panel, summary]
 
 
+@prepare_result
 class Result(ASRResult):
+
+    ehull: float
+    hform: float
+    references: List[dict]
+    thermodynamic_stability_level: str
+    coefs: Optional[List[float]]
+    indices: Optional[List[int]]
+    key_descriptions = {
+        "ehull": "Energy above convex hull [eV/atom].",
+        "hform": "Heat of formation [eV/atom].",
+        "thermodynamic_stability_level": "Thermodynamic stability level.",
+        "references": "List of relevant references.",
+        "indices":
+        "Indices of references that this structure will decompose into.",
+        "coefs": "Fraction of decomposing references (see indices doc).",
+    }
 
     formats = {"ase_webpanel": webpanel}
 
@@ -95,13 +150,13 @@ def main(databases: List[str]) -> Result:
     .. code-block:: javascript
 
         {
-            'title': 'Bulk reference phases',
-            'legend': 'Bulk',
-            'name': '{row.formula}',
-            'link': 'https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}',
-            'label': '{row.formula}',
-            'method': 'DFT',
-            'energy_key': 'total_energy',
+            "title": "Bulk reference phases",
+            "legend": "Bulk",
+            "name": "{row.formula}",
+            "link": "https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}",
+            "label": "{row.formula}",
+            "method": "DFT",
+            "energy_key": "total_energy"
         }
 
     Parameters
@@ -160,11 +215,9 @@ def main(databases: List[str]) -> Result:
     ref_database = databases[0]
     ref_metadata = dbdata[ref_database]['metadata']
     ref_energy_key = ref_metadata.get('energy_key', 'energy')
-    ref_energies = get_reference_energies(atoms, ref_database,
-                                          energy_key=ref_energy_key)
-    hform = hof(energy,
-                count,
-                ref_energies)
+    ref_energies_per_atom = get_singlespecies_reference_energies_per_atom(
+        atoms, ref_database, energy_key=ref_energy_key)
+
     # Make a list of the relevant references
     references = []
     for data in dbdata.values():
@@ -172,7 +225,7 @@ def main(databases: List[str]) -> Result:
         energy_key = metadata.get('energy_key', 'energy')
         for row in data['rows']:
             hformref = hof(row[energy_key],
-                           row.count_atoms(), ref_energies)
+                           row.count_atoms(), ref_energies_per_atom)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
@@ -186,6 +239,21 @@ def main(databases: List[str]) -> Result:
                 reference['link'] = reference['link'].format(row=row)
             references.append(reference)
 
+    assert len(atoms) == len(Formula(formula))
+    return calculate_hof_and_hull(formula, energy, references,
+                                  ref_energies_per_atom)
+
+
+def calculate_hof_and_hull(
+        formula, energy, references, ref_energies_per_atom):
+    formula = Formula(formula)
+
+    species_counts = formula.count()
+
+    hform = hof(energy,
+                species_counts,
+                ref_energies_per_atom)
+
     pdrefs = []
     for reference in references:
         h = reference['natoms'] * reference['hform']
@@ -194,53 +262,58 @@ def main(databases: List[str]) -> Result:
     results = {'hform': hform,
                'references': references}
 
-    if len(count) == 1:
-        ehull = hform
-    else:
-        pd = PhaseDiagram(pdrefs, verbose=False)
-        e0, indices, coefs = pd.decompose(formula)
-        ehull = hform - e0 / len(atoms)
-        results['indices'] = indices.tolist()
-        results['coefs'] = coefs.tolist()
+    pd = PhaseDiagram(pdrefs, verbose=False)
+    e0, indices, coefs = pd.decompose(str(formula))
+    ehull = hform - e0 / len(formula)
+    if len(species_counts) == 1:
+        assert abs(ehull - hform) < 1e-10
+
+    results['indices'] = indices.tolist()
+    results['coefs'] = coefs.tolist()
 
     results['ehull'] = ehull
-    results['__key_descriptions__'] = {
-        'hform': 'KVP: Heat of formation [eV/atom]',
-        'ehull': 'KVP: Energy above convex hull [eV/atom]',
-        'thermodynamic_stability_level': 'KVP: Thermodynamic stability level'}
-
-    if hform >= 0.2:
-        thermodynamic_stability = 1
-    elif hform is None or ehull is None:
-        thermodynamic_stability = None
-    elif ehull >= 0.2:
-        thermodynamic_stability = 2
-    else:
-        thermodynamic_stability = 3
-
-    results['thermodynamic_stability_level'] = thermodynamic_stability
-    return results
+    results['thermodynamic_stability_level'] = stability_rating(hform, ehull)
+    return Result(data=results)
 
 
-def get_reference_energies(atoms, references, energy_key='energy'):
-    count = Counter(atoms.get_chemical_symbols())
+LOW = 1
+MEDIUM = 2
+HIGH = 3
+stability_names = {LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH'}
+stability_descriptions = {
+    LOW: 'Heat of formation > 0.2 eV/atom',
+    MEDIUM: 'convex hull + 0.2 eV/atom < Heat of formation < 0.2 eV/atom',
+    HIGH: 'Heat of formation < convex hull + 0.2 eV/atom'}
+
+
+def stability_rating(hform, energy_above_hull):
+    assert hform <= energy_above_hull
+    if 0.2 < hform:
+        return LOW
+    if 0.2 < energy_above_hull:
+        return MEDIUM
+    return HIGH
+
+
+def get_singlespecies_reference_energies_per_atom(
+        atoms, references, energy_key='energy'):
 
     # Get reference energies
-    ref_energies = {}
+    ref_energies_per_atom = {}
     refdb = connect(references)
-    for row in select_references(refdb, set(count)):
+    for row in select_references(refdb, set(atoms.symbols)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
             e_ref = row[energy_key] / row.natoms
-            assert symbol not in ref_energies
-            ref_energies[symbol] = e_ref
+            assert symbol not in ref_energies_per_atom
+            ref_energies_per_atom[symbol] = e_ref
 
-    return ref_energies
+    return ref_energies_per_atom
 
 
-def hof(energy, count, ref_energies):
+def hof(energy, count, ref_energies_per_atom):
     """Heat of formation."""
-    energy = energy - sum(n * ref_energies[symbol]
+    energy = energy - sum(n * ref_energies_per_atom[symbol]
                           for symbol, n in count.items())
     return energy / sum(count.values())
 
@@ -259,7 +332,36 @@ def select_references(db, symbols):
     return list(refs.values())
 
 
-def plot(row, fname):
+class ObjectHandler:
+    def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+        x0, y0 = handlebox.xdescent, handlebox.ydescent
+        width, height = handlebox.width, handlebox.height
+        patch = patches.Polygon(
+            [
+                [x0, y0],
+                [x0, y0 + height],
+                [x0 + 3 / 4 * width, y0 + height],
+                [x0 + 1 / 4 * width, y0],
+            ],
+            closed=True, facecolor='C2',
+            edgecolor='none', lw=3,
+            transform=handlebox.get_transform())
+        handlebox.add_artist(patch)
+        patch = patches.Polygon(
+            [
+                [x0 + width, y0],
+                [x0 + 1 / 4 * width, y0],
+                [x0 + 3 / 4 * width, y0 + height],
+                [x0 + width, y0 + height],
+            ],
+            closed=True, facecolor='C3',
+            edgecolor='none', lw=3,
+            transform=handlebox.get_transform())
+        handlebox.add_artist(patch)
+        return patch
+
+
+def plot(row, fname, thisrow):
     from ase.phasediagram import PhaseDiagram
     import matplotlib.pyplot as plt
 
@@ -270,41 +372,81 @@ def plot(row, fname):
         return
 
     references = data['references']
+
     pdrefs = []
     legends = []
-    colors = []
+    sizes = []
+
     for reference in references:
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
-        if reference['legend'] not in legends:
-            legends.append(reference['legend'])
-        idlegend = legends.index(reference['legend'])
-        colors.append(f'C{idlegend + 2}')
+        legend = reference.get('legend')
+        if legend and legend not in legends:
+            legends.append(legend)
+        if legend in legends:
+            idlegend = legends.index(reference['legend'])
+            size = (3 * idlegend + 3)**2
+        else:
+            size = 2
+        sizes.append(size)
+    sizes = np.array(sizes)
 
     pd = PhaseDiagram(pdrefs, verbose=False)
 
     fig = plt.figure(figsize=(6, 5))
     ax = fig.gca()
 
+    legendhandles = []
+
+    for it, label in enumerate(['On hull', 'off hull']):
+        handle = ax.fill_between([], [],
+                                 color=f'C{it + 2}', label=label)
+        legendhandles.append(handle)
+
     for it, legend in enumerate(legends):
-        ax.scatter([], [], facecolor='none', marker='o',
-                   edgecolor=f'C{it + 2}', label=legend)
+        handle = ax.scatter([], [], facecolor='none', marker='o',
+                            edgecolor='k', label=legend, s=(3 + it * 3)**2)
+        legendhandles.append(handle)
+
+    hull_energies = get_hull_energies(pd)
 
     if len(count) == 2:
-        x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
+        xcoord, energy, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
+        hull = np.array(hull_energies) < 0.05
+        edgecolors = np.array(['C2' if hull_energy < 0.05 else 'C3'
+                               for hull_energy in hull_energies])
         for i, j in simplices:
-            ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
+            ax.plot(xcoord[[i, j]], energy[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
+
         if row.hform < 0:
-            mask = e < 0.05
-            e = e[mask]
-            x = x[mask]
+            mask = energy < 0.05
+            energy = energy[mask]
+            xcoord = xcoord[mask]
+            edgecolors = edgecolors[mask]
             hull = hull[mask]
             names = [name for name, m in zip(names, mask) if m]
-        ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
+            sizes = sizes[mask]
 
-        delta = e.ptp() / 30
-        for a, b, name, on_hull in zip(x, e, names, hull):
+        xcoord0 = xcoord[~hull]
+        energy0 = energy[~hull]
+        ax.scatter(
+            xcoord0, energy0,
+            # x[~hull], e[~hull],
+            facecolor='none', marker='o',
+            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
+            zorder=9)
+
+        ax.scatter(
+            xcoord[hull], energy[hull],
+            facecolor='none', marker='o',
+            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
+            zorder=10)
+
+        # ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
+
+        delta = energy.ptp() / 30
+        for a, b, name, on_hull in zip(xcoord, energy, names, hull):
             va = 'center'
             ha = 'left'
             dy = 0
@@ -316,30 +458,68 @@ def plot(row, fname):
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
 
         # Circle this material
-        xt = count.get(B, 0) / sum(count.values())
-        ax.plot([xt], [row.hform], 'o', color='C1', label='This material')
-        ymin = e.min()
-
+        ymin = energy.min()
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
-        plt.legend(loc='lower left')
+        newlegendhandles = [(legendhandles[0], legendhandles[1]),
+                            *legendhandles[2:]]
+
+        plt.legend(
+            newlegendhandles,
+            [r'$E_\mathrm{h} {^</_>}\, 5 \mathrm{meV}$',
+             *legends], loc='lower left', handletextpad=0.5,
+            handler_map={tuple: ObjectHandler()},
+        )
     else:
         x, y, _, hull, simplices = pd.plot2d3()
+
+        hull = np.array(hull)
+        hull = np.array(hull_energies) < 0.05
         names = [ref['label'] for ref in references]
+        latexnames = [
+            format(
+                Formula(name.split(' ')[0]).reduce()[0],
+                'latex'
+            )
+            for name in names
+        ]
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
-        ax.scatter(x, y, facecolor='none', marker='o', edgecolor=colors)
+        edgecolors = ['C2' if hull_energy < 0.05 else 'C3'
+                      for hull_energy in hull_energies]
+        ax.scatter(
+            x[~hull], y[~hull],
+            facecolor='none', marker='o',
+            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
+            zorder=9,
+        )
 
-        for a, b, name, on_hull in zip(x, y, names, hull):
-            if on_hull:
+        ax.scatter(
+            x[hull], y[hull],
+            facecolor='none', marker='o',
+            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
+            zorder=10,
+        )
+
+        printed_names = set()
+        thisformula = Formula(thisrow.formula)
+        thisname = format(thisformula, 'latex')
+        comps = thisformula.count().keys()
+        for a, b, name, on_hull, hull_energy in zip(
+                x, y, latexnames, hull, hull_energies):
+            if name in [
+                    thisname, *comps,
+            ] and name not in printed_names:
+                printed_names.add(name)
                 ax.text(a - 0.02, b, name, ha='right', va='top')
-        A, B, C = pd.symbols
-        bfrac = count.get(B, 0) / sum(count.values())
-        cfrac = count.get(C, 0) / sum(count.values())
 
-        ax.plot([bfrac + cfrac / 2],
-                [cfrac * 3**0.5 / 2],
-                'o', color='C1', label='This material')
-        plt.legend(loc='upper left')
+        newlegendhandles = [(legendhandles[0], legendhandles[1]),
+                            *legendhandles[2:]]
+        plt.legend(
+            newlegendhandles,
+            [r'$E_\mathrm{h} {^</_>}\, 5 \mathrm{meV}$',
+             *legends], loc='upper right', handletextpad=0.5,
+            handler_map={tuple: ObjectHandler()},
+        )
         plt.axis('off')
 
     plt.tight_layout()

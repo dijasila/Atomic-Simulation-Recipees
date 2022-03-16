@@ -1,5 +1,5 @@
 """Structural information."""
-from asr.core import command, ASRResult
+from asr.core import command, ASRResult, prepare_result
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -43,28 +43,110 @@ def get_reduced_formula(formula, stoichiometry=False):
     return result
 
 
+def get_spg_href(url):
+    from asr.database.browser import href
+
+    return href('SpgLib', url)
+
+
+def describe_pointgroup_entry(spglib):
+    from asr.database.browser import describe_entry
+
+    pointgroup = describe_entry(
+        'pointgroup',
+        f"Point group determined with {spglib}."
+    )
+
+    return pointgroup
+
+
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table
+    from asr.database.browser import (table, describe_entry, code, bold,
+                                      br, href, dl, div)
+
+    spglib = get_spg_href('https://spglib.github.io/spglib/')
+    crystal_type = describe_entry(
+        'crystal_type',
+        "The crystal type is defined as "
+        + br
+        + div(bold('-'.join([code('stoi'),
+                             code('spg no.'),
+                             code('occ. wyck. pos.')])), 'well well-sm text-center')
+        + 'where'
+        + dl(
+            [
+                [code('stoi'), 'Stoichiometry.'],
+                [code('spg no.'), f'The space group calculated with {spglib}.'],
+                [code('occ. wyck. pos.'),
+                 'Alphabetically sorted list of occupied '
+                 f'wyckoff positions determined with {spglib}.'],
+            ]
+        )
+    )
+
+    cls = describe_entry(
+        'class',
+        "The material class is a manually attributed name that is given to "
+        "a material for historical reasons and is therefore not well-defined "
+        "but can be useful classifying materials."
+    )
+
+    spg_list_link = href(
+        'Space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
+    )
+    spacegroup = describe_entry(
+        'spacegroup',
+        f"{spg_list_link} determined with {spglib}."
+    )
+
+    spgnum = describe_entry(
+        'spgnum',
+        f"{spg_list_link} number determined with {spglib}."
+    )
+
+    pointgroup = describe_pointgroup_entry(spglib)
+
+    icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
+                     'https://icsd.products.fiz-karlsruhe.de/')
+
+    icsd_id = describe_entry(
+        'icsd_id',
+        f"ID of a closely related material in the {icsd_link}."
+    )
+
+    cod_link = href(
+        'Crystallography Open Database (COD)',
+        'http://crystallography.net/cod/browse.html'
+    )
+
+    cod_id = describe_entry(
+        'cod_id',
+        f"ID of a closely related material in the {cod_link}."
+    )
 
     basictable = table(row, 'Structure info', [
-        'crystal_prototype', 'class', 'spacegroup', 'spgnum', 'pointgroup',
-        'ICSD_id', 'COD_id'
+        crystal_type, cls, spacegroup, spgnum, pointgroup,
+        icsd_id, cod_id
     ], key_descriptions, 2)
     basictable['columnwidth'] = 4
     rows = basictable['rows']
-    codid = row.get('COD_id')
+    codid = row.get('cod_id')
     if codid:
         # Monkey patch to make a link
         for tmprow in rows:
             href = ('<a href="http://www.crystallography.net/cod/'
                     + '{id}.html">{id}</a>'.format(id=codid))
-            if 'COD' in tmprow[0]:
+            if 'cod_id' in tmprow[0]:
                 tmprow[1] = href
 
     doi = row.get('doi')
+    doistring = describe_entry(
+        'Reported DOI',
+        'DOI of article reporting the synthesis of the material.'
+    )
     if doi:
         rows.append([
-            'Monolayer reported DOI',
+            doistring,
             '<a href="https://doi.org/{doi}" target="_blank">{doi}'
             '</a>'.format(doi=doi)
         ])
@@ -89,7 +171,30 @@ tests = [{'description': 'Test SI.',
                   'asr run "database.browser --only-figures"']}]
 
 
+@prepare_result
 class Result(ASRResult):
+
+    cell_area: float
+    has_inversion_symmetry: bool
+    stoichiometry: str
+    spacegroup: str
+    spgnum: int
+    pointgroup: str
+    crystal_type: str
+    spglib_dataset: dict
+    formula: str
+
+    key_descriptions = {
+        "cell_area": "Area of unit-cell [`Å²`]",
+        "has_inversion_symmetry": "Material has inversion symmetry",
+        "stoichiometry": "Stoichiometry",
+        "spacegroup": "Space group",
+        "spgnum": "Space group number",
+        "pointgroup": "Point group",
+        "crystal_type": "Crystal type",
+        "spglib_dataset": "SPGLib symmetry dataset.",
+        "formula": "Chemical formula."
+    }
 
     formats = {"ase_webpanel": webpanel}
 
@@ -107,6 +212,7 @@ def main() -> Result:
     """
     import numpy as np
     from ase.io import read
+    from asr.utils.symmetry import c2db_symmetry_eps
 
     atoms = read('structure.json')
     info = {}
@@ -118,21 +224,25 @@ def main() -> Result:
 
     # Get crystal symmetries
     from asr.utils.symmetry import atoms2symmetry
+    # According to tests by Thomas Olsen on C2DB, having a coarse
+    # angle tolerance is not important for solving the issue documented
+    # for asr.utils.symmetry.c2db_symmetry_eps.  So we still use a very
+    # strict symmetry.
     symmetry = atoms2symmetry(atoms,
-                              tolerance=1e-3,
+                              tolerance=c2db_symmetry_eps,
                               angle_tolerance=0.1)
     info['has_inversion_symmetry'] = symmetry.has_inversion
     dataset = symmetry.dataset
     info['spglib_dataset'] = dataset
 
-    # Get crystal prototype
+    # Get crystal type
     stoi = atoms.symbols.formula.stoichiometry()[0]
     sg = dataset['international']
     number = dataset['number']
     pg = dataset['pointgroup']
     w = ''.join(sorted(set(dataset['wyckoffs'])))
-    crystal_prototype = f'{stoi}-{number}-{w}'
-    info['crystal_prototype'] = crystal_prototype
+    crystal_type = f'{stoi}-{number}-{w}'
+    info['crystal_type'] = crystal_type
     info['spacegroup'] = sg
     info['spgnum'] = number
     from ase.db.core import str_represents, convert_str_to_int_float_or_str
@@ -143,19 +253,10 @@ def main() -> Result:
 
     if (atoms.pbc == [True, True, False]).all():
         info['cell_area'] = abs(np.linalg.det(atoms.cell[:2, :2]))
+    else:
+        info['cell_area'] = None
 
-    info['__key_descriptions__'] = {
-        'magstate': 'KVP: Magnetic state',
-        'is_magnetic': 'KVP: Material is magnetic (Magnetic)',
-        'cell_area': 'KVP: Area of unit-cell [Ang^2]',
-        'has_invsymm': 'KVP: Inversion symmetry',
-        'stoichiometry': 'KVP: Stoichiometry',
-        'spacegroup': 'KVP: Space group',
-        'spgnum': 'KVP: Space group number',
-        'pointgroup': 'KVP: Point group',
-        'crystal_prototype': 'KVP: Crystal prototype'}
-
-    return info
+    return Result(data=info)
 
 
 if __name__ == '__main__':

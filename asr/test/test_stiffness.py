@@ -6,36 +6,12 @@ import numpy as np
 @pytest.mark.ci
 def test_stiffness_gpaw(asr_tmpdir_w_params, mockgpaw, mocker, test_material,
                         get_webcontent):
-    from pathlib import Path
-    from ase.io import read
-    from asr.relax import main as relax
     from asr.setup.strains import main as setup_strains
     from asr.stiffness import main as stiffness
-    from asr.setup.strains import (get_strained_folder_name,
-                                   get_relevant_strains)
 
     test_material.write('structure.json')
     strain_percent = 1
     setup_strains(strain_percent=strain_percent)
-
-    ij = get_relevant_strains(test_material.pbc)
-    for i, j in ij:
-        for sign in [+1, -1]:
-            name = get_strained_folder_name(strain_percent * sign, i, j)
-            folder = Path(name)
-            assert folder.is_dir()
-            # run relaxation in each subfloder with gpaw calculator
-            from asr.core import chdir
-            with chdir(folder):
-                import os
-                assert os.path.isfile('unrelaxed.json')
-                assert os.path.isfile('results-asr.setup.params.json')
-                unrelaxed = read('unrelaxed.json')
-                relax(unrelaxed,
-                      calculator={"name": "gpaw",
-                                  "kpts": {"density": 2, "gamma": True}})
-                assert os.path.isfile('results-asr.relax.json')
-                assert os.path.isfile('structure.json')
 
     results = stiffness()
     nd = np.sum(test_material.pbc)
@@ -80,6 +56,7 @@ def test_stiffness_emt(asr_tmpdir_w_params, name, get_webcontent):
                                    get_relevant_strains)
 
     structure = bulk(name)
+    structure.set_initial_magnetic_moments([0.0] * len(structure))
     structure.write('structure.json')
     strain_percent = 1
     setup_strains(strain_percent=1)

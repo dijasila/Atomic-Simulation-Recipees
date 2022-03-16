@@ -1,7 +1,12 @@
 from typing import Dict
 from asr.core import (ASRResult, prepare_result, WebPanelEncoder, command,
-                      dct_to_object)
+                      decode_object, encode_object,
+                      obj_to_id, write_json,
+                      read_file, decode_json,
+                      decode_result, UnknownDataFormat)
+from asr.utils.fix_object_ids import fix_object_id, _fix_folders
 import pytest
+from asr.gs import Result as GSResult
 
 
 class MyWebPanel(WebPanelEncoder):
@@ -38,12 +43,12 @@ class MyResult(ASRResult):
 @command('test_core_results',
          returns=MyResult)
 def recipe() -> MyResult:
-    return MyResult(a=2)
+    return MyResult.fromdata(a=2)
 
 
 @pytest.mark.ci
 def test_results_object(capsys):
-    results = MyResult(a=1)
+    results = MyResult.fromdata(a=1)
     results.metadata = {'resources': {'time': 'right now'}}
     assert results.a == 1
     assert 'a' in results
@@ -67,7 +72,7 @@ def test_results_object(capsys):
     newresults = MyResult.from_format(json, format='json')
     assert newresults == results
 
-    otherresults = MyResult(a=2)
+    otherresults = MyResult.fromdata(a=2)
     assert not otherresults == results
 
 
@@ -82,7 +87,7 @@ def test_reading_result():
 
 @pytest.mark.ci
 def test_reading_older_version():
-    result_0 = MyResultVer0(a=1, b=2)
+    result_0 = MyResultVer0.fromdata(a=1, b=2)
     jsonresult = result_0.format_as('json')
     result_1 = MyResultVer0.from_format(jsonresult, 'json')
 
@@ -811,8 +816,100 @@ def test_read_old_format():
         }
     }
 
-    result = dct_to_object(dct)
+    result = decode_object(dct)
     assert result.formats['ase_webpanel'] == webpanel
     assert isinstance(result, Result)
     assert result.etot == dct['etot']
     assert result.metadata.asr_name == 'asr.gs'
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize('cls,result',
+                         [(MyResult, 'asr.test.test_core_results::MyResult')])
+def test_object_to_id(cls, result):
+    assert obj_to_id(cls) == result
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize(
+    "filename,dct,result_object_id",
+    [
+        ('results-asr.gs@calculate.json',
+         {'object_id': '__main__::CalculateResult'},
+         'asr.gs::CalculateResult'),
+        ('results-asr.convex_hull.json',
+         {'object_id': '__main__::Result'},
+         'asr.convex_hull::Result')
+
+    ]
+)
+def test_bad_object_ids(filename, dct, result_object_id):
+    dct = fix_object_id(filename, dct)
+    assert dct['object_id'] == result_object_id
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize(
+    'obj,result',
+    [
+        (GSResult, 'asr.gs::Result'),
+        (MyResult, 'asr.test.test_core_results::MyResult')
+    ]
+)
+def test_obj_to_id(obj, result):
+    assert obj_to_id(obj) == result
+
+
+@pytest.mark.ci
+def test_fix_folders_corrupt_object_id(asr_tmpdir):
+    folders = ['.']
+    write_json('results-asr.gs@calculate.json',
+               {'object_id': '__main__::Result',
+                'args': [],
+                'kwargs': dict(
+                    data=dict(
+                        gaps_nosoc=dict(object_id='__main__::GapsResult',
+                                        args=[],
+                                        kwargs=dict(strict=False))),
+                    strict=False)})
+    _fix_folders(folders)
+    text = read_file('results-asr.gs@calculate.json')
+    dct = decode_json(text)
+    assert (dct['object_id'] == 'asr.gs::Result'
+            and dct['constructor'] == 'asr.gs::Result')
+
+    assert (dct['kwargs']['data']['gaps_nosoc']['object_id'] == 'asr.gs::GapsResult'
+            and dct['kwargs']['data']['gaps_nosoc']['constructor']
+            == 'asr.gs::GapsResult')
+
+
+@pytest.mark.ci
+def test_decode_result_raises_unknown_data_format(asr_tmpdir):
+    data = {'etot': 0}
+    with pytest.raises(UnknownDataFormat):
+        decode_result(data)
+
+
+@pytest.mark.ci
+def test_fix_folders_missing_object_id(asr_tmpdir):
+    folders = ['.']
+    write_json('results-asr.gs.json',
+               {'etot': 0})
+    _fix_folders(folders)
+    text = read_file('results-asr.gs.json')
+    dct = decode_json(text)
+    result = decode_result(dct)
+    assert result.etot == 0
+
+
+@pytest.mark.ci
+@pytest.mark.parametrize('obj', [
+    (MyResult.fromdata(a=1), MyResult.fromdata(a=2)),
+    [MyResult.fromdata(a=1), MyResult.fromdata(a=2)],
+    MyResult.fromdata(a=MyResult.fromdata(a=2)),
+])
+def test_encode_decode_result_objects(obj):
+    encoded_obj = encode_object(obj)
+    assert not encoded_obj == obj
+    decoded_obj = decode_object(encoded_obj)
+    assert obj == decoded_obj

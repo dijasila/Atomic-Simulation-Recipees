@@ -13,24 +13,24 @@ Atomic Simulation Recipes
         :target: https://asr.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
-
 .. image:: https://pyup.io/repos/gitlab/mortengjerding/asr/shield.svg
      :target: https://pyup.io/repos/gitlab/mortengjerding/asr/
      :alt: Updates
 
 
-
-ASE recipes for calculating material properties
-
+Recipes for calculating material properties
 
 * Free software: GNU General Public License v3
 * Documentation: https://asr.readthedocs.io.
-* Code: https://gitlab.com/mortengjerding/asr.git
+* Code: https://gitlab.com/asr-dev/asr.git
+
 
 Features
 --------
 
-* TODO
+* Simple workflow implementation based on persistent caching.
+* Uniform and easy to use interface.
+* Package and distribute your atomic scale research project in an ASE database.
 
 Credits
 -------

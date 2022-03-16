@@ -1,6 +1,19 @@
 """Electronic band structures."""
 from typing import Union
-from asr.core import command, option, ASRResult, singleprec_dict
+import numpy as np
+from ase.dft.kpoints import labels_from_kpts
+from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
+from asr.database.browser import fig, make_panel_description, describe_entry
+from asr.utils.hacks import gs_xcname_from_row
+from asr.utils.symmetry import c2db_symmetry_eps
+
+
+panel_description = make_panel_description(
+    """The band structure with spin–orbit interactions is shown with the
+expectation value of S_i (where i=z for non-magnetic materials and otherwise is
+the magnetic easy axis) indicated by the color code.""",
+    articles=['C2DB'],
+)
 
 
 @command('asr.bandstructure',
@@ -15,12 +28,10 @@ def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
     """Calculate electronic band structure."""
     from gpaw import GPAW
     from ase.io import read
+
     atoms = read('structure.json')
-    if kptpath is None:
-        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc)
-    else:
-        path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                                   pbc=atoms.pbc)
+    path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
+                               pbc=atoms.pbc, eps=c2db_symmetry_eps)
 
     convbands = emptybands // 2
     parms = {
@@ -37,17 +48,20 @@ def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
     calc.write('bs.gpw')
 
 
-def bs_pbe_html(row,
-                filename='pbe-bs.html',
-                figsize=(6.4, 6.4),
-                show_legend=True,
-                s=2):
+bs_png = 'bs.png'
+bs_html = 'bs.html'
+
+
+def plot_bs_html(row,
+                 filename=bs_html,
+                 figsize=(6.4, 6.4),
+                 s=2):
     import plotly
     import plotly.graph_objs as go
-    import numpy as np
 
     traces = []
     d = row.data.get('results-asr.bandstructure.json')
+    xcname = gs_xcname_from_row(row)
 
     path = d['bs_nosoc']['path']
     kpts = path.kpts
@@ -71,7 +85,6 @@ def bs_pbe_html(row,
         emax = ef + 3
     e_skn = d['bs_nosoc']['energies']
     shape = e_skn.shape
-    from ase.dft.kpoints import labels_from_kpts
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
     xcoords = np.vstack([xcoords] * shape[0] * shape[2])
     # colors_s = plt.get_cmap('viridis')([0, 1])  # color for sz = 0
@@ -80,7 +93,7 @@ def bs_pbe_html(row,
         x=xcoords.ravel(),
         y=e_kn.T.ravel() - reference,
         mode='markers',
-        name='PBE no SOC',
+        name=f'{xcname} no SOC',
         showlegend=True,
         marker=dict(size=4, color='#999999'))
     traces.append(trace)
@@ -91,7 +104,6 @@ def bs_pbe_html(row,
     ef = d['bs_soc']['efermi']
     sz_mk = d['bs_soc']['sz_mk']
 
-    from ase.dft.kpoints import labels_from_kpts
     xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
 
     shape = e_mk.shape
@@ -108,7 +120,7 @@ def bs_pbe_html(row,
         x=xcoords.ravel(),
         y=e_mk.ravel() - reference,
         mode='markers',
-        name='PBE',
+        name=xcname,
         showlegend=True,
         marker=dict(
             size=4,
@@ -217,16 +229,16 @@ def bs_pbe_html(row,
         fd.write(html)
 
 
-def add_bs_pbe(row, ax, reference=0, color='C1'):
-    """Plot pbe with soc on ax."""
-    from ase.dft.kpoints import labels_from_kpts
+def add_bs_ks(row, ax, reference=0, color='C1'):
+    """Plot with soc on ax."""
     d = row.data.get('results-asr.bandstructure.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
+    xcname = gs_xcname_from_row(row)
     xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
     for e_k in e_mk[:-1]:
         ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
-    ax.lines[-1].set_label('PBE')
+    ax.lines[-1].set_label(xcname)
     ef = d['bs_soc']['efermi']
     ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
     return ax
@@ -249,7 +261,6 @@ def plot_with_colors(bs,
                      loc=None,
                      s=2):
     """Plot band-structure with colors."""
-    import numpy as np
     import matplotlib.pyplot as plt
 
     # if bs.ax is None:
@@ -286,18 +297,22 @@ def plot_with_colors(bs,
     return ax, cbar
 
 
-def bs_pbe(row,
-           filename='pbe-bs.png',
-           figsize=(5.5, 5),
-           show_legend=True,
-           s=0.5):
+def legend_on_top(ax, **kwargs):
+    ax.legend(loc='lower left', bbox_to_anchor=(0, 1, 1, 0),
+              mode='expand', **kwargs)
+
+
+def plot_bs_png(row,
+                filename=bs_png,
+                figsize=(5.5, 5),
+                s=0.5):
 
     import matplotlib.pyplot as plt
     from matplotlib import rcParams
     import matplotlib.patheffects as path_effects
-    import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
     d = row.data.get('results-asr.bandstructure.json')
+    xcname = gs_xcname_from_row(row)
 
     path = d['bs_nosoc']['path']
     ef_nosoc = d['bs_nosoc']['efermi']
@@ -323,10 +338,10 @@ def bs_pbe(row,
     else:
         emax = ef_nosoc + 3
     bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
-    # pbe without soc
+    # without soc
     nosoc_style = dict(
         colors=['0.8'] * e_skn.shape[0],
-        label='PBE no SOC',
+        label=f'{xcname} no SOC',
         ls='-',
         lw=1.0,
         zorder=0)
@@ -340,7 +355,7 @@ def bs_pbe(row,
         emax=emax - ref_nosoc,
         ylabel=label,
         **nosoc_style)
-    # pbe with soc
+    # with soc
     e_mk = d['bs_soc']['energies']
     sz_mk = d['bs_soc']['sz_mk']
     sdir = row.get('spin_axis', 'z')
@@ -364,9 +379,8 @@ def bs_pbe(row,
         cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
         cbar.update_ticks()
     csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
-    ax.plot([], [], label='PBE', color=csz0)
-    ax.set_xlabel('$k$-points')
-    plt.legend(loc='upper right')
+    ax.plot([], [], label=xcname, color=csz0)
+
     xlim = ax.get_xlim()
     x0 = xlim[1] * 0.01
     text = ax.annotate(
@@ -380,14 +394,13 @@ def bs_pbe(row,
         path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
         path_effects.Normal()
     ])
-    if not show_legend:
-        ax.legend_.remove()
+    legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
     from typing import Tuple, List
+    from asr.utils.hacks import gs_xcname_from_row
 
     def rmxclabel(d: 'Tuple[str, str, str]',
                   xcs: List) -> 'Tuple[str, str, str]':
@@ -398,18 +411,25 @@ def webpanel(result, row, key_descriptions):
 
         return tuple(rm(s) for s in d)
 
-    panel = {'title': 'Electronic band structure (PBE)',
-             'columns': [[fig('pbe-bs.png', link='pbe-bs.html')],
-                         [fig('bz-with-gaps.png')]],
-             'plot_descriptions': [{'function': bs_pbe,
-                                    'filenames': ['pbe-bs.png']},
-                                   {'function': bs_pbe_html,
-                                    'filenames': ['pbe-bs.html']}],
+    xcname = gs_xcname_from_row(row)
+
+    panel = {'title': describe_entry(f'Electronic band structure ({xcname})',
+                                     panel_description),
+             'columns': [
+                 [
+                     fig(bs_png, link=bs_html),
+                 ],
+                 [fig('bz-with-gaps.png')]],
+             'plot_descriptions': [{'function': plot_bs_png,
+                                    'filenames': [bs_png]},
+                                   {'function': plot_bs_html,
+                                    'filenames': [bs_html]}],
              'sort': 12}
 
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
 
     version: int = 0
@@ -419,8 +439,8 @@ class Result(ASRResult):
 
     key_descriptions = \
         {
-            'bs_soc': 'Bandstructure data with spin-orbit coupling.',
-            'bs_nosoc': 'Bandstructure data without spin-orbit coupling.'
+            'bs_soc': 'Bandstructure data with spin–orbit coupling.',
+            'bs_nosoc': 'Bandstructure data without spin–orbit coupling.'
         }
 
     formats = {"ase_webpanel": webpanel}
@@ -439,7 +459,6 @@ def main() -> Result:
     from ase.dft.kpoints import BandPath
     from asr.core import read_json
     import copy
-    import numpy as np
     from asr.utils.gpw2eigs import gpw2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
 
@@ -456,7 +475,8 @@ def main() -> Result:
         else:
             path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
                                             path=path['path'],
-                                            npoints=path['npoints'])
+                                            npoints=path['npoints'],
+                                            eps=c2db_symmetry_eps)
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     results = {}
@@ -499,8 +519,10 @@ def main() -> Result:
 
     bsresults['sz_mk'] = sz_mk
 
-    return Result(bs_soc=singleprec_dict(bsresults),
-                  bs_nosoc=singleprec_dict(results['bs_nosoc']))
+    return Result.fromdata(
+        bs_soc=singleprec_dict(bsresults),
+        bs_nosoc=singleprec_dict(results['bs_nosoc'])
+    )
 
 
 if __name__ == '__main__':

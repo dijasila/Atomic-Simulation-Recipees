@@ -1,5 +1,16 @@
 """Fermi surfaces."""
-from asr.core import command, ASRResult
+from asr.core import command, ASRResult, prepare_result
+from asr.database.browser import fig, make_panel_description, describe_entry
+
+
+panel_description = make_panel_description(
+    """The Fermi surface calculated with spin–orbit interactions. The expectation
+value of S_i (where i=z for non-magnetic materials and otherwise is the
+magnetic easy axis) indicated by the color code.""",
+    articles=[
+        'C2DB',
+    ],
+)
 
 
 def bz_vertices(cell):
@@ -58,9 +69,8 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
 
-    panel = {'title': 'Fermi surface',
+    panel = {'title': describe_entry('Fermi surface', panel_description),
              'columns': [[fig('fermi_surface.png')]],
              'plot_descriptions': [{'function': plot_fermi,
                                     'filenames': ['fermi_surface.png']}],
@@ -69,48 +79,41 @@ def webpanel(result, row, key_descriptions):
     return [panel]
 
 
-def plot_fermi(row, fname,
-               annotate=True, fontsize=10, svbm=100, scbm=40, lwvbm=2.5,
-               sfs=1, dpi=200, scale=None, scalecb=None,
-               bbox_to_anchor=None, angle=0):
+def plot_fermi(row, fname, sfs=1, dpi=200):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
+    from asr.utils.symmetry import c2db_symmetry_eps
     cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
-    plt.figure(figsize=(4, 3))
+    lat = cell.get_bravais_lattice(pbc=row.pbc, eps=c2db_symmetry_eps)
+    plt.figure(figsize=(5, 4))
     ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    add_fermi(row, ax=ax, annotate=annotate, s=sfs, scale=scalecb)
+    add_fermi(row, ax=ax, s=sfs)
+    plt.tight_layout()
     plt.savefig(fname, dpi=dpi)
-    plt.close()
 
 
-def add_fermi(row, ax, annotate=True, s=0.25, scale=None, angle=0,):
+def add_fermi(row, ax, s=0.25):
     from matplotlib import pyplot as plt
     import matplotlib.colors as colors
     import numpy as np
     verts = row.data['results-asr.fermisurface.json']['contours'].copy()
     normalize = colors.Normalize(vmin=-1, vmax=1)
-    rotate = np.array([[np.cos(angle), -np.sin(angle), 0],
-                       [np.sin(angle), np.cos(angle), 0],
-                       [0, 0, 1]])
     verts[:, :2] /= (2 * np.pi)
-    verts[:, :2] = np.dot(rotate[:2, :2], verts[:, :2].T).T
     im = ax.scatter(verts[:, 0], verts[:, 1], c=verts[:, -1],
                     s=s, cmap='viridis', marker=',',
                     norm=normalize, alpha=1, zorder=2)
-    rect = np.array([0.85, 0.2, 0.025, 0.6])
-    if scale is not None:
-        center = np.array([0, 0.5, 0, 0])
-        rect = (rect - center) * scale + center
-    cbaxes = plt.gcf().add_axes(rect)
-    cbar = plt.colorbar(im, cax=cbaxes, ticks=[-1, -0.5, 0, 0.5, 1])
+
+    sdir = row.get('spin_axis', 'z')
+    cbar = plt.colorbar(im, ticks=[-1, -0.5, 0, 0.5, 1])
     cbar.ax.tick_params()
-    cbar.set_label('$\\langle S_z \\rangle$')
-
-    return cbaxes
+    cbar.set_label(r'$\langle S_{} \rangle $'.format(sdir))
 
 
+@prepare_result
 class Result(ASRResult):
+
+    contours: list
+    key_descriptions = {'contours': 'List of Fermi surface contours.'}
 
     formats = {"ase_webpanel": webpanel}
 
@@ -118,35 +121,36 @@ class Result(ASRResult):
 @command('asr.fermisurface',
          returns=Result,
          requires=['gs.gpw', 'results-asr.structureinfo.json'],
-         dependencies=['asr.gs@calculate', 'asr.structureinfo'])
+         dependencies=['asr.gs', 'asr.structureinfo'])
 def main() -> Result:
     import numpy as np
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs
     from gpaw.kpt_descriptor import to1bz
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
+    from ase.io import read
+    atoms = read('structure.json')
+    ndim = sum(atoms.pbc)
+    assert ndim == 2, 'Fermi surface recipe only implemented for 2D systems.'
     theta, phi = get_spin_axis()
     eigs_km, ef, s_kvm = gpw2eigs('gs.gpw', return_spin=True,
                                   theta=theta, phi=phi,
                                   symmetry_tolerance=1e-2)
     eigs_mk = eigs_km.T
-    eigs_mk -= ef
+    eigs_mk = eigs_mk - ef
     calc = GPAW('gs.gpw', txt=None)
     s_mk = s_kvm[:, get_spin_index()].T
 
     A_cv = calc.atoms.get_cell()
     B_cv = np.linalg.inv(A_cv).T * 2 * np.pi
 
-    bzk_kc = calc.wfs.kd.bzk_kc
+    bzk_kc = calc.get_bz_k_points()
     bzk_kv = np.dot(bzk_kc, B_cv)
 
     contours = []
     selection = ~np.logical_or(eigs_mk.max(1) < 0, eigs_mk.min(1) > 0)
     eigs_mk = eigs_mk[selection, :]
     s_mk = s_mk[selection, :]
-    bz2ibz_k = calc.wfs.kd.bz2ibz_k
-    eigs_mk = eigs_mk[:, bz2ibz_k]
-    s_mk = s_mk[:, bz2ibz_k]
 
     n = 5
     N_xc = np.indices((n, n, 1)).reshape((3, n**2)).T - n // 2

@@ -1,26 +1,78 @@
 """Orbital projected band structure."""
 import numpy as np
 
-from asr.core import command, ASRResult
+from asr.core import command, ASRResult, prepare_result
+import typing
+
+from asr.database.browser import make_panel_description
+from asr.utils.hacks import gs_xcname_from_row
+
+panel_description = make_panel_description(
+    """The single-particle band structure and density of states projected onto
+atomic orbitals (s,p,d). Spin–orbit interactions are not included in these
+plots.""",
+    articles=[
+        'C2DB',
+    ],
+)
 
 
-# ---------- Webpanel ---------- #
+scf_projected_bs_filename = 'scf-projected-bs.png'
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
+    from asr.database.browser import (fig,
+                                      entry_parameter_description,
+                                      describe_entry, WebPanel)
 
-    panel = {'title': 'Projected band structure and DOS (PBE)',
-             'columns': [[fig('pbe-projected-bs.png', link='empty')],
-                         [fig('bz-with-gaps.png')]],
-             'plot_descriptions': [{'function': projected_bs_pbe,
-                                    'filenames': ['pbe-projected-bs.png']}],
-             'sort': 13.5}
+    xcname = gs_xcname_from_row(row)
+
+    # Projected band structure figure
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.bandstructure@calculate')
+    dependencies_parameter_descriptions = ''
+    for dependency, exclude_keys in zip(
+            ['asr.gs@calculate'],
+            [set(['txt', 'fixdensity', 'verbose', 'symmetry',
+                  'idiotproof', 'maxiter', 'hund', 'random',
+                  'experimental', 'basis', 'setups'])]
+    ):
+        epd = entry_parameter_description(
+            row.data,
+            dependency,
+            exclude_keys=exclude_keys)
+        dependencies_parameter_descriptions += f'\n{epd}'
+    explanation = ('Orbital projected band structure without spin–orbit coupling\n\n'
+                   + parameter_description
+                   + dependencies_parameter_descriptions)
+
+    panel = WebPanel(
+        title=describe_entry(
+            f'Projected band structure and DOS ({xcname})',
+            panel_description),
+        columns=[[describe_entry(fig(scf_projected_bs_filename, link='empty'),
+                                 description=explanation)],
+                 [fig('bz-with-gaps.png')]],
+        plot_descriptions=[{'function': projected_bs_scf,
+                            'filenames': [scf_projected_bs_filename]}],
+        sort=13.5)
 
     return [panel]
 
 
+@prepare_result
 class Result(ASRResult):
+
+    symbols: typing.List[str]
+    yl_i: typing.List[typing.Tuple[str, str]]
+    weight_skni: typing.List[typing.List[typing.List[float]]]
+
+    key_descriptions: typing.Dict[str, str] = dict(
+        symbols="Chemical symbols.",
+        yl_i="Symbol and orbital angular momentum string ('y,l') of each orbital i.",
+        weight_skni="Weight of each projector (indexed by (s, k, n)) on orbitals i.",
+    )
 
     formats = {'ase_webpanel': webpanel}
 
@@ -287,7 +339,7 @@ def get_pie_markers(weight_xi, scale_marker=True, s=36., res=64):
     return pie_xi
 
 
-def projected_bs_pbe(row, filename='pbe-projected-bs.png',
+def projected_bs_scf(row, filename,
                      npoints=40, markersize=36., res=64,
                      figsize=(5.5, 5), fontsize=10):
     """Produce the projected band structure.
@@ -309,7 +361,6 @@ def projected_bs_pbe(row, filename='pbe-projected-bs.png',
     from matplotlib.lines import Line2D
     import numpy as np
     from ase.spectrum.band_structure import BandStructure, BandStructurePlot
-    mpl.rcParams['font.size'] = fontsize
 
     # Extract projections data
     data = row.data.get('results-asr.projected_bandstructure.json')

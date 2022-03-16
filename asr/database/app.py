@@ -1,20 +1,39 @@
 """Database web application."""
 from typing import List
-from asr.core import command, option, argument, ASRResult
-
+import multiprocessing
 import tempfile
 from pathlib import Path
+import warnings
 
-from ase.db import connect
-from ase.db.app import app, projects
-from flask import render_template, send_file, Response, jsonify
+from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json
-import asr
+from jinja2 import UndefinedError
+from ase.db import connect
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
-import warnings
+
+import asr
+from asr.core import (command, option, argument, ASRResult,
+                      decode_object, UnknownDataFormat)
+
+
+def import_dbapp_from_ase():
+    # Compatibility fix since ASE is moving away from global variables.
+    try:
+        from ase.db.app import DBApp
+    except ImportError:
+        from ase.db.app import app, projects
+        return app, projects
+
+    dbapp = DBApp()
+    return dbapp.flask, dbapp.projects
+
+
+# XXX Should not be using global variables!
+app, projects = import_dbapp_from_ase()
+
 
 tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
 
@@ -22,14 +41,19 @@ path = Path(asr.__file__).parent.parent
 app.jinja_loader.searchpath.append(str(path))
 
 
-def create_key_descriptions(db=None):
+def create_key_descriptions(db=None, extra_kvp_descriptions=None):
     from asr.database.key_descriptions import key_descriptions
     from asr.database.fromtree import parse_key_descriptions
+    from asr.core import read_json
     from ase.db.web import create_key_descriptions
 
     flatten = {key: value
                for recipe, dct in key_descriptions.items()
                for key, value in dct.items()}
+
+    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
+        extras = read_json(extra_kvp_descriptions)
+        flatten.update(extras)
 
     if db is not None:
         metadata = db.metadata
@@ -154,6 +178,25 @@ def setup_data_endpoints():
         uid_key = project['uid_key']
         row = project['database'].get('{uid_key}={uid}'
                                       .format(uid_key=uid_key, uid=uid))
+        try:
+            result = decode_object(row.data[filename])
+            return render_template(
+                'asr/database/templates/result_object.html',
+                result=result,
+                filename=filename,
+                project_name=project_name,
+                uid=uid,
+            )
+        except (UnknownDataFormat, UndefinedError):
+            return redirect(f'{filename}/json')
+
+    @app.route('/<project_name>/row/<uid>/data/<filename>/json')
+    def get_row_data_file_json(project_name: str, uid: str, filename: str):
+        """Show details for one database row."""
+        project = projects[project_name]
+        uid_key = project['uid_key']
+        row = project['database'].get('{uid_key}={uid}'
+                                      .format(uid_key=uid_key, uid=uid))
         return jsonify(row.data.get(filename))
 
 
@@ -180,7 +223,7 @@ def row_to_dict(row, project, layout_function, tmpdir):
     return s
 
 
-def initialize_project(database):
+def initialize_project(database, extra_kvp_descriptions=None, pool=None):
     from asr.database import browser
     from functools import partial
 
@@ -191,16 +234,20 @@ def initialize_project(database):
     # Make temporary directory
     (tmpdir / name).mkdir()
 
+    def layout(*args, **kwargs):
+        return browser.layout(*args, pool=pool, **kwargs)
+
     metadata = db.metadata
     projects[name] = {
         "name": name,
         "title": metadata.get("title", name),
-        "key_descriptions": create_key_descriptions(db),
+        "key_descriptions": create_key_descriptions(db,
+                                                    extra_kvp_descriptions),
         "uid_key": metadata.get("uid", "uid"),
         "database": db,
         "handle_query_function": handle_query,
         "row_to_dict_function": partial(
-            row_to_dict, layout_function=browser.layout, tmpdir=tmpdir
+            row_to_dict, layout_function=layout, tmpdir=tmpdir,
         ),
         "default_columns": metadata.get("default_columns", ["formula", "uid"]),
         "table_template": str(
@@ -223,10 +270,27 @@ def initialize_project(database):
 @argument("databases", nargs=-1, type=str)
 @option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
+@option("--extra_kvp_descriptions", type=str,
+        help='File containing extra kvp descriptions for info.json')
 def main(databases: List[str], host: str = "0.0.0.0",
-         test: bool = False) -> ASRResult:
+         test: bool = False,
+         extra_kvp_descriptions: str = 'key_descriptions.json') -> ASRResult:
+
+    # The app uses threads, and we cannot call matplotlib multithreadedly.
+    # Therefore we use a multiprocessing pool for the plotting.
+    # We could use more cores, but they tend to fail to close
+    # correctly on KeyboardInterrupt.
+    pool = multiprocessing.Pool(1)
+    try:
+        _main(databases, host, test, extra_kvp_descriptions, pool)
+    finally:
+        pool.close()
+        pool.join()
+
+
+def _main(databases, host, test, extra_kvp_descriptions, pool):
     for database in databases:
-        initialize_project(database)
+        initialize_project(database, extra_kvp_descriptions, pool)
 
     setup_app()
 
@@ -262,7 +326,7 @@ def main(databases: List[str], host: str = "0.0.0.0",
                         exc = traceback.format_exc()
                         exc += (f'Problem with {uid}: '
                                 f'Formula={row.formula} '
-                                f'Prototype={row.crystal_prototype}\n'
+                                f'Crystal type={row.crystal_type}\n'
                                 + '-' * 20 + '\n')
                         with Path('errors.txt').open(mode='a') as fid:
                             fid.write(exc)
