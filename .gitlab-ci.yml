@@ -81,8 +81,7 @@ python3-10-gpaw:
   script:
     - pwd
     - cd asr/test
-    - pytest --color=yes
-    - sdjkfsdjkfsddfkj
+    - pytest --color=yes --numprocesses=auto
 
 #python38-gpaw:
 #  image: python:3.8
