@@ -182,13 +182,9 @@ class Result(ASRResult):
 @command(
     "asr.anharmonic_phonons3_result",
     dependencies=[],
-    requires=[
-        "structure.json",
-    ],
+    requires=["structure.json"],
     returns=Result,
 )
-# @command('asr.anharmonic_phonons3')
-@option('--atoms', type=str, default='structure.json')
 @option("--cellsize", help="supercell multiplication for hiphive", type=int)
 @option("--calculator", help="calculator type. DFT is the default", type=str)
 @option("--rattle", help="rattle standard hiphive", type=float)
@@ -204,7 +200,6 @@ class Result(ASRResult):
 @option("--tstep", help=" temperature step for thermal conductivity calculation",
         type=int)
 def main(
-        atoms: Atoms,
         cellsize: int = 6,
         calculator: str = 'DFT',
         rattle: float = 0.03,
@@ -222,7 +217,7 @@ def main(
     import h5py
     from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
 
-    atoms = read(atoms)
+    atoms = read('structure.json')
 
     fc2n = 'fc2.hdf5'
     fc3n = 'fc3.hdf5'
@@ -250,7 +245,7 @@ def main(
     phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2, fc3,
                       t1, t2, tstep)
 
-    ## read the hdf5 file with the rta results
+    # read the hdf5 file with the rta results
 
     phonopy_mesh = np.ones(3, int)
     phonopy_mesh[:nat_dim] = mesh_ph3
