@@ -75,29 +75,36 @@ python39-mpi:
     - su user -c 'tox -e py39-mpi'
 
 # -------------- Integration tests --------------
-python38-gpaw:
-  image: python:3.8
-  stage: integrationtest
+python3-10-gpaw:
+  image:  registry.gitlab.com/asr-dev/asr:main
+  stage: build
   script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py38-gpaw
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
+    - pwd
+    - sdjkfsdjkfsddfkj
 
-python39-gpaw:
-  image: python:3.9
-  stage: integrationtest
-  script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py39-gpaw
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
+#python38-gpaw:
+#  image: python:3.8
+#  stage: integrationtest
+#  script:
+#    - apt-get update -qy
+#    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+#    - tox -e py38-gpaw
+#  artifacts:
+#    paths:
+#      - .tox/.coverage*
+#    expire_in: 3 weeks
+
+#python39-gpaw:
+#  image: python:3.9
+#  stage: integrationtest
+#  script:
+#    - apt-get update -qy
+#    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+#    - tox -e py39-gpaw
+#  artifacts:
+#    paths:
+#      - .tox/.coverage*
+#    expire_in: 3 weeks
 
 
 # -------------- Coverage --------------
@@ -128,12 +135,12 @@ pages:
 
 # -------------- Release --------------
 # (Only on git tagged commit)
-release:
-  stage: release
-  script: tox -e release
-  artifacts:
-    paths:
-      - dist
-    expire_in: 3 weeks
-  only:
-    - tags
+#release:
+#  stage: release
+#  script: tox -e release
+#  artifacts:
+#    paths:
+#      - dist
+#    expire_in: 3 weeks
+#  only:
+#    - tags
