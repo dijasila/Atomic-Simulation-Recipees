@@ -80,6 +80,8 @@ python3-10-gpaw:
   stage: build
   script:
     - pwd
+    - cd asr/test
+    - pytest --color=yes
     - sdjkfsdjkfsddfkj
 
 #python38-gpaw:
