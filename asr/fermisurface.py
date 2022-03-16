@@ -103,9 +103,10 @@ def add_fermi(row, ax, s=0.25):
                     s=s, cmap='viridis', marker=',',
                     norm=normalize, alpha=1, zorder=2)
 
+    sdir = row.get('spin_axis', 'z')
     cbar = plt.colorbar(im, ticks=[-1, -0.5, 0, 0.5, 1])
     cbar.ax.tick_params()
-    cbar.set_label('$\\langle S_z \\rangle$')
+    cbar.set_label(r'$\langle S_{} \rangle $'.format(sdir))
 
 
 @prepare_result
