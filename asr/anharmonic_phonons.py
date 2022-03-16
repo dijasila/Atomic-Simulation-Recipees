@@ -250,7 +250,7 @@ def main(
     phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2, fc3,
                       t1, t2, tstep)
 
-    # read the hdf5 file with the rta results
+    ## read the hdf5 file with the rta results
 
     phonopy_mesh = np.ones(3, int)
     phonopy_mesh[:nat_dim] = mesh_ph3
