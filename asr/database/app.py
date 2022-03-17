@@ -210,7 +210,21 @@ def asr_sort_key_descriptions(value):
 
 
 def handle_query(args):
-    return args["query"]
+    parts = []
+    if args['query']:
+        parts.append(args['query'])
+    if args['defect_name']:
+        parts.append('defect_name=' + args['defect_name'])
+    if args['host_name']:
+        parts.append('host_name=' + args['host_name'])
+    if args['charge_state']:
+        parts.append('charge_state=(charge ' + args['charge_state'] + ')')
+    if args['is_magnetic']:
+        parts.append('is_magnetic=' + args['is_magnetic'])
+    # We only want to show charge 0 systems to the user by default
+    # parts.append('charge_state=(charge 0)')
+
+    return ','.join(parts)
 
 
 def row_to_dict(row, project, layout_function, tmpdir):
@@ -249,7 +263,10 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
         "row_to_dict_function": partial(
             row_to_dict, layout_function=layout, tmpdir=tmpdir,
         ),
-        "default_columns": metadata.get("default_columns", ["formula", "uid"]),
+        "default_columns": metadata.get("default_columns", ["host_name",
+                                                            "defect_name",
+                                                            "charge_state",
+                                                            "defect_pointgroup"]),
         "table_template": str(
             metadata.get(
                 "table_template", f"asr/database/templates/table.html",
