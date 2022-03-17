@@ -212,11 +212,6 @@ key_descriptions = {
     },
     "database.fromtree": {
         "folder": "KVP: Path to collection folder",
-    },
-    "defect_symmetry": {
-        "defect_pointgroup":
-        ("KVP: Defect point group in Schoenflies notation. "
-         "!Defect point group! [string]")
     }
 }
 
