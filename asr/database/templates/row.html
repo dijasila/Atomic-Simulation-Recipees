@@ -108,14 +108,15 @@
       {% for value in row %}
         <td>{{ help(value) }} {{ value|safe }}</td>
     {% endfor %}
-    </tr>
+    </trrow.defect_name>
 {% endfor %}
 </tbody>
 </table>
 {% endmacro %}
 
 {% block title %}
-{{ d.formula|safe|striptags }} - Summary
+{{row.defect_name.split('_')[0]}} @ {{row.defect_name.split('_')[1]}} in {{row.host_name}}
+{{row.charge_state}}
 {% endblock %}
 
 {% block head %}
@@ -138,7 +139,7 @@ jmol_isReady = function(applet)
 <div class="container">
 
 <h1>
-    {{ d.formula|safe }}
+    {{row.defect_name}} in {{row.host_name}} {{row.charge_state}}
   <a href="/{{ p.name }}/row/{{ uid }}/all_data">
     <button type="button" class="btn btn-outline-primary">
       Download raw data

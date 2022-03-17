@@ -97,24 +97,8 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        # QPOD related functionality
-        defect_type = row.defect_name.split('_')[0]
-        if defect_type == 'v':
-            defect_type = 'V'
-        defect_name = row.defect_name.split('_')[-1]
-        if defect_name == 'pristine':
-            defect_string = 'Pristine'
-            q = ''
-        elif 'charge_state' in row:
-            defect_string = f"{defect_type}<sub>{defect_name}</sub>"
-            q = '(q = ' + row.charge_state.split()[-1].split(')')[0] + ')'
-        else:
-            defect_string = f"{defect_type}<sub>{defect_name}</sub>"
-            q = ''
-        ase_formula = Formula(row.host_name)
-        host_latex = f'{ase_formula:html}'
-        self.formula = (defect_string + ' in ' + host_latex + ' '
-                        + q)
+        self.formula = Formula(
+            Formula(row.formula).format('metal')).format('html')
 
         kd = key_descriptions
         self.layout = create_layout(row, kd, prefix)
@@ -226,21 +210,7 @@ def asr_sort_key_descriptions(value):
 
 
 def handle_query(args):
-    parts = []
-    if args['query']:
-        parts.append(args['query'])
-    if args['defect_name']:
-        parts.append('defect_name=' + args['defect_name'])
-    if args['host_name']:
-        parts.append('host_name=' + args['host_name'])
-    if args['charge_state']:
-        parts.append('charge_state=(charge ' + args['charge_state'] + ')')
-    if args['is_magnetic']:
-        parts.append('is_magnetic=' + args['is_magnetic'])
-    # We only want to show charge 0 systems to the user by default
-    # parts.append('charge_state=(charge 0)')
-
-    return ','.join(parts)
+    return args["query"]
 
 
 def row_to_dict(row, project, layout_function, tmpdir):
@@ -270,8 +240,7 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
     metadata = db.metadata
     projects[name] = {
         "name": name,
-        # "title": metadata.get("title", name),
-        "title": "QPOD Database",
+        "title": metadata.get("title", name),
         "key_descriptions": create_key_descriptions(db,
                                                     extra_kvp_descriptions),
         "uid_key": metadata.get("uid", "uid"),
@@ -280,9 +249,7 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
         "row_to_dict_function": partial(
             row_to_dict, layout_function=layout, tmpdir=tmpdir,
         ),
-        "default_columns": metadata.get("default_columns",
-                                        ["host_name", "defect_name",
-                                         "charge_state", "defect_pointgroup"]),
+        "default_columns": metadata.get("default_columns", ["formula", "uid"]),
         "table_template": str(
             metadata.get(
                 "table_template", f"asr/database/templates/table.html",
