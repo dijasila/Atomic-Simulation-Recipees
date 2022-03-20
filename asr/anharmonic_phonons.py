@@ -165,26 +165,30 @@ class Result(ASRResult):
     formats = {}
     #    formats = {"ase_webpanel": webpanel}
 
-    temperature: float
+    temperatures: typing.List[float]
     frequencies: typing.List[float]
-    lifetimes: typing.List[float]
-    kappa_00: float
-    kappa_tensor: typing.List[float]
+    gamma: typing.List[float]
+    #kappa_00: float
+    kappa: typing.List[float]
 
     key_descriptions = dict(
-        kappa_00='Thermal conductivity',
-        kappa_tensor='Kappa tensor',
-        temperature='Temperature',
-        frequencies='Frequencies',
-        lifetimes='Lifetimes')
+        #kappa_00='Thermal conductivity',
+        kappa='kappa',
+        temperatures='temperature',
+        frequencies='frequency',
+        gamma='gamma')
 
 
 @command(
     "asr.anharmonic_phonons3_result",
     dependencies=[],
-    requires=["structure.json"],
+    requires=[
+        "structure.json",
+    ],
     returns=Result,
 )
+# @command('asr.anharmonic_phonons3')
+#@option('--atoms', type=str, default='structure.json')
 @option("--cellsize", help="supercell multiplication for hiphive", type=int)
 @option("--calculator", help="calculator type. DFT is the default", type=str)
 @option("--rattle", help="rattle standard hiphive", type=float)
@@ -200,6 +204,7 @@ class Result(ASRResult):
 @option("--tstep", help=" temperature step for thermal conductivity calculation",
         type=int)
 def main(
+        #atoms: Atoms,
         cellsize: int = 6,
         calculator: str = 'DFT',
         rattle: float = 0.03,
@@ -210,12 +215,14 @@ def main(
         mindistance: float = 2.3,
         number_structures: int = 25,
         mesh_ph3: int = 20,
-        t1=300,
-        t2=301,
-        tstep=1) -> Result:
+        t1=0,
+        t2=1001,
+        tstep=10) -> Result:
 
     import h5py
     from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
+
+    #atoms = read(atoms)
 
     atoms = read('structure.json')
 
@@ -255,7 +262,7 @@ def main(
 
     with h5py.File(phonopy_outputfilename, 'r') as fd:
         temperatures = fd['temperature'][:]
-        frequency = fd['frequency'][:]
+        frequencies = fd['frequency'][:]
         gamma = fd['gamma'][:]
         kappa = fd['kappa'][:]
 
@@ -263,7 +270,7 @@ def main(
 
     results = {
         "temperatures": temperatures,
-        "frequency": frequency,
+        "frequencies": frequencies,
         "gamma": gamma,
         "kappa": kappa,
     }
@@ -272,3 +279,4 @@ def main(
 
 if __name__ == "__main__":
     main.cli()
+
