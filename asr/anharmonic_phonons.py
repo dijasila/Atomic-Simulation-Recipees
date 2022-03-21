@@ -15,12 +15,30 @@ from ase.build import make_supercell
 from asr.core import (
     command,
     option,
+    read_json,
     ASRResult,
     prepare_result)
 
 # gpaw
 from gpaw import GPAW, FermiDirac
 
+def calculate(calculator: dict = {
+        'name': 'gpaw',
+        'mode': {'name': 'pw', 'ecut': 800},
+        'xc': 'PBE',
+        'basis': 'dzp',
+        'kpts': {'density': 12.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.05},
+        'convergence': {'bands': 'CBM+3.0'},
+        'nbands': '200%',
+        'txt': 'gs.txt',
+        'charge': 0}):
+
+    from ase.calculators.calculator import get_calculator_class
+    name = calculator.pop('name')
+    calc = get_calculator_class(name)(**calculator)
+    return calc
 
 def hiphive_fc23(
         atoms,
@@ -62,15 +80,19 @@ def hiphive_fc23(
     atoms_ideal.pbc = (1, 1, 1)
     print(atoms_ideal)
     if calculator == 'DFT':
-        calc = GPAW(mode='lcao',
-                    basis='dzp',
-                    xc='PBE',
-                    h=0.2,
-                    kpts={"size": (2, 2, 1), "gamma": True},
-                    symmetry={'point_group': False},
-                    convergence={'forces': 1e-4},
-                    occupations=FermiDirac(0.05),
-                    txt='phono3py.txt')
+
+       # if params.json exists, read params from there
+
+       if path.exists('params.json'):
+          setup_params = read_json('params.json')
+          myparams = setup_params['asr.gs']['calculator']
+          calc = calculate(myparams)
+
+       # or read default gpaw parameters for DFT
+
+       else:
+          calc = calculate()
+
     else:
         calc = EMT()
     # create rattled structures or read them from file
@@ -205,7 +227,7 @@ class Result(ASRResult):
         type=int)
 def main(
         #atoms: Atoms,
-        cellsize: int = 6,
+        cellsize: int = 5,
         calculator: str = 'DFT',
         rattle: float = 0.03,
         nat_dim: int = 2,
@@ -213,7 +235,7 @@ def main(
         cut2: float = 5.0,
         cut3: float = 4.0,
         mindistance: float = 2.3,
-        number_structures: int = 25,
+        number_structures: int = 15,
         mesh_ph3: int = 20,
         t1=0,
         t2=1001,
@@ -221,8 +243,6 @@ def main(
 
     import h5py
     from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
-
-    #atoms = read(atoms)
 
     atoms = read('structure.json')
 
