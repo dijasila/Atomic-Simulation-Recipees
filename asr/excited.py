@@ -8,15 +8,17 @@ from gpaw import GPAW, PW, restart
 from gpaw.directmin.fdpw.directmin import DirectMin
 from gpaw.mom import prepare_mom_calculation
 from gpaw.directmin.exstatetools import excite_and_sort
-
+from pathlib import Path
 from math import sqrt
 
 
 @command('asr.excited')
 @option('--excitation', type=str)
-def calculate(excitation: str = 'alpha') -> ASRResult:
-
-    atoms = read('../structure.json')
+def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
+    if Path('./unrelaxed.json').is_file():
+        atoms = read('./unrelaxed.json')
+    if not Path('./unrelaxed.json').is_file():
+        atoms = read('../structure.json')
 
     old_calc = GPAW('../gs.gpw')
 
@@ -34,7 +36,7 @@ def calculate(excitation: str = 'alpha') -> ASRResult:
                 occupations={'name': 'fixed-uniform'},
                 charge=charge,
                 nbands='200%',
-                maxiter=1000,
+                maxiter=5000,
                 txt='excited.txt'
                 )
 
@@ -49,6 +51,11 @@ def calculate(excitation: str = 'alpha') -> ASRResult:
     atoms.calc = calc
     calc.initialize(atoms)
     atoms.get_potential_energy()
+    write('ground.json', atoms)
+    BFGS(atoms,
+         trajectory='relax.traj', 
+         logfile='relax.log').run(fmax=0.01)
+    
     write('ground.json', atoms)
     params = read_json('params.json')
     excitation=params['asr.excite@calculate']['excitation']
