@@ -58,7 +58,7 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     
     write('ground.json', atoms)
     params = read_json('params.json')
-    excitation=params['asr.excite@calculate']['excitation']
+    excitation=params['asr.excited@calculate']['excitation']
     if excitation == 'alpha':
         excite_and_sort(calc.wfs, 0, 0, (0, 0), 'fdpw')
     if excitation == 'beta':
