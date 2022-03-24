@@ -286,7 +286,12 @@ def main() -> Result:
     results_hse = read_json('results-asr.hse@calculate.json')
     data = results_hse['hse_eigenvalues']
     nbands = data['e_hse_skn'].shape[2]
-    delta_skn = data['vxc_hse_skn'] - data['vxc_scf_skn']
+
+    # Key used to be caled vxc_pbe_skn but is now called vxc_scf_skn.
+    # We allow the old name for compatibility:
+    vxc_scf_skn = data.get('vxc_scf_skn', data.get('vxc_pbe_skn'))
+
+    delta_skn = data['vxc_hse_skn'] - vxc_scf_skn
     results = MP_interpolate(calc, delta_skn, 0, nbands)
 
     # get gap, cbm, vbm, etc...

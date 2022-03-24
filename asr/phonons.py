@@ -41,6 +41,7 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
               fconverge: float = 1e-4) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
+    from gpaw.mpi import world
 
     atoms = read('structure.json')
     gsold = get_calculator()('gs.gpw', txt=None)
@@ -80,7 +81,9 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
             supercell = (n, 1, 1)
 
         p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
-        p.cache.strip_empties()
+        if world.rank == 0:
+            p.cache.strip_empties()
+        world.barrier()
         p.run()
 
 
