@@ -22,7 +22,7 @@ from asr.core import (
 # gpaw
 from gpaw import GPAW, FermiDirac
 
-def calculate(calculator: dict = {
+def calculate(name: str = 'gpaw',calculator: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800},
         'xc': 'PBE',
@@ -36,7 +36,6 @@ def calculate(calculator: dict = {
         'charge': 0}):
 
     from ase.calculators.calculator import get_calculator_class
-    name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
     return calc
 
@@ -86,7 +85,9 @@ def hiphive_fc23(
        if path.exists('params.json'):
           setup_params = read_json('params.json')
           myparams = setup_params['asr.gs']['calculator']
-          calc = calculate(myparams)
+          myname = setup_params['asr.gs']['calculator']['name']
+          myparams.pop('name')
+          calc = calculate(myname,myparams)
 
        # or read default gpaw parameters for DFT
 
