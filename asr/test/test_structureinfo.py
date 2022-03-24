@@ -1,3 +1,4 @@
+import pytest
 from ase.build import bulk
 from asr.structureinfo import main
 
