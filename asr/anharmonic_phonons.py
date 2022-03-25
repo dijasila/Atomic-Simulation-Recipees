@@ -2,6 +2,7 @@
 import numpy as np
 import typing
 import os.path as path
+import h5py
 
 # ase
 from ase import Atoms
@@ -49,8 +50,6 @@ def hiphive_fc23(
         cut1,
         cut2,
         cut3,
-        fc2n,
-        fc3n,
         calculator):
 
     from phonopy.structure.atoms import PhonopyAtoms
@@ -135,17 +134,19 @@ def hiphive_fc23(
         # get force constants from fcp potentials
         fcs = fcp.get_force_constants(supercell)
         # write force constants
-        fcs.write_to_phonopy(fc2n)
-        fcs.write_to_phono3py(fc3n)
+        fcs.write_to_phonopy('fc2.hdf5')
+        fcs.write_to_phono3py('fc3.hdf5')
 
 
 def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3,
-                      fc2, fc3,
                       t1, t2, tstep):
     from phono3py import Phono3py
     from phonopy.structure.atoms import PhonopyAtoms
+    import h5py
+    from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
 
     # get phono3py supercell
+    atoms = read('structure.json')
     atoms_phonopy = PhonopyAtoms(
         symbols=atoms.get_chemical_symbols(),
         scaled_positions=atoms.get_scaled_positions(),
@@ -162,6 +163,10 @@ def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3,
         multiplier = np.array([[cellsize, 0, 0], [0, cellsize, 0], [0, 0, 1]])
         meshnu = [mesh_ph3, mesh_ph3, 1]
     if world.rank == 0:
+
+        # read force constants from hdf5
+        fc3 = read_fc3_from_hdf5(filename = 'fc3.hdf5')
+        fc2 = read_fc2_from_hdf5(filename = 'fc2.hdf5')
 
         # create phono3py object
         ph3 = Phono3py(
@@ -181,7 +186,6 @@ def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3,
                 tstep),
             boundary_mfp=1e6,
             write_kappa=True)
-
 
 @prepare_result
 class Result(ASRResult):
@@ -242,16 +246,8 @@ def main(
         t2=1001,
         tstep=10) -> Result:
 
-    import h5py
-    from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
-
-    atoms = read('structure.json')
-
-    fc2n = 'fc2.hdf5'
-    fc3n = 'fc3.hdf5'
-
     # call the two main functions
-
+    atoms = read('structure.json')
     hiphive_fc23(
         atoms,
         cellsize,
@@ -262,17 +258,13 @@ def main(
         cut1,
         cut2,
         cut3,
-        fc2n,
-        fc3n,
         calculator)
 
-    # read force constants from hdf5
-    fc3 = read_fc3_from_hdf5(filename=fc3n)
-    fc2 = read_fc2_from_hdf5(filename=fc2n)
-
-    phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3, fc2, fc3,
+    phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3,
                       t1, t2, tstep)
-
+    
+    # write results to json file
+    
     # read the hdf5 file with the rta results
 
     phonopy_mesh = np.ones(3, int)
@@ -282,21 +274,19 @@ def main(
     phonopy_outputfilename = f'kappa-m{label}.hdf5'
 
     with h5py.File(phonopy_outputfilename, 'r') as fd:
-        temperatures = fd['temperature'][:]
-        frequencies = fd['frequency'][:]
-        gamma = fd['gamma'][:]
-        kappa = fd['kappa'][:]
-
-    # write results to json file
-
+         temperatures = fd['temperature'][:]
+         frequencies = fd['frequency'][:]
+         gamma = fd['gamma'][:]
+         kappa = fd['kappa'][:]
+    
     results = {
-        "temperatures": temperatures,
-        "frequencies": frequencies,
-        "gamma": gamma,
-        "kappa": kappa,
-    }
+          "temperatures": temperatures,
+          "frequencies": frequencies,
+          "gamma": gamma,
+         "kappa": kappa,
+       }
     return results
-
+    
 
 if __name__ == "__main__":
     main.cli()
