@@ -15,9 +15,9 @@ from math import sqrt
 @command('asr.excited')
 @option('--excitation', type=str)
 def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
-    if Path('./unrelaxed.json').is_file():
-        atoms = read('./unrelaxed.json')
-    if not Path('./unrelaxed.json').is_file():
+    if Path('./structure.json').is_file():
+        atoms = read('./structure.json')
+    if not Path('./structure.json').is_file():
         atoms = read('../structure.json')
 
     old_calc = GPAW('../gs.gpw')
@@ -31,7 +31,7 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
                 kpts={"size": (1,1,1), "gamma": True},
                 spinpol=True,
                 symmetry='off',
-                eigensolver=DirectMin(),
+                eigensolver=DirectMin(convergelumo=True),
                 mixer={'name': 'dummy'},
                 occupations={'name': 'fixed-uniform'},
                 charge=charge,
@@ -64,7 +64,7 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     if excitation == 'beta':
         excite_and_sort(calc.wfs, 0, 0, (1, 1), 'fdpw')
 
-    calc.set(eigensolver=DirectMin(exstopt=True))
+    calc.set(eigensolver=DirectMin(exstopt=True, convergelumo=True))
 
     f_sn = []
     for spin in range(calc.get_number_of_spins()):
