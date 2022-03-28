@@ -14,7 +14,7 @@ panel_description = make_panel_description(
 @command('asr.bandstructure_ml_new',
          requires=['gs.gpw', 'bs.gpw'],
          creates=['bs_matrix_elements.npz', 'bs_ml.gpw'])
-def calculate():
+def calculate() -> ASRResult:
     """Calculate electronic band structure using machine learning."""
     import sys
     sys.path.append('/home/niflheim/nirkn/electronic-structure-machine-learning/')

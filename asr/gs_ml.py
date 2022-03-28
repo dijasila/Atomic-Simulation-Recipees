@@ -7,7 +7,7 @@ import typing
          requires=["gs.gpw"],
          creates=["gs_matrix_elements.npz", "gs_ml.gpw"]
          )
-def calculate():
+def calculate() -> ASRResult:
     """Extract matrix elements for electronic fingerprints."""
     import sys
     sys.path.append('/home/niflheim/nirkn/electronic-structure-machine-learning/')
