@@ -5,10 +5,6 @@ from asr.core import command, ASRResult, singleprec_dict, prepare_result
 from asr.database.browser import fig, make_panel_description, describe_entry
 from asr.utils.hacks import gs_xcname_from_row
 
-import sys
-sys.path.append('/home/niflheim/nirkn/electronic-structure-machine-learning/')
-from efp import *
-
 
 panel_description = make_panel_description(
     """Machine learning band structures"""
@@ -19,7 +15,9 @@ panel_description = make_panel_description(
          creates=['bs_matrix_elements.npz', 'bs_ml.gpw'])
 def calculate():
     """Calculate electronic band structure using machine learning."""
-
+    import sys
+    sys.path.append('/home/niflheim/nirkn/electronic-structure-machine-learning/')
+    from efp import MLGPAW
 
     ML = MLGPAW('bs.gpw')
     ML.update_eigenvalues(interpolate=10)
