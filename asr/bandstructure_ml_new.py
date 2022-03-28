@@ -10,6 +10,7 @@ panel_description = make_panel_description(
     """Machine learning band structures"""
 )
 
+
 @command('asr.bandstructure_ml_new',
          requires=['gs.gpw', 'bs.gpw'],
          creates=['bs_matrix_elements.npz', 'bs_ml.gpw'])
@@ -25,10 +26,9 @@ def calculate():
 
 bs_ml_png = 'bs_ml.png'
 
+
 def add_bs_ks(row, ax, reference=0, color='C1'):
     """Plot with soc on ax."""
-
-
     d = row.data.get('results-asr.bandstructure_ml_new.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
@@ -110,7 +110,7 @@ def plot_bs(row,
 
     # add KS band structure with soc
     ax = add_bs_ks(row, ax, reference=row.get('evac', row.get('efermi')),
-                    color=[0.8, 0.8, 0.8])
+                   color=[0.8, 0.8, 0.8])
 
     for Xi in X:
         ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
@@ -134,6 +134,7 @@ def webpanel(result, row, key_descriptions):
 
     return [panel]
 
+
 @prepare_result
 class Result(ASRResult):
 
@@ -156,7 +157,7 @@ class Result(ASRResult):
 
 
 @command('asr.bandstructure_ml_new',
-         #requires=['gs.gpw', 'bs.gpw','bs_ml.gpw', 'results-asr.gs.json'],
+         # requires=['gs.gpw', 'bs.gpw','bs_ml.gpw', 'results-asr.gs.json'],
          dependencies=['asr.bandstructure_ml_new@calculate'],
          returns=Result)
 def main() -> Result:
