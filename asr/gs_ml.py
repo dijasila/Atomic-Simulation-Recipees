@@ -1,15 +1,10 @@
-from asr.core import command, option, DictStr, ASRResult, prepare_result
-from asr.database.browser import make_panel_description, describe_entry
+from asr.core import command, ASRResult, prepare_result
 from asr.gs import GapsResult
 import typing
-import numpy as np
-import os
-
-
 
 @command("asr.gs_ml",
          requires=["gs.gpw"],
-         creates=["gs_matrix_elements.npz","gs_ml.gpw"]
+         creates=["gs_matrix_elements.npz", "gs_ml.gpw"]
          )
 def calculate():
     """Extract matrix elements for electronic fingerprints."""
@@ -75,14 +70,13 @@ class Result(ASRResult):
         skn2_dir="(spin,k-index,band-index)-tuple for direct conduction band minimum.",
     )
 
+
 @command(module='asr.gs_ml',
          dependencies=['asr.gs_ml@calculate'],
          returns=Result)
 def main() -> Result:
     """Extract derived quantities from groundstate in gs.gpw."""
     from gpaw import GPAW
-    from ase.io import read
-    from asr.calculators import get_calculator
     from asr.gs import gaps
 
     calc = GPAW('gs_ml.gpw')

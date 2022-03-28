@@ -1,12 +1,13 @@
 """Electronic band structures using machine learning model."""
-from typing import Union
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
-from ase.parallel import world,parprint
-from asr.core import command, option, ASRResult, singleprec_dict, prepare_result, read_json
+from asr.core import command, ASRResult, singleprec_dict, prepare_result
 from asr.database.browser import fig, make_panel_description, describe_entry
 from asr.utils.hacks import gs_xcname_from_row
-import os
+
+import sys
+sys.path.append('/home/niflheim/nirkn/electronic-structure-machine-learning/')
+from efp import *
 
 
 panel_description = make_panel_description(
@@ -14,23 +15,22 @@ panel_description = make_panel_description(
 )
 
 @command('asr.bandstructure_ml_new',
-         requires=['gs.gpw','bs.gpw'],
-         creates=['bs_matrix_elements.npz','bs_ml.gpw'])
+         requires=['gs.gpw', 'bs.gpw'],
+         creates=['bs_matrix_elements.npz', 'bs_ml.gpw'])
 def calculate():
     """Calculate electronic band structure using machine learning."""
-    import sys
-    sys.path.append('/home/niflheim/nirkn/electronic-structure-machine-learning/')
-    from efp import MLGPAW
+
+
     ML = MLGPAW('bs.gpw')
     ML.update_eigenvalues(interpolate=10)
 
+
 bs_ml_png = 'bs_ml.png'
-#bs_html = 'bs.html'
-
-
 
 def add_bs_ks(row, ax, reference=0, color='C1'):
     """Plot with soc on ax."""
+
+
     d = row.data.get('results-asr.bandstructure_ml_new.json')
     path = d['bs_soc']['path']
     e_mk = d['bs_soc']['energies']
@@ -123,10 +123,6 @@ def plot_bs(row,
 
 
 def webpanel(result, row, key_descriptions):
-    from typing import Tuple, List
-    from asr.utils.hacks import gs_xcname_from_row
-
-
     panel = {'title': describe_entry(f'Electronic band structure (ML)',
                                      panel_description),
              'columns': [
@@ -139,7 +135,6 @@ def webpanel(result, row, key_descriptions):
              'sort': 12}
 
     return [panel]
-
 
 @prepare_result
 class Result(ASRResult):
@@ -170,12 +165,10 @@ def main() -> Result:
     from gpaw import GPAW
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
-    from ase.spectrum.band_structure import BandStructure
     from asr.core import read_json
     import copy
     from asr.utils.gpw2eigs import gpw2eigs
     from asr.magnetic_anisotropy import get_spin_axis, get_spin_index
-    import xgboost as xgb
 
     # PBE
     gsresults = read_json('results-asr.gs.json')
