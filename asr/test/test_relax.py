@@ -63,6 +63,7 @@ def test_relax_emt(asr_tmpdir_w_params, name):
     from ase.build import bulk
 
     unrelaxed = bulk(name)
+    unrelaxed.set_initial_magnetic_moments([0.0] * len(unrelaxed))
     relax(unrelaxed, calculator={'name': 'emt'})
 
 
@@ -78,8 +79,10 @@ def test_relax_emt_fail_broken_symmetry(asr_tmpdir_w_params, name,
 
     unrelaxed = bulk(name)
 
+    rng = np.random.RandomState(1234)
+
     def get_stress(*args, **kwargs):
-        return np.random.rand(3, 3)
+        return rng.rand(3, 3)
 
     monkeypatch.setattr(EMT, 'get_stress', get_stress)
     with pytest.raises(BrokenSymmetryError) as excinfo:
@@ -95,6 +98,7 @@ def test_relax_find_higher_symmetry(asr_tmpdir_w_params, monkeypatch, capsys):
     from asr.relax import main, SpgAtoms, myBFGS
 
     diamond = bulk('C')
+    diamond.set_initial_magnetic_moments([0.0] * len(diamond))
     natoms = len(diamond)
     sposoriginal_ac = diamond.get_scaled_positions()
     spos_ac = diamond.get_scaled_positions()

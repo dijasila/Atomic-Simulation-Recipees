@@ -26,11 +26,12 @@ def test_shift(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent
     assert len(comp) == 27, 'Error in get_chi_symmetry'
 
     w_ls = np.array([0.0, 1.0, 2.0, 3.0])
+    rng = np.random.RandomState(12345)
 
     def get_shift(
             freqs=w_ls, **kargw):
 
-        chi = np.random.rand(len(freqs)) + 1j * np.random.random(len(freqs))
+        chi = rng.random(len(freqs)) + 1j * rng.random(len(freqs))
         return np.vstack((freqs, chi))
 
     mocker.patch.object(gpaw.nlopt.shift, 'get_shift', get_shift)
