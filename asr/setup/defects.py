@@ -80,8 +80,8 @@ gs_calc_dict = {'name': 'gpaw',
 def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
-         vacancies: bool = True, double: str = 'NO', scaling_double: float = 1.7,
-         uniform_vacuum: bool = False,
+         vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
+         scaling_double: float = 1.7, uniform_vacuum: bool = False,
          halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
     """Set up defect structures for a given host.
 
