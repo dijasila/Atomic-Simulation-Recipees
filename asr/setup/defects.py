@@ -138,7 +138,10 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
     double = double.split(',')
 
     #convert double_exclude defect string
-    double_exclude = double_exclude.split(',') #F.N
+    if double_exclude == 'NO':
+        double_exclude=[]
+    else:
+        double_exclude = double_exclude.split(',') #F.N
 
     # only run SJ setup if halfinteger is True
     if halfinteger:
@@ -171,7 +174,7 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
         structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
                                        charge_states=chargestates,
                                        vacancies=vacancies, extrinsic=extrinsic,
-                                       double=double, exclude_double=exclude_double, #F.N
+                                       double=double, double_exclude=double_exclude, #F.N
                                        scaling_factor=scaling_double,
                                        sc=supercell,
                                        max_lattice=maxsize, is_2D=is2d,
@@ -365,11 +368,11 @@ def double_defect_index_generator(atoms):
                 yield (i, j)
 
 
-def double_defect_species_generator(element_list, defect_type='all', exclude_double): #F.N
+def double_defect_species_generator(element_list, defect_type='all', double_exclude=[]): #F.N
     if defect_type == 'all' or defect_type == 'sub-sub':
         for el1 in element_list:
             for el2 in element_list:
-                if (not (el1 in exclude_double and  el2 in exclude_double)): #F.N
+                if (not (el1 in double_exclude and  el2 in double_exclude)): #F.N
                     yield (el1, el2)
     elif defect_type == 'vac-sub':
         for el2 in element_list:
@@ -392,7 +395,7 @@ def get_maximum_distance(atoms, i, j, scaling_factor):
 
 def create_double_new(structure, pristine, eq_pos, charge_states,
                       base_id, defect_list=None, scaling_factor=1.5,
-                      defect_type='all',exclude_double=['No']): #F.N
+                      defect_type='all',double_exclude=[]): #F.N
     """Create double defects based on distance criterion."""
     defect_dict = {}
     complex_list = []
@@ -404,9 +407,9 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
     defect_list = add_intrinsic_elements(structure, defect_list)
     if defect_type == 'all':
         defect_list.append('v')
-        max_iter_elements = len(defect_list) ** 2
+        max_iter_elements = len(defect_list) ** 2 - len(double_exclude) ** 2
     elif defect_type == 'sub-sub':
-        max_iter_elements = len(defect_list) ** 2
+        max_iter_elements = len(defect_list) ** 2 - len(double_exclude) ** 2 #F.N
     elif defect_type == 'vac-vac':
         defect_list.append('v')
         max_iter_elements = 1
@@ -414,7 +417,7 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
         max_iter_elements = len(defect_list)
     double_elements = double_defect_species_generator(defect_list,
                                                       defect_type,
-                                                      exclude_double) #F.N
+                                                      double_exclude) #F.N
 
     # set up the defects
     max_iter_indices = len(pristine) ** 2 - len(pristine)
@@ -580,7 +583,7 @@ def create_substitutional(structure, pristine, eq_pos,
 
 
 def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, double,
-                  exclude_double,scaling_factor, sc, max_lattice, is_2D, vacuum, 
+                  double_exclude,scaling_factor, sc, max_lattice, is_2D, vacuum, #F.N 
                   general_algorithm):
     """
     Set up defects for a particular input structure.
@@ -697,7 +700,7 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
                                             defect_list,
                                             scaling_factor,
                                             double_type,
-                                            exclude_double) #F.N
+                                            double_exclude) #F.N
             defects_dict.update(defect_dict)
 
     # put together structure dict
