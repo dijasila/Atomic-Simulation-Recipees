@@ -59,6 +59,11 @@ gs_calc_dict = {'name': 'gpaw',
         help='Specify which double defects you want to include. Choose from '
         '"NO", "all", "vac-vac", "vac-sub, sub-sub" as a comma-separated list. E.g. '
         'if you want all vac-vac and vac-sub defects use "vac-vac,vac-sub".')
+@option('--double_exclude', type=str,
+        help='Comma seperated string with double defects that will be excluded. '
+        'E.g. for --double_exclude = "Mg, Fe" all double defects of the types'
+        'Mg-Mg, Mg-Fe and Fe-Fe will be excluded from the defect setup.'
+        'The string can include both intrinsic and extrinsic elements.') #F.N
 @option('--scaling_double', type=float,
         help='Scaling factor for double defect creation. All possible double '
         'defects within the sum of covalent radii of the two included sites '
@@ -80,7 +85,7 @@ gs_calc_dict = {'name': 'gpaw',
 def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
-         vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
+         vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO', #F.N
          scaling_double: float = 1.7, uniform_vacuum: bool = False,
          halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
     """Set up defect structures for a given host.
@@ -132,6 +137,9 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
     # convert double defect types string to list
     double = double.split(',')
 
+    #convert double_exclude defect string
+    double_exclude = double_exclude.split(',') #F.N
+
     # only run SJ setup if halfinteger is True
     if halfinteger:
         try:
@@ -163,7 +171,8 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
         structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
                                        charge_states=chargestates,
                                        vacancies=vacancies, extrinsic=extrinsic,
-                                       double=double, scaling_factor=scaling_double,
+                                       double=double, exclude_double=exclude_double, #F.N
+                                       scaling_factor=scaling_double,
                                        sc=supercell,
                                        max_lattice=maxsize, is_2D=is2d,
                                        vacuum=uniform_vacuum,
@@ -356,11 +365,12 @@ def double_defect_index_generator(atoms):
                 yield (i, j)
 
 
-def double_defect_species_generator(element_list, defect_type='all'):
+def double_defect_species_generator(element_list, defect_type='all', exclude_double): #F.N
     if defect_type == 'all' or defect_type == 'sub-sub':
         for el1 in element_list:
             for el2 in element_list:
-                yield (el1, el2)
+                if (not (el1 in exclude_double and  el2 in exclude_double)): #F.N
+                    yield (el1, el2)
     elif defect_type == 'vac-sub':
         for el2 in element_list:
             yield ('v', el2)
@@ -382,7 +392,7 @@ def get_maximum_distance(atoms, i, j, scaling_factor):
 
 def create_double_new(structure, pristine, eq_pos, charge_states,
                       base_id, defect_list=None, scaling_factor=1.5,
-                      defect_type='all'):
+                      defect_type='all',exclude_double=['No']): #F.N
     """Create double defects based on distance criterion."""
     defect_dict = {}
     complex_list = []
@@ -403,7 +413,8 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
     elif defect_type == 'vac-sub':
         max_iter_elements = len(defect_list)
     double_elements = double_defect_species_generator(defect_list,
-                                                      defect_type)
+                                                      defect_type,
+                                                      exclude_double) #F.N
 
     # set up the defects
     max_iter_indices = len(pristine) ** 2 - len(pristine)
@@ -569,7 +580,8 @@ def create_substitutional(structure, pristine, eq_pos,
 
 
 def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, double,
-                  scaling_factor, sc, max_lattice, is_2D, vacuum, general_algorithm):
+                  exclude_double,scaling_factor, sc, max_lattice, is_2D, vacuum, 
+                  general_algorithm):
     """
     Set up defects for a particular input structure.
 
@@ -684,7 +696,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
                                             base_id,
                                             defect_list,
                                             scaling_factor,
-                                            double_type)
+                                            double_type,
+                                            exclude_double) #F.N
             defects_dict.update(defect_dict)
 
     # put together structure dict
