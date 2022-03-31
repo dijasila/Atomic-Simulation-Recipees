@@ -138,7 +138,7 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
     double = double.split(',')
 
     #convert double_exclude defect string
-    if double_exclude == 'NO':
+    if double_exclude == 'NO': #F.N
         double_exclude=[]
     else:
         double_exclude = double_exclude.split(',') #F.N
