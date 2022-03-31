@@ -185,7 +185,6 @@ def test_extrinsic_double_defects(double_type, asr_tmpdir):
             pathlist = list(Path('.').glob('defects.*/charge_0'))
             assert len(pathlist) == lengths[double_type]
 
-#F.N_ Now test exclude double defects
 
 @pytest.mark.parametrize('double_type', ['vac-vac',
                                          'vac-sub',
@@ -210,6 +209,7 @@ def test_exclude_double_defects(double_type, asr_tmpdir):
                  double=double_type, double_exclude='Yb', scaling_double=1.5)
             pathlist = list(Path('.').glob('defects.*/charge_0'))
             assert len(pathlist) == lengths[double_type]
+
 
 @pytest.mark.parametrize('M', ['Mo', 'W'])
 @pytest.mark.parametrize('X', ['S', 'Se', 'Te'])
