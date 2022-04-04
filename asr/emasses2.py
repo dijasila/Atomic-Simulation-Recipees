@@ -71,7 +71,7 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW,
                                           axis=1)
         fermilevel = calc.get_fermi_level()
 
-    nocc = (eig_kn[0, 0, 0] < fermilevel).sum()
+    nocc = (eig_kn[0] < fermilevel).sum()
     N = range(nocc - 4, nocc + 4)
 
     K1, K2, K3 = tuple(kd.N_c)
