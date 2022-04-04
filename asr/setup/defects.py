@@ -62,7 +62,7 @@ gs_calc_dict = {'name': 'gpaw',
 @option('--double_exclude', type=str,
         help='Comma seperated string with double defects that will be excluded. '
         'E.g. for --double_exclude = "Mg, Fe" all double defects of the types'
-        'Mg-Mg, Mg-Fe and Fe-Fe will be excluded from the defect setup.'
+        'Mg-Mg, Mg-Fe and Fe-Fe will be excluded from the defect setup. '
         'The string can include both intrinsic and extrinsic elements.')
 @option('--scaling_double', type=float,
         help='Scaling factor for double defect creation. All possible double '
