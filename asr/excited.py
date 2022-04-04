@@ -15,9 +15,9 @@ from math import sqrt
 @command('asr.excited')
 @option('--excitation', type=str)
 def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
-    if Path('./structure.json').is_file():
-        atoms = read('./structure.json')
-    if not Path('./structure.json').is_file():
+    if Path('./unrelaxed.json').is_file():
+        atoms = read('./unrelaxed.json')
+    if not Path('./unrelaxed.json').is_file():
         atoms = read('../structure.json')
 
     old_calc = GPAW('../gs.gpw')
