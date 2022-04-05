@@ -139,9 +139,9 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
 
     # convert double_exclude defect string
     if double_exclude == 'NO':
-        double_exclude = []
+        double_exclude = frozenset() #F.N
     else:
-        double_exclude = double_exclude.split(',')
+        double_exclude = set(double_exclude.split(',')) #F.N: made a set
 
     # only run SJ setup if halfinteger is True
     if halfinteger:
@@ -351,7 +351,8 @@ def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-2):
 
     return True
 
-
+#F.N: Commented out
+"""
 def get_distance(atoms, i, j):
     from ase.geometry import get_distances
     pos1 = atoms.get_positions()[i]
@@ -359,7 +360,7 @@ def get_distance(atoms, i, j):
     cell = atoms.get_cell()
 
     return get_distances(pos1, pos2, cell=cell, pbc=True)[1][0, 0]
-
+"""
 
 def double_defect_index_generator(atoms):
     for i in range(len(atoms)):
@@ -368,11 +369,11 @@ def double_defect_index_generator(atoms):
                 yield (i, j)
 
 
-def double_defect_species_generator(element_list, defect_type='all', double_exclude=[]):
+def double_defect_species_generator(element_list, defect_type='all', double_exclude=frozenset()): #F.N
     if defect_type == 'all' or defect_type == 'sub-sub':
         for el1 in element_list:
             for el2 in element_list:
-                if (not (el1 in double_exclude and el2 in double_exclude)):
+                if (not {el1,el2}.issubset(double_exclude)): #(not (el1 in double_exclude and el2 in double_exclude)): #F.N
                     yield (el1, el2)
     elif defect_type == 'vac-sub':
         for el2 in element_list:
@@ -395,7 +396,7 @@ def get_maximum_distance(atoms, i, j, scaling_factor):
 
 def create_double_new(structure, pristine, eq_pos, charge_states,
                       base_id, defect_list=None, scaling_factor=1.5,
-                      defect_type='all', double_exclude=[]):
+                      defect_type='all', double_exclude=frozenset()):
     """Create double defects based on distance criterion."""
     defect_dict = {}
     complex_list = []
@@ -429,7 +430,7 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
             defect = pristine.copy()
             site1 = f'{el1}_{defect.symbols[i]}'
             site2 = f'{el2}_{defect.symbols[j]}'
-            distance = get_distance(pristine, i, j)
+            distance = pristine.get_distance(i,j) #get_distance(pristine, i, j) #F.N changed
             R_max = get_maximum_distance(pristine, i, j, scaling_factor)
             if (is_new_double_defect_2(site1, site2,
                                        complex_list, distance)
