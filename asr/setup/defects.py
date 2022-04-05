@@ -334,7 +334,6 @@ def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-2):
     """Check whether a new double defect exists already."""
     from math import isclose
 
-    new = True
     for double in double_defects:
         name = double[0]
         ref1 = name.split('.')[0]
@@ -359,11 +358,12 @@ def double_defect_index_generator(atoms):
                 yield (i, j)
 
 
-def double_defect_species_generator(element_list, defect_type='all', double_exclude=frozenset()):
+def double_defect_species_generator(element_list, defect_type='all',
+                                    double_exclude=frozenset()):
     if defect_type == 'all' or defect_type == 'sub-sub':
         for el1 in element_list:
             for el2 in element_list:
-                if (not {el1,el2}.issubset(double_exclude)):
+                if (not {el1, el2}.issubset(double_exclude)):
                     yield (el1, el2)
     elif defect_type == 'vac-sub':
         for el2 in element_list:
@@ -373,7 +373,7 @@ def double_defect_species_generator(element_list, defect_type='all', double_excl
 
 
 def get_maximum_distance(atoms, i, j, scaling_factor):
-    from ase.data import atomic_numbers, covalent_radii
+    from ase.data import covalent_radii
     an1 = atoms.numbers[i]
     an2 = atoms.numbers[j]
 
@@ -418,7 +418,7 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
             defect = pristine.copy()
             site1 = f'{el1}_{defect.symbols[i]}'
             site2 = f'{el2}_{defect.symbols[j]}'
-            distance = pristine.get_distance(i,j,mic=True)
+            distance = pristine.get_distance(i, j, mic=True)
             R_max = get_maximum_distance(pristine, i, j, scaling_factor)
             if (is_new_double_defect_2(site1, site2,
                                        complex_list, distance)
