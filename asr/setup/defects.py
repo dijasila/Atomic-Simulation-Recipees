@@ -351,16 +351,16 @@ def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-2):
 
     return True
 
-#F.N: Commented out
-"""
-def get_distance(atoms, i, j):
-    from ase.geometry import get_distances
-    pos1 = atoms.get_positions()[i]
-    pos2 = atoms.get_positions()[j]
-    cell = atoms.get_cell()
+#F.N: Commented out.
 
-    return get_distances(pos1, pos2, cell=cell, pbc=True)[1][0, 0]
-"""
+#def get_distance(atoms, i, j):
+#    from ase.geometry import get_distances
+#    pos1 = atoms.get_positions()[i]
+#    pos2 = atoms.get_positions()[j]
+#    cell = atoms.get_cell()
+#
+#    return get_distances(pos1, pos2, cell=cell, pbc=True)[1][0, 0]
+
 
 def double_defect_index_generator(atoms):
     for i in range(len(atoms)):
@@ -430,7 +430,7 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
             defect = pristine.copy()
             site1 = f'{el1}_{defect.symbols[i]}'
             site2 = f'{el2}_{defect.symbols[j]}'
-            distance = pristine.get_distance(i,j) #get_distance(pristine, i, j) #F.N changed
+            distance = pristine.get_distance(i,j,mic=True)#get_distance(pristine, i, j) #F.N revert
             R_max = get_maximum_distance(pristine, i, j, scaling_factor)
             if (is_new_double_defect_2(site1, site2,
                                        complex_list, distance)
