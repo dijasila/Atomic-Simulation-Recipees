@@ -139,9 +139,9 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
 
     # convert double_exclude defect string
     if double_exclude == 'NO':
-        double_exclude = frozenset() #F.N
+        double_exclude = frozenset()
     else:
-        double_exclude = frozenset(double_exclude.split(',')) #F.N: made a immutable set
+        double_exclude = frozenset(double_exclude.split(','))
 
     # only run SJ setup if halfinteger is True
     if halfinteger:
@@ -351,16 +351,6 @@ def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-2):
 
     return True
 
-#F.N: Commented out.
-
-#def get_distance(atoms, i, j):
-#    from ase.geometry import get_distances
-#    pos1 = atoms.get_positions()[i]
-#    pos2 = atoms.get_positions()[j]
-#    cell = atoms.get_cell()
-#
-#    return get_distances(pos1, pos2, cell=cell, pbc=True)[1][0, 0]
-
 
 def double_defect_index_generator(atoms):
     for i in range(len(atoms)):
@@ -369,11 +359,11 @@ def double_defect_index_generator(atoms):
                 yield (i, j)
 
 
-def double_defect_species_generator(element_list, defect_type='all', double_exclude=frozenset()): #F.N
+def double_defect_species_generator(element_list, defect_type='all', double_exclude=frozenset()):
     if defect_type == 'all' or defect_type == 'sub-sub':
         for el1 in element_list:
             for el2 in element_list:
-                if (not {el1,el2}.issubset(double_exclude)): #(not (el1 in double_exclude and el2 in double_exclude)): #F.N
+                if (not {el1,el2}.issubset(double_exclude)):
                     yield (el1, el2)
     elif defect_type == 'vac-sub':
         for el2 in element_list:
@@ -384,10 +374,8 @@ def double_defect_species_generator(element_list, defect_type='all', double_excl
 
 def get_maximum_distance(atoms, i, j, scaling_factor):
     from ase.data import atomic_numbers, covalent_radii
-    #el1 = atoms.symbols[i]
-    #el2 = atoms.symbols[j] #F.N
-    an1 = atoms.numbers[i] #atomic_numbers[el1]
-    an2 = atoms.numbers[j] #atomic_numbers[el2]
+    an1 = atoms.numbers[i]
+    an2 = atoms.numbers[j]
 
     R_max = (covalent_radii[an1] + covalent_radii[an2]) * scaling_factor
 
@@ -430,7 +418,7 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
             defect = pristine.copy()
             site1 = f'{el1}_{defect.symbols[i]}'
             site2 = f'{el2}_{defect.symbols[j]}'
-            distance = pristine.get_distance(i,j,mic=True)#get_distance(pristine, i, j) #F.N revert
+            distance = pristine.get_distance(i,j,mic=True)
             R_max = get_maximum_distance(pristine, i, j, scaling_factor)
             if (is_new_double_defect_2(site1, site2,
                                        complex_list, distance)
