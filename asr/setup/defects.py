@@ -141,7 +141,7 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
     if double_exclude == 'NO':
         double_exclude = frozenset() #F.N
     else:
-        double_exclude = set(double_exclude.split(',')) #F.N: made a set
+        double_exclude = frozenset(double_exclude.split(',')) #F.N: made a immutable set
 
     # only run SJ setup if halfinteger is True
     if halfinteger:
@@ -384,10 +384,10 @@ def double_defect_species_generator(element_list, defect_type='all', double_excl
 
 def get_maximum_distance(atoms, i, j, scaling_factor):
     from ase.data import atomic_numbers, covalent_radii
-    el1 = atoms.symbols[i]
-    el2 = atoms.symbols[j]
-    an1 = atomic_numbers[el1]
-    an2 = atomic_numbers[el2]
+    #el1 = atoms.symbols[i]
+    #el2 = atoms.symbols[j] #F.N
+    an1 = atoms.numbers[i] #atomic_numbers[el1]
+    an2 = atoms.numbers[j] #atomic_numbers[el2]
 
     R_max = (covalent_radii[an1] + covalent_radii[an2]) * scaling_factor
 
