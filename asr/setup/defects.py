@@ -59,16 +59,16 @@ gs_calc_dict = {'name': 'gpaw',
         help='Specify which double defects you want to include. Choose from '
         '"NO", "all", "vac-vac", "vac-sub, sub-sub" as a comma-separated list. E.g. '
         'if you want all vac-vac and vac-sub defects use "vac-vac,vac-sub".')
-@option('--double_exclude', type=str,
+@option('--double-exclude', type=str,
         help='Comma seperated string with double defects that will be excluded. '
         'E.g. for --double_exclude = "Mg, Fe" all double defects of the types'
         'Mg-Mg, Mg-Fe and Fe-Fe will be excluded from the defect setup. '
         'The string can include both intrinsic and extrinsic elements.')
-@option('--scaling_double', type=float,
+@option('--scaling-double', type=float,
         help='Scaling factor for double defect creation. All possible double '
         'defects within the sum of covalent radii of the two included sites '
         'times the scaling factor will be generated.')
-@option('--uniform_vacuum', type=bool,
+@option('--uniform-vacuum', type=bool,
         help='If true, tries to set out of plane vacuum size '
         'according to the in plane supercell size. Only for 2D.')
 @option('--extrinsic', type=str,
@@ -78,7 +78,7 @@ gs_calc_dict = {'name': 'gpaw',
         'It has to be launched within the specific charge folders and needs '
         'both a structure.json file as well as a params.json in order to '
         'work properly')
-@option('--general_algorithm',
+@option('--general-algorithm',
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
@@ -344,12 +344,12 @@ def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-2):
         distance_ref = double[1]
         if (el1 != el2 and el1 in name.split('.') and el2 in name.split('.')
            and isclose(distance_ref, distance, rel_tol=rel_tol)):
-            new = False
+            return False
         elif (el1 == el2 and f'{el1}.{el2}' == def_name
               and isclose(distance_ref, distance, rel_tol=rel_tol)):
-            new = False
+            return False
 
-    return new
+    return True
 
 
 def get_distance(atoms, i, j):
