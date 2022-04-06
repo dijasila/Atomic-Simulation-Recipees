@@ -439,39 +439,41 @@ def postprocess(
     return Result(data=results)
 
 
-def gw_main(*, atoms, calculator, kptdensity=default_kptdensity, ecut=default_ecut,
-            mode=default_mode, npoints, correctgw=default_correctgw, empz=default_empz):
-    # Defaults and other parameters from BS?  Such as bsrestart.
-    from asr.c2db.gs import GS
-    from asr.c2db.bandstructure import BS
+class GWWorkflow:
+    def __init__(self, rn, bsworkflow, *,
+                 kptdensity=default_kptdensity,
+                 ecut=default_ecut,
+                 mode=default_mode,
+                 correctgw=default_correctgw,
+                 empz=default_empz):
 
-    gs = GS(atoms=atoms, calculator=calculator)
-    bs = BS(gs=gs, npoints=npoints)
+        gsworkflow = bsworkflow.gsworkflow
 
-    gs_gw_result = gs_gw(
-        gsresult=gs.gsresult,
-        kptdensity=kptdensity,
-        ecut=ecut,
-    )
+        self.gs_gw = rn.task(
+            'asr.c2db.gw.gs_gw',
+            gsresult=gsworkflow.scf.output,
+            kptdensity=kptdensity,
+            ecut=ecut)
 
-    gwresults_no_mean_z = gw(
-        gsresult=gs.gsresult,
-        gs_gw_result=gs_gw_result,
-        kptdensity=kptdensity,
-        ecut=ecut,
-        mode=mode,
-    )
+        self.gw_no_mean_z = rn.task(
+            'asr.c2db.gw.gw',
+            gsresult=gsworkflow.scf.output,
+            gs_gw_result=self.gs_gw.output,
+            kptdensity=kptdensity,
+            ecut=ecut,
+            mode=mode)
 
-    gwresults = empirical_mean_z(
-        gwresults=gwresults_no_mean_z,
-        correctgw=correctgw,
-        empz=empz,
-    )
+        self.gw = rn.task(
+            'asr.c2db.gw.empirical_mean_z',
+            gwresults=self.gw_no_mean_z.output,
+            correctgw=correctgw,
+            empz=empz)
 
-    return postprocess(
-        gsresult=gs.gsresult,
-        gs_gw_result=gs_gw_result,
-        gwresults=gwresults,
-        results_bscalculate=bs.calculateresult,
-        results_bspost=bs.post,
-        mag_ani=gs.mag_ani)
+        self.postprocess = rn.task(
+            'asr.c2db.gw.postprocess',
+            gsresult=gsworkflow.scf.output,
+            gs_gw_result=self.gs_gw.output,
+            gwresults=self.gw.output,
+            results_bscalculate=bsworkflow.bs.output,
+            results_bspost=bsworkflow.postprocess.output,
+            mag_ani=gsworkflow.magnetic_anisotropy.output)

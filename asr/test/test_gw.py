@@ -1,8 +1,20 @@
 import pytest
 
+from contextlib import nullcontext
+from asr.c2db.gs import GSWorkflow
+from asr.c2db.bandstructure import BSWorkflow
+from asr.c2db.gw import GWWorkflow
+
+
+def gw_workflow(rn, atoms, calculator):
+    gsw = GSWorkflow(rn, atoms=atoms, calculator=calculator)
+    bsw = BSWorkflow(rn, gsworkflow=gsw, npoints=10)
+    return GWWorkflow(rn, bsworkflow=bsw, kptdensity=2)
+
+
 
 @pytest.mark.ci
-def test_gw(asr_tmpdir_w_params, test_material,
+def test_gw(repo, asr_tmpdir_w_params, test_material,
             mockgpaw, mocker, get_webcontent, fast_calc):
     import numpy as np
     import gpaw
@@ -13,7 +25,6 @@ def test_gw(asr_tmpdir_w_params, test_material,
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
     gpaw.GPAW._get_fermi_level.return_value = 0.5
 
-    from asr.c2db.gw import gw_main
     ndim = sum(test_material.pbc)
 
     def calculate(self):
@@ -24,23 +35,20 @@ def test_gw(asr_tmpdir_w_params, test_material,
                 "eps": eps}
 
     mocker.patch.object(G0W0, "calculate", calculate)
+
+    gwworkflow = repo.run_workflow(gw_workflow, atoms=test_material,
+                                   calculator=fast_calc)
+
     if ndim > 1:
-        results = gw_main(
-            atoms=test_material,
-            calculator=fast_calc,
-            npoints=10,
-            kptdensity=2
-        )
+        expectation = nullcontext()
+    else:
+        expectation = pytest.raises(NotImplementedError)
+
+    with expectation:
+        repo.tree().run_blocking()
+
+    if ndim > 1:
+        results = gwworkflow.postprocess.value().output
         assert results['gap_gw'] == pytest.approx(1)
         structinfo(atoms=test_material)
-        # test_material.write("structure.json")
-
         # get_webcontent()
-    else:
-        with pytest.raises(NotImplementedError):
-            gw_main(
-                atoms=test_material,
-                calculator=fast_calc,
-                npoints=10,
-                kptdensity=2,
-            )
