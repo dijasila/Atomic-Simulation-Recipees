@@ -4,8 +4,6 @@ stages:
 - build
 - style
 - test
-- integrationtest
-- systemtest
 - coverage
 - release
 - deploy
@@ -45,37 +43,38 @@ doctest:
   stage: test
   script: tox -e doctest
 
-python38:
-  image: python:3.8
-  stage: test
-  script: tox -e py38
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
+#python38:
+#  image: python:3.8
+#  stage: test
+#  script: tox -e py38
+#  artifacts:
+#    paths:
+#      - .tox/.coverage*
+#    expire_in: 3 weeks
 
-python39:
-  image: python:3.9
-  stage: test
-  script: tox -e py39
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
+#python39:
+#  image: python:3.9
+#  stage: test
+#  script: tox -e py39
+#  artifacts:
+#    paths:
+#      - .tox/.coverage*
+#    expire_in: 3 weeks
 
 # -------------- Parallel tests --------------
 
-python39-mpi:
-  image: python:3.9
+parallel:
+  image: registry.gitlab.com/asr-dev/asr:main
   stage: test
   script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
-    - useradd -m user
-    - su user -c 'tox -e py39-mpi'
+    - cd asr/test
+    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -k parallel
+  # GPAW swallows "-m" and errors out if we say "-m parallel"
+  # So we use -k instead.
+  # GPAW should not swallow -m.
 
 # -------------- Integration tests --------------
-python3-10-gpaw:
+main:
   image:  registry.gitlab.com/asr-dev/asr:main
   stage: build
   script:
@@ -109,15 +108,15 @@ python3-10-gpaw:
 
 
 # -------------- Coverage --------------
-coverage:
-  image: python:3.9
-  stage: coverage
-  script:
-    - tox -e coverage-report
-  artifacts:
-    paths:
-      - .tox/htmlcov/
-    expire_in: 3 weeks
+#coverage:
+#  image: python:3.9
+#  stage: coverage
+#  script:
+#    - tox -e coverage-report
+#  artifacts:
+#    paths:
+#      - .tox/htmlcov/
+#    expire_in: 3 weeks
 
 # -------------- Deploy coverage report --------------
 pages:
