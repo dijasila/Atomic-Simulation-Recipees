@@ -189,7 +189,7 @@ def main(strain_percent: float = 1,
             dphasedeps_c = dphase_c / (2 * strain_percent * 0.01)
             eps_v = (np.dot(dphasedeps_c, cell_cv)
                      / (2 * np.pi * vol))
-            eps_v *= N
+            eps_v *= N / Bohr
 
             if clamped:
                 epsref_vvv = eps_clamped_vvv
