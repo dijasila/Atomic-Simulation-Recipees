@@ -3,6 +3,8 @@ from pytest import approx
 from .materials import Si, Fe
 from pathlib import Path
 
+from asr.c2db.gs import GSWorkflow
+
 
 @pytest.mark.ci
 @pytest.mark.parallel
@@ -12,7 +14,6 @@ def test_gs(repo, mockgpaw, mocker, get_webcontent,
             test_material, gap, fermi_level):
     import asr.c2db.relax
     from asr.core import read_json
-    from asr.c2db.gs import workflow
     from ase.parallel import world
     import gpaw
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
@@ -26,11 +27,11 @@ def test_gs(repo, mockgpaw, mocker, get_webcontent,
                   'xc': 'PBE',
                   'mode': {'name': 'pw', 'ecut': 800}}
 
-    dct = repo.run_workflow_blocking(
-        workflow, atoms=test_material, calculator=calculator)
+    gsw = repo.run_workflow_blocking(
+        GSWorkflow, atoms=test_material, calculator=calculator)
 
-    calculateresult = dct['gs'].value().output
-    post = dct['postprocess'].value().output
+    calculateresult = gsw.scf.value().output
+    post = gsw.postprocess.value().output
 
     gsfile = calculateresult.calculation.paths[0]
     assert Path(gsfile).is_file()
@@ -116,7 +117,6 @@ def test_gs_asr_cli_results_figures(asr_tmpdir_w_params, mockgpaw):
 ])
 def test_gs_integration_gpaw(repo, atoms, refs):
     """Check that the groundstates produced by GPAW are correct."""
-    from asr.c2db.gs import workflow
 
     calculator = {
         'txt': 'gpaw.txt',
@@ -126,11 +126,8 @@ def test_gs_integration_gpaw(repo, atoms, refs):
         'mode': {'ecut': 200, 'name': 'pw'},
     }
 
-    dct = repo.run_workflow_blocking(workflow,
+    gsw = repo.run_workflow_blocking(GSWorkflow,
                                      atoms=atoms, calculator=calculator)
 
-    outputs = {name: future.value().output
-               for name, future in dct.items()}
-
-    assert outputs['postprocess']['gap'] == refs['gap']
-    assert outputs['magstate']['magstate'] == refs['magstate']
+    assert gsw.postprocess.value().output['gap'] == refs['gap']
+    assert gsw.magstate.value().output['magstate'] == refs['magstate']
