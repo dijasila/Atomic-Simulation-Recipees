@@ -1,12 +1,14 @@
 image: python
 
 stages:
-- build
-- style
 - test
-- coverage
-- release
-- deploy
+
+#- build
+#- style
+#- test
+#- coverage
+#- release
+#- deploy
 
 before_script:
 - pip install pip --upgrade
@@ -14,7 +16,7 @@ before_script:
 
 # -------------- Build --------------
 build:
-  stage: build
+  stage: test
   script: tox -e build
   artifacts:
     paths:
@@ -24,17 +26,17 @@ build:
 # -------------- Style tests --------------
 flake8:
   image: python:3.9
-  stage: style
+  stage: test
   script: tox -e flake8
 
 readme:
   image: python:3.9
-  stage: style
+  stage: test
   script: tox -e readme
 
 docs:
   image: python:3.9
-  stage: style
+  stage: test
   script: tox -e docs
 
 # -------------- Unit tests --------------
@@ -76,7 +78,7 @@ parallel:
 # -------------- Integration tests --------------
 main:
   image:  registry.gitlab.com/asr-dev/asr:main
-  stage: build
+  stage: test
   script:
     - pwd
     - cd asr/test
