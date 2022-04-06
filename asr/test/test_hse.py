@@ -1,54 +1,20 @@
 import pytest
 
-
-@pytest.fixture
-def gsresult(mockgpaw, asr_tmpdir_w_params, test_material, fast_calc):
-    from asr.c2db.gs import calculate
-    gsresult = calculate(atoms=test_material, calculator=fast_calc)
-    return gsresult
+from asr.c2db.hse import HSEWorkflow
+from asr.c2db.gs import GSWorkflow
+from asr.c2db.bandstructure import BSWorkflow
 
 
-@pytest.fixture
-def magstate(gsresult):
-    from asr.c2db.magstate import main
-    magstate = main(groundstate=gsresult)
-    return magstate
-
-
-@pytest.fixture
-def mag_ani(gsresult, magstate):
-    from asr.c2db.magnetic_anisotropy import main
-    mag_ani = main(groundstate=gsresult,
-                   magnetic=magstate['is_magnetic'])
-    return mag_ani
-
-
-@pytest.fixture
-def gspostprocess(gsresult, mag_ani):
-    from asr.c2db.gs import postprocess
-    return postprocess(groundstate=gsresult, mag_ani=mag_ani)
-
-
-@pytest.fixture
-def bsresult(gsresult):
-    from asr.c2db.bandstructure import calculate
-    return calculate(gsresult=gsresult,
-                     npoints=10)
-
-
-@pytest.fixture
-def bspostprocess(bsresult, gsresult, mag_ani, gspostprocess):
-    from asr.c2db.bandstructure import postprocess
-    return postprocess(bsresult=bsresult, gsresult=gsresult,
-                       mag_ani=mag_ani,
-                       gspostprocess=gspostprocess)
+def gs_bs_hse_workflow(rn, atoms, calculator):
+    gsw = GSWorkflow(rn, atoms=atoms, calculator=calculator)
+    bsw = BSWorkflow(rn, gsworkflow=gsw, npoints=10)
+    return HSEWorkflow(rn, bsworkflow=bsw)
 
 
 @pytest.mark.ci
 @pytest.mark.parametrize("bandgap", [0, 1])
-def test_hse(gsresult, asr_tmpdir_w_params, test_material, mockgpaw, mocker,
-             get_webcontent, fast_calc, bandgap, bspostprocess, mag_ani,
-             bsresult):
+def test_hse(repo, asr_tmpdir_w_params, test_material, mockgpaw, mocker,
+             get_webcontent, fast_calc, bandgap):
     import gpaw
     from pathlib import Path
     import numpy as np
@@ -86,15 +52,13 @@ def test_hse(gsresult, asr_tmpdir_w_params, test_material, mockgpaw, mocker,
 
     from asr.c2db.hse import calculate, postprocess
 
-    hse_calculate_result = calculate(
-        gsresult=gsresult,
-        mag_ani=mag_ani)
+    hseworkflow = repo.run_workflow(gs_bs_hse_workflow,
+                                    atoms=test_material,
+                                    calculator=fast_calc)
 
-    results = postprocess(
-        results_hse=hse_calculate_result,
-        results_bs_post=bspostprocess,
-        results_bs_calculate=bsresult,
-        mag_ani=mag_ani)
+    repo.tree().run_blocking()
+
+    results = hseworkflow.postprocess.value().output
     assert results['gap_hse_nosoc'] == pytest.approx(2 * bandgap)
     assert results['gap_dir_hse_nosoc'] == pytest.approx(2 * bandgap)
 

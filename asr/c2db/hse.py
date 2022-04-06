@@ -429,3 +429,23 @@ def add_missing_hse_keys(record: asr.Record) -> asr.Record:
     new_result = Result.fromdata(**data)
     record.result = new_result
     return record
+
+
+class HSEWorkflow:
+    def __init__(self, rn, bsworkflow):
+        gsw = bsworkflow.gsworkflow
+        self.bsworkflow = bsworkflow
+
+        mag_ani = gsw.magnetic_anisotropy.output
+
+        self.calculate = rn.task(
+            'asr.c2db.hse.calculate',
+            gsresult=gsw.scf.output,
+            mag_ani=mag_ani)
+
+        self.postprocess = rn.task(
+            'asr.c2db.hse.postprocess',
+            results_hse=self.calculate.output,
+            results_bs_post=bsworkflow.postprocess.output,
+            results_bs_calculate=bsworkflow.bs.output,
+            mag_ani=mag_ani)

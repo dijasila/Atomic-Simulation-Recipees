@@ -81,9 +81,7 @@ default_npoints = 400
         help='Number of points along k-point path.')
 def calculate(
         gsresult,
-        #atoms: Atoms,
-        #calculator: dict = calculategs.defaults.calculator,
-        bsrestart: dict = bsrestart_defaults,
+        bsrestart=None,
         kptpath: Union[str, None] = None,
         npoints: int = default_npoints,
 ) -> BandstructureCalculationResult:
@@ -96,6 +94,8 @@ def calculate(
     atoms = calculation.load().get_atoms()
     path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
                                pbc=atoms.pbc, eps=c2db_symmetry_eps)
+
+    bsrestart = {**bsrestart_defaults, **(bsrestart or {})}
 
     bsrestart['kpts'] = path
     calc = calculation.load(**bsrestart)
@@ -620,7 +620,9 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
 
 
 class BSWorkflow:
-    def __init__(self, rn, gsworkflow, *, bsrestart, kptpath, npoints):
+    def __init__(self, rn, gsworkflow, *,
+                 bsrestart=None, kptpath=None, npoints=default_npoints):
+        self.gsworkflow = gsworkflow
         self.bs = rn.task(
             'asr.c2db.bandstructure.calculate',
             gsresult=gsworkflow.scf.output, bsrestart=bsrestart,
