@@ -1,5 +1,5 @@
 from ase.units import Bohr
-from asr.database.fromtree import MissingUIDS
+# from asr.database.fromtree import MissingUIDS
 import numpy as np
 import pytest
 
