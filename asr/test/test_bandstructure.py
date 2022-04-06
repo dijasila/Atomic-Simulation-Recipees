@@ -1,7 +1,7 @@
 import pytest
 from ase.io import write
 from asr.c2db.gs import GSWorkflow
-from asr.c2db.bandstructure import workflow as bsworkflow
+from asr.c2db.bandstructure import BSWorkflow
 
 
 @pytest.mark.ci
@@ -18,20 +18,18 @@ def test_bandstructure_workflow(repo, mockgpaw, test_material,
                  'fixdensity': True}
 
     gsw = repo.run_workflow(GSWorkflow, atoms=test_material,
-                               calculator=fast_calc)
+                            calculator=fast_calc)
 
-    bs_dct = repo.run_workflow(
-        bsworkflow,
-        gsresult=gsw.scf.output,
-        mag_ani=gsw.magnetic_anisotropy.output,
-        gspostprocess=gsw.postprocess.output,
+    bsw = repo.run_workflow(
+        BSWorkflow,
+        gsworkflow=gsw,
         kptpath=None,
         bsrestart=bsrestart,
         npoints=npoints)
 
     repo.tree().run_blocking()
 
-    res = bs_dct['postprocess'].value().output
+    res = bsw.postprocess.value().output
 
     assert len(res.bs_soc['path'].kpts) == npoints
     assert len(res.bs_nosoc['path'].kpts) == npoints

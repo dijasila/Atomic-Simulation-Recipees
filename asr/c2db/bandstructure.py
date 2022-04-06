@@ -619,17 +619,18 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
     )
 
 
-def workflow(rn, gsresult, mag_ani, gspostprocess,
-             bsrestart, kptpath, npoints):
-    bs = rn.task('asr.c2db.bandstructure.calculate',
-                 gsresult=gsresult, bsrestart=bsrestart,
-                 kptpath=kptpath, npoints=npoints)
-    post = rn.task('asr.c2db.bandstructure.postprocess',
-                   bsresult=bs.output,
-                   gsresult=gsresult,
-                   mag_ani=mag_ani,
-                   gspostprocess=gspostprocess)
-    return {'bs': bs, 'postprocess': post}
+class BSWorkflow:
+    def __init__(self, rn, gsworkflow, *, bsrestart, kptpath, npoints):
+        self.bs = rn.task(
+            'asr.c2db.bandstructure.calculate',
+            gsresult=gsworkflow.scf.output, bsrestart=bsrestart,
+            kptpath=kptpath, npoints=npoints)
+        self.postprocess = rn.task(
+            'asr.c2db.bandstructure.postprocess',
+            bsresult=self.bs.output,
+            gsresult=gsworkflow.scf.output,
+            mag_ani=gsworkflow.magnetic_anisotropy.output,
+            gspostprocess=gsworkflow.postprocess.output)
 
 
 # Temporary class for porting to htw
