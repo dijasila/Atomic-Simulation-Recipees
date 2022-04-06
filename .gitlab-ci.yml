@@ -119,18 +119,18 @@ main:
 #    expire_in: 3 weeks
 
 # -------------- Deploy coverage report --------------
-pages:
-  stage: deploy
-  dependencies:
-    - coverage
-  script:
-    - mv .tox/htmlcov public
-  artifacts:
-    paths:
-      - public
-    expire_in: 3 weeks
-  only:
-    - master
+#pages:
+#  stage: deploy
+#  dependencies:
+#    - coverage
+#  script:
+#    - mv .tox/htmlcov public
+#  artifacts:
+#    paths:
+#      - public
+#    expire_in: 3 weeks
+#  only:
+#    - master
 
 
 # -------------- Release --------------
