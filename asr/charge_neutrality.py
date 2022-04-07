@@ -238,15 +238,15 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.charge_neutrality',
-         requires=['gs.gpw'],
-         dependencies=['asr.gs@calculate'],
-         resources='1:10m',
-         returns=ASRResult)
-@option('--temp', help='Temperature [K]', type=float)
-@option('--defects', help='Defect dictionary.', type=DictStr())
-@option('--dosfile', help='DOS results file. DOS will be generated '
-        'from gs.gpw if no DOS results file is given.', type=str)
+# @command(module='asr.charge_neutrality',
+#         requires=['gs.gpw'],
+#         dependencies=['asr.gs@calculate'],
+#         resources='1:10m',
+#         returns=ASRResult)
+# @option('--temp', help='Temperature [K]', type=float)
+# @option('--defects', help='Defect dictionary.', type=DictStr())
+# @option('--dosfile', help='DOS results file. DOS will be generated '
+#         'from gs.gpw if no DOS results file is given.', type=str)
 def main(temp: float = 300,
          defects: dict = {},
          dosfile: str = '') -> ASRResult:

@@ -60,11 +60,11 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command(module='asr.defectlinks',
-         requires=['structure.json'],
-         dependencies=['asr.relax'],
-         resources='1:1h',
-         returns=Result)
+# @command(module='asr.defectlinks',
+#         requires=['structure.json'],
+#         dependencies=['asr.relax'],
+#         resources='1:1h',
+#         returns=Result)
 def main() -> Result:
     """Generate QPOD database links for the defect project.
 

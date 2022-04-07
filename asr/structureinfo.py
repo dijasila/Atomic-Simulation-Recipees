@@ -5,10 +5,12 @@ from asr.core import command, ASRResult, prepare_result, option, AtomsFile
 
 
 def get_spg_href(url):
+    from asr.database.browser import href
     return href('SpgLib', url)
 
 
 def describe_pointgroup_entry(spglib):
+    from asr.database.browser import describe_entry
     pointgroup = describe_entry(
         'Point group',
         f"Point group determined with {spglib}."
@@ -18,6 +20,8 @@ def describe_pointgroup_entry(spglib):
 
 
 def describe_crystaltype_entry(spglib):
+    from asr.database.browser import (describe_entry, code, bold,
+                                      br, href, dl, div)
     crystal_type = describe_entry(
         'crystal_type',
         "The crystal type is defined as "
@@ -41,8 +45,7 @@ def describe_crystaltype_entry(spglib):
 
 
 def webpanel(result, context):
-    from asr.database.browser import (table, describe_entry, code, bold,
-                                      br, href, dl, div)
+    from asr.database.browser import describe_entry, href, table
 
     spglib = get_spg_href('https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)

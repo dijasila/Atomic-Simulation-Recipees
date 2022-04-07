@@ -84,7 +84,7 @@ def plot_fermi(context, fname, sfs=1, dpi=200):
     from matplotlib import pyplot as plt
     from asr.utils.symmetry import c2db_symmetry_eps
     atoms = context.atoms
-    lat = atoms.cell.get_bravais_lattice(pbc=row.pbc, eps=c2db_symmetry_eps)
+    lat = atoms.cell.get_bravais_lattice(pbc=atoms.pbc, eps=c2db_symmetry_eps)
     plt.figure(figsize=(5, 4))
     ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
     add_fermi(context, ax=ax, s=sfs)
@@ -103,7 +103,7 @@ def add_fermi(context, ax, s=0.25):
                     s=s, cmap='viridis', marker=',',
                     norm=normalize, alpha=1, zorder=2)
 
-    sdir = row.get('spin_axis', 'z')
+    sdir = context.spin_axis
     cbar = plt.colorbar(im, ticks=[-1, -0.5, 0, 0.5, 1])
     cbar.ax.tick_params()
     cbar.set_label(r'$\langle S_{} \rangle $'.format(sdir))

@@ -181,6 +181,7 @@ def test_extrinsic_double_defects(double_type, asr_tmpdir):
             assert len(pathlist) == lengths[double_type]
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize('double_type', ['vac-vac',
                                          'vac-sub',
                                          'sub-sub'])

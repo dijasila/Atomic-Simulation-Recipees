@@ -7,5 +7,5 @@ from asr.structureinfo import main
 def test_structureinfo(asr_tmpdir):
     atoms = bulk('Si')
     atoms.write('structure.json')
-    result = main()
+    result = main(atoms=atoms)
     assert result['spacegroup'] == 'Fd-3m'

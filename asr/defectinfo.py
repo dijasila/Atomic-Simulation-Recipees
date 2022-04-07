@@ -136,16 +136,16 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.defectinfo',
-         resources='1:10m',
-         returns=Result)
-@option('--structurefile', help='Structure file for the evaluation of '
-        'the nearest neighbor distance.', type=str)
-@option('--pristine/--no-pristine', help='Flag to treat systems '
-        'in the pristine folder of the set up tree structure '
-        'from asr.setup.defects.', is_flag=True)
-@option('--dbpath', help='Path to C2DB database file for host '
-        'property extraction.', type=str)
+# @command(module='asr.defectinfo',
+#         resources='1:10m',
+#         returns=Result)
+# @option('--structurefile', help='Structure file for the evaluation of '
+#        'the nearest neighbor distance.', type=str)
+# @option('--pristine/--no-pristine', help='Flag to treat systems '
+#        'in the pristine folder of the set up tree structure '
+#        'from asr.setup.defects.', is_flag=True)
+# @option('--dbpath', help='Path to C2DB database file for host '
+#        'property extraction.', type=str)
 def main(structurefile: str = 'structure.json',
          pristine: bool = False,
          dbpath: str = '/home/niflheim/fafb/db/c2db_july20.db') -> Result:

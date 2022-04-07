@@ -84,14 +84,14 @@ def calculate(
             magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    calc = construct_calculator(calculator)
     ndim = sum(atoms.pbc)
     supercell = np.ones(3, int)
     supercell[:ndim] = n
 
+    params = dict(calculator)
     with paropen('phonons.txt', mode='a') as fd:
         params['txt'] = fd
-        calc = get_calculator()(**params)
+        calc = construct_calculator(params)
 
         nd = sum(atoms.get_pbc())
         if nd == 3:
