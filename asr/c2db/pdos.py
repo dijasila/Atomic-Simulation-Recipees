@@ -62,7 +62,6 @@ def calculate(
     calc, gpw = refinegs(
         atoms=atoms,
         calculator=calculator,
-        selfc=False,
         kptdensity=kptdensity, emptybands=emptybands,
         gpw='pdos.gpw',
         txt='pdos.txt',

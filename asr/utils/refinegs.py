@@ -19,26 +19,6 @@ def nonselfc(atoms, calculator, txt=None, kptdensity=20.0, emptybands=20):
     return calc
 
 
-def get_filenames(gpw, txt, selfc=False, **kwargs):
-    """Get file names as specified by input."""
-    parstr = get_parstr(selfc=selfc, **kwargs)
-
-    if isinstance(gpw, str):
-        if gpw == 'default':
-            gpw = f'refinedgs_{parstr}.gpw'
-        assert gpw[-4:] == '.gpw'
-    else:
-        assert gpw is None
-
-    if isinstance(txt, str):
-        if txt == 'default':
-            txt = f'refinedgs_{parstr}.txt'
-    else:
-        assert txt is None
-
-    return gpw, txt
-
-
 def get_parstr(selfc=False, **kwargs):
     """Get parameter string, specifying how the ground state is refined."""
     parstr = 'selfc«%s»' % str(selfc)
@@ -49,13 +29,11 @@ def get_parstr(selfc=False, **kwargs):
     return parstr
 
 
-def refinegs(atoms, calculator, selfc=False, gpw=None, txt=None, **kwargs):
+def refinegs(atoms, calculator, gpw, txt, **kwargs):
     """Refine the ground state calculation.
 
     Parameters
     ----------
-    selfc : bool
-        Perform new self-consistency cycle to refine also the density
     gpw : str
         Write the refined ground state as a .gpw file.
         If 'default' is specified, use f'refinedgs_{parstr}.gpw' as file name.
@@ -73,15 +51,10 @@ def refinegs(atoms, calculator, selfc=False, gpw=None, txt=None, **kwargs):
         filename of written GPAW calculator object
     """
     from gpaw import GPAW
-    gpw, txt = get_filenames(gpw, txt, selfc=selfc, **kwargs)
     if gpw and Path(gpw).is_file():
         calc = GPAW(gpw, txt=None)
     else:
-        if selfc:
-            raise NotImplementedError('Someone should implement refinement '
-                                      + 'with self-consistency')
-        else:
-            calc = nonselfc(atoms, calculator, txt=txt, **kwargs)
+        calc = nonselfc(atoms, calculator, txt=txt, **kwargs)
 
         if gpw:
             calc.write(gpw)
