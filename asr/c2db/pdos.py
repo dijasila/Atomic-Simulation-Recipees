@@ -46,25 +46,22 @@ pdos_figfile = 'scf-pdos_nosoc.png'
 # ----- Slow steps ----- #
 
 
-@command(module='asr.c2db.pdos')
-@atomsopt
-@calcopt
-@option('-k', '--kptdensity', type=float, help='K-point density')
-@option('--emptybands', type=int, help='number of empty bands to include')
+# @command(module='asr.c2db.pdos')
+# @atomsopt
+# @calcopt
+# @option('-k', '--kptdensity', type=float, help='K-point density')
+# @option('--emptybands', type=int, help='number of empty bands to include')
 def calculate(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+        gsresult,
         kptdensity: float = 20.0,
         emptybands: int = 20,
 ) -> ASRResult:
     from asr.utils.refinegs import refinegs
 
     calc = refinegs(
-        atoms=atoms,
-        calculator=calculator,
+        gsresult=gsresult,
         kptdensity=kptdensity, emptybands=emptybands,
-        txt='pdos.txt',
-    )
+        txt='pdos.txt')
 
     gpw = Path('pdos.gpw')
     calc.write(gpw)
@@ -155,8 +152,9 @@ class PDOS:
         e2 = gaps.get('cbm') or gaps.get('efermi')
         erange = np.linspace(e1 - 3, e2 + 3, 500)
 
-        self.pdos_gpwfile = calculate(atoms=atoms, calculator=calculator,
-                                      kptdensity=kptdensity, emptybands=emptybands)
+        self.pdos_gpwfile = calculate(gsresult=gs.gsresult,
+                                      kptdensity=kptdensity,
+                                      emptybands=emptybands)
         self.post = postprocess(gpwfile=self.pdos_gpwfile,
                                 mag_ani=gs.mag_ani, erange=erange)
 
