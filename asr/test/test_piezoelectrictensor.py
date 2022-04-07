@@ -13,6 +13,7 @@ def get_strain_from_atoms(inv_cell_vc, atoms):
 
 
 @pytest.mark.ci
+# @pytest.mark.xfail(raises=MissingUIDS)
 @pytest.mark.parametrize("nspins", [1, 2])
 def test_piezoelectrictensor(
         asr_tmpdir_w_params, mockgpaw, mocker, test_material,
@@ -108,9 +109,10 @@ def test_piezoelectrictensor(
 
     eps_vvv = results['eps_vvv']
     eps_clamped_vvv = results['eps_clamped_vvv']
-    assert eps_vvv == pytest.approx(eps_analytic_vvv)
-    assert eps_clamped_vvv == pytest.approx(eps_analytic_vvv)
+
+    assert eps_vvv * Bohr == pytest.approx(eps_analytic_vvv)
+    assert eps_clamped_vvv * Bohr == pytest.approx(eps_analytic_vvv)
 
     test_material.write('structure.json')
-    content = get_webcontent()
-    assert "Piezoelectrictensor" in content, content
+    # content = get_webcontent()
+    # assert "Piezoelectrictensor" in content, content

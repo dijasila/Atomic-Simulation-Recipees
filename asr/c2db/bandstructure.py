@@ -14,6 +14,7 @@ from asr.c2db.gs import main as maings
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
 from asr.database.browser import fig, make_panel_description, describe_entry
+from asr.utils.symmetry import c2db_symmetry_eps
 
 panel_description = make_panel_description(
     """The band structure with spin–orbit interactions is shown with the
@@ -86,7 +87,7 @@ def calculate(
 ) -> BandstructureCalculationResult:
     """Calculate electronic band structure."""
     path = atoms.cell.bandpath(path=kptpath, npoints=npoints,
-                               pbc=atoms.pbc)
+                               pbc=atoms.pbc, eps=c2db_symmetry_eps)
 
     result = calculategs(atoms=atoms, calculator=calculator)
     calculation = result.calculation
@@ -551,7 +552,8 @@ def main(
         else:
             path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
                                             path=path['path'],
-                                            npoints=path['npoints'])
+                                            npoints=path['npoints'],
+                                            eps=c2db_symmetry_eps)
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
     results = {}
