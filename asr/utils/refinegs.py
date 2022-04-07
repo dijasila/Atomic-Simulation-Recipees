@@ -19,16 +19,6 @@ def nonselfc(atoms, calculator, txt=None, kptdensity=20.0, emptybands=20):
     return calc
 
 
-def get_parstr(selfc=False, **kwargs):
-    """Get parameter string, specifying how the ground state is refined."""
-    parstr = 'selfc«%s»' % str(selfc)
-
-    for kw in ['kptdensity', 'emptybands']:
-        parstr += '_%s«%s»' % (kw, str(kwargs[kw]))
-
-    return parstr
-
-
 def refinegs(atoms, calculator, txt, **kwargs):
     """Refine the ground state calculation.
 
