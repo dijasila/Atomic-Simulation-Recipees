@@ -1,4 +1,4 @@
-from asr.core import command, ASRResult, prepare_result, option
+from asr.core import ASRResult, prepare_result
 from asr.defect_symmetry import (return_defect_coordinates,
                                  check_and_return_input,
                                  DefectInfo, WFCubeFile)

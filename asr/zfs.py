@@ -1,4 +1,4 @@
-from asr.core import command, ASRResult, prepare_result
+from asr.core import ASRResult, prepare_result
 import numpy as np
 
 

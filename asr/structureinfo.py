@@ -21,7 +21,7 @@ def describe_pointgroup_entry(spglib):
 
 def describe_crystaltype_entry(spglib):
     from asr.database.browser import (describe_entry, code, bold,
-                                      br, href, dl, div)
+                                      br, dl, div)
     crystal_type = describe_entry(
         'crystal_type',
         "The crystal type is defined as "

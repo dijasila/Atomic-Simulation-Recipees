@@ -1,6 +1,6 @@
 from ase.db import connect
 from ase.io import read
-from asr.core import command, ASRResult, prepare_result, read_json, option
+from asr.core import ASRResult, prepare_result, read_json
 from asr.defectlinks import get_charge_from_folder
 from asr.defect_symmetry import DefectInfo
 from asr.setup.defects import return_distances_cell

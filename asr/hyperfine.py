@@ -1,11 +1,10 @@
-import click
 import typing
 import numpy as np
 from pathlib import Path
 import ase.units as units
 from ase.geometry import get_distances
-from asr.core import (command, ASRResult, prepare_result,
-                      read_json, option)
+from asr.core import (ASRResult, prepare_result,
+                      read_json)
 from asr.database.browser import make_panel_description, href, matrixtable, table
 
 

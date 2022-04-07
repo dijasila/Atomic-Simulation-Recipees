@@ -9,7 +9,6 @@ import typing
 import numpy as np
 
 from ase.parallel import world, paropen
-from ase.io import read
 from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
 from ase import Atoms

@@ -1,5 +1,5 @@
 from ase.formula import Formula
-from asr.core import (command, ASRResult, prepare_result, chdir, read_json)
+from asr.core import (ASRResult, prepare_result, chdir, read_json)
 from asr.database.browser import WebPanel, table
 from asr.database.material_fingerprint import main as material_fingerprint
 from asr.defect_symmetry import DefectInfo

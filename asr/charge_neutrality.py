@@ -1,5 +1,5 @@
 """Self-consistent EF calculation for defect systems.."""
-from asr.core import command, option, ASRResult, prepare_result, DictStr
+from asr.core import ASRResult, prepare_result
 from ase.dft.bandgap import bandgap
 from ase.io import read
 from asr.database.browser import (table, describe_entry, dl, code,
