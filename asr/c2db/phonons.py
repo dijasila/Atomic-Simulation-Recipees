@@ -73,6 +73,7 @@ indicates a dynamical instability.
     articles=['C2DB'],
 )
 
+
 @prepare_result
 class CalculateResult(ASRResult):
     forces: typing.Dict
@@ -90,8 +91,8 @@ def calculate(
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from gpaw import GPAW
-
-    # XXX Here we should purge the cache
+    # XXX code does not handle n being three integers.
+    # We should probably support that.
 
     # Set initial magnetic moments
     if magstate.is_magnetic:
@@ -102,20 +103,21 @@ def calculate(
             magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
+    ndim = sum(atoms.pbc)
+    supercell = np.ones(3, int)
+    supercell[:ndim] = n
+
     calculator = dict(calculator)
     with paropen('phonons.txt', mode='a') as fd:
-        calculator['txt'] = fd
-
         calcname = calculator.pop('name')
         assert calcname == 'gpaw'
+        calculator['txt'] = fd
         calc = GPAW(**calculator)
 
-        ndim = sum(atoms.pbc)
-        supercell = np.ones(3, int)
-        supercell[:ndim] = n
-
         phonons = Phonons(atoms=atoms, calc=calc, supercell=supercell)
-        phonons.cache.strip_empties()
+        if world.rank == 0:
+            phonons.cache.strip_empties()
+        world.barrier()
         phonons.run()
 
     forces = dict(phonons.cache)

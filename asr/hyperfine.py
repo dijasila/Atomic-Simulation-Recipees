@@ -1,11 +1,10 @@
-import click
 import typing
 import numpy as np
 from pathlib import Path
 import ase.units as units
 from ase.geometry import get_distances
-from asr.core import (command, ASRResult, prepare_result,
-                      read_json, option)
+from asr.core import (ASRResult, prepare_result,
+                      read_json)
 from asr.database.browser import make_panel_description, href, matrixtable, table
 
 
@@ -300,17 +299,17 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command(module='asr.hyperfine')
+# @command(module='asr.hyperfine')
 #         requires=['structure.json', 'gs.gpw'],
 #         dependencies=['asr.gs@calculate'],
 #         resources='1:1h',
 #         returns=Result)
-@option('--center', nargs=3, type=click.Tuple([float, float, float]),
-        help='Tuple of three spatial coordinates that should be considered '
-        'as the center (defaults to [0, 0, 0]).')
-@option('--defect/--no-defect', help='Flag to choose whether HF coupling should be '
-        'calculated for a defect. If so, the recipe will automatically extract the '
-        'defect position from asr.defect_symmetry.', is_flag=True)
+# @option('--center', nargs=3, type=click.Tuple([float, float, float]),
+#        help='Tuple of three spatial coordinates that should be considered '
+#        'as the center (defaults to [0, 0, 0]).')
+# @option('--defect/--no-defect', help='Flag to choose whether HF coupling should be '
+#        'calculated for a defect. If so, the recipe will automatically extract the '
+#        'defect position from asr.defect_symmetry.', is_flag=True)
 def main(center: typing.Sequence[float] = (0, 0, 0),
          defect: bool = False) -> Result:
     """Calculate hyperfine splitting."""

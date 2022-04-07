@@ -1,4 +1,4 @@
-from asr.core import command, ASRResult, prepare_result
+from asr.core import ASRResult, prepare_result
 import numpy as np
 
 
@@ -39,11 +39,11 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command(module='asr.zfs')
-         #requires=['gs.gpw', 'structure.json'],
-         #dependencies=['asr.gs'],
-         #resources='1:1h',
-         #returns=Result)
+# @command(module='asr.zfs',
+#         requires=['gs.gpw', 'structure.json'],
+#         dependencies=['asr.gs'],
+#         resources='1:1h',
+#         returns=Result)
 def main() -> Result:
     """Calculate zero-field-splitting."""
     from gpaw import restart

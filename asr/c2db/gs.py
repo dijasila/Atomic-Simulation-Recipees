@@ -184,6 +184,7 @@ def webpanel(result, context):
 
 
 def bz_with_band_extrema(context, fname):
+    import numpy as np
     from matplotlib import pyplot as plt
     from asr.utils.symmetry import c2db_symmetry_eps
 

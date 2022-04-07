@@ -111,6 +111,7 @@ def restrict_spin_projection_2d(kpt, op_scc, s_vm):
 # that recipes can use.
 #
 # Ideally the criterion would probably depend on the Hessian or stiffness,
-# but 0.1 works reasonably well according to tests by Thomas Olsen.
+# but 0.1 and 1.0 works reasonably well according to tests by Thomas Olsen.
 
 c2db_symmetry_eps = 0.1
+c2db_symmetry_angle = 1.0

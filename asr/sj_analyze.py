@@ -1,4 +1,4 @@
-from asr.core import command, ASRResult, prepare_result, option
+from asr.core import ASRResult, prepare_result
 from asr.database.browser import make_panel_description, href
 from pathlib import Path
 from ase.io import Trajectory
@@ -204,14 +204,14 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.sj_analyze')
+# @command(module='asr.sj_analyze')
 #         requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
 #                   '../../unrelaxed.json', 'gs.gpw'],
 #         resources='24:2h',
 #         returns=Result)
-@option('--index', help='Specify index of the atom in the pristine supercell '
-        'that you want to use as a potential reference. Will be chosen '
-        'automatically if nothing is set.', type=int)
+# @option('--index', help='Specify index of the atom in the pristine supercell '
+#        'that you want to use as a potential reference. Will be chosen '
+#        'automatically if nothing is set.', type=int)
 def main(index: int = None) -> Result:
     """Calculate charge transition levels for defect systems.
 

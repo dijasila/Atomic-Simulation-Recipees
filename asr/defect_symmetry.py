@@ -269,7 +269,7 @@ class Result(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command(module='asr.defect_symmetry')
+# @command(module='asr.defect_symmetry')
 #         requires=['structure.json'],
 #         dependencies=['asr.get_wfs'],
 #         resources='1:1h',

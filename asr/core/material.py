@@ -2,7 +2,6 @@
 
 A material object closely mimics the behaviour of an ase.db.atomsrow.
 """
-import warnings
 from pathlib import Path
 from ase.utils import workdir
 

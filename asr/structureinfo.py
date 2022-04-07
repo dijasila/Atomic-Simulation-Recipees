@@ -1,32 +1,27 @@
 """Structural information."""
 import numpy as np
 from ase import Atoms
-
 from asr.core import command, ASRResult, prepare_result, option, AtomsFile
 
 
 def get_spg_href(url):
     from asr.database.browser import href
-
     return href('SpgLib', url)
 
 
 def describe_pointgroup_entry(spglib):
     from asr.database.browser import describe_entry
-
     pointgroup = describe_entry(
-        'pointgroup',
+        'Point group',
         f"Point group determined with {spglib}."
     )
 
     return pointgroup
 
 
-def webpanel(result, context):
-    from asr.database.browser import (table, describe_entry, code, bold,
-                                      br, href, dl, div)
-
-    spglib = get_spg_href('https://spglib.github.io/spglib/')
+def describe_crystaltype_entry(spglib):
+    from asr.database.browser import (describe_entry, code, bold,
+                                      br, dl, div)
     crystal_type = describe_entry(
         'crystal_type',
         "The crystal type is defined as "
@@ -45,6 +40,15 @@ def webpanel(result, context):
             ]
         )
     )
+
+    return crystal_type
+
+
+def webpanel(result, context):
+    from asr.database.browser import describe_entry, href, table
+
+    spglib = get_spg_href('https://spglib.github.io/spglib/')
+    crystal_type = describe_crystaltype_entry(spglib)
 
     cls = describe_entry(
         'class',
@@ -165,7 +169,7 @@ def main(atoms: Atoms) -> Result:
     state properties that requires only an atomic structure. This recipes read
     the atomic structure in `structure.json`.
     """
-    from asr.utils.symmetry import c2db_symmetry_eps
+    from asr.utils.symmetry import c2db_symmetry_eps, c2db_symmetry_angle
 
     info = {}
 
@@ -175,13 +179,10 @@ def main(atoms: Atoms) -> Result:
 
     # Get crystal symmetries
     from asr.utils.symmetry import atoms2symmetry
-    # According to tests by Thomas Olsen on C2DB, having a coarse
-    # angle tolerance is not important for solving the issue documented
-    # for asr.utils.symmetry.c2db_symmetry_eps.  So we still use a very
-    # strict symmetry.
+
     symmetry = atoms2symmetry(atoms,
                               tolerance=c2db_symmetry_eps,
-                              angle_tolerance=0.1)
+                              angle_tolerance=c2db_symmetry_angle)
     info['has_inversion_symmetry'] = symmetry.has_inversion
     dataset = symmetry.dataset
     info['spglib_dataset'] = dataset

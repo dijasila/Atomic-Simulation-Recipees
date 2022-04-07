@@ -1,4 +1,4 @@
-from asr.core import command, ASRResult, prepare_result, option
+from asr.core import ASRResult, prepare_result
 from asr.defect_symmetry import (return_defect_coordinates,
                                  check_and_return_input,
                                  DefectInfo, WFCubeFile)
@@ -21,19 +21,19 @@ class Result(ASRResult):
         n2='staterange maximum.')
 
 
-@command(module='asr.tdm')
+# @command(module='asr.tdm')
 #         requires=['gs.gpw', 'structure.json'],
 #         dependencies=['asr.gs@calculate'],
 #         resources='1:1h',
 #         returns=Result)
-@option('--primitivefile', help='Path to the primitive structure file.',
-        type=str)
-@option('--pristinefile', help='Path to the pristine supercell file'
-        '(needs to be of the same shape as structure.json).', type=str)
-@option('--unrelaxedfile', help='Path to an the unrelaxed '
-        'supercell file (only needed if --mapping is set).', type=str)
-@option('--defect', help='Specify whether analysis is conducted for a '
-        'defect system. Only works when asr.get_wfs ran before!', type=bool)
+# @option('--primitivefile', help='Path to the primitive structure file.',
+#        type=str)
+# @option('--pristinefile', help='Path to the pristine supercell file'
+#        '(needs to be of the same shape as structure.json).', type=str)
+# @option('--unrelaxedfile', help='Path to an the unrelaxed '
+#        'supercell file (only needed if --mapping is set).', type=str)
+# @option('--defect', help='Specify whether analysis is conducted for a '
+#        'defect system. Only works when asr.get_wfs ran before!', type=bool)
 def main(primitivefile: str = 'primitive.json',
          pristinefile: str = 'pristine.json',
          unrelaxedfile: str = None,
