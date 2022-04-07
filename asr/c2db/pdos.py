@@ -59,15 +59,16 @@ def calculate(
 ) -> ASRResult:
     from asr.utils.refinegs import refinegs
 
-    calc, gpw = refinegs(
+    calc = refinegs(
         atoms=atoms,
         calculator=calculator,
         kptdensity=kptdensity, emptybands=emptybands,
-        gpw='pdos.gpw',
         txt='pdos.txt',
     )
 
-    return Path('pdos.gpw')
+    gpw = Path('pdos.gpw')
+    calc.write(gpw)
+    return gpw
 
 # ----- Fast steps ----- #
 

@@ -29,15 +29,11 @@ def get_parstr(selfc=False, **kwargs):
     return parstr
 
 
-def refinegs(atoms, calculator, gpw, txt, **kwargs):
+def refinegs(atoms, calculator, txt, **kwargs):
     """Refine the ground state calculation.
 
     Parameters
     ----------
-    gpw : str
-        Write the refined ground state as a .gpw file.
-        If 'default' is specified, use f'refinedgs_{parstr}.gpw' as file name.
-        If another string is specified, use that as file name.
     txt : str
         Write the GPAW output to a .txt file.
         If 'default' is specified, use f'refinedgs_{parstr}.txt' as file name.
@@ -50,13 +46,5 @@ def refinegs(atoms, calculator, gpw, txt, **kwargs):
     gpw : str
         filename of written GPAW calculator object
     """
-    from gpaw import GPAW
-    if gpw and Path(gpw).is_file():
-        calc = GPAW(gpw, txt=None)
-    else:
-        calc = nonselfc(atoms, calculator, txt=txt, **kwargs)
-
-        if gpw:
-            calc.write(gpw)
-
-    return calc, gpw
+    calc = nonselfc(atoms, calculator, txt=txt, **kwargs)
+    return calc
