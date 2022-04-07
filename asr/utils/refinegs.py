@@ -1,10 +1,12 @@
-from pathlib import Path
-
 from asr.utils.kpts import get_kpts_size
 
 
-def nonselfc(atoms, calculator, txt=None, kptdensity=20.0, emptybands=20):
-    """Non self-consistent calculation based on the density in gs.gpw."""
+def refinegs(atoms, calculator, txt=None, kptdensity=20.0, emptybands=20):
+    """Refine the ground state calculation.
+
+    Returns GPAW calculator with fixed density.
+    """
+
     from asr.c2db.gs import calculate
     res = calculate(atoms=atoms, calculator=calculator)
     calc = res.calculation.load()
@@ -16,25 +18,4 @@ def nonselfc(atoms, calculator, txt=None, kptdensity=20.0, emptybands=20):
                               kpts=kpts,
                               convergence={'bands': -convbands})
 
-    return calc
-
-
-def refinegs(atoms, calculator, txt, **kwargs):
-    """Refine the ground state calculation.
-
-    Parameters
-    ----------
-    txt : str
-        Write the GPAW output to a .txt file.
-        If 'default' is specified, use f'refinedgs_{parstr}.txt' as file name.
-        If another string is specified, use that as file name.
-
-    Returns
-    -------
-    calc : obj
-        GPAW calculator object
-    gpw : str
-        filename of written GPAW calculator object
-    """
-    calc = nonselfc(atoms, calculator, txt=txt, **kwargs)
     return calc
