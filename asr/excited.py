@@ -30,7 +30,7 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
                 kpts={"size": (1,1,1), "gamma": True},
                 spinpol=True,
                 symmetry='off',
-                eigensolver=DirectMin(),
+                eigensolver=DirectMin(convergelumo=True),
                 mixer={'name': 'dummy'},
                 occupations={'name': 'fixed-uniform'},
                 charge=charge,
@@ -55,18 +55,23 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
          logfile='ground.log').run(fmax=0.01)
     
     write('ground.json', atoms)
+<<<<<<< HEAD
 
     energy = atoms.get_potential_energy()
     eref = read('../../structure.json').get_potential_energy()
 
     assert abs(energy - eref) < 1, 'DO-MOM converged to a wrong ground state!'
 
+=======
+    params = read_json('params.json')
+    excitation=params['asr.excited@calculate']['excitation']
+>>>>>>> a09b26d51a273dd7aeeadf2e25f97bfc784dfe38
     if excitation == 'alpha':
         excite_and_sort(calc.wfs, 0, 0, (0, 0), 'fdpw')
     if excitation == 'beta':
         excite_and_sort(calc.wfs, 0, 0, (1, 1), 'fdpw')
 
-    calc.set(eigensolver=DirectMin(exstopt=True))
+    calc.set(eigensolver=DirectMin(exstopt=True, convergelumo=True))
 
     f_sn = []
     for spin in range(calc.get_number_of_spins()):
