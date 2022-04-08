@@ -19,14 +19,13 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
         atoms = read('./unrelaxed.json')
     if not Path('./unrelaxed.json').is_file():
         atoms = read('../structure.json')
-
     old_calc = GPAW('../gs.gpw')
 
     #old_params = old_calc.todict()
     old_params = read_json('../params.json')
     charge = old_params['asr.relax']['calculator']['charge']
 
-    calc = GPAW(mode=PW(600),
+    calc = GPAW(mode=PW(500),
                 xc='PBE',
                 kpts={"size": (1,1,1), "gamma": True},
                 spinpol=True,
@@ -50,15 +49,18 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
 
     atoms.calc = calc
     calc.initialize(atoms)
-    atoms.get_potential_energy()
-    write('ground.json', atoms)
+
     BFGS(atoms,
-         trajectory='relax.traj', 
-         logfile='relax.log').run(fmax=0.01)
+         trajectory='ground.traj', 
+         logfile='ground.log').run(fmax=0.01)
     
     write('ground.json', atoms)
-    params = read_json('params.json')
-    excitation=params['asr.excite@calculate']['excitation']
+
+    energy = atoms.get_potential_energy()
+    eref = read('../../structure.json').get_potential_energy()
+
+    assert abs(energy - eref) < 1, 'DO-MOM converged to a wrong ground state!'
+
     if excitation == 'alpha':
         excite_and_sort(calc.wfs, 0, 0, (0, 0), 'fdpw')
     if excitation == 'beta':
@@ -77,11 +79,11 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     calculator['name'] = 'gpaw'
 
     BFGS(atoms,
-         trajectory='relax.traj', 
-         logfile='relax.log').run(fmax=0.01)
+         trajectory='excited.traj', 
+         logfile='excited.log').run(fmax=0.01)
 
     write('structure.json', atoms)
-    atoms.calc.write('excited.gpw')
+    atoms.calc.write('gs.gpw')
 
 
 @prepare_result
