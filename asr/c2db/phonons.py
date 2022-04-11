@@ -38,22 +38,18 @@ class PhononWorkflow:  # not actually a workflow yet
         'charge': 0
     }
 
-    def __init__(self, atoms, calculator=default_calculator, n=default_n,
-                 mingo=default_mingo):
-        from asr.c2db.gs import GS
-        from ase.utils import workdir
-
+    def __init__(self, rn, atoms, calculator=None,
+                 n=default_n, mingo=default_mingo):
         if calculator is None:
             calculator = dict(self.phonons_calculator_default)
 
-        with workdir('calculate', mkdir=True):
-            self.phononresult = calculate(atoms=atoms, calculator=calculator,
-                                          n=n)
+        self.calculate = rn.task(
+            'asr.c2db.phonons.calculate',
+            atoms=atoms, calculator=calculator, n=n)
 
-        # XXX duplicate passing of atoms.  (Also the "n" parameter has this problem)
-        # Maybe define a container class for this definition.
-        with workdir('post', mkdir=True):
-            self.post = postprocess(phononresult=self.phononresult, atoms=atoms)
+        self.postprocess = rn.task(
+            'asr.c2db.phonons.postprocess',
+            phononresult=self.calculate.output, atoms=atoms)
 
 
 panel_description = make_panel_description(
