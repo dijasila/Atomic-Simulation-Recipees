@@ -144,10 +144,15 @@ def main(
         #patterns: str = '*', update_tree: bool = False
 ) -> ASRResult:
     from htwutil.repository import Repository
-    from htwutil.runner import Runner
-    from asr.database import connect
 
     repo = Repository.find(Path.cwd())
+    with repo:
+        _main(repo, database, run, select, tree_structure)
+
+
+def _main(repo, database, run, select, tree_structure):
+    from htwutil.runner import Runner
+    from asr.database import connect
 
     if select:
         print(f'Selecting {select}')
