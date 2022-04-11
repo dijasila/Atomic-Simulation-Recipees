@@ -50,10 +50,15 @@ class PhononWorkflow:  # not actually a workflow yet
 
         self.gs = GS(atoms=atoms, calculator=calculator)
 
+        magstate = self.gs.magstate
+        if magstate.is_magnetic:
+            magmoms = self.gs.magstate.magmoms
+        else:
+            magmoms = None
+
         with workdir('calculate', mkdir=True):
             self.phononresult = calculate(atoms=atoms, calculator=calculator,
-                                          magstate=self.gs.magstate, n=n)
-
+                                          magmoms=magmoms, n=n)
 
         # XXX duplicate passing of atoms.  (Also the "n" parameter has this problem)
         # Maybe define a container class for this definition.
@@ -86,7 +91,7 @@ class CalculateResult(ASRResult):
 def calculate(
         atoms,
         calculator,
-        magstate,  # XXX Should not depend on this exact object
+        magmoms=None,
         n=PhononWorkflow.default_n,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
@@ -95,8 +100,8 @@ def calculate(
     # We should probably support that.
 
     # Set initial magnetic moments
-    if magstate.is_magnetic:
-        magmoms_m = magstate.magmoms
+    if magmoms is not None:
+        magmoms_m = np.array(magmoms)
         # Some calculators return magnetic moments resolved into their
         # cartesian components
         if len(magmoms_m.shape) == 2:
