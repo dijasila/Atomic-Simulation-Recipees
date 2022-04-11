@@ -30,8 +30,9 @@ def test_gs(repo, mockgpaw, mocker, get_webcontent,
     gsw = repo.run_workflow_blocking(
         GSWorkflow, atoms=test_material, calculator=calculator)
 
-    calculateresult = gsw.scf.value().output
-    post = gsw.postprocess.value().output
+    with repo:
+        calculateresult = gsw.scf.value().output
+        post = gsw.postprocess.value().output
 
     gsfile = calculateresult.calculation.paths[0]
     assert Path(gsfile).is_file()
@@ -129,5 +130,6 @@ def test_gs_integration_gpaw(repo, atoms, refs):
     gsw = repo.run_workflow_blocking(GSWorkflow,
                                      atoms=atoms, calculator=calculator)
 
-    assert gsw.postprocess.value().output['gap'] == refs['gap']
-    assert gsw.magstate.value().output['magstate'] == refs['magstate']
+    with repo:
+        assert gsw.postprocess.value().output['gap'] == refs['gap']
+        assert gsw.magstate.value().output['magstate'] == refs['magstate']

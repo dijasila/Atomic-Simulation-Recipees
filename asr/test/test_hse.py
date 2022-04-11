@@ -52,15 +52,17 @@ def test_hse(repo, asr_tmpdir_w_params, test_material, mockgpaw, mocker,
 
     from asr.c2db.hse import calculate, postprocess
 
-    hseworkflow = repo.run_workflow(gs_bs_hse_workflow,
-                                    atoms=test_material,
-                                    calculator=fast_calc)
+    with repo:
+        hseworkflow = repo.run_workflow(gs_bs_hse_workflow,
+                                        atoms=test_material,
+                                        calculator=fast_calc)
 
-    repo.tree().run_blocking()
+    hseworkflow.postprocess.runall_blocking(repo)
 
-    results = hseworkflow.postprocess.value().output
-    assert results['gap_hse_nosoc'] == pytest.approx(2 * bandgap)
-    assert results['gap_dir_hse_nosoc'] == pytest.approx(2 * bandgap)
+    with repo:
+        results = hseworkflow.postprocess.value().output
+        assert results['gap_hse_nosoc'] == pytest.approx(2 * bandgap)
+        assert results['gap_dir_hse_nosoc'] == pytest.approx(2 * bandgap)
 
     # We need to call structureinfo in order to make the webpanel.
     # This should be fixed in the future.
