@@ -18,7 +18,6 @@ def test_hse(repo, asr_tmpdir_w_params, test_material, mockgpaw, mocker,
     import gpaw
     from pathlib import Path
     import numpy as np
-    from asr.structureinfo import main as structinfo
 
     test_material.write('structure.json')
 
@@ -49,8 +48,6 @@ def test_hse(repo, asr_tmpdir_w_params, test_material, mockgpaw, mocker,
         return calc.eigenvalues[np.newaxis]
 
     mocker.patch('gpaw.xc.tools.vxc', create=True, new=vxc)
-
-    from asr.c2db.hse import calculate, postprocess
 
     with repo:
         hseworkflow = repo.run_workflow(gs_bs_hse_workflow,

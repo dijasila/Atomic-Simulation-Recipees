@@ -20,8 +20,6 @@ from asr.core import (
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
 
-from asr.c2db.magstate import main as magstate
-
 
 class PhononWorkflow:  # not actually a workflow yet
     default_n = 2
@@ -264,14 +262,11 @@ def postprocess(
     # or we should otherwise have access to the inputs of the calculate step.
 
     calculateresult = phononresult
-    # calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
-    nd = sum(atoms.pbc)
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
+
+    ndim = sum(atoms.pbc)
+    supercell = np.ones(3, int)
+    supercell[:ndim] = n
+
     phonons = Phonons(atoms=atoms, supercell=supercell)
     if world.rank == 0:
         phonons.cache.update(calculateresult.forces)
