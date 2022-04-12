@@ -43,6 +43,8 @@ class PhononWorkflow:  # not actually a workflow yet
         if calculator is None:
             calculator = dict(self.phonons_calculator_default)
 
+        self.atoms = atoms
+
         self.calculate = rn.task(
             'asr.c2db.phonons.calculate',
             atoms=atoms, calculator=calculator, n=n)
