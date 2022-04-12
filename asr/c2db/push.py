@@ -1,44 +1,33 @@
 """Push along phonon modes."""
 # TODO: Should be moved to setup recipes.
 from typing import List
-from asr.core import command, option, atomsopt, calcopt
-from asr.c2db.phonons import main as phonons
+from fractions import Fraction
+import numpy as np
 
 from ase import Atoms
 
 
-@command('asr.c2db.push')
-@atomsopt
-@calcopt
-@option('-q', '--momentum', nargs=3, type=float,
-        help='Phonon momentum')
-@option('-m', '--mode', type=int, help='Mode index')
-@option('-a', '--amplitude', type=float,
-        help='Maximum distance an atom will be displaced')
-@option('-n', help='Supercell size', type=int)
-@option('--mingo/--no-mingo', is_flag=True,
-        help='Perform Mingo correction of force constant matrix')
+#@command('asr.c2db.push')
+#@atomsopt
+#@calcopt
+#@option('-q', '--momentum', nargs=3, type=float,
+#        help='Phonon momentum')
+#@option('-m', '--mode', type=int, help='Mode index')
+#@option('-a', '--amplitude', type=float,
+#        help='Maximum distance an atom will be displaced')
+#@option('-n', help='Supercell size', type=int)
+#@option('--mingo/--no-mingo', is_flag=True,
+#        help='Perform Mingo correction of force constant matrix')
 def main(
         atoms: Atoms,
+        phresults,
         momentum: List[float] = [0, 0, 0],
         mode: int = 0,
         amplitude: float = 0.1,
-        calculator: dict = phonons.defaults.calculator,
-        n: int = phonons.defaults.n,
-        mingo: bool = phonons.defaults.mingo,
 ) -> Atoms:
     """Push structure along some phonon mode and relax structure."""
     from asr.phonons import analyse
-    import numpy as np
     q_c = momentum
-
-    # Get modes
-    phresults = phonons(
-        atoms=atoms,
-        calculator=calculator,
-        n=n,
-        mingo=mingo,
-    )
 
     omega_kl = phresults.omega_kl
     u_klav = phresults.u_kl
@@ -50,7 +39,6 @@ def main(
     )
 
     # Repeat atoms
-    from fractions import Fraction
     repeat_c = [Fraction(qc).denominator
                 if qc > 1e-3 else 1 for qc in q_qc[iq]]
     newatoms = atoms * repeat_c
