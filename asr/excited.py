@@ -1,5 +1,6 @@
 from ase.io import read, write
 from ase.optimize import BFGS
+from ase.io.trajectory import Trajectory
 
 from asr.core import command, option, ASRResult, read_json, prepare_result
 from asr.relax import main as relax
@@ -15,10 +16,14 @@ from math import sqrt
 @command('asr.excited')
 @option('--excitation', type=str)
 def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
-    if Path('./unrelaxed.json').is_file():
-        atoms = read('./unrelaxed.json')
-    if not Path('./unrelaxed.json').is_file():
-        atoms = read('../structure.json')
+    atoms = read('../../structure.json')
+    eref = atoms.get_potential_energy()
+    if Path('./ground.traj').is_file():
+        ground = Trajectory('ground.traj')[-1]
+        eground = ground.get_potential_energy()    
+        assert abs(eground - eref) < 1, 'DO-MOM converged to a wrong ground state!'
+        atoms = ground.copy()
+
     old_calc = GPAW('../gs.gpw')
 
     old_params = read_json('../params.json')
@@ -56,7 +61,6 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     write('ground.json', atoms)
 
     energy = atoms.get_potential_energy()
-    eref = read('../../structure.json').get_potential_energy()
 
     assert abs(energy - eref) < 1, 'DO-MOM converged to a wrong ground state!'
 
@@ -78,6 +82,9 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
 
     calculator = calc.todict()
     calculator['name'] = 'gpaw'
+
+    if Path('./excited.traj').is_file():
+        atoms = Trajectory('excited.traj')[-1]
 
     BFGS(atoms,
          trajectory='excited.traj', 
