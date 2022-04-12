@@ -223,60 +223,97 @@ def transform_stiffness_resultfile_record(record):
     return record
 
 
-@command(
-    module='asr.c2db.stiffness',
-)
-@option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
-        default='structure.json')
-@asr.calcopt
-@option('--strain-percent', help='Magnitude of applied strain.', type=float)
-@option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
-@option('--fmax', help='Maximum force allowed.', type=float)
-@option('--enforce-symmetry/--dont-enforce-symmetry',
-        help='Symmetrize forces and stresses.', is_flag=True)
-class Stiffness:
+#@command(
+#    module='asr.c2db.stiffness',
+#)
+#@option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
+#        default='structure.json')
+#@asr.calcopt
+#@option('--strain-percent', help='Magnitude of applied strain.', type=float)
+#@option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
+#@option('--fmax', help='Maximum force allowed.', type=float)
+#@option('--enforce-symmetry/--dont-enforce-symmetry',
+#        help='Symmetrize forces and stresses.', is_flag=True)
+
+
+class StrainWorkflow:
+    def __init__(self, rn, atoms, strain_percent: float = 1.0):
+        from asr.setup.strains import main as make_strained_atoms
+        from asr.setup.strains import get_relevant_strains
+        self.strains = []
+        # (If atoms is a future, we cannot refer to atoms.pbc.)
+        ij = get_relevant_strains(atoms.pbc)
+
+        self.strain_percent = strain_percent
+        self.atoms = atoms
+        self.strains = {}
+
+        for i, j in ij:
+            for sign in [-1, 1]:
+                strained = rn.task(
+                    'asr.setup.strains.main',
+                    atoms=atoms,
+                    # XXX dangerous floating point multiplication:
+                    strain_percent=sign * strain_percent,
+                    i=i, j=j)
+                self.strains[i, j, sign] = strained
+
+
+def stiffnesstensor(stress_tensors, strain_percent):
+    ij_to_voigt = [[0, 5, 4],
+                   [5, 1, 3],
+                   [4, 3, 2]]
+
+    stiffness_tensor = np.zeros((6, 6))
+
+    for (i, j, sign), stress_tensor in stress_tensors:
+        stiffness_index = ij_to_voigt[i][j]
+        stiffness_tensor[:, stiffness_index] += sign * stress_tensor
+
+    stiffness_tensor /= strain_percent * 0.02
+    return stiffness_tensor
+
+
+class StiffnessWorkflow:
     def __init__(
             self,
-            atoms: Atoms,
+            rn,
+            strainworkflow,
             calculator: dict = relax.defaults.calculator,
-            strain_percent: float = 1.0,
             d3: bool = False,
             fmax: float = relax.defaults.fmax,
             enforce_symmetry: bool = True):
         """Calculate stiffness tensor."""
 
-        from asr.setup.strains import main as make_strained_atoms
-        from asr.setup.strains import get_relevant_strains
+        atoms = strainworkflow.atoms
+        strain_percent = strainworkflow.strain_percent
 
-        ij = get_relevant_strains(atoms.pbc)
+        self.relaxations = {}
+        for key, strained in strainworkflow.strains.items():
+            self.relaxations[key] = rn.task(
+                'asr.c2db.relax.main',
+                atoms=strained.output,
+                calculator=calculator,
+                fixcell=True,
+                allow_symmetry_breaking=True,
+                d3=d3,
+                fmax=fmax,
+                enforce_symmetry=enforce_symmetry)
 
-        ij_to_voigt = [[0, 5, 4],
-                       [5, 1, 3],
-                       [4, 3, 2]]
+        # Due to JSON key restrictions we flatten the relaxations dictionary:
+        stress_tensors_flat = [[key, relaxation.output['stress']]
+                               for key, relaxation
+                               in self.relaxations.items()]
 
-        relaxresults = []
-        stiffness = np.zeros((6, 6), float)
-        for i, j in ij:
-            dstress = np.zeros((6,), float)
-            for sign in [-1, 1]:
-                strained_atoms = make_strained_atoms(
-                    atoms,
-                    strain_percent=sign * strain_percent,
-                    i=i, j=j)
-                relaxresult = relax(
-                    strained_atoms,
-                    calculator=calculator,
-                    fixcell=True,
-                    allow_symmetry_breaking=True,
-                    d3=d3,
-                    fmax=fmax,
-                    enforce_symmetry=enforce_symmetry,
-                )
-                stress = relaxresult.stress
-                dstress += stress * sign
-            stiffness[:, ij_to_voigt[i][j]] = dstress / (strain_percent * 0.02)
+        self.stiffness = rn.task(
+            'asr.c2db.stiffness.stiffnesstensor',
+            stress_tensors=stress_tensors_flat,
+            strain_percent=strainworkflow.strain_percent)
 
-        self.post = postprocess(atoms=atoms, stiffness=stiffness)
+        self.postprocess = rn.task(
+            'asr.c2db.stiffness.postprocess',
+            atoms=atoms,
+            stiffness=self.stiffness.output)
 
 
 def postprocess(atoms, stiffness):
