@@ -1,17 +1,40 @@
 import pytest
 
 
-@pytest.mark.skip('something wrong with web panel')
+class Workflow:
+    def __init__(self, rn, atoms, calculator):
+        self.scf = rn.task(
+            'asr.c2db.gs.calculate',
+            atoms=atoms,
+            calculator=calculator)
+
+        self.gpwfile = rn.task(
+            'asr.c2db.plasmafrequency.calculate',
+            gsresult=self.scf.output)
+
+        self.postprocess = rn.task(
+            'asr.c2db.plasmafrequency.postprocess',
+            gpwfile=self.gpwfile.output)
+
+
 @pytest.mark.ci
-def test_plasmafrequency(asr_tmpdir_w_params, get_webcontent, mockgpaw,
-                         test_material):
+def test_plasmafrequency(repo, get_webcontent, mockgpaw,
+                         test_material, fast_calc):
     """Test of the plasma freuquency recipe."""
-    from asr.c2db.plasmafrequency import main
+    #from asr.c2db.plasmafrequency import main, calculate
     from pathlib import Path
     if sum(test_material.pbc) != 2:
-        pytest.xfail("Plasma frequency is only implemented for 2D atm.")
-    main(atoms=test_material)
-    assert not Path('es_plasma.gpw').is_file()
-    test_material.write('structure.json')
-    content = get_webcontent()
-    assert "plasmafrequency" in content
+        pytest.skip("Plasma frequency is only implemented for 2D atm.")
+
+    wf = repo.run_workflow_blocking(
+        Workflow,
+        atoms=test_material,
+        calculator=fast_calc)
+
+    with repo:
+        xfreq = wf.postprocess.value().output['plasmafrequency_x']
+        assert xfreq == pytest.approx(0)
+
+    # test_material.write('structure.json')
+    # content = get_webcontent()
+    # assert "plasmafrequency" in content
