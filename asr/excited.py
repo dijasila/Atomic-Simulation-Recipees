@@ -18,11 +18,12 @@ from math import sqrt
 def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     atoms = read('../../structure.json')
     eref = atoms.get_potential_energy()
-    if Path('./ground.traj').is_file():
+    ground_traj = Path('./ground.traj')
+    if ground_traj.is_file() and ground_traj.stat().st_size:
         ground = Trajectory('ground.traj')[-1]
         eground = ground.get_potential_energy()    
         assert abs(eground - eref) < 1, 'DO-MOM converged to a wrong ground state!'
-        atoms = ground.copy()
+        atoms = ground
 
     old_calc = GPAW('../gs.gpw')
 
@@ -54,15 +55,16 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     atoms.calc = calc
     calc.initialize(atoms)
 
-    BFGS(atoms,
-         trajectory='ground.traj', 
-         logfile='ground.log').run(fmax=0.01)
+    if not Path('ground.json').is_file():
+        BFGS(atoms,
+             trajectory='ground.traj', 
+             logfile='ground.log').run(fmax=0.01)
     
-    write('ground.json', atoms)
+        write('ground.json', atoms)
+        energy = atoms.get_potential_energy()
+        assert abs(energy - eref) < 1, 'DO-MOM converged to a wrong ground state!'
 
-    energy = atoms.get_potential_energy()
-
-    assert abs(energy - eref) < 1, 'DO-MOM converged to a wrong ground state!'
+    atoms = read('ground.json')
 
     params = read_json('params.json')
     excitation=params['asr.excited@calculate']['excitation']
@@ -83,7 +85,8 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     calculator = calc.todict()
     calculator['name'] = 'gpaw'
 
-    if Path('./excited.traj').is_file():
+    excited_traj = Path('./excited.traj')
+    if excited_traj.is_file() and excited_traj.stat().st_size:
         atoms = Trajectory('excited.traj')[-1]
 
     BFGS(atoms,
