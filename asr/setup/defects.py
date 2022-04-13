@@ -50,7 +50,7 @@ import os
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
-def main(atomfile: str = 'unrelaxed.json',
+def main(atoms, #F.N take from totree #file: str = 'unrelaxed.json',
          supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
@@ -109,7 +109,7 @@ def main(atomfile: str = 'unrelaxed.json',
         double_exclude = frozenset(double_exclude.split(','))
 
     # first, read input atomic structure and store it in ase's atoms object
-    structure = read(atomfile)
+    structure = atoms #read(atomfile) #F.N takes atoms object rather than file as input
     print('INFO: starting recipe for setting up defect systems of '
           '{} host system.'.format(structure.symbols))
     # check dimensionality of initial parent structure
