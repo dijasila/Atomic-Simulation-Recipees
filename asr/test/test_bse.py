@@ -5,8 +5,8 @@ from asr.c2db.gs import GSWorkflow
 
 @pytest.mark.ci
 def test_bse(repo,
-        asr_tmpdir_w_params, test_material, fast_calc,
-        mockgpaw, mocker, get_webcontent):
+             asr_tmpdir_w_params, test_material, fast_calc,
+             mockgpaw, mocker, get_webcontent):
     from asr.c2db.bse import BSEWorkflow
 
     import gpaw
@@ -39,16 +39,8 @@ def test_bse(repo,
         return bse_workflow
 
     if ndim > 1:
-        
-        with repo:
-            bseworkflow = repo.run_workflow(
-                    combined_workflow, test_material, fast_calc, 2)
-                    
-
-        #test_material.write("structure.json")
-        #get_webcontent()
+        repo.run_workflow_blocking(combined_workflow, test_material, fast_calc, 2)
     else:
         with pytest.raises(NotImplementedError):
             repo.run_workflow_blocking(
-                    combined_workflow, test_material, calculator=fast_calc, kptdensity=2)
-
+                combined_workflow, test_material, calculator=fast_calc, kptdensity=2)

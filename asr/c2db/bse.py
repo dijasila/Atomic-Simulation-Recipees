@@ -4,12 +4,11 @@ import typing
 from pathlib import Path
 
 import numpy as np
-from ase import Atoms
 from ase.units import alpha, Ha, Bohr
 
 from asr.core import (
     command, option, file_barrier, ASRResult, prepare_result,
-    atomsopt, calcopt, ExternalFile,
+    ExternalFile,
 )
 from asr.database.browser import (
     fig, table, make_panel_description, describe_entry)
@@ -53,7 +52,7 @@ class BSECalculateResult(ASRResult):
         )
 
 
-#@command()
+@command()
 @option('--kptdensity', help='K-point density', type=float)
 @option('--ecut', help='Plane wave cutoff', type=float)
 @option('--nv_s', help='Valence bands included', type=float)
@@ -332,7 +331,7 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-#@command()
+@command()
 def postprocess(bsecalculateresult, gs_post_result, magstateresult) -> Result:
     res = bsecalculateresult
 
@@ -371,13 +370,11 @@ def postprocess(bsecalculateresult, gs_post_result, magstateresult) -> Result:
 class BSEWorkflow:
     # TODO convert into actual workflow
     def __init__(self, rn, gs_workflow : GSWorkflow, **kwargs):
-        from asr.c2db.gs import GSWorkflow
-        #GS(atoms=atoms, calculator=calculator)
         self.bse = rn.task('asr.c2db.bse.calculate',
                            gsresult=gs_workflow.scf.output, **kwargs)
 
         self.post = rn.task(
-                'asr.c2db.bse.postprocess',
-                bsecalculateresult=self.bse.output,
-                magstateresult=gs_workflow.magstate.output,
-                gs_post_result=gs_workflow.postprocess.output)
+            'asr.c2db.bse.postprocess',
+            bsecalculateresult=self.bse.output,
+            magstateresult=gs_workflow.magstate.output,
+            gs_post_result=gs_workflow.postprocess.output)
