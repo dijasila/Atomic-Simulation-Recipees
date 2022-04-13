@@ -1,9 +1,8 @@
 """Module for determining magnetic state."""
 
+import typing
 from asr.core import command, ASRResult, prepare_result, argument
 from asr.c2db.gs import GroundStateCalculationResult
-from ase import Atoms
-import typing
 
 atomic_mom_threshold = 0.1
 total_mom_threshold = 0.1

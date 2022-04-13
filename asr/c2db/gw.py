@@ -1,16 +1,14 @@
 """DFT GW."""
 import numpy as np
-from ase import Atoms
 import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result,
-    atomsopt, calcopt, ExternalFile,
+    command, ASRResult, prepare_result,
+    ExternalFile,
 )
 # from asr.c2db.gs import calculate as calculategs
 # from asr.c2db.bandstructure import main as bsmain
 # from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 from ase.spectrum.band_structure import BandStructure
-from click import Choice
 import typing
 from asr.database.browser import href, make_panel_description
 from asr.utils.gw_hse import GWHSEInfo
@@ -64,11 +62,12 @@ arXiv:2009.00314""",
 default_ecut = 200.0
 default_kptdensity = 5.0
 
+
 @command()
-#@atomsopt
-#@calcopt
-#@option('--kptdensity', help='K-point density', type=float)
-#@option('--ecut', help='Plane wave cutoff', type=float)
+# @atomsopt
+# @calcopt
+# @option('--kptdensity', help='K-point density', type=float)
+# @option('--ecut', help='Plane wave cutoff', type=float)
 def gs_gw(
         gsresult,
         kptdensity: float = default_kptdensity,
@@ -126,10 +125,10 @@ default_mode = 'G0W0'
 
 
 @command()
-#@option('--kptdensity', help='K-point density', type=float)
-#@option('--ecut', help='Plane wave cutoff', type=float)
-#@option('--mode', help='GW mode',
-#        type=Choice(['G0W0', 'GWG']))
+# @option('--kptdensity', help='K-point density', type=float)
+# @option('--ecut', help='Plane wave cutoff', type=float)
+# @option('--mode', help='GW mode',
+#         type=Choice(['G0W0', 'GWG']))
 def gw(gs_gw_result,
        gsresult,
        kptdensity: float = default_kptdensity,
@@ -188,14 +187,15 @@ def gw(gs_gw_result,
 
 default_correctgw = True
 
+
 @command()
-#@option('--kptdensity', help='K-point density', type=float)
-#@option('--ecut', help='Plane wave cutoff', type=float)
-#@option('--mode', help='GW mode',
-#        type=Choice(['G0W0', 'GWG']))
-#@option('-c', '--correctgw', is_flag=True, default=False)
-#@option('-z', '--empz', type=float, default=0.75,
-#        help='Replacement Z for unphysical Zs')
+# @option('--kptdensity', help='K-point density', type=float)
+# @option('--ecut', help='Plane wave cutoff', type=float)
+# @option('--mode', help='GW mode',
+#         type=Choice(['G0W0', 'GWG']))
+# @option('-c', '--correctgw', is_flag=True, default=False)
+# @option('-z', '--empz', type=float, default=0.75,
+#         help='Replacement Z for unphysical Zs')
 def empirical_mean_z(
         gwresults,
         correctgw: default_correctgw,
@@ -316,23 +316,24 @@ def migrate_1(record):
 
 default_empz = 0.75
 
+
 @command()
-#@asr.calcopt(
-#    aliases=['-b', '--bsrestart'],
-#    help='Bandstructure Calculator params.',
-#    matcher=asr.matchers.EQUAL,
-#)
-#@option('--kptpath', type=str, help='Custom kpoint path.')
-#@option('--npoints',
-#        type=int,
-#        help='Number of points along k-point path.')
-#@option('--kptdensity', help='K-point density', type=float)
-#@option('--ecut', help='Plane wave cutoff', type=float)
-#@option('--mode', help='GW mode',
-#        type=Choice(['G0W0', 'GWG']))
-#@option('-c', '--correctgw', is_flag=True, default=False)
-#@option('-z', '--empz', type=float, default=0.75,
-#        help='Replacement Z for unphysical Zs')
+# @asr.calcopt(
+#     aliases=['-b', '--bsrestart'],
+#     help='Bandstructure Calculator params.',
+#     matcher=asr.matchers.EQUAL,
+# )
+# @option('--kptpath', type=str, help='Custom kpoint path.')
+# @option('--npoints',
+#         type=int,
+#         help='Number of points along k-point path.')
+# @option('--kptdensity', help='K-point density', type=float)
+# @option('--ecut', help='Plane wave cutoff', type=float)
+# @option('--mode', help='GW mode',
+#         type=Choice(['G0W0', 'GWG']))
+# @option('-c', '--correctgw', is_flag=True, default=False)
+# @option('-z', '--empz', type=float, default=0.75,
+#         help='Replacement Z for unphysical Zs')
 def postprocess(
         *,
         gs_gw_result,
@@ -353,7 +354,6 @@ def postprocess(
     ub = gwresults.maxband
 
     delta_skn = gwresults.qp - gwresults.eps
-
 
     calc = GPAW(gs_gw_result['gs_gw_nowfs.gpw'], txt=None)
     results = MP_interpolate(
