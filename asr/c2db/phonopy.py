@@ -90,14 +90,10 @@ class PhonopyWorkflow:
             self,
             atoms,
             calculator=default_calculator,
-            magstatecalculator=gs_default_calculator,
             d=0.05,
             rc=None,
             sc=(0, 0, 0),
             dist_max=7.0):
-
-
-        self.gs = GS(atoms=atoms, calculator=gs_default_calculator)
 
         self.calculateresult = calculate(
             atoms=atoms,

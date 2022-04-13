@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.ci
-def test_phonopy(mockgpaw, get_webcontent, fast_calc, in_tempdir):
+def test_phonopy(mockgpaw, get_webcontent, in_tempdir):
     """Simple test of phononpy recipe."""
     from asr.c2db.phonopy import PhonopyWorkflow
     from ase.build import bulk
@@ -14,7 +14,6 @@ def test_phonopy(mockgpaw, get_webcontent, fast_calc, in_tempdir):
     phonons = PhonopyWorkflow(
         atoms=atoms,
         calculator={'name': 'emt'},
-        magstatecalculator=fast_calc,
         sc=[N, N, N])
 
     data = phonons.post
