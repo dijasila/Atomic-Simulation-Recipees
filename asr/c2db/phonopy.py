@@ -74,17 +74,11 @@ from asr.c2db.gs import GS, default_calculator as gs_default_calculator
 
 class PhonopyWorkflow:
     # XXX not entirely ported to workflow yet
-    default_calculator = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
-        'xc': 'PBE',
-        'kpts': {'density': 6.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'forces': 1.0e-4},
-        'symmetry': {'point_group': False},
-        'txt': 'phonons.txt',
-        'charge': 0}
+    default_calculator = _PhononWorkflow.default_calculator
+
+    # Porting to workflows:
+    # Should default nbands be 200% like in
+    # phonons.py, or not, like in phonopy.py?
 
     def __init__(
             self,
