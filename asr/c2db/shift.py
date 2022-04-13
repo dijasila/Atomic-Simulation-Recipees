@@ -2,13 +2,11 @@ import typing
 from pathlib import Path
 
 import numpy as np
-from ase import Atoms
 
 from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+    command, option, ASRResult, prepare_result
 )
 from asr.c2db.shg import CentroSymmetric, get_chi_symmetry, get_kpts
-from asr.c2db.gs import calculate as gscalculate
 
 
 def webpanel(result, context):
