@@ -133,3 +133,14 @@ def postprocess(
         data['plasmafrequency_y'] = plasmafreq_v[1].real
 
     return data
+
+
+class PlasmaFrequencyWorkflow:
+    def __init__(self, rn, gsresult):
+        self.gpwfile = rn.task(
+            'asr.c2db.plasmafrequency.calculate',
+            gsresult=gsresult)
+
+        self.postprocess = rn.task(
+            'asr.c2db.plasmafrequency.postprocess',
+            gpwfile=self.gpwfile.output)
