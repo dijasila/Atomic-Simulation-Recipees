@@ -52,8 +52,8 @@ class HSECalculationResult(ASRResult):
 
 
 @command(module='asr.c2db.hse')
-#@option('--kptdensity', help='K-point density', type=float)
-#@option('--emptybands', help='number of empty bands to include', type=int)
+# @option('--kptdensity', help='K-point density', type=float)
+# @option('--emptybands', help='number of empty bands to include', type=int)
 def calculate(
         gsresult,
         mag_ani,
@@ -294,15 +294,15 @@ class Result(ASRResult):
 
 
 @command(module='asr.c2db.hse')
-#@option('--kptdensity', help='K-point density', type=float)
-#@option('--emptybands', help='number of empty bands to include', type=int)
-#@asr.calcopt(
+# @option('--kptdensity', help='K-point density', type=float)
+# @option('--emptybands', help='number of empty bands to include', type=int)
+# @asr.calcopt(
 #    aliases=['-b', '--bsrestart'],
 #    help='Bandstructure Calculator params.',
 #    matcher=asr.matchers.EQUAL,
-    #)
-#@option('--kptpath', type=str, help='Custom kpoint path.')
-#@option('--npoints',
+# )
+# @option('--kptpath', type=str, help='Custom kpoint path.')
+# @option('--npoints',
 #        type=int,
 #        help='Number of points along k-point path.')
 def postprocess(
