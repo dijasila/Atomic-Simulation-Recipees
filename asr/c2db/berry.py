@@ -1,12 +1,8 @@
 """Topological analysis of electronic structure."""
 import numpy as np
 
-from ase import Atoms
-
 import asr
-from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, calcopt)
-from asr.c2db.gs import calculate as gscalculate
+from asr.core import command, ASRResult, prepare_result
 from asr.database.browser import (fig, describe_entry, WebPanel,
                                   make_panel_description, href)
 

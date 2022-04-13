@@ -2,18 +2,15 @@
 from ase import Atoms
 
 import typing
-from pathlib import Path
 
 import numpy as np
 
-from ase.parallel import world
 from ase.dft.kpoints import BandPath
 
 import asr
-from asr.core import (command, option, DictStr, ASRResult, prepare_result,
-                      atomsopt)
+from asr.core import command, ASRResult, prepare_result
 from asr.calculators import construct_calculator
-from asr.c2db.magstate import main as magstate
+from asr.c2db.phonons import PhononWorkflow as ASEPhononWorkflow
 
 
 def lattice_vectors(N_c):
@@ -68,16 +65,11 @@ def distance_to_sc(nd, atoms, dist_max):
     return supercell
 
 
-from asr.c2db.phonons import PhononWorkflow as _PhononWorkflow
-from asr.c2db.gs import GS, default_calculator as gs_default_calculator
-
-
 class PhonopyWorkflow:
-    # XXX not entirely ported to workflow yet
-    default_calculator = _PhononWorkflow.default_calculator
+    default_calculator = ASEPhononWorkflow.default_calculator
 
     # Porting to workflows:
-    # Should default nbands be 200% like in
+    # Should default nbands be 200% like "originally" in
     # phonons.py, or not, like in phonopy.py?
 
     def __init__(
@@ -109,14 +101,12 @@ class PhonopyWorkflow:
 
 
 @command('asr.c2db.phonopy')
-#@atomsopt
-#@option("--d", type=float, help="Displacement size")
-#@option("--dist_max", type=float,
-#        help="Maximum distance between atoms in the supercell")
-#@option('--sc', nargs=3, type=int,
-#        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-#@asr.calcopt
-#@asr.calcopt(aliases=['--magstatecalculator'], help='Magstate calculator params.')
+# @atomsopt
+# @option("--d", type=float, help="Displacement size")
+# @option("--dist_max", type=float,
+#         help="Maximum distance between atoms in the supercell")
+# @option('--sc', nargs=3, type=int,
+#         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 def calculate(
         atoms: Atoms,
         d,
