@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.ci
-def test_phonopy(mockgpaw, get_webcontent, fast_calc, in_tempdir):
+def test_phonopy(repo, mockgpaw, get_webcontent):
     """Simple test of phononpy recipe."""
     from asr.c2db.phonopy import PhonopyWorkflow
     from ase.build import bulk
@@ -11,12 +11,13 @@ def test_phonopy(mockgpaw, get_webcontent, fast_calc, in_tempdir):
 
     atoms = bulk('Al', 'fcc', a=4.05)
 
-    phonons = PhonopyWorkflow(
+    phonons = repo.run_workflow_blocking(
+        PhonopyWorkflow,
         atoms=atoms,
         calculator={'name': 'emt'},
-        magstatecalculator=fast_calc,
         sc=[N, N, N])
 
-    data = phonons.post
+    with repo:
+        data = phonons.postprocess.value().output
     assert data['minhessianeig'] == pytest.approx(0)
     assert data['dynamic_stability_level'] == 3

@@ -36,8 +36,9 @@ def test_gw(repo, asr_tmpdir_w_params, test_material,
 
     mocker.patch.object(G0W0, "calculate", calculate)
 
-    gwworkflow = repo.run_workflow(gw_workflow, atoms=test_material,
-                                   calculator=fast_calc)
+    with repo:
+        gwworkflow = repo.run_workflow(gw_workflow, atoms=test_material,
+                                       calculator=fast_calc)
 
     if ndim > 1:
         expectation = nullcontext()
@@ -45,10 +46,11 @@ def test_gw(repo, asr_tmpdir_w_params, test_material,
         expectation = pytest.raises(NotImplementedError)
 
     with expectation:
-        repo.tree().run_blocking()
+        gwworkflow.postprocess.runall_blocking(repo)
 
     if ndim > 1:
-        results = gwworkflow.postprocess.value().output
+        with repo:
+            results = gwworkflow.postprocess.value().output
         assert results['gap_gw'] == pytest.approx(1)
         structinfo(atoms=test_material)
         # get_webcontent()

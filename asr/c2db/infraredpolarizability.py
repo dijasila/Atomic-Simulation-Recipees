@@ -211,46 +211,44 @@ from asr.c2db.gs import calculate as gscalculate
 from asr.c2db.polarizability import main as polarizability
 
 
-class InfraredPolarizability:
+class InfraredPolarizabilityWorkflow:
     def __init__(self,
+                 rn,
                  atoms: Atoms,
+                 phonons,
+                 polarizability_gs,
                  nfreq: int = 300,
                  eta: float = 1e-2,
-                 polarizabilitycalculator: dict = gscalculate.defaults.calculator,
-                 phononcalculator: dict = PhononWorkflow.default_calculator,
                  borncalculator: dict = borncharges.defaults.calculator,
-                 n: int = PhononWorkflow.default_n,
-                 mingo: bool = PhononWorkflow.default_mingo,
                  displacement: float = borncharges.defaults.displacement,
                  kptdensity: float = polarizability.defaults.kptdensity,
                  ecut: float = polarizability.defaults.ecut,
                  xc: float = polarizability.defaults.xc,
                  bandfactor: float = polarizability.defaults.bandfactor):
 
-        self.phonons = PhononWorkflow(atoms=atoms, calculator=phononcalculator,
-                                      n=n, mingo=mingo)
+        # XXX atoms and phonons inputs are redundant, should grab
+        # atoms from phonons somehow
 
-        self.borndict = borncharges(
+        self.borndict = rn.task(
+            'asr.c2db.borncharges.main',
             atoms=atoms,
             calculator=borncalculator,
             displacement=displacement)
 
-        self.polarizability_gs = gscalculate(
-            atoms=atoms,
-            calculator=polarizabilitycalculator)
-
-        self.elecdict = polarizability(
-            gsresult=self.polarizability_gs,
+        self.elecdict = rn.task(
+            'asr.c2db.polarizability.main',
+            gsresult=polarizability_gs,
             kptdensity=kptdensity,
             ecut=ecut,
             xc=xc,
             bandfactor=bandfactor)
 
-        self.post = postprocess(
+        self.postprocess = rn.task(
+            'asr.c2db.infraredpolarizability.postprocess',
             atoms=atoms,
-            phresults=self.phonons.post,
-            borndict=self.borndict,
-            elecdict=self.elecdict,
+            phresults=phonons,
+            borndict=self.borndict.output,
+            elecdict=self.elecdict.output,
             nfreq=nfreq,
             eta=eta)
 

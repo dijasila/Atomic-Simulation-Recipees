@@ -17,22 +17,32 @@ def test_bandstructure_workflow(repo, mockgpaw, test_material,
                  'txt': 'bs.txt',
                  'fixdensity': True}
 
-    gsw = repo.run_workflow(GSWorkflow, atoms=test_material,
-                            calculator=fast_calc)
+    with repo:
+        gsw = repo.run_workflow(GSWorkflow, atoms=test_material,
+                                calculator=fast_calc)
 
-    bsw = repo.run_workflow(
-        BSWorkflow,
-        gsworkflow=gsw,
-        kptpath=None,
-        bsrestart=bsrestart,
-        npoints=npoints)
+        bsw = repo.run_workflow(
+            BSWorkflow,
+            gsworkflow=gsw,
+            kptpath=None,
+            bsrestart=bsrestart,
+            npoints=npoints)
 
-    repo.tree().run_blocking()
+        #tree = repo.tree()
 
-    res = bsw.postprocess.value().output
+        #futures = list(bsw.postprocess.ancestors())
 
-    assert len(res.bs_soc['path'].kpts) == npoints
-    assert len(res.bs_nosoc['path'].kpts) == npoints
+    bsw.postprocess.runall_blocking(repo)
+
+    # XXX something about locking
+    #for future in futures:
+    #    future.run_blocking(repo)
+
+    with repo:
+        res = bsw.postprocess.value().output
+
+        assert len(res.bs_soc['path'].kpts) == npoints
+        assert len(res.bs_nosoc['path'].kpts) == npoints
 
     write('structure.json', test_material)
 

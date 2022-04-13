@@ -10,7 +10,6 @@ from asr.core import (
     command, option, ASRResult, prepare_result, atomsopt, calcopt)
 import typing
 from asr.utils.kpts import get_kpts_size
-from asr.c2db.gs import calculate as gscalculate, main as gsmain
 
 
 # XXX The plasmafrequency recipe should not be two steps. We don't
@@ -18,35 +17,30 @@ from asr.c2db.gs import calculate as gscalculate, main as gsmain
 # Therefore I have degraded the calculate step to a simple function.
 
 def calculate(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+        gsresult,
         kptdensity: float = 20,
 ) -> ASRResult:
     """Calculate excited states for polarizability calculation."""
-    res = gscalculate(atoms=atoms, calculator=calculator)
     # We want the gap for the webpanel, so explicitly call gs main:
-    gsmain(atoms=atoms, calculator=calculator)
-    calc_old = res.calculation.load()
+    # gsmain(atoms=atoms, calculator=calculator)
+
+    calc_old = gsresult.calculation.load()
     kpts = get_kpts_size(atoms=calc_old.atoms, kptdensity=kptdensity)
     nval = calc_old.wfs.nvalence
-    filename = "es_plasma.gpw"
-    try:
-        calc = res.calculation.load(
-            fixdensity=True,
-            kpts=kpts,
-            nbands=2 * nval,
-            txt='gsplasma.txt',
-        )
-        calc.get_potential_energy()
-        calc.write(filename, 'all')
-    except Exception:
-        if world.rank == 0:
-            es_file = Path(filename)
-            if es_file.is_file():
-                es_file.unlink()
-        world.barrier()
 
-    return filename
+    # XXX we are loading *again*???  What is the purpose?
+    calc = gsresult.calculation.load(
+        fixdensity=True,
+        kpts=kpts,
+        nbands=2 * nval,
+        txt='gsplasma.txt',
+    )
+    calc.get_potential_energy()
+
+    # XXX implement autocleanup of large file
+    gpwpath = Path('es_plasma.gpw')
+    calc.write(gpwpath, 'all')
+    return gpwpath
 
 
 def webpanel(result, context):
@@ -82,26 +76,25 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.c2db.plasmafrequency')
-@atomsopt
-@calcopt
-@option('--kptdensity', help='k-point density', type=float)
-@option('--tetra', is_flag=True,
-        help='Use tetrahedron integration')
-def main(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
+
+#@command('asr.c2db.plasmafrequency')
+#@atomsopt
+#@calcopt
+#@option('--kptdensity', help='k-point density', type=float)
+#@option('--tetra', is_flag=True,
+#        help='Use tetrahedron integration')
+def postprocess(
+        #atoms: Atoms,
+        #calculator: dict = gscalculate.defaults.calculator,
+        gpwfile,
         kptdensity: float = 20,
         tetra: bool = True,
 ) -> Result:
     """Calculate polarizability."""
     from gpaw.response.df import DielectricFunction
 
-    gpwfile = calculate(
-        atoms=atoms,
-        calculator=calculator,
-        kptdensity=kptdensity,
-    )
+    from gpaw import GPAW
+    atoms = GPAW(gpwfile).get_atoms()  # XXX not nicest way
     nd = sum(atoms.pbc)
     if not nd == 2:
         raise AssertionError('Plasmafrequency recipe only implemented for 2D')
@@ -119,16 +112,16 @@ def main(
                   'domega0': 0.2,
                   'ecut': 1}
 
-    try:
-        df = DielectricFunction(gpwfile, **kwargs)
-        df.get_polarizability(q_c=[0, 0, 0], direction='x',
-                              pbc=[True, True, False],
-                              filename=None)
-    finally:
-        world.barrier()
-        if world.rank == 0:
-            es_file = Path(gpwfile)
-            es_file.unlink()
+    #try:
+    df = DielectricFunction(gpwfile, **kwargs)
+    df.get_polarizability(q_c=[0, 0, 0], direction='x',
+                          pbc=[True, True, False],
+                          filename=None)
+    #finally:
+    #    world.barrier()
+    #    if world.rank == 0:
+    #        es_file = Path(gpwfile)
+    #        es_file.unlink()
     plasmafreq_vv = df.chi0.plasmafreq_vv.real
     data = {'plasmafreq_vv': plasmafreq_vv}
 

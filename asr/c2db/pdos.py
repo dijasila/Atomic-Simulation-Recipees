@@ -1,8 +1,8 @@
 """Projected density of states."""
 from pathlib import Path
 from asr.core import (
-    command, option, ASRResult,
-    prepare_result, atomsopt, calcopt)
+    command, ASRResult,
+    prepare_result)
 from asr.c2db.gs import calculate as gscalculate
 # from asr.c2db.gs import main as gsmain
 from collections import defaultdict
@@ -107,8 +107,8 @@ class Result(ASRResult):
 
 
 @command(module='asr.c2db.pdos')
-#@option('-k', '--kptdensity', type=float, help='K-point density')
-#@option('--emptybands', type=int, help='number of empty bands to include')
+# @option('-k', '--kptdensity', type=float, help='K-point density')
+# @option('--emptybands', type=int, help='number of empty bands to include')
 def postprocess(
         gpwfile,  # gpwfile would typically come from pdos calculate()
         mag_ani,

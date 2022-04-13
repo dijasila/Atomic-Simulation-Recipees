@@ -74,41 +74,33 @@ from asr.c2db.gs import GS, default_calculator as gs_default_calculator
 
 class PhonopyWorkflow:
     # XXX not entirely ported to workflow yet
-    default_calculator = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
-        'xc': 'PBE',
-        'kpts': {'density': 6.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'forces': 1.0e-4},
-        'symmetry': {'point_group': False},
-        'txt': 'phonons.txt',
-        'charge': 0}
+    default_calculator = _PhononWorkflow.default_calculator
+
+    # Porting to workflows:
+    # Should default nbands be 200% like in
+    # phonons.py, or not, like in phonopy.py?
 
     def __init__(
             self,
+            rn,
             atoms,
             calculator=default_calculator,
-            magstatecalculator=gs_default_calculator,
             d=0.05,
             rc=None,
             sc=(0, 0, 0),
             dist_max=7.0):
 
-
-        self.gs = GS(atoms=atoms, calculator=gs_default_calculator)
-
-        self.calculateresult = calculate(
+        self.calculate = rn.task(
+            'asr.c2db.phonopy.calculate',
             atoms=atoms,
             d=d,
             sc=sc,
-            magstateres=self.gs.magstate,
             calculator=calculator,
             dist_max=dist_max)
 
-        self.post = postprocess(
-            calculateresult=self.calculateresult,
+        self.postprocess = rn.task(
+            'asr.c2db.phonopy.postprocess',
+            calculateresult=self.calculate.output,
             atoms=atoms,
             sc=sc,
             rc=rc,
@@ -131,21 +123,12 @@ def calculate(
         sc,
         dist_max,
         calculator,
-        magstateres,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
 
     calc = construct_calculator(calculator)
-
-    if magstateres.is_magnetic:
-        magmoms_m = magstate.magmoms
-        # Some calculators return magnetic moments resolved into their
-        # cartesian components
-        if len(magmoms_m.shape) == 2:
-            magmoms_m = np.linalg.norm(magmoms_m, axis=1)
-        atoms.set_initial_magnetic_moments(magmoms_m)
 
     nd = sum(atoms.pbc)
     sc = list(map(int, sc))
@@ -276,16 +259,16 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.phonopy')
-#@atomsopt
-#@option("--rc", type=float, help="Cutoff force constants matrix")
-#@option("--d", type=float, help="Displacement size")
-#@option("--dist_max", type=float,
-#        help="Maximum distance between atoms in the supercell")
-#@option('--sc', nargs=3, type=int,
-#        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-#@asr.calcopt
-#@option('--magstatecalculator',
-#        help='Magstate calculator params.', type=DictStr())
+# @atomsopt
+# @option("--rc", type=float, help="Cutoff force constants matrix")
+# @option("--d", type=float, help="Displacement size")
+# @option("--dist_max", type=float,
+#         help="Maximum distance between atoms in the supercell")
+# @option('--sc', nargs=3, type=int,
+#         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
+# @asr.calcopt
+# @option('--magstatecalculator',
+#         help='Magstate calculator params.', type=DictStr())
 def postprocess(
         atoms,
         calculateresult,

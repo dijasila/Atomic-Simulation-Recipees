@@ -20,8 +20,6 @@ from asr.core import (
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
 
-from asr.c2db.magstate import main as magstate
-
 
 class PhononWorkflow:  # not actually a workflow yet
     default_n = 2
@@ -40,25 +38,20 @@ class PhononWorkflow:  # not actually a workflow yet
         'charge': 0
     }
 
-    def __init__(self, atoms, calculator=default_calculator, n=default_n,
-                 mingo=default_mingo):
-        from asr.c2db.gs import GS
-        from ase.utils import workdir
-
+    def __init__(self, rn, atoms, calculator=None,
+                 n=default_n, mingo=default_mingo):
         if calculator is None:
             calculator = dict(self.phonons_calculator_default)
 
-        self.gs = GS(atoms=atoms, calculator=calculator)
+        self.atoms = atoms
 
-        with workdir('calculate', mkdir=True):
-            self.phononresult = calculate(atoms=atoms, calculator=calculator,
-                                          magstate=self.gs.magstate, n=n)
+        self.calculate = rn.task(
+            'asr.c2db.phonons.calculate',
+            atoms=atoms, calculator=calculator, n=n)
 
-
-        # XXX duplicate passing of atoms.  (Also the "n" parameter has this problem)
-        # Maybe define a container class for this definition.
-        with workdir('post', mkdir=True):
-            self.post = postprocess(phononresult=self.phononresult, atoms=atoms)
+        self.postprocess = rn.task(
+            'asr.c2db.phonons.postprocess',
+            phononresult=self.calculate.output, atoms=atoms)
 
 
 panel_description = make_panel_description(
@@ -86,22 +79,12 @@ class CalculateResult(ASRResult):
 def calculate(
         atoms,
         calculator,
-        magstate,  # XXX Should not depend on this exact object
         n=PhononWorkflow.default_n,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from gpaw import GPAW
     # XXX code does not handle n being three integers.
     # We should probably support that.
-
-    # Set initial magnetic moments
-    if magstate.is_magnetic:
-        magmoms_m = magstate.magmoms
-        # Some calculators return magnetic moments resolved into their
-        # cartesian components
-        if len(magmoms_m.shape) == 2:
-            magmoms_m = np.linalg.norm(magmoms_m, axis=1)
-        atoms.set_initial_magnetic_moments(magmoms_m)
 
     ndim = sum(atoms.pbc)
     supercell = np.ones(3, int)
@@ -259,14 +242,11 @@ def postprocess(
     # or we should otherwise have access to the inputs of the calculate step.
 
     calculateresult = phononresult
-    # calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
-    nd = sum(atoms.pbc)
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
+
+    ndim = sum(atoms.pbc)
+    supercell = np.ones(3, int)
+    supercell[:ndim] = n
+
     phonons = Phonons(atoms=atoms, supercell=supercell)
     if world.rank == 0:
         phonons.cache.update(calculateresult.forces)
