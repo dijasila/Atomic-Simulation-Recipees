@@ -27,6 +27,7 @@ def make_folder_tree(*, repo, folders, chunks,
 
         folder = Path(folder)
         atoms = row.toatoms()
+        atoms = atoms.copy()  # Get rid of any unJSONable results.
         yield atoms, folder
 
     return
