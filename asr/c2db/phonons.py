@@ -14,7 +14,7 @@ from ase.dft.kpoints import BandPath
 
 import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile,
+    command, option, ASRResult, prepare_result,
     Selector,
 )
 from asr.database.browser import (
@@ -211,29 +211,15 @@ def construct_calculator_from_old_parameters(record):
 
 
 @command('asr.c2db.phonons')
-#@option('-a', '--atoms', help='Atomic structure.',
-#        type=AtomsFile(), default='structure.json')
-#@asr.calcopt
-#@option('-n', help='Supercell size', type=int)
-#@option('--mingo/--no-mingo', is_flag=True,
-#        help='Perform Mingo correction of force constant matrix')
+# @option('-a', '--atoms', help='Atomic structure.',
+#         type=AtomsFile(), default='structure.json')
+# @asr.calcopt
+# @option('-n', help='Supercell size', type=int)
+# @option('--mingo/--no-mingo', is_flag=True,
+#         help='Perform Mingo correction of force constant matrix')
 def postprocess(
         atoms,
         phononresult,
-        #atoms: Atoms,
-        #calculator: dict = {
-        #    'name': 'gpaw',
-        #    'mode': {'name': 'pw', 'ecut': 800},
-        #    'xc': 'PBE',
-        #    'kpts': {'density': 6.0, 'gamma': True},
-        #    'occupations': {'name': 'fermi-dirac',
-        #                    'width': 0.05},
-        #    'convergence': {'forces': 1e-4},
-        #    'symmetry': {'point_group': False},
-        #    'nbands': '200%',
-        #    'txt': 'phonons.txt',
-        #    'charge': 0
-        #},
         n: int = PhononWorkflow.default_n,
         mingo: bool = PhononWorkflow.default_mingo,
 ) -> Result:

@@ -4,11 +4,9 @@ from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
-from ase import Atoms
 from ase.dft.dos import DOS
 
 import asr
-from asr.c2db.gs import calculate as gscalculate
 
 
 def webpanel(result, context):

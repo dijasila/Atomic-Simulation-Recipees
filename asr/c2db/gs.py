@@ -13,8 +13,6 @@ from asr.database.browser import (
     make_panel_description,
 )
 
-from asr.c2db.magnetic_anisotropy import main as mag_ani_main
-
 import numpy as np
 import typing
 
@@ -556,11 +554,9 @@ def postprocess(
         groundstate,
         mag_ani):
     """Extract derived quantities from groundstate in gs.gpw."""
-    # calculateresult = calculate(atoms=atoms, calculator=calculator)
     calc = groundstate.calculation.load(parallel=False)
     calc.atoms.calc = calc
     atoms = calc.atoms
-    # mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
 
     # Now that some checks are done, we can extract information
     forces = calc.get_property('forces', allow_calculation=False)

@@ -7,17 +7,17 @@ import numpy as np
 from ase import Atoms
 
 
-#@command('asr.c2db.push')
-#@atomsopt
-#@calcopt
-#@option('-q', '--momentum', nargs=3, type=float,
-#        help='Phonon momentum')
-#@option('-m', '--mode', type=int, help='Mode index')
-#@option('-a', '--amplitude', type=float,
-#        help='Maximum distance an atom will be displaced')
-#@option('-n', help='Supercell size', type=int)
-#@option('--mingo/--no-mingo', is_flag=True,
-#        help='Perform Mingo correction of force constant matrix')
+# @command('asr.c2db.push')
+# @atomsopt
+# @calcopt
+# @option('-q', '--momentum', nargs=3, type=float,
+#         help='Phonon momentum')
+# @option('-m', '--mode', type=int, help='Mode index')
+# @option('-a', '--amplitude', type=float,
+#         help='Maximum distance an atom will be displaced')
+# @option('-n', help='Supercell size', type=int)
+# @option('--mingo/--no-mingo', is_flag=True,
+#         help='Perform Mingo correction of force constant matrix')
 def main(
         atoms: Atoms,
         phresults,
