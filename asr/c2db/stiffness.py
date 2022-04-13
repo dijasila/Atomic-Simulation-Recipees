@@ -1,13 +1,10 @@
 """Stiffness tensor."""
 import typing
 
-from ase import Atoms
 import numpy as np
 
 import asr
-from asr.core import (
-    command, option, ASRResult, prepare_result, AtomsFile,
-)
+from asr.core import ASRResult, prepare_result
 from asr.database.browser import (matrixtable, describe_entry, dl,
                                   make_panel_description)
 from asr.c2db.relax import main as relax
@@ -223,22 +220,21 @@ def transform_stiffness_resultfile_record(record):
     return record
 
 
-#@command(
-#    module='asr.c2db.stiffness',
-#)
-#@option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
-#        default='structure.json')
-#@asr.calcopt
-#@option('--strain-percent', help='Magnitude of applied strain.', type=float)
-#@option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
-#@option('--fmax', help='Maximum force allowed.', type=float)
-#@option('--enforce-symmetry/--dont-enforce-symmetry',
-#        help='Symmetrize forces and stresses.', is_flag=True)
+# @command(
+#     module='asr.c2db.stiffness',
+# )
+# @option('--atoms', type=AtomsFile(), help='Atoms to be strained.',
+#         default='structure.json')
+# @asr.calcopt
+# @option('--strain-percent', help='Magnitude of applied strain.', type=float)
+# @option('--d3/--nod3', help='Relax with vdW D3.', is_flag=True)
+# @option('--fmax', help='Maximum force allowed.', type=float)
+# @option('--enforce-symmetry/--dont-enforce-symmetry',
+#         help='Symmetrize forces and stresses.', is_flag=True)
 
 
 class StrainWorkflow:
     def __init__(self, rn, atoms, strain_percent: float = 1.0):
-        from asr.setup.strains import main as make_strained_atoms
         from asr.setup.strains import get_relevant_strains
         self.strains = []
         # (If atoms is a future, we cannot refer to atoms.pbc.)
@@ -286,7 +282,6 @@ class StiffnessWorkflow:
         """Calculate stiffness tensor."""
 
         atoms = strainworkflow.atoms
-        strain_percent = strainworkflow.strain_percent
 
         self.relaxations = {}
         for key, strained in strainworkflow.strains.items():
@@ -385,7 +380,3 @@ def dynamic_stability_stiffness(mineig):
         return 'high'
     else:
         return 'low'
-
-
-if __name__ == '__main__':
-    main.cli()
