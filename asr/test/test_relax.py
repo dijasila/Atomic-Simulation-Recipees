@@ -168,7 +168,7 @@ def test_relax_bn_gpaw(asr_tmpdir):
                         'width': 0.25},
         'nbands': '120%',
         'convergence': {'forces': 1e-2},
-        'kpts':  {'density': 1.0}
+        'kpts': {'density': 1.0}
     }
 
     calculator.update(kwargs)

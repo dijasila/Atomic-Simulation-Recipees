@@ -3,7 +3,6 @@ import datetime
 import pathlib
 import typing
 
-import ase
 import numpy as np
 import simplejson as json
 from ase.io.jsonio import (object_hook as ase_object_hook,
@@ -19,11 +18,6 @@ def asr_default(obj):
         return object_to_dict(obj)
     except ValueError:
         return ase_default(obj)
-
-
-class ASRJSONEncoder(json.JSONEncoder):
-    def default(self, obj) -> dict:
-        return encode(obj)
 
 
 def object_to_dict(obj) -> dict:

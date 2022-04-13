@@ -15,8 +15,6 @@ def workflow(rn, atoms, calculator):
 def test_plasmafrequency(repo, get_webcontent, mockgpaw,
                          test_material, fast_calc):
     """Test of the plasma freuquency recipe."""
-    #from asr.c2db.plasmafrequency import main, calculate
-    from pathlib import Path
     if sum(test_material.pbc) != 2:
         pytest.skip("Plasma frequency is only implemented for 2D atm.")
 

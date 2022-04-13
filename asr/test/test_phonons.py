@@ -1,5 +1,4 @@
 import pytest
-from ase.utils import workdir
 
 
 @pytest.mark.ci

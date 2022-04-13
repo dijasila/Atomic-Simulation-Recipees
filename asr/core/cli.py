@@ -1059,25 +1059,25 @@ def with_docstring(doc):
 @click.option('--tree-structure', type=str, metavar='TREE',
               help='Specify folder tree structure (see description).',
               default='{stoi}/{reduced_formula:abc}')
-#@click.option('--sort', help='Sort the generated materials '
-#              '(only useful when dividing chunking tree)', type=str)
-#@click.option(
-#    '--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
-#@click.option('--atomsfile',
-#              metavar='FILE',
-#              help='Filename to unpack atomic structure to. '
-#              'By default, do not write atoms file.',
-#              type=str)
-#@click.option(
-#    '-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
-#    type=int, default=1)
-#@click.option(
-#    '--patterns',
-#    help="Comma separated patterns. Only unpack files matching patterns",
-#    type=str,
-#    default='*')
-#@click.option('--update-tree', is_flag=True,
-#              help='Update results files in existing folder tree.')
+# @click.option('--sort', help='Sort the generated materials '
+#               '(only useful when dividing chunking tree)', type=str)
+# @click.option(
+#     '--copy/--no-copy', is_flag=True, help='Copy pointer tagged files')
+# @click.option('--atomsfile',
+#               metavar='FILE',
+#               help='Filename to unpack atomic structure to. '
+#               'By default, do not write atoms file.',
+#               type=str)
+# @click.option(
+#     '-c', '--chunks', metavar='N', help='Divide the tree into N chunks',
+#     type=int, default=1)
+# @click.option(
+#     '--patterns',
+#     help="Comma separated patterns. Only unpack files matching patterns",
+#     type=str,
+#     default='*')
+# @click.option('--update-tree', is_flag=True,
+#               help='Update results files in existing folder tree.')
 @with_docstring(totree_help)
 def totree(
         database: str,

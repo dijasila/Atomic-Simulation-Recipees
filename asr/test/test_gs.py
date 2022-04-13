@@ -55,7 +55,7 @@ def test_gs(repo, mockgpaw, mocker, get_webcontent,
 
 
 @pytest.mark.xfail
-def test_gs_structureinfo(test_material):
+def test_gs_structureinfo(test_material, get_webcontent):
     # This snippet was part of the preceding test but we cannot call it until
     # htw caches can be collected to a database
     from asr.structureinfo import main as structureinfo
