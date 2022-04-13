@@ -82,6 +82,7 @@ class PhonopyWorkflow:
 
     def __init__(
             self,
+            rn,
             atoms,
             calculator=default_calculator,
             d=0.05,
@@ -89,15 +90,17 @@ class PhonopyWorkflow:
             sc=(0, 0, 0),
             dist_max=7.0):
 
-        self.calculateresult = calculate(
+        self.calculate = rn.task(
+            'asr.c2db.phonopy.calculate',
             atoms=atoms,
             d=d,
             sc=sc,
             calculator=calculator,
             dist_max=dist_max)
 
-        self.post = postprocess(
-            calculateresult=self.calculateresult,
+        self.postprocess = rn.task(
+            'asr.c2db.phonopy.postprocess',
+            calculateresult=self.calculate.output,
             atoms=atoms,
             sc=sc,
             rc=rc,
