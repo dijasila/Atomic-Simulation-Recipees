@@ -1,12 +1,12 @@
 """Electronic band structures."""
 import pathlib
+import copy
 from typing import Union
-from ase import Atoms
 import asr
 from asr.calculators import Calculation
 from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
-    AtomsFile, Selector,
+    Selector,
 )
 
 import numpy as np
@@ -66,6 +66,7 @@ bsrestart_defaults = {
 
 
 default_npoints = 400
+
 
 @command(
     'asr.c2db.bandstructure',
@@ -512,37 +513,30 @@ def set_bsrestart_from_dependencies(record):
 
 
 @command('asr.c2db.bandstructure')
-#@option('-a', '--atoms', help='Atomic structure.',
+# @option('-a', '--atoms', help='Atomic structure.',
 #        type=AtomsFile(), default='structure.json')
-#@asr.calcopt
-#@asr.calcopt(
+# @asr.calcopt
+# @asr.calcopt(
 #    aliases=['-b', '--bsrestart'],
 #    help='Bandstructure Calculator params.',
 #    matcher=asr.matchers.EQUAL,
-    #)
-#@option('--kptpath', type=str, help='Custom kpoint path.')
-#@option('--npoints',
+# )
+# @option('--kptpath', type=str, help='Custom kpoint path.')
+# @option('--npoints',
 #        type=int,
 #        help='Number of points along k-point path.')
 def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
-        #atoms: Atoms,
-        #calculator: dict = calculate.defaults.calculator,
-        #bsrestart: dict = calculate.defaults.bsrestart,
-        #kptpath: Union[str, None] = None,
-        #npoints: int = 400) -> Result:
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
-    import copy
     from asr.utils.gpw2eigs import gpw2eigs
-    from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 
-    #bsresult = calculate(
+    # bsresult = calculate(
     #    atoms=atoms,
     #    calculator=calculator,
     #    bsrestart=bsrestart,
     #    npoints=npoints,
     #    kptpath=kptpath,
-    #)
+    # )
     # gsresult = calculategs(atoms=atoms, calculator=calculator)
     ref = gsresult.calculation.load().get_fermi_level()
     calc = bsresult.calculation.load()
