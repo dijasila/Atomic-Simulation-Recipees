@@ -2,14 +2,10 @@
 import typing
 from pathlib import Path
 
-from click import Choice
 import numpy as np
-from ase import Atoms
 
 import asr
-from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt,
-    calcopt)
+from asr.core import command, ASRResult, prepare_result
 
 from asr.database.browser import (
     table,
@@ -18,8 +14,6 @@ from asr.database.browser import (
     make_panel_description)
 from asr.utils.kpts import get_kpts_size
 
-
-from asr.c2db.gs import calculate as gscalculate
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the long wave length limit (q=0)
@@ -99,15 +93,15 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.polarizability')
-#@atomsopt
-#@calcopt
-#@option('--kptdensity', help='K-point density',
-#        type=float)
-#@option('--ecut', help='Plane wave cutoff',
-#        type=float)
-#@option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
-#@option('--bandfactor', type=int,
-#        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+# @atomsopt
+# @calcopt
+# @option('--kptdensity', help='K-point density',
+#         type=float)
+# @option('--ecut', help='Plane wave cutoff',
+#         type=float)
+# @option('--xc', help='XC interaction', type=Choice(['RPA', 'ALDA']))
+# @option('--bandfactor', type=int,
+#         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 def main(
         gsresult,
         kptdensity: float = 20.0,

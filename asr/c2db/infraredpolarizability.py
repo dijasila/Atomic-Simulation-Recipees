@@ -1,21 +1,15 @@
 """Infrared polarizability."""
 import typing
 import asr
-from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt,
-    Selector,
-)
+from asr.core import command, ASRResult, prepare_result, Selector
 from asr.database.browser import (
     fig, table, href, make_panel_description, describe_entry)
 
 import numpy as np
-from click import Choice
 
 from ase import Atoms
-from asr.c2db.phonons import PhononWorkflow
-#from asr.c2db.phonons import main as phonons
 from asr.c2db.borncharges import main as borncharges
-#from asr.c2db.polarizability import main as polarizability
+from asr.c2db.polarizability import main as polarizability
 
 panel_description = make_panel_description(
     """The frequency-dependent polarisability in the infrared (IR) frequency regime
@@ -206,11 +200,6 @@ def prepare_for_resultfile_mutation(record):
     return record
 
 
-
-from asr.c2db.gs import calculate as gscalculate
-from asr.c2db.polarizability import main as polarizability
-
-
 class InfraredPolarizabilityWorkflow:
     def __init__(self,
                  rn,
@@ -253,7 +242,6 @@ class InfraredPolarizabilityWorkflow:
             eta=eta)
 
 
-
 @command(
     "asr.c2db.infraredpolarizability",
 )
@@ -282,8 +270,8 @@ def postprocess(
         atoms: Atoms,
         nfreq: int,
         eta: float,
-        #n: int = phonons.defaults.n,
-        #mingo: bool = phonons.defaults.mingo,
+        # n: int = phonons.defaults.n,
+        # mingo: bool = phonons.defaults.mingo,
         # displacement: float = borncharges.defaults.displacement,
         # kptdensity: float = polarizability.defaults.kptdensity,
         # ecut: float = polarizability.defaults.ecut,

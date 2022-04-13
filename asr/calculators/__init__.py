@@ -99,7 +99,6 @@ class Calculation:
     """Persist calculation state."""
 
     def __init__(self, id, cls_name, state=None, *, paths):  # noqa
-        from asr.core import ExternalFile
         self.id = id
         self.cls_name = cls_name
         from pathlib import Path
@@ -110,7 +109,6 @@ class Calculation:
         return (f'<Calculation id={self.id}, '
                 f'cls_name={self.cls_name}, '
                 f'paths={self.paths}>')
-
 
     def load(self, *args, **kwargs) -> Calculator:
         """Restart calculation."""
