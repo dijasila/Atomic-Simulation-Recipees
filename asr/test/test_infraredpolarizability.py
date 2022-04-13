@@ -41,9 +41,11 @@ def test_infrared_polarizability(repo, mockgpaw, asr_tmpdir, test_material,
     # There is some room for improved interface here
     gs = repo.run_workflow_blocking(gscalculate)
 
-    ipw = repo.run_workflow_blocking(
+    repo.run_workflow_blocking(
         InfraredPolarizabilityWorkflow,
         atoms=test_material,
         phonons=phw.postprocess.output,
         polarizability_gs=gs.output,
         borncalculator=fast_calc)
+
+    # XXX no assertion

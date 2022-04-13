@@ -2,12 +2,12 @@
 import typing
 import pytest
 from ase import Atoms
-from asr.core import get_recipes, DictStr, AtomsFile
+from asr.core import DictStr, AtomsFile
 import click
 
 pytestmark = pytest.mark.xfail('not now')
 
-all_recipes = []  # XXX get_recipes()
+all_recipes = []  # XXX asr.core.get_recipes()
 
 
 @pytest.mark.ci

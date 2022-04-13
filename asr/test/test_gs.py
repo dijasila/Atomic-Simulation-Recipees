@@ -61,6 +61,7 @@ def test_gs_structureinfo(test_material, get_webcontent):
     from asr.structureinfo import main as structureinfo
     structureinfo(atoms=test_material)
     content = get_webcontent()
+    results = {}  # XXX should come from ground state.
     resultgap = results.get("gap")
 
     # XXX When switching to webpanel2 we get three decimals rather

@@ -15,10 +15,10 @@ def stiffness_workflow(rn, atoms, calculator):
 def test_stiffness_gpaw(repo, mockgpaw, mocker, test_material, fast_calc,
                         get_webcontent):
 
-
-    post = repo.run_workflow_blocking(stiffness_workflow,
-                               atoms=test_material,
-                               calculator=fast_calc)
+    post = repo.run_workflow_blocking(
+        stiffness_workflow,
+        atoms=test_material,
+        calculator=fast_calc)
 
     with repo:
         results = post.value().output
