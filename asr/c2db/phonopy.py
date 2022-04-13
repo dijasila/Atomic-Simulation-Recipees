@@ -103,7 +103,6 @@ class PhonopyWorkflow:
             atoms=atoms,
             d=d,
             sc=sc,
-            magstateres=self.gs.magstate,
             calculator=calculator,
             dist_max=dist_max)
 
@@ -131,21 +130,12 @@ def calculate(
         sc,
         dist_max,
         calculator,
-        magstateres,
 ) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
 
     calc = construct_calculator(calculator)
-
-    if magstateres.is_magnetic:
-        magmoms_m = magstate.magmoms
-        # Some calculators return magnetic moments resolved into their
-        # cartesian components
-        if len(magmoms_m.shape) == 2:
-            magmoms_m = np.linalg.norm(magmoms_m, axis=1)
-        atoms.set_initial_magnetic_moments(magmoms_m)
 
     nd = sum(atoms.pbc)
     sc = list(map(int, sc))
