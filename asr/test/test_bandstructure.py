@@ -28,15 +28,7 @@ def test_bandstructure_workflow(repo, mockgpaw, test_material,
             bsrestart=bsrestart,
             npoints=npoints)
 
-        #tree = repo.tree()
-
-        #futures = list(bsw.postprocess.ancestors())
-
     bsw.postprocess.runall_blocking(repo)
-
-    # XXX something about locking
-    #for future in futures:
-    #    future.run_blocking(repo)
 
     with repo:
         res = bsw.postprocess.value().output

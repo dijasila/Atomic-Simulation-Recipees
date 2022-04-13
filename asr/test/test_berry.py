@@ -40,7 +40,6 @@ def test_berry(test_material, mockgpaw, mocker, in_tempdir,
         assert results[f'phi{d}_km'] == approx(np.zeros([kpar, nbands]))
         assert results[f's{d}_km'] == approx(np.zeros([kpar, nbands]))
 
-
     results = calculate(
         gsresult=gs.gsresult,
         mag_ani=gs.mag_ani)

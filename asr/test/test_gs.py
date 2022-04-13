@@ -14,8 +14,8 @@ def test_gs(repo, mockgpaw, mocker, get_webcontent,
             test_material, gap, fermi_level):
     import asr.c2db.relax
     from asr.core import read_json
-    from ase.parallel import world
     import gpaw
+
     mocker.patch.object(gpaw.GPAW, "_get_band_gap")
     mocker.patch.object(gpaw.GPAW, "_get_fermi_level")
     spy = mocker.spy(asr.c2db.relax, "set_initial_magnetic_moments")
@@ -55,22 +55,21 @@ def test_gs(repo, mockgpaw, mocker, get_webcontent,
 
 
 @pytest.mark.xfail
-def test_gs_structureinfo():
+def test_gs_structureinfo(test_material):
     # This snippet was part of the preceding test but we cannot call it until
     # htw caches can be collected to a database
-    if world.size == 1:
-        from asr.structureinfo import main as structureinfo
-        structureinfo(atoms=test_material)
-        content = get_webcontent()
-        resultgap = results.get("gap")
+    from asr.structureinfo import main as structureinfo
+    structureinfo(atoms=test_material)
+    content = get_webcontent()
+    resultgap = results.get("gap")
 
-        # XXX When switching to webpanel2 we get three decimals rather
-        # than two.  How in the name of all that is good and holy does
-        # that happen here?
-        assert f"{resultgap:0.3f}eV" in content, content
-        assert "<td>Fermilevel</td>" in content, content
-        assert "<td>Magneticstate</td><td>NM</td>" in \
-            content, content
+    # XXX When switching to webpanel2 we get three decimals rather
+    # than two.  How in the name of all that is good and holy does
+    # that happen here?
+    assert f"{resultgap:0.3f}eV" in content, content
+    assert "<td>Fermilevel</td>" in content, content
+    assert "<td>Magneticstate</td><td>NM</td>" in \
+        content, content
 
 
 @pytest.mark.xfail

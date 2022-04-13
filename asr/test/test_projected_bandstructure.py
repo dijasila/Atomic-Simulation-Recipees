@@ -13,5 +13,5 @@ def test_projected_bs_mocked(asr_tmpdir, mockgpaw, get_webcontent,
     main(bscalculateresult=bs.calculateresult)
     # main(atoms=test_material)
     # BS(atoms=test_material, calculator=fast_calc)
-    #test_material.write("structure.json")
-    #get_webcontent()
+    # test_material.write("structure.json")
+    # get_webcontent()

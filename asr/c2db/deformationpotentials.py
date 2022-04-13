@@ -2,18 +2,9 @@
 from typing import List
 import numpy as np
 
-# from ase import Atoms
-
-from asr.core import (
-    command,
-    #option,
-    ASRResult, prepare_result,
-    #atomsopt, calcopt
-)
-
+from asr.core import ASRResult, prepare_result
 from asr.setup.strains import main as make_strained_atoms
 from asr.setup.strains import get_relevant_strains
-#from asr.c2db.gs import main as groundstate
 
 
 def webpanel(result, context):
@@ -38,10 +29,8 @@ class Result(ASRResult):
 
 
 # @command('asr.c2db.deformationpotentials')
-#@atomsopt
-#@calcopt
-#@option('--strains', help='Strain percentages', type=float)
-#@option('--ktol',
+# @option('--strains', help='Strain percentages', type=float)
+# @option('--ktol',
 #        help='Distance in k-space that extremum is allowed to move.',
 #        type=float)
 
@@ -54,7 +43,7 @@ class DeformationPotentials:
     a dictionary.
     """
 
-    def __init__(atoms, calculator,
+    def __init__(self, atoms, calculator,
                  strains: List[float] = [-1.0, 0.0, 1.0], ktol: float = 0.1):
 
         from asr.c2db.gs import GS

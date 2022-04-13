@@ -40,6 +40,6 @@ def test_shift(asr_tmpdir_w_params, inputatoms, mockgpaw, mocker, get_webcontent
             assert main(gsresult=gsresult, maxomega=3, nromega=4)
     else:
         main(gsresult=gsresult, maxomega=3, nromega=4)
-        #inputatoms.write('structure.json')
+        # inputatoms.write('structure.json')
         #content = get_webcontent()
         #assert 'shift' in content
