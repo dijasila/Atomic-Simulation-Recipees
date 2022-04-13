@@ -11,7 +11,6 @@ def make_folder_tree(*, repo, folders, chunks,
                      update_tree):
     """Write folder tree to disk."""
     from os import makedirs
-    from ase.io import write
 
     nfolders = len(folders)
     for i, (rowid, (folder, row)) in enumerate(folders.items()):
@@ -142,7 +141,7 @@ def main(
         tree_structure: str = '{stoi}/{reduced_formula:abc}',
         # sort: str = None,
         # chunks: int = 1, copy: bool = False,
-        #patterns: str = '*', update_tree: bool = False
+        # patterns: str = '*', update_tree: bool = False
 ) -> ASRResult:
     from htwutil.repository import Repository
 
