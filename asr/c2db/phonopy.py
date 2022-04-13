@@ -259,16 +259,16 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.phonopy')
-#@atomsopt
-#@option("--rc", type=float, help="Cutoff force constants matrix")
-#@option("--d", type=float, help="Displacement size")
-#@option("--dist_max", type=float,
-#        help="Maximum distance between atoms in the supercell")
-#@option('--sc', nargs=3, type=int,
-#        help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
-#@asr.calcopt
-#@option('--magstatecalculator',
-#        help='Magstate calculator params.', type=DictStr())
+# @atomsopt
+# @option("--rc", type=float, help="Cutoff force constants matrix")
+# @option("--d", type=float, help="Displacement size")
+# @option("--dist_max", type=float,
+#         help="Maximum distance between atoms in the supercell")
+# @option('--sc', nargs=3, type=int,
+#         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
+# @asr.calcopt
+# @option('--magstatecalculator',
+#         help='Magstate calculator params.', type=DictStr())
 def postprocess(
         atoms,
         calculateresult,

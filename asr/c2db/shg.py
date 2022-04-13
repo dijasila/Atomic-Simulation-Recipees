@@ -1,8 +1,6 @@
-from ase import Atoms
-
 import typing
 from asr.core import (
-    command, option, ASRResult, prepare_result)
+    command, ASRResult, prepare_result)
 
 import numpy as np
 
@@ -161,15 +159,15 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.shg')
-#@option('--kptdensity', help='K-point density [1/Ang]', type=float)
-#@option('--gauge', help='Selected gauge (length "lg" or velocity "vg")',
-#        type=str)
-#@option('--bandfactor', type=int,
-#        help='Number of unoccupied bands = (#occ. bands) * bandfactor')
-#@option('--eta', help='Broadening [eV]', type=float)
-#@option('--maxomega', help='Max pump frequency [eV]', type=float)
-#@option('--nromega', help='Number of pump frequencies', type=int)
-#@option('--removefiles', help='Remove created files', type=bool)
+# @option('--kptdensity', help='K-point density [1/Ang]', type=float)
+# @option('--gauge', help='Selected gauge (length "lg" or velocity "vg")',
+#         type=str)
+# @option('--bandfactor', type=int,
+#         help='Number of unoccupied bands = (#occ. bands) * bandfactor')
+# @option('--eta', help='Broadening [eV]', type=float)
+# @option('--maxomega', help='Max pump frequency [eV]', type=float)
+# @option('--nromega', help='Number of pump frequencies', type=int)
+# @option('--removefiles', help='Remove created files', type=bool)
 def main(
         gsresult,
         kptdensity: float = 25.0,
