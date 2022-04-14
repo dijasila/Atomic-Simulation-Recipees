@@ -8,7 +8,9 @@ from asr.c2db.bandstructure import BSWorkflow
 def gs_bs_hse_workflow(rn, atoms, calculator):
     gsw = GSWorkflow(rn, atoms=atoms, calculator=calculator)
     bsw = BSWorkflow(rn, gsworkflow=gsw, npoints=10)
-    return HSEWorkflow(rn, bsworkflow=bsw)
+    return HSEWorkflow(rn, bsworkflow=bsw,
+                       kptdensity=1.5,
+                       emptybands=5)
 
 
 @pytest.mark.ci

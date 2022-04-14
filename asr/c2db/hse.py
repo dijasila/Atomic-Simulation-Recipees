@@ -51,14 +51,17 @@ class HSECalculationResult(ASRResult):
     )
 
 
+default_kptdensity = 8.0
+default_emptybands = 20
+
 @command(module='asr.c2db.hse')
 # @option('--kptdensity', help='K-point density', type=float)
 # @option('--emptybands', help='number of empty bands to include', type=int)
 def calculate(
         gsresult,
         mag_ani,
-        kptdensity: float = 8.0,
-        emptybands: int = 20,
+        kptdensity: float = default_kptdensity,
+        emptybands: int = default_emptybands,
 ) -> HSECalculationResult:
     """Calculate HSE06 corrections."""
     eigs, calc, hse_nowfs = hse(
@@ -436,7 +439,8 @@ def add_missing_hse_keys(record: asr.Record) -> asr.Record:
 
 
 class HSEWorkflow:
-    def __init__(self, rn, bsworkflow):
+    def __init__(self, rn, bsworkflow, kptdensity=default_kptdensity,
+                 emptybands=default_emptybands):
         gsw = bsworkflow.gsworkflow
         self.bsworkflow = bsworkflow
 
@@ -445,7 +449,9 @@ class HSEWorkflow:
         self.calculate = rn.task(
             'asr.c2db.hse.calculate',
             gsresult=gsw.scf.output,
-            mag_ani=mag_ani)
+            mag_ani=mag_ani,
+            kptdensity=kptdensity,
+            emptybands=emptybands)
 
         self.postprocess = rn.task(
             'asr.c2db.hse.postprocess',
