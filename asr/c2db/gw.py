@@ -121,19 +121,13 @@ def gs_gw(
     }
 
 
-default_mode = 'G0W0'
-
-
 @command()
 # @option('--kptdensity', help='K-point density', type=float)
 # @option('--ecut', help='Plane wave cutoff', type=float)
-# @option('--mode', help='GW mode',
-#         type=Choice(['G0W0', 'GWG']))
 def gw(gs_gw_result,
        gsresult,
        kptdensity: float = default_kptdensity,
-       ecut: float = default_ecut,
-       mode: str = default_mode) -> dict:
+       ecut: float = default_ecut) -> dict:
     """Calculate GW corrections."""
     from ase.dft.bandgap import bandgap
     from gpaw.response.g0w0 import G0W0
@@ -163,9 +157,6 @@ def gw(gs_gw_result,
     else:
         raise NotImplementedError(f'dim={dim} not implemented!')
 
-    if mode == 'GWG':
-        raise NotImplementedError('GW: asr for GWG not implemented!')
-
     lb, ub = max(calc.wfs.nvalence // 2 - 8, 0), calc.wfs.nvalence // 2 + 4
 
     calc = G0W0(calc=gs_gw_result['gs_gw.gpw'],
@@ -191,8 +182,6 @@ default_correctgw = True
 @command()
 # @option('--kptdensity', help='K-point density', type=float)
 # @option('--ecut', help='Plane wave cutoff', type=float)
-# @option('--mode', help='GW mode',
-#         type=Choice(['G0W0', 'GWG']))
 # @option('-c', '--correctgw', is_flag=True, default=False)
 # @option('-z', '--empz', type=float, default=0.75,
 #         help='Replacement Z for unphysical Zs')
@@ -300,7 +289,7 @@ def migrate_1(record):
     )
     record.parameters.ecut = 200.0
     record.parameters.kptdensity = 5.0
-    record.parameters.mode = 'G0W0'
+    # record.parameters.mode = 'G0W0'  # why does this string even exist?
     record.parameters.bsrestart = {
         'nbands': -emptybands,
         'txt': 'bs.txt',
@@ -329,8 +318,6 @@ default_empz = 0.75
 #         help='Number of points along k-point path.')
 # @option('--kptdensity', help='K-point density', type=float)
 # @option('--ecut', help='Plane wave cutoff', type=float)
-# @option('--mode', help='GW mode',
-#         type=Choice(['G0W0', 'GWG']))
 # @option('-c', '--correctgw', is_flag=True, default=False)
 # @option('-z', '--empz', type=float, default=0.75,
 #         help='Replacement Z for unphysical Zs')
@@ -443,7 +430,6 @@ class GWWorkflow:
     def __init__(self, rn, bsworkflow, *,
                  kptdensity=default_kptdensity,
                  ecut=default_ecut,
-                 mode=default_mode,
                  correctgw=default_correctgw,
                  empz=default_empz):
 
@@ -460,8 +446,7 @@ class GWWorkflow:
             gsresult=gsworkflow.scf.output,
             gs_gw_result=self.gs_gw.output,
             kptdensity=kptdensity,
-            ecut=ecut,
-            mode=mode)
+            ecut=ecut)
 
         self.gw = rn.task(
             'asr.c2db.gw.empirical_mean_z',
