@@ -142,21 +142,34 @@ def postprocess(
     return Result(results)
 
 
-class PDOS:
-    def __init__(self, atoms, calculator=gscalculate.defaults.calculator,
-                 kptdensity=20.0, emptybands=20):
-        from asr.c2db.gs import GS
-        gs = GS(atoms=atoms, calculator=calculator)
-        gaps = gs.post.gaps_nosoc
-        e1 = gaps.get('vbm') or gaps.get('efermi')
-        e2 = gaps.get('cbm') or gaps.get('efermi')
-        erange = np.linspace(e1 - 3, e2 + 3, 500)
+def dos_erange(gspostprocess):
+    gaps = gspostprocess.gaps_nosoc
+    e1 = gaps.get('vbm') or gaps.get('efermi')
+    e2 = gaps.get('cbm') or gaps.get('efermi')
+    erange = np.linspace(e1 - 3, e2 + 3, 500)
+    return erange
 
-        self.pdos_gpwfile = calculate(gsresult=gs.gsresult,
-                                      kptdensity=kptdensity,
-                                      emptybands=emptybands)
-        self.post = postprocess(gpwfile=self.pdos_gpwfile,
-                                mag_ani=gs.mag_ani, erange=erange)
+
+class PDOSWorkflow:
+    def __init__(self, rn, gsworkflow,
+                 kptdensity=20.0, emptybands=20):
+        #gs = GS(atoms=atoms, calculator=calculator)
+
+        self.pdos_gpwfile = rn.task(
+            'asr.c2db.pdos.calculate',
+            gsresult=gsworkflow.scf.output,
+            kptdensity=kptdensity,
+            emptybands=emptybands)
+
+        self.dos_erange = rn.task(
+            'asr.c2db.pdos.dos_erange',
+            gspostprocess=gsworkflow.postprocess.output)
+
+        self.postprocess = rn.task(
+            'asr.c2db.pdos.postprocess',
+            gpwfile=self.pdos_gpwfile.output,
+            mag_ani=gsworkflow.magnetic_anisotropy.output,
+            erange=self.dos_erange.output)
 
 
 # ---------- Recipe methodology ---------- #
