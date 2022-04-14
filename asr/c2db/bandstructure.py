@@ -555,7 +555,6 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
                                             eps=c2db_symmetry_eps)
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
-    results = {}
     bsresults = bs.todict()
 
     # Save Fermi levels
@@ -570,7 +569,7 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
     bsresults['efermi'] = efermi_nosoc
 
     # We copy the bsresults dict because next we will add SOC
-    results['bs_nosoc'] = copy.deepcopy(bsresults)  # BS with no SOC
+    bs_nosoc = copy.deepcopy(bsresults)  # BS with no SOC
 
     # Add spin orbit correction
     bsresults = bs.todict()
@@ -587,8 +586,7 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
         pathlib.Path(bsfile), soc=True, return_spin=True, theta=theta, phi=phi,
         symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
-    efermi = gsresults['efermi']
-    bsresults['efermi'] = efermi
+    bsresults['efermi'] = gsresults['efermi']
 
     # Get spin projections for coloring of bandstructure
     path = bsresults['path']
@@ -609,7 +607,7 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
 
     return Result.fromdata(
         bs_soc=singleprec_dict(bsresults),
-        bs_nosoc=singleprec_dict(results['bs_nosoc'])
+        bs_nosoc=singleprec_dict(bs_nosoc)
     )
 
 
