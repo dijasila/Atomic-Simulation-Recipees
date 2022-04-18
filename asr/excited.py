@@ -55,16 +55,13 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     atoms.calc = calc
     calc.initialize(atoms)
 
-    if not Path('ground.json').is_file():
-        BFGS(atoms,
-             trajectory='ground.traj', 
-             logfile='ground.log').run(fmax=0.01)
+    BFGS(atoms,
+         trajectory='ground.traj', 
+         logfile='ground.log').run(fmax=0.01)
     
-        write('ground.json', atoms)
-        energy = atoms.get_potential_energy()
-        assert abs(energy - eref) < 1, 'DO-MOM converged to a wrong ground state!'
-
-    atoms = read('ground.json')
+    write('ground.json', atoms)
+    energy = atoms.get_potential_energy()
+    assert abs(energy - eref) < 1, 'DO-MOM converged to a wrong ground state!'
 
     params = read_json('params.json')
     excitation=params['asr.excited@calculate']['excitation']
