@@ -85,6 +85,10 @@ def _berry(gsresult, mag_ani, kperp, kpar, berry_gpw):
     calc = gsresult.calculation.load()
     atoms = calc.get_atoms()
 
+
+    # XXX gpaw crashes with Path objects (assuming they are calculators).
+    berry_gpw = str(berry_gpw)
+
     nd = sum(atoms.pbc)
 
     theta, phi = mag_ani.spin_angles()
