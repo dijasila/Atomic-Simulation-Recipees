@@ -103,15 +103,25 @@ def _explain_bandgap(row, gap_name):
     return describe_entry(name, description=description)
 
 
+def vbm_or_cbm_row(title, quantity_name, reference_explanation, value):
+    description = (f'Energy of the {quantity_name} relative to the '
+                   f'{reference_explanation}. '
+                   'Spin–orbit coupling is included.')
+    return [describe_entry(title, description=description), f'{value:.2f} eV']
+
+
 def webpanel(result, row, key_descriptions):
     parameter_description = _get_parameter_description(row)
 
     explained_keys = []
 
-    explained_keys += [
-        _explain_bandgap(row, 'gap'),
-        _explain_bandgap(row, 'gap_dir'),
-    ]
+    def make_gap_row(name):
+        value = result[name]
+        description = _explain_bandgap(row, name)
+        return [description, f'{value:0.2f} eV']
+
+    gap_row = make_gap_row('gap')
+    direct_gap_row = make_gap_row('gap_dir')
 
     for key in ['dipz', 'evacdiff', 'workfunction', 'dos_at_ef_soc']:
         if key in result.key_descriptions:
@@ -128,33 +138,41 @@ def webpanel(result, row, key_descriptions):
               explained_keys,
               key_descriptions)
 
-    gap = result.gap
+    t['rows'] += [gap_row, direct_gap_row]
 
-    if gap > 0:
+    if result.gap > 0:
         if result.get('evac'):
             eref = result.evac
-            vbm_title = 'Valence band maximum wrt. vacuum level'
-            cbm_title = 'Conduction band minimum wrt. vacuum level'
+            vbm_title = 'Valence band maximum relative to vacuum level'
+            cbm_title = 'Conduction band minimum relative to vacuum level'
+            reference_explanation = (
+                'the asymptotic value of the '
+                'electrostatic potential in the vacuum region')
         else:
             eref = result.efermi
-            vbm_title = 'Valence band maximum wrt. Fermi level'
-            cbm_title = 'Conduction band minimum wrt. Fermi level'
+            vbm_title = 'Valence band maximum relative to Fermi level'
+            cbm_title = 'Conduction band minimum relative to Fermi level'
+            reference_explanation = 'the Fermi level'
 
         vbm_displayvalue = result.vbm - eref
         cbm_displayvalue = result.cbm - eref
-        info = [[vbm_title, f'{vbm_displayvalue:.3f} eV'],
-                [cbm_title, f'{cbm_displayvalue:.3f} eV']]
+        info = [
+            vbm_or_cbm_row(vbm_title, 'valence band maximum (VBM)',
+                           reference_explanation, vbm_displayvalue),
+            vbm_or_cbm_row(cbm_title, 'conduction band minimum (CBM)',
+                           reference_explanation, cbm_displayvalue)
+        ]
+
         t['rows'].extend(info)
 
+    from asr.utils.hacks import gs_xcname_from_row
+    xcname = gs_xcname_from_row(row)
+    title = f'Basic electronic properties ({xcname})'
+
     panel = WebPanel(
-        title=describe_entry(
-            'Basic electronic properties',
-            panel_description),
+        title=describe_entry(title, panel_description),
         columns=[[t], [fig('bz-with-gaps.png')]],
         sort=10)
-
-    description = _explain_bandgap(row, 'gap')
-    datarow = [description, f'{result.gap:0.2f} eV']
 
     summary = WebPanel(
         title=describe_entry(
@@ -164,7 +182,7 @@ def webpanel(result, row, key_descriptions):
         columns=[[{
             'type': 'table',
             'header': ['Electronic properties', ''],
-            'rows': [datarow],
+            'rows': [gap_row],
             'columnwidth': 3,
         }]],
         plot_descriptions=[{'function': bz_with_band_extremums,
@@ -178,10 +196,13 @@ def bz_with_band_extremums(row, fname):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
     import numpy as np
+    from asr.utils.symmetry import c2db_symmetry_eps
+
     ndim = sum(row.pbc)
 
     # Standardize the cell rotation via Bravais lattice roundtrip:
-    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc)
+    lat = Cell(row.cell).get_bravais_lattice(pbc=row.pbc,
+                                             eps=c2db_symmetry_eps)
     cell = lat.tocell()
 
     plt.figure(figsize=(4, 4))
@@ -373,7 +394,7 @@ class VacuumLevelResults(ASRResult):
         'z_z': 'Grid points for potential [Å].',
         'v_z': 'Electrostatic potential [eV].',
         'evacdiff': 'Difference of vacuum levels on both sides of slab [eV].',
-        'dipz': 'Out-of-plane dipole [e * Ang].',
+        'dipz': 'Out-of-plane dipole [e · Å].',
         'evac1': 'Top side vacuum level [eV].',
         'evac2': 'Bottom side vacuum level [eV]',
         'evacmean': 'Average vacuum level [eV].',
@@ -493,11 +514,11 @@ class Result(ASRResult):
     key_descriptions = dict(
         etot='Total energy [eV].',
         workfunction="Workfunction [eV]",
-        forces='Forces on atoms [eV/Angstrom].',
-        stresses='Stress on unit cell [eV/Angstrom^dim].',
+        forces='Forces on atoms [eV/Å].',
+        stresses='Stress on unit cell [eV/Å^dim].',
         evac='Vacuum level [eV].',
         evacdiff='Vacuum level shift (Vacuum level shift) [eV].',
-        dipz='Out-of-plane dipole [e * Ang].',
+        dipz='Out-of-plane dipole [e · Å].',
         efermi='Fermi level [eV].',
         gap='Band gap [eV].',
         vbm='Valence band maximum [eV].',

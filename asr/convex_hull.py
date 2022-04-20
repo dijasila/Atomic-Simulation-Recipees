@@ -65,24 +65,19 @@ def webpanel(result, row, key_descriptions):
     }
 
     thermostab = row.get('thermodynamic_stability_level')
-    stabilities = {1: 'low', 2: 'medium', 3: 'high'}
-    high = 'Heat of formation < convex hull + 0.2 eV/atom'
-    medium = 'convex hull + 0.2 eV/atom < Heat of formation < 0 eV/atom'
-    low = '0.0 eV/atom < Heat of formation'
+
+    stability_texts = [
+        [stability_names[stab], stability_descriptions[stab]]
+        for stab in [LOW, MEDIUM, HIGH]
+    ]
+
     thermodynamic = describe_entry(
         'Thermodynamic',
         'Classifier for the thermodynamic stability of a material.'
         + br
-        + dl(
-            [
-                ['LOW', low],
-                ['MEDIUM', medium],
-                ['HIGH', high],
-            ]
-        )
+        + dl(stability_texts)
     )
-    row = [thermodynamic,
-           stabilities[thermostab].upper()]
+    row = [thermodynamic, stability_names[thermostab]]
 
     summary = {'title': 'Summary',
                'columns': [[{'type': 'table',
@@ -91,18 +86,6 @@ def webpanel(result, row, key_descriptions):
                              'columnwidth': 3}]],
                'sort': 1}
     return [panel, summary]
-
-
-# class Reference(TypedDict):
-#     """Container for information on a reference."""
-
-#     hform: float
-#     formula: str
-#     uid: str
-#     natoms: int
-#     name: str
-#     label: str
-#     link: str
 
 
 @prepare_result
@@ -272,11 +255,10 @@ def _convex_hull(connections):
     ref_energy_key = ref_metadata.get('energy_key', 'energy')
 
     conn = connections[ref_database]
-    ref_energies = _get_reference_energies(atoms, conn,
-                                           energy_key=ref_energy_key)
-    hform = hof(energy,
-                count,
-                ref_energies)
+
+    ref_energies_per_atom = get_singlespecies_reference_energies_per_atom(
+        atoms, conn, energy_key=ref_energy_key)
+
 
     # Make a list of the relevant references
     references = []
@@ -285,7 +267,7 @@ def _convex_hull(connections):
         energy_key = metadata.get('energy_key', 'energy')
         for row in data['rows']:
             hformref = hof(row[energy_key],
-                           row.count_atoms(), ref_energies)
+                           row.count_atoms(), ref_energies_per_atom)
             reference = {'hform': hformref,
                          'formula': row.formula,
                          'uid': row.uid,
@@ -299,6 +281,21 @@ def _convex_hull(connections):
                 reference['link'] = reference['link'].format(row=row)
             references.append(reference)
 
+    assert len(atoms) == len(Formula(formula))
+    return calculate_hof_and_hull(formula, energy, references,
+                                  ref_energies_per_atom)
+
+
+def calculate_hof_and_hull(
+        formula, energy, references, ref_energies_per_atom):
+    formula = Formula(formula)
+
+    species_counts = formula.count()
+
+    hform = hof(energy,
+                species_counts,
+                ref_energies_per_atom)
+
     pdrefs = []
     for reference in references:
         h = reference['natoms'] * reference['hform']
@@ -307,56 +304,57 @@ def _convex_hull(connections):
     results = {'hform': hform,
                'references': references}
 
-    if len(count) == 1:
-        ehull = hform
-        results['indices'] = None
-        results['coefs'] = None
-    else:
-        pd = PhaseDiagram(pdrefs, verbose=False)
-        e0, indices, coefs = pd.decompose(formula)
-        ehull = hform - e0 / len(atoms)
-        results['indices'] = indices.tolist()
-        results['coefs'] = coefs.tolist()
+    pd = PhaseDiagram(pdrefs, verbose=False)
+    e0, indices, coefs = pd.decompose(str(formula))
+    ehull = hform - e0 / len(formula)
+    if len(species_counts) == 1:
+        assert abs(ehull - hform) < 1e-10
+
+    results['indices'] = indices.tolist()
+    results['coefs'] = coefs.tolist()
 
     results['ehull'] = ehull
-
-    if hform > 0:
-        thermodynamic_stability = 1
-    elif hform is None or ehull is None:
-        thermodynamic_stability = None
-    elif ehull >= 0.2:
-        thermodynamic_stability = 2
-    else:
-        thermodynamic_stability = 3
-
-    results['thermodynamic_stability_level'] = thermodynamic_stability
+    results['thermodynamic_stability_level'] = stability_rating(hform, ehull)
     return Result(data=results)
 
 
-def get_reference_energies(atoms, references, energy_key='energy'):
-    refdb = connect(references)
-    return _get_reference_energies(atoms, refdb, energy_key)
+LOW = 1
+MEDIUM = 2
+HIGH = 3
+stability_names = {LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH'}
+stability_descriptions = {
+    LOW: 'Heat of formation > 0.2 eV/atom',
+    MEDIUM: 'convex hull + 0.2 eV/atom < Heat of formation < 0.2 eV/atom',
+    HIGH: 'Heat of formation < convex hull + 0.2 eV/atom'}
 
 
-def _get_reference_energies(atoms, refdb, energy_key='energy'):
-    count = Counter(atoms.get_chemical_symbols())
+def stability_rating(hform, energy_above_hull):
+    assert hform <= energy_above_hull
+    if 0.2 < hform:
+        return LOW
+    if 0.2 < energy_above_hull:
+        return MEDIUM
+    return HIGH
+
+
+def get_singlespecies_reference_energies_per_atom(
+        atoms, conn, energy_key='energy'):
 
     # Get reference energies
-    ref_energies = {}
-    # refdb = connect(references)
-    for row in select_references(refdb, set(count)):
+    ref_energies_per_atom = {}
+    for row in select_references(conn, set(atoms.symbols)):
         if len(row.count_atoms()) == 1:
             symbol = row.symbols[0]
             e_ref = row[energy_key] / row.natoms
-            assert symbol not in ref_energies
-            ref_energies[symbol] = e_ref
+            assert symbol not in ref_energies_per_atom
+            ref_energies_per_atom[symbol] = e_ref
 
-    return ref_energies
+    return ref_energies_per_atom
 
 
-def hof(energy, count, ref_energies):
+def hof(energy, count, ref_energies_per_atom):
     """Heat of formation."""
-    energy = energy - sum(n * ref_energies[symbol]
+    energy = energy - sum(n * ref_energies_per_atom[symbol]
                           for symbol, n in count.items())
     return energy / sum(count.values())
 
@@ -415,20 +413,11 @@ def plot(row, fname, thisrow):
         return
 
     references = data['references']
-    thisreference = {
-        'hform': thisrow.hform,
-        'formula': thisrow.formula,
-        'uid': thisrow.uid,
-        'natoms': thisrow.natoms,
-        'legend': None,
-        'label': thisrow.formula,
-        'size': 1,
-    }
+
     pdrefs = []
     legends = []
-    colors = []
     sizes = []
-    references = [thisreference] + references
+
     for reference in references:
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
@@ -437,16 +426,13 @@ def plot(row, fname, thisrow):
             legends.append(legend)
         if legend in legends:
             idlegend = legends.index(reference['legend'])
-            color = f'C{idlegend + 2}'
             size = (3 * idlegend + 3)**2
         else:
-            color = 'k'
             size = 2
-        colors.append(color)
         sizes.append(size)
+    sizes = np.array(sizes)
 
-    pd = PhaseDiagram(pdrefs,
-                      verbose=False)
+    pd = PhaseDiagram(pdrefs, verbose=False)
 
     fig = plt.figure(figsize=(6, 5))
     ax = fig.gca()
@@ -466,39 +452,42 @@ def plot(row, fname, thisrow):
     hull_energies = get_hull_energies(pd)
 
     if len(count) == 2:
-        x, e, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
+        xcoord, energy, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
         hull = np.array(hull_energies) < 0.05
         edgecolors = np.array(['C2' if hull_energy < 0.05 else 'C3'
                                for hull_energy in hull_energies])
         for i, j in simplices:
-            ax.plot(x[[i, j]], e[[i, j]], '-', color='C0')
+            ax.plot(xcoord[[i, j]], energy[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
+
         if row.hform < 0:
-            mask = e < 0.05
-            e = e[mask]
-            x = x[mask]
+            mask = energy < 0.05
+            energy = energy[mask]
+            xcoord = xcoord[mask]
             edgecolors = edgecolors[mask]
             hull = hull[mask]
             names = [name for name, m in zip(names, mask) if m]
+            sizes = sizes[mask]
+
+        xcoord0 = xcoord[~hull]
+        energy0 = energy[~hull]
+        ax.scatter(
+            xcoord0, energy0,
+            # x[~hull], e[~hull],
+            facecolor='none', marker='o',
+            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
+            zorder=9)
 
         ax.scatter(
-            x[~hull], e[~hull],
+            xcoord[hull], energy[hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=np.array(sizes)[~hull],
-            zorder=9,
-        )
-
-        ax.scatter(
-            x[hull], e[hull],
-            facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=np.array(sizes)[hull],
-            zorder=10,
-        )
+            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
+            zorder=10)
 
         # ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
 
-        delta = e.ptp() / 30
-        for a, b, name, on_hull in zip(x, e, names, hull):
+        delta = energy.ptp() / 30
+        for a, b, name, on_hull in zip(xcoord, energy, names, hull):
             va = 'center'
             ha = 'left'
             dy = 0
@@ -510,8 +499,7 @@ def plot(row, fname, thisrow):
         ax.set_ylabel(r'$\Delta H$ [eV/atom]')
 
         # Circle this material
-        ymin = e.min()
-
+        ymin = energy.min()
         ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
         newlegendhandles = [(legendhandles[0], legendhandles[1]),
                             *legendhandles[2:]]
@@ -542,14 +530,14 @@ def plot(row, fname, thisrow):
         ax.scatter(
             x[~hull], y[~hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=np.array(sizes)[~hull],
+            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
             zorder=9,
         )
 
         ax.scatter(
             x[hull], y[hull],
             facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=np.array(sizes)[hull],
+            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
             zorder=10,
         )
 

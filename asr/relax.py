@@ -49,9 +49,9 @@ from pathlib import Path
 
 import numpy as np
 from ase import Atoms
-from ase.calculators.calculator import PropertyNotImplementedError
 from ase.io import Trajectory, write
 from ase.optimize.bfgs import BFGS
+from ase.utils import IOContext
 
 from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
                       prepare_result)
@@ -172,14 +172,15 @@ class myBFGS(BFGS):
             self.logfile.flush()
 
 
-def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
+def relax(atoms, tmp_atoms_file,
+          logfile, trajectory, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
           fmax=0.01, enforce_symmetry=False):
 
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
 
-    nd = int(np.sum(atoms.get_pbc()))
+    nd = sum(atoms.pbc)
     if smask is None:
         if fixcell:
             smask = [0, 0, 0, 0, 0, 0]
@@ -188,8 +189,7 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
         elif nd == 2:
             smask = [1, 1, 0, 0, 0, 1]
         else:
-            pbc = atoms.get_pbc()
-            assert pbc[2], "1D periodic axis should be the last one."
+            assert atoms.pbc[2], "1D periodic axis should be the last one."
             smask = [0, 0, 1, 0, 0, 0]
 
     from asr.utils.symmetry import atoms2symmetry
@@ -211,18 +211,14 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
 
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
-    filter = ExpCellFilter(atoms, mask=smask)
-    logfile = Path(tmp_atoms_file).with_suffix('.log').name
-    try:
-        trajfile = Trajectory(tmp_atoms_file, 'a', atoms)
-        opt = myBFGS(filter,
-                     logfile=logfile,
-                     trajectory=trajfile)
+    cellfilter = ExpCellFilter(atoms, mask=smask)
+
+    with myBFGS(cellfilter,
+                logfile=logfile,
+                trajectory=trajectory) as opt:
 
         # fmax=0 here because we have implemented our own convergence criteria
-        runner = opt.irun(fmax=0)
-
-        for _ in runner:
+        for _ in opt.irun(fmax=0):
             # Check that the symmetry has not been broken
             newdataset = atoms2symmetry(atoms,
                                         tolerance=1e-3,
@@ -256,10 +252,7 @@ def relax(atoms, tmp_atoms_file, emin=-np.inf, smask=None, dftd3=True,
                 opt.log()
                 opt.call_observers()
                 break
-    finally:
-        trajfile.close()
-        if opt.logfile is not None:
-            opt.logfile.close()
+
     return atoms
 
 
@@ -292,9 +285,9 @@ class Result(ASRResult):
          'edft': 'DFT total energy [eV]',
          'spos': 'Array: Scaled positions',
          'symbols': 'Array: Chemical symbols',
-         'a': 'Cell parameter a [Ang]',
-         'b': 'Cell parameter b [Ang]',
-         'c': 'Cell parameter c [Ang]',
+         'a': 'Cell parameter a [Å]',
+         'b': 'Cell parameter b [Å]',
+         'c': 'Cell parameter c [Å]',
          'alpha': 'Cell parameter alpha [deg]',
          'beta': 'Cell parameter beta [deg]',
          'gamma': 'Cell parameter gamma [deg]'}
@@ -373,16 +366,20 @@ def main(atoms: Atoms,
     if tmp_atoms is not None:
         atoms = tmp_atoms
 
-    # Make our own copy
     atoms = atoms.copy()
-    if not atoms.has('initial_magmoms'):
+    if atoms.has('initial_magmoms'):
+        initially_spinpol = any(atoms.get_initial_magnetic_moments())
+    else:
+        # We don't know whether the system is spin polarized,
+        # so we must assume it is.
+        initially_spinpol = True
         set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)
 
     # Some calculator specific parameters
-    nd = int(np.sum(atoms.get_pbc()))
+    nd = sum(atoms.pbc)
     if calculatorname == 'gpaw':
         if 'kpts' in calculator:
             from ase.calculators.calculator import kpts2kpts
@@ -395,32 +392,79 @@ def main(atoms: Atoms,
                  'a 2D material!')
             calculator['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    calc = Calculator(**calculator)
-    # Relax the structure
-    atoms = relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
-                  fixcell=fixcell,
-                  allow_symmetry_breaking=allow_symmetry_breaking,
-                  dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+    def do_relax():
+        return relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
+                     fixcell=fixcell,
+                     logfile=logfile,
+                     trajectory=trajectory,
+                     allow_symmetry_breaking=allow_symmetry_breaking,
+                     dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
-    # If the maximum magnetic moment on all atoms is big then
-    try:
-        magmoms = atoms.get_magnetic_moments()
-    except PropertyNotImplementedError:
-        # We assume this means that the magnetic moments are zero
-        # for this calculator.
-        magmoms = np.zeros(len(atoms))
+    # Previously the relax recipe would open the text file twice and
+    # overwrite itself, except the files wouldn't be flushed at the
+    # right time so actually both were likely flushed simultaneously,
+    # leading to unreliable logfiles.
+    #
+    # We want a new text file only if the relaxation starts from scratch,
+    # and we prefer to open the file only once.
+    #
+    # Also, since we don't trust calc.set() etc., we create two different
+    # calculators instead of reusing the same one.
+    #
+    # Turns out the ASE paropen() implementation does not recognize
+    # the 'a' flag, so we have to roll our own.
+    txt = calculator.pop('txt', '-')
+    if tmp_atoms is None:
+        open_mode = 'w'
+    else:
+        open_mode = 'a'
 
-    if not abs(magmoms).max() > 0.1:
-        atoms.set_initial_magnetic_moments([0] * len(atoms))
+    logfile = Path(tmp_atoms_file).with_suffix('.log')
+
+    with IOContext() as io:
+        # XXX Not so nice to have special cases
+        if calculatorname == 'gpaw':
+            calculator['txt'] = io.openfile(txt, mode=open_mode)
+        logfile = io.openfile(logfile, mode=open_mode)
+        trajectory = io.closelater(Trajectory(tmp_atoms_file, mode=open_mode))
+
+        # TODO: Perform actual GPAW computations in a separate process.
+        # This should simplify the hacky IO handling here by forcing
+        # proper GC, flushing and closing in that process.
+
         calc = Calculator(**calculator)
-        # Relax the structure
-        atoms = relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
-                      fixcell=fixcell,
-                      allow_symmetry_breaking=allow_symmetry_breaking,
-                      dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
-    edft = calc.get_potential_energy(atoms)
-    etot = atoms.get_potential_energy()
+        atoms = do_relax()
+
+        # If the maximum magnetic moment on all atoms is big then
+        if initially_spinpol:
+            magmoms = atoms.get_magnetic_moments()
+
+            if not abs(magmoms).max() > 0.1:
+                atoms.set_initial_magnetic_moments([0] * len(atoms))
+                atoms.calc = calc
+                atoms = do_relax()
+
+        # This is buggy for systems that are close to the limit
+        # of spinpolarizedness.  In stiffness recipe some calculations
+        # may come out spinpolarized and others not, causing a small
+        # jump in energy and botched derivatives.  It would be better
+        # for the algorithm to strictly respect the input parameters
+        # ("spinpol", "spinpaired", or "guess")
+
+        edft = calc.get_potential_energy(atoms)
+        etot = atoms.get_potential_energy()
+
+        if calculatorname == 'gpaw':
+            # GPAW will have calc.close() soon.
+            # Until then, we abuse __del__() which happens to
+            # be the same currently.
+            # If we didn't do this, then the txt file will be closed
+            # before timings are written which is bad.
+            #
+            # (Also, when testing we do not always have __del__.)
+            if hasattr(calc, '__del__'):
+                calc.__del__()
 
     cellpar = atoms.cell.cellpar()
 
@@ -430,10 +474,9 @@ def main(atoms: Atoms,
     # Save atomic structure
     write('structure.json', atoms)
 
-    trajectory = Trajectory(tmp_atoms_file, 'r')
-    images = []
-    for image in trajectory:
-        images.append(image)
+    with Trajectory(tmp_atoms_file, 'r') as trajectory:
+        images = list(trajectory)
+
     return Result.fromdata(
         atoms=atoms.copy(),
         etot=etot,
