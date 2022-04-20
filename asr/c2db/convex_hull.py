@@ -228,22 +228,37 @@ def main(
         for row in data['rows']:
             hformref = hof(row[energy_key],
                            row.count_atoms(), ref_energies_per_atom)
-            reference = {'hform': hformref,
-                         'formula': row.formula,
-                         'uid': row.uid,
-                         'natoms': row.natoms}
-            reference.update(metadata)
-            if 'name' in reference:
-                reference['name'] = reference['name'].format(row=row)
-            if 'label' in reference:
-                reference['label'] = reference['label'].format(row=row)
-            if 'link' in reference:
-                reference['link'] = reference['link'].format(row=row)
+            reference = Reference(
+                hform_per_atom=hformref,
+                formula=row.formula,  # formula may be reduced formula!
+                natoms=row.natoms)
+
+            for identifier in 'name', 'label', 'link':
+                if identifier in metadata:
+                    reference.metadata[identifier] = (metadata[identifier]
+                                                      .format(row=row))
             references.append(reference)
 
     return calculate_hof_and_hull(formula, energy, references,
                                   ref_energies_per_atom)
 
+
+class Reference:
+    def __init__(self, hform_per_atom, formula, natoms):
+        # XXX although we have the formula, that may be the reduced
+        # formula.  So we need natoms also.
+        self.hform_per_atom = hform_per_atom
+        self.formula = Formula(formula)
+        self.natoms = natoms
+
+        self.metadata = {}
+
+    @property
+    def hform_total(self):
+        return self.hform_per_atom * self.natoms
+
+    def as_ase_phasediagram_ref(self):
+        return (str(self.formula), self.hform_total)
 
 def calculate_hof_and_hull(
         formula: Formula, energy, references, ref_energies_per_atom):
@@ -255,11 +270,7 @@ def calculate_hof_and_hull(
                 species_counts,
                 ref_energies_per_atom)
 
-    pdrefs = []
-    for reference in references:
-        h = reference['natoms'] * reference['hform']
-        pdrefs.append((reference['formula'], h))
-
+    pdrefs = [ref.as_ase_phasediagram_ref() for ref in references]
     results = {'hform': hform,
                'references': references}
 
