@@ -26,8 +26,7 @@ def refdb(asr_tmpdir_w_params):
                 'legend': 'Metals',
                 'name': '{row.formula}',
                 'link': 'NOLINK',
-                'label': '{row.formula}',
-                'method': 'DFT'}
+                'label': '{row.formula}'}
     db.metadata = metadata
 
     return db, 'references.db', energies
@@ -101,8 +100,7 @@ def refdbwithalloys(refdb):
                 'legend': 'Alloys',
                 'name': '{row.formula}',
                 'link': 'NOLINK',
-                'label': '{row.formula}',
-                'method': 'DFT'}
+                'label': '{row.formula}'}
     db.metadata = metadata
 
     return db, dbname, 'references_alloys.db', energies

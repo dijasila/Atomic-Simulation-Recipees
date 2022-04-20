@@ -21,14 +21,7 @@ from ase.db import connect
 from ase.db.row import AtomsRow
 from ase.formula import Formula
 
-# from matplotlib.legend_handler import HandlerPatch
 from matplotlib import patches
-# from matplotlib.legend_handler import HandlerLine2D, HandlerTuple
-
-
-# from asr.c2db.gs import main as groundstate
-
-known_methods = ['DFT', 'DFT+D3']
 
 
 def get_hull_energies(pd: PhaseDiagram):
@@ -175,10 +168,6 @@ def main(
           (see further information below).
         - label: f-string from which to derive a material specific name to
           put on convex hull figure.
-        - method: String denoting the method that was used to calculate
-          reference energies. Currently accepted strings: ['DFT', 'DFT+D3'].
-          "DFT" means bare DFT references energies. "DFT+D3" indicate that the
-          reference also include the D3 dispersion correction.
         - energy_key (optional): Indicates the key-value-pair that represents
           the total energy of a material from. If not specified the
           default value of 'energy' will be used.
@@ -195,7 +184,6 @@ def main(
             "name": "{row.formula}",
             "link": "https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}",
             "label": "{row.formula}",
-            "method": "DFT",
             "energy_key": "total_energy"
         }
 
@@ -205,39 +193,22 @@ def main(
         List of filenames of databases.
 
     """
-    # XXX Add possibility of D3 correction again
-    # TODO: Make separate recipe for calculating vdW correction to total energy
-    from ase import Atoms
-    from ase.formula import Formula
     databases = [connect(database) for database in databases]
 
-    formula = Formula(str(formula))  # Formula does not like formulas!
+    # Formula constructor does not like formulas, hence string roundtrip
+    formula = Formula(str(formula))
     atoms = Atoms(formula)
-
-    usingd3 = False
-
-    if usingd3:
-        mymethod = 'DFT+D3'
-    else:
-        mymethod = 'DFT'
 
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
 
     dbdata = {}
-    reqkeys = {'title', 'legend', 'name', 'link', 'label', 'method'}
+    reqkeys = {'title', 'legend', 'name', 'link', 'label'}
     for refdb in databases:
         # Connect to databases and save relevant rows
         metadata = refdb.metadata
         assert not (reqkeys - set(metadata)), \
             'Missing some essential metadata keys.'
-
-        dbmethod = metadata['method']
-        assert dbmethod in known_methods, f'Unknown method: {dbmethod}'
-        assert dbmethod == mymethod, \
-            ('You are using a reference database with '
-             f'inconsistent methods: {mymethod} (this material) != '
-             f'{dbmethod} ({refdb.database})')
 
         rows = []
         # Select only references which contain relevant elements
