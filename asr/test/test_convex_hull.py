@@ -33,12 +33,12 @@ def refdb(asr_tmpdir_w_params):
     return db, 'references.db', energies
 
 
-@pytest.mark.xfail(reason='TODO')
+# @pytest.mark.xfail(reason='TODO')
 @pytest.mark.ci
 @pytest.mark.parametrize('metals', metal_alloys)
 @pytest.mark.parametrize('energy_key', [None, 'etot'])
-def test_convex_hull(refdb, mockgpaw, get_webcontent,
-                     metals, energy_key, fast_calc):
+def test_convex_hull(refdb, get_webcontent,
+                     metals, energy_key):
     db, dbname, energies = refdb
 
     metadata = db.metadata
@@ -52,16 +52,18 @@ def test_convex_hull(refdb, mockgpaw, get_webcontent,
     atoms = atoms.repeat((1, 1, nmetalatoms))
     atoms.set_chemical_symbols(metal_atoms)
 
+    energy = 0.0
+
     results = main(
-        atoms=atoms,
+        formula=atoms.symbols.formula,
+        energy=energy,
         databases=['references.db'],
-        calculator=fast_calc,
     )
     assert results['hform'] == -sum(energies[element]
                                     for element in metal_atoms) / nmetalatoms
 
-    atoms.write('structure.json')
-    get_webcontent()
+    # atoms.write('structure.json')
+    # get_webcontent()
 
 
 def make_alloy(commasepmetals):

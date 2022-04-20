@@ -145,16 +145,16 @@ def convert_database_parameter_to_file(record):
     return record
 
 
-@command('asr.c2db.convex_hull',
-         argument_hooks=[set_calculator_hook,
-                         convert_database_strings_to_files],
-         )
-@atomsopt
-@calcopt
-@argument('databases', nargs=-1, type=FileStr())
+# @command('asr.c2db.convex_hull',
+#          argument_hooks=[set_calculator_hook,
+#                          convert_database_strings_to_files],
+#          )
+# @atomsopt
+# @calcopt
+# @argument('databases', nargs=-1, type=FileStr())
 def main(
-        atoms: Atoms,
-        calculator: dict = None,  # XXXX
+        formula,
+        energy,
 #        calculator: dict = groundstate.defaults.calculator,
         databases: List[File] = [],
 ) -> Result:
@@ -207,10 +207,14 @@ def main(
     """
     # XXX Add possibility of D3 correction again
     # TODO: Make separate recipe for calculating vdW correction to total energy
-    databases = [connect(database.path) for database in databases]
-    result = groundstate(atoms=atoms, calculator=calculator)
+    from ase import Atoms
+    from ase.formula import Formula
+    databases = [connect(database) for database in databases]
+
+    formula = Formula(str(formula))  # Formula does not like formulas!
+    atoms = Atoms(formula)
+
     usingd3 = False
-    energy = result.etot
 
     if usingd3:
         mymethod = 'DFT+D3'
