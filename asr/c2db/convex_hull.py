@@ -1,5 +1,4 @@
 """Convex hull stability analysis."""
-from collections import Counter
 from typing import List, Dict, Any, Optional
 
 import asr
@@ -199,9 +198,6 @@ def main(
     formula = Formula(str(formula))
     atoms = Atoms(formula)
 
-    formula = atoms.get_chemical_formula()
-    count = Counter(atoms.get_chemical_symbols())
-
     dbdata = {}
     reqkeys = {'title', 'legend', 'name', 'link', 'label'}
     for refdb in databases:
@@ -212,7 +208,7 @@ def main(
 
         rows = []
         # Select only references which contain relevant elements
-        rows.extend(select_references(refdb, set(count)))
+        rows.extend(select_references(refdb, set(atoms.symbols)))
         dbdata[refdb.filename] = {
             'rows': rows,
             'metadata': metadata,
@@ -245,14 +241,13 @@ def main(
                 reference['link'] = reference['link'].format(row=row)
             references.append(reference)
 
-    assert len(atoms) == len(Formula(formula))
     return calculate_hof_and_hull(formula, energy, references,
                                   ref_energies_per_atom)
 
 
 def calculate_hof_and_hull(
-        formula, energy, references, ref_energies_per_atom):
-    formula = Formula(formula)
+        formula: Formula, energy, references, ref_energies_per_atom):
+    formula = Formula(str(formula))  # XXX Formula(Formula('...')) crashes
 
     species_counts = formula.count()
 
