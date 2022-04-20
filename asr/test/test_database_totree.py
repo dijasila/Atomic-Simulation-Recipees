@@ -27,9 +27,11 @@ def test_database_totree(repo):
     for nesting in ['A/123/Ag',
                     'A/227/Si2',
                     'AB/187/BN']:
-        structuredirs = list((tree / nesting).glob('structure-*'))
+
+        # XXX The define-string is liable to change
+        structuredirs = list((tree / nesting).glob('define-*'))
         assert len(structuredirs) == 1
-        structurefile = structuredirs[0] / 'structure.json'
+        structurefile = structuredirs[0] / 'output.json'
         assert structurefile.is_file()
 
 
