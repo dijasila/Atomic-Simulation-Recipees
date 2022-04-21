@@ -1,12 +1,24 @@
 import pytest
+from asr.c2db.pdos import PDOSWorkflow
+from asr.c2db.gs import GSWorkflow
+
+
+def workflow(rn, atoms, calculator, **kw):
+    gsw = GSWorkflow(rn, atoms=atoms, calculator=calculator)
+    pdosw = PDOSWorkflow(rn, gsworkflow=gsw, **kw)
+    return pdosw.postprocess
 
 
 @pytest.mark.ci
-def test_pdos(asr_tmpdir_w_params, mockgpaw,
+def test_pdos(repo, mockgpaw,
               test_material, get_webcontent, fast_calc):
-    from asr.c2db.pdos import PDOS
 
-    PDOS(atoms=test_material, calculator=fast_calc, emptybands=5, kptdensity=2.0)
+    pdospost = repo.run_workflow_blocking(workflow, atoms=test_material,
+                                          calculator=fast_calc,
+                                          emptybands=5,
+                                          kptdensity=2)
+
+    # PDOS(atoms=test_material, calculator=fast_calc, emptybands=5, kptdensity=2.0)
 
     # main(atoms=test_material, calculator=fast_calc)
     # test_material.write('structure.json')

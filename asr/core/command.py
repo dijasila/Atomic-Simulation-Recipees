@@ -13,11 +13,8 @@ from .cache import get_cache
 from .parameters import get_default_parameters, Parameters
 from .record import Record
 from .specification import construct_run_spec
-from .runner import runner
-from .dependencies import register_dependencies
 from .resources import register_resources
 from .selector import Selector
-from .metadata import register_metadata
 
 
 def format_param_string(params: dict):
@@ -101,7 +98,7 @@ class ASRCommand:
     def get_signature(self):
         """Return signature with updated defaults based on params.json."""
         myparams = []
-        #for key, value in self.__signature__.parameters.items():
+        # for key, value in self.__signature__.parameters.items():
         #    assert key in self.myparams, \
         #        f'Missing description for param={key},value={value}.'
         #    myparams.append(key)

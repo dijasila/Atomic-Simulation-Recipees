@@ -356,9 +356,7 @@ class HTWCache:
             if not runspecfile.exists():
                 continue
 
-            from asr.core.serialize import JSONSerializer
             runspec = JSONSerializer().deserialize(runspecfile.read_text())
-
 
             result = entry.output()
             record = Record(result=result, run_specification=runspec)

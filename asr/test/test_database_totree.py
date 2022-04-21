@@ -1,13 +1,13 @@
+import os
+from pathlib import Path
 import pytest
-from .materials import std_test_materials
+from .materials import std_test_materials, BN
+from ase.db import connect
+from asr.database.totree import main
 
 
 @pytest.mark.ci
 def test_database_totree(repo):
-    from ase.db import connect
-    from asr.database.totree import main
-    from pathlib import Path
-
     dbname = 'database.db'
     db = connect(dbname)
     for atoms in std_test_materials:
@@ -27,19 +27,17 @@ def test_database_totree(repo):
     for nesting in ['A/123/Ag',
                     'A/227/Si2',
                     'AB/187/BN']:
-        structuredirs = list((tree / nesting).glob('structure-*'))
+
+        # XXX The define-string is liable to change
+        structuredirs = list((tree / nesting).glob('define-*'))
         assert len(structuredirs) == 1
-        structurefile = structuredirs[0] / 'structure.json'
+        structurefile = structuredirs[0] / 'output.json'
         assert structurefile.is_file()
 
 
 @pytest.fixture
 def make_test_db(asr_tmpdir):
     """Make a database that contains data in various forms."""
-    from .materials import BN
-    from pathlib import Path
-    from ase.db import connect
-
     dbname = 'database.db'
     db = connect(dbname)
     p = Path('hardlinkedfile.txt')
@@ -57,9 +55,6 @@ def make_test_db(asr_tmpdir):
 def test_database_totree_files_and_hard_links(make_test_db):
     """Test that hard links are correctly reproduced."""
     from asr.core import read_json
-    from asr.database.totree import main
-    from pathlib import Path
-    import os
 
     dbname = 'database.db'
     main(database=dbname, run=True, copy=True, atomsfile='structure.json',

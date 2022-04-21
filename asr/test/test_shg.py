@@ -39,15 +39,12 @@ def test_shg(
         with pytest.raises(CentroSymmetric):
             assert main(
                 gsresult=gs,
-                #atoms=inputatoms,
                 maxomega=3,
                 nromega=4,
             )
     else:
         main(
             gsresult=gs,
-            #atoms=inputatoms,
-            #calculator=fast_calc,
             maxomega=3,
             nromega=4,
         )

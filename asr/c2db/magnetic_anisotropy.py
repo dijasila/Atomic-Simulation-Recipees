@@ -1,9 +1,6 @@
 """Magnetic anisotropy."""
 import numpy as np
-from ase import Atoms
-import asr
-from asr.core import (command, ASRResult, prepare_result,
-                      argument, option, AtomsFile)
+from asr.core import command, ASRResult, prepare_result
 
 from asr.database.browser import (
     table, make_panel_description, describe_entry, href)
@@ -120,9 +117,7 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.magnetic_anisotropy')
-# @argument('groundstate')  # , type=GroundStateCalculationResult)
-def main(groundstate, # : GroundStateCalculationResult,
-         magnetic: bool):
+def main(groundstate, magnetic: bool):
     """Calculate the magnetic anisotropy.
 
     Uses the magnetic anisotropy to calculate the preferred spin orientation

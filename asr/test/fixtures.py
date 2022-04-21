@@ -11,7 +11,6 @@ from ase.parallel import broadcast, world
 from asr.core import get_cache, write_json
 from asr.core.dependencies import Dependencies
 from asr.core.record import Record
-from asr.core.root import Repository
 from asr.core.specification import construct_run_spec
 from asr.database import App, DatabaseProject
 

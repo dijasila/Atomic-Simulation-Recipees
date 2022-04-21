@@ -1,33 +1,25 @@
 import pytest
+from asr.c2db.plasmafrequency import PlasmaFrequencyWorkflow
 
 
-class Workflow:
-    def __init__(self, rn, atoms, calculator):
-        self.scf = rn.task(
-            'asr.c2db.gs.calculate',
-            atoms=atoms,
-            calculator=calculator)
+def workflow(rn, atoms, calculator):
+    scf = rn.task(
+        'asr.c2db.gs.calculate',
+        atoms=atoms,
+        calculator=calculator)
 
-        self.gpwfile = rn.task(
-            'asr.c2db.plasmafrequency.calculate',
-            gsresult=self.scf.output)
-
-        self.postprocess = rn.task(
-            'asr.c2db.plasmafrequency.postprocess',
-            gpwfile=self.gpwfile.output)
+    return PlasmaFrequencyWorkflow(rn, scf.output)
 
 
 @pytest.mark.ci
 def test_plasmafrequency(repo, get_webcontent, mockgpaw,
                          test_material, fast_calc):
     """Test of the plasma freuquency recipe."""
-    #from asr.c2db.plasmafrequency import main, calculate
-    from pathlib import Path
     if sum(test_material.pbc) != 2:
         pytest.skip("Plasma frequency is only implemented for 2D atm.")
 
     wf = repo.run_workflow_blocking(
-        Workflow,
+        workflow,
         atoms=test_material,
         calculator=fast_calc)
 

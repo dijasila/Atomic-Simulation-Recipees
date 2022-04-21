@@ -4,16 +4,17 @@ import typing
 from pathlib import Path
 
 import numpy as np
-from ase import Atoms
 from ase.units import alpha, Ha, Bohr
 
 from asr.core import (
     command, option, file_barrier, ASRResult, prepare_result,
-    atomsopt, calcopt, ExternalFile,
+    ExternalFile,
 )
 from asr.database.browser import (
     fig, table, make_panel_description, describe_entry)
 from asr.utils.kpts import get_kpts_size
+
+from asr.c2db.gs import GSWorkflow
 
 
 panel_description = make_panel_description(
@@ -368,11 +369,12 @@ def postprocess(bsecalculateresult, gs_post_result, magstateresult) -> Result:
 
 class BSEWorkflow:
     # TODO convert into actual workflow
-    def __init__(self, atoms, calculator, **kwargs):
-        from asr.c2db.gs import GS
-        self.gs = GS(atoms=atoms, calculator=calculator)
-        self.calculateresult = calculate(gsresult=self.gs.gsresult, **kwargs)
-        self.post = postprocess(
-            bsecalculateresult=self.calculateresult,
-            magstateresult=self.gs.magstate,
-            gs_post_result=self.gs.post)
+    def __init__(self, rn, gs_workflow : GSWorkflow, **kwargs):
+        self.bse = rn.task('asr.c2db.bse.calculate',
+                           gsresult=gs_workflow.scf.output, **kwargs)
+
+        self.post = rn.task(
+            'asr.c2db.bse.postprocess',
+            bsecalculateresult=self.bse.output,
+            magstateresult=gs_workflow.magstate.output,
+            gs_post_result=gs_workflow.postprocess.output)

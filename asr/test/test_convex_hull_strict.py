@@ -1,5 +1,6 @@
 import pytest
-from asr.c2db.convex_hull import calculate_hof_and_hull, LOW, MEDIUM, HIGH
+from asr.c2db.convex_hull import (calculate_hof_and_hull, LOW, MEDIUM, HIGH,
+                                  Reference)
 
 
 @pytest.mark.ci
@@ -15,7 +16,9 @@ def test_single_species():
 
 
 def mkref(formula, natoms, hform):
-    return {'formula': formula, 'natoms': natoms, 'hform': hform}
+    # len(formula) may not be natoms due to reduced formula!
+    return Reference(formula=formula, natoms=natoms,
+                     hform_per_atom=hform)
 
 
 def stdrefs():

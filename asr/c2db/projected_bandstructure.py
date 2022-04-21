@@ -1,10 +1,9 @@
 """Orbital projected band structure."""
 import numpy as np
-from ase import Atoms
 
 import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, calcopt,
+    command, ASRResult, prepare_result
 )
 import typing
 

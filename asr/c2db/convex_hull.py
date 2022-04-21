@@ -1,5 +1,4 @@
 """Convex hull stability analysis."""
-from collections import Counter
 from typing import List, Dict, Any, Optional
 
 import asr
@@ -21,14 +20,7 @@ from ase.db import connect
 from ase.db.row import AtomsRow
 from ase.formula import Formula
 
-# from matplotlib.legend_handler import HandlerPatch
 from matplotlib import patches
-# from matplotlib.legend_handler import HandlerLine2D, HandlerTuple
-
-
-# from asr.c2db.gs import main as groundstate
-
-known_methods = ['DFT', 'DFT+D3']
 
 
 def get_hull_energies(pd: PhaseDiagram):
@@ -145,16 +137,16 @@ def convert_database_parameter_to_file(record):
     return record
 
 
-@command('asr.c2db.convex_hull',
-         argument_hooks=[set_calculator_hook,
-                         convert_database_strings_to_files],
-         )
-@atomsopt
-@calcopt
-@argument('databases', nargs=-1, type=FileStr())
+# @command('asr.c2db.convex_hull',
+#          argument_hooks=[set_calculator_hook,
+#                          convert_database_strings_to_files],
+#          )
+# @atomsopt
+# @calcopt
+# @argument('databases', nargs=-1, type=FileStr())
 def main(
-        atoms: Atoms,
-        calculator: dict = None,  # XXXX
+        formula,
+        energy,
 #        calculator: dict = groundstate.defaults.calculator,
         databases: List[File] = [],
 ) -> Result:
@@ -175,10 +167,6 @@ def main(
           (see further information below).
         - label: f-string from which to derive a material specific name to
           put on convex hull figure.
-        - method: String denoting the method that was used to calculate
-          reference energies. Currently accepted strings: ['DFT', 'DFT+D3'].
-          "DFT" means bare DFT references energies. "DFT+D3" indicate that the
-          reference also include the D3 dispersion correction.
         - energy_key (optional): Indicates the key-value-pair that represents
           the total energy of a material from. If not specified the
           default value of 'energy' will be used.
@@ -195,7 +183,6 @@ def main(
             "name": "{row.formula}",
             "link": "https://cmrdb.fysik.dtu.dk/oqmd12/row/{row.uid}",
             "label": "{row.formula}",
-            "method": "DFT",
             "energy_key": "total_energy"
         }
 
@@ -205,39 +192,23 @@ def main(
         List of filenames of databases.
 
     """
-    # XXX Add possibility of D3 correction again
-    # TODO: Make separate recipe for calculating vdW correction to total energy
-    databases = [connect(database.path) for database in databases]
-    result = groundstate(atoms=atoms, calculator=calculator)
-    usingd3 = False
-    energy = result.etot
+    databases = [connect(database) for database in databases]
 
-    if usingd3:
-        mymethod = 'DFT+D3'
-    else:
-        mymethod = 'DFT'
-
-    formula = atoms.get_chemical_formula()
-    count = Counter(atoms.get_chemical_symbols())
+    # Formula constructor does not like formulas, hence string roundtrip
+    formula = Formula(str(formula))
+    atoms = Atoms(formula)
 
     dbdata = {}
-    reqkeys = {'title', 'legend', 'name', 'link', 'label', 'method'}
+    reqkeys = {'title', 'legend', 'name', 'link', 'label'}
     for refdb in databases:
         # Connect to databases and save relevant rows
         metadata = refdb.metadata
         assert not (reqkeys - set(metadata)), \
             'Missing some essential metadata keys.'
 
-        dbmethod = metadata['method']
-        assert dbmethod in known_methods, f'Unknown method: {dbmethod}'
-        assert dbmethod == mymethod, \
-            ('You are using a reference database with '
-             f'inconsistent methods: {mymethod} (this material) != '
-             f'{dbmethod} ({refdb.database})')
-
         rows = []
         # Select only references which contain relevant elements
-        rows.extend(select_references(refdb, set(count)))
+        rows.extend(select_references(refdb, set(atoms.symbols)))
         dbdata[refdb.filename] = {
             'rows': rows,
             'metadata': metadata,
@@ -257,27 +228,41 @@ def main(
         for row in data['rows']:
             hformref = hof(row[energy_key],
                            row.count_atoms(), ref_energies_per_atom)
-            reference = {'hform': hformref,
-                         'formula': row.formula,
-                         'uid': row.uid,
-                         'natoms': row.natoms}
-            reference.update(metadata)
-            if 'name' in reference:
-                reference['name'] = reference['name'].format(row=row)
-            if 'label' in reference:
-                reference['label'] = reference['label'].format(row=row)
-            if 'link' in reference:
-                reference['link'] = reference['link'].format(row=row)
+            reference = Reference(
+                hform_per_atom=hformref,
+                formula=row.formula,  # formula may be reduced formula!
+                natoms=row.natoms)
+
+            for identifier in 'name', 'label', 'link':
+                if identifier in metadata:
+                    reference.metadata[identifier] = (metadata[identifier]
+                                                      .format(row=row))
             references.append(reference)
 
-    assert len(atoms) == len(Formula(formula))
     return calculate_hof_and_hull(formula, energy, references,
                                   ref_energies_per_atom)
 
 
+class Reference:
+    def __init__(self, hform_per_atom, formula, natoms):
+        # XXX although we have the formula, that may be the reduced
+        # formula.  So we need natoms also.
+        self.hform_per_atom = hform_per_atom
+        self.formula = Formula(formula)
+        self.natoms = natoms
+
+        self.metadata = {}
+
+    @property
+    def hform_total(self):
+        return self.hform_per_atom * self.natoms
+
+    def as_ase_phasediagram_ref(self):
+        return (str(self.formula), self.hform_total)
+
 def calculate_hof_and_hull(
-        formula, energy, references, ref_energies_per_atom):
-    formula = Formula(formula)
+        formula: Formula, energy, references, ref_energies_per_atom):
+    formula = Formula(str(formula))  # XXX Formula(Formula('...')) crashes
 
     species_counts = formula.count()
 
@@ -285,11 +270,7 @@ def calculate_hof_and_hull(
                 species_counts,
                 ref_energies_per_atom)
 
-    pdrefs = []
-    for reference in references:
-        h = reference['natoms'] * reference['hform']
-        pdrefs.append((reference['formula'], h))
-
+    pdrefs = [ref.as_ase_phasediagram_ref() for ref in references]
     results = {'hform': hform,
                'references': references}
 

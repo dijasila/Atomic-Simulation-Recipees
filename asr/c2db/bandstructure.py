@@ -1,12 +1,12 @@
 """Electronic band structures."""
-import pathlib
+from pathlib import Path
+import copy
 from typing import Union
-from ase import Atoms
 import asr
 from asr.calculators import Calculation
 from asr.core import (
     command, option, ASRResult, singleprec_dict, prepare_result,
-    AtomsFile, Selector,
+    Selector,
 )
 
 import numpy as np
@@ -66,6 +66,7 @@ bsrestart_defaults = {
 
 
 default_npoints = 400
+
 
 @command(
     'asr.c2db.bandstructure',
@@ -512,38 +513,23 @@ def set_bsrestart_from_dependencies(record):
 
 
 @command('asr.c2db.bandstructure')
-#@option('-a', '--atoms', help='Atomic structure.',
+# @option('-a', '--atoms', help='Atomic structure.',
 #        type=AtomsFile(), default='structure.json')
-#@asr.calcopt
-#@asr.calcopt(
+# @asr.calcopt
+# @asr.calcopt(
 #    aliases=['-b', '--bsrestart'],
 #    help='Bandstructure Calculator params.',
 #    matcher=asr.matchers.EQUAL,
-    #)
-#@option('--kptpath', type=str, help='Custom kpoint path.')
-#@option('--npoints',
+# )
+# @option('--kptpath', type=str, help='Custom kpoint path.')
+# @option('--npoints',
 #        type=int,
 #        help='Number of points along k-point path.')
 def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
-        #atoms: Atoms,
-        #calculator: dict = calculate.defaults.calculator,
-        #bsrestart: dict = calculate.defaults.bsrestart,
-        #kptpath: Union[str, None] = None,
-        #npoints: int = 400) -> Result:
     from ase.spectrum.band_structure import get_band_structure
     from ase.dft.kpoints import BandPath
-    import copy
     from asr.utils.gpw2eigs import gpw2eigs
-    from asr.c2db.magnetic_anisotropy import main as mag_ani_main
 
-    #bsresult = calculate(
-    #    atoms=atoms,
-    #    calculator=calculator,
-    #    bsrestart=bsrestart,
-    #    npoints=npoints,
-    #    kptpath=kptpath,
-    #)
-    # gsresult = calculategs(atoms=atoms, calculator=calculator)
     ref = gsresult.calculation.load().get_fermi_level()
     calc = bsresult.calculation.load()
     atoms = calc.atoms
@@ -555,13 +541,12 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
                             special_points=path['special_points'],
                             path=path['labelseq'])
         else:
-            path = calc.atoms.cell.bandpath(pbc=atoms.pbc,
-                                            path=path['path'],
-                                            npoints=path['npoints'],
-                                            eps=c2db_symmetry_eps)
+            path = atoms.cell.bandpath(pbc=atoms.pbc,
+                                       path=path['path'],
+                                       npoints=path['npoints'],
+                                       eps=c2db_symmetry_eps)
     bs = get_band_structure(calc=calc, path=path, reference=ref)
 
-    results = {}
     bsresults = bs.todict()
 
     # Save Fermi levels
@@ -571,17 +556,15 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
     # We just got the Fermi level a few lines ago!
     #
     gsresults = gspostprocess
-    # gsresults = maings(atoms=atoms, calculator=calculator)
     efermi_nosoc = gsresults['gaps_nosoc']['efermi']
     bsresults['efermi'] = efermi_nosoc
 
     # We copy the bsresults dict because next we will add SOC
-    results['bs_nosoc'] = copy.deepcopy(bsresults)  # BS with no SOC
+    bs_nosoc = copy.deepcopy(bsresults)  # BS with no SOC
 
     # Add spin orbit correction
     bsresults = bs.todict()
 
-    # mag_ani = mag_ani_main(atoms=atoms, calculator=calculator)
     theta, phi = mag_ani.spin_angles()
 
     # We use a larger symmetry tolerance because we want to correctly
@@ -590,32 +573,22 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
     # XXX This is only compatible with GPAW
     bsfile = bsresult.calculation.paths[0]
     e_km, _, s_kvm = gpw2eigs(
-        pathlib.Path(bsfile), soc=True, return_spin=True, theta=theta, phi=phi,
+        bsfile, soc=True, return_spin=True, theta=theta, phi=phi,
         symmetry_tolerance=1e-2)
     bsresults['energies'] = e_km.T
-    efermi = gsresults['efermi']
-    bsresults['efermi'] = efermi
+    bsresults['efermi'] = gsresults['efermi']
 
     # Get spin projections for coloring of bandstructure
     path = bsresults['path']
-    npoints = len(path.kpts)
-    s_mvk = np.array(s_kvm.transpose(2, 1, 0))
+    sz_mk = s_kvm[:, mag_ani.spin_index(), :].T  # take x, y or z component
 
-    if s_mvk.ndim == 3:
-        sz_mk = s_mvk[
-            :,
-            mag_ani.spin_index(),
-            :]  # take x, y or z component
-    else:
-        sz_mk = s_mvk
-
-    assert sz_mk.shape[1] == npoints, f'sz_mk has wrong dims, {npoints}'
+    assert sz_mk.shape[1] == len(path.kpts), f'sz_mk has wrong dims'
 
     bsresults['sz_mk'] = sz_mk
 
     return Result.fromdata(
         bs_soc=singleprec_dict(bsresults),
-        bs_nosoc=singleprec_dict(results['bs_nosoc'])
+        bs_nosoc=singleprec_dict(bs_nosoc)
     )
 
 

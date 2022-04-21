@@ -1,5 +1,5 @@
 from ase.io import read
-from asr.core import command, option, ASRResult, prepare_result, read_json
+from asr.core import option, ASRResult, prepare_result, read_json
 from asr.database.browser import make_panel_description, href
 import spglib as spg
 import typing

@@ -11,7 +11,6 @@ def make_folder_tree(*, repo, folders, chunks,
                      update_tree):
     """Write folder tree to disk."""
     from os import makedirs
-    from ase.io import write
 
     nfolders = len(folders)
     for i, (rowid, (folder, row)) in enumerate(folders.items()):
@@ -27,6 +26,7 @@ def make_folder_tree(*, repo, folders, chunks,
 
         folder = Path(folder)
         atoms = row.toatoms()
+        atoms = atoms.copy()  # Get rid of any unJSONable results.
         yield atoms, folder
 
     return
@@ -124,24 +124,12 @@ def make_folder_dict(rows, tree_structure):
     return folders
 
 
-# XXX Has the effect of "tagging" the atoms as a task without actually
-# calculating anything.  Should be changed so htw framework can do this
-# "tagging" in a less roundabout way.
-def structure(atoms):
-    from ase.io import write
-    # We write the atoms to a file in ASE format so it can be inspected
-    # in ASE GUI.
-    path = Path('structure.json')
-    write(path, atoms)
-    return atoms
-
-
 def main(
         database: str, run: bool = False, select: str = '',
         tree_structure: str = '{stoi}/{reduced_formula:abc}',
         # sort: str = None,
         # chunks: int = 1, copy: bool = False,
-        #patterns: str = '*', update_tree: bool = False
+        # patterns: str = '*', update_tree: bool = False
 ) -> ASRResult:
     from htwutil.repository import Repository
 
@@ -192,16 +180,8 @@ def _main(repo, database, run, select, tree_structure):
             patterns=patterns,
             update_tree=update_tree):
 
-        rn = Runner(repo.cache, tasks={'structure': structure},
+        rn = Runner(repo,
                     directory=directory)
 
         # The name "structure" should likely be a choice
-        future = rn.task('structure', atoms=atoms)
-
-        # Here we are manually hacking the basic how-to-run-a-task
-        # Must refactor in htw-util
-        from ase.utils import workdir
-        entry = future._entry
-        with workdir(entry.directory):
-            structure(atoms)
-            entry.dump_output(atoms)
+        future = rn.define(structure=atoms)

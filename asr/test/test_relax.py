@@ -141,6 +141,7 @@ def test_relax_si_gpaw(asr_tmpdir):
         'name': 'pw',
     }
     calculator['kpts'] = {'density': 1, 'gamma': True}
+    calculator['nbands'] = '110%'
     results = relax(
         atoms=Si.copy(),
         calculator=calculator,
@@ -156,12 +157,25 @@ def test_relax_bn_gpaw(asr_tmpdir):
 
     calculator = {}
     calculator.update(relax.defaults.calculator)
-    calculator['mode'] = {
-        'ecut': 300,
-        'dedecut': 'estimate',
-        'name': 'pw',
+
+    kwargs = {
+        'mode': {
+            'ecut': 200,
+            'dedecut': 'estimate',
+            'name': 'pw',
+        },
+        'occupations': {'name': 'fermi-dirac',
+                        'width': 0.25},
+        'nbands': '120%',
+        'convergence': {'forces': 1e-2},
+        'kpts': {'density': 1.0}
     }
-    calculator['kpts'] = {'density': 2, 'gamma': True}
-    results = relax(atoms=BN.copy(), calculator=calculator)
+
+    calculator.update(kwargs)
+
+    atoms = BN.copy()
+    atoms.center(vacuum=4.0, axis=2)
+    results = relax(atoms=atoms, calculator=calculator,
+                    fmax=0.3)
 
     assert results["c"] > 5

@@ -2,12 +2,9 @@
 from pathlib import Path
 
 import numpy as np
-from ase import Atoms
-from ase.parallel import world
 from ase.units import Hartree, Bohr
 
-from asr.core import (
-    command, option, ASRResult, prepare_result, atomsopt, calcopt)
+from asr.core import ASRResult, prepare_result
 import typing
 from asr.utils.kpts import get_kpts_size
 
@@ -76,16 +73,13 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-
-#@command('asr.c2db.plasmafrequency')
-#@atomsopt
-#@calcopt
-#@option('--kptdensity', help='k-point density', type=float)
-#@option('--tetra', is_flag=True,
-#        help='Use tetrahedron integration')
+# @command('asr.c2db.plasmafrequency')
+# @atomsopt
+# @calcopt
+# @option('--kptdensity', help='k-point density', type=float)
+# @option('--tetra', is_flag=True,
+#         help='Use tetrahedron integration')
 def postprocess(
-        #atoms: Atoms,
-        #calculator: dict = gscalculate.defaults.calculator,
         gpwfile,
         kptdensity: float = 20,
         tetra: bool = True,
@@ -112,16 +106,13 @@ def postprocess(
                   'domega0': 0.2,
                   'ecut': 1}
 
-    #try:
     df = DielectricFunction(gpwfile, **kwargs)
     df.get_polarizability(q_c=[0, 0, 0], direction='x',
                           pbc=[True, True, False],
                           filename=None)
-    #finally:
-    #    world.barrier()
-    #    if world.rank == 0:
-    #        es_file = Path(gpwfile)
-    #        es_file.unlink()
+
+    # XXX should maybe delete the gpwfile from calculate()
+    # because it is huge.
     plasmafreq_vv = df.chi0.plasmafreq_vv.real
     data = {'plasmafreq_vv': plasmafreq_vv}
 
@@ -133,3 +124,14 @@ def postprocess(
         data['plasmafrequency_y'] = plasmafreq_v[1].real
 
     return data
+
+
+class PlasmaFrequencyWorkflow:
+    def __init__(self, rn, gsresult):
+        self.gpwfile = rn.task(
+            'asr.c2db.plasmafrequency.calculate',
+            gsresult=gsresult)
+
+        self.postprocess = rn.task(
+            'asr.c2db.plasmafrequency.postprocess',
+            gpwfile=self.gpwfile.output)

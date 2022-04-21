@@ -12,7 +12,6 @@ def gw_workflow(rn, atoms, calculator):
     return GWWorkflow(rn, bsworkflow=bsw, kptdensity=2)
 
 
-
 @pytest.mark.ci
 def test_gw(repo, asr_tmpdir_w_params, test_material,
             mockgpaw, mocker, get_webcontent, fast_calc):

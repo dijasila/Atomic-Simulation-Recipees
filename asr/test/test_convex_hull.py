@@ -26,19 +26,17 @@ def refdb(asr_tmpdir_w_params):
                 'legend': 'Metals',
                 'name': '{row.formula}',
                 'link': 'NOLINK',
-                'label': '{row.formula}',
-                'method': 'DFT'}
+                'label': '{row.formula}'}
     db.metadata = metadata
 
     return db, 'references.db', energies
 
 
-@pytest.mark.xfail(reason='TODO')
 @pytest.mark.ci
 @pytest.mark.parametrize('metals', metal_alloys)
 @pytest.mark.parametrize('energy_key', [None, 'etot'])
-def test_convex_hull(refdb, mockgpaw, get_webcontent,
-                     metals, energy_key, fast_calc):
+def test_convex_hull(refdb, get_webcontent,
+                     metals, energy_key):
     db, dbname, energies = refdb
 
     metadata = db.metadata
@@ -52,16 +50,18 @@ def test_convex_hull(refdb, mockgpaw, get_webcontent,
     atoms = atoms.repeat((1, 1, nmetalatoms))
     atoms.set_chemical_symbols(metal_atoms)
 
-    results = main(
-        atoms=atoms,
-        databases=['references.db'],
-        calculator=fast_calc,
-    )
-    assert results['hform'] == -sum(energies[element]
-                                    for element in metal_atoms) / nmetalatoms
+    energy = 0.0
 
-    atoms.write('structure.json')
-    get_webcontent()
+    results = main(
+        formula=atoms.symbols.formula,
+        energy=energy,
+        databases=['references.db'],
+    )
+    hform = -sum(energies[element] for element in metal_atoms) / nmetalatoms
+    assert results['hform'] == pytest.approx(hform)
+
+    # atoms.write('structure.json')
+    # get_webcontent()
 
 
 def make_alloy(commasepmetals):
@@ -100,25 +100,22 @@ def refdbwithalloys(refdb):
                 'legend': 'Alloys',
                 'name': '{row.formula}',
                 'link': 'NOLINK',
-                'label': '{row.formula}',
-                'method': 'DFT'}
+                'label': '{row.formula}'}
     db.metadata = metadata
 
     return db, dbname, 'references_alloys.db', energies
 
 
-@pytest.mark.xfail(reason='TODO')
 @pytest.mark.ci
 @pytest.mark.parametrize('alloy', ['Ag,Au,Al', 'Ag,Al'])
 def test_convex_hull_with_two_reference_databases(
-        refdbwithalloys, mockgpaw, get_webcontent, alloy, fast_calc):
+        refdbwithalloys, get_webcontent, alloy):
     db, dbname, alloydbname, energies = refdbwithalloys
 
     atoms = make_alloy(alloy)
     atoms.write('structure.json')
     main(
-        atoms=atoms,
-        databases=[dbname, alloydbname],
-        calculator=fast_calc,
-    )
-    get_webcontent()
+        energy=0.0,
+        formula=atoms.symbols.formula,
+        databases=[dbname, alloydbname])
+    # get_webcontent()
