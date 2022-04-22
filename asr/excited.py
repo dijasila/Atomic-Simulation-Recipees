@@ -79,9 +79,6 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
 
     prepare_mom_calculation(calc, atoms, f_sn)
 
-    calculator = calc.todict()
-    calculator['name'] = 'gpaw'
-
     excited_traj = Path('./excited.traj')
     if excited_traj.is_file() and excited_traj.stat().st_size:
         atoms = Trajectory('excited.traj')[-1]
@@ -91,7 +88,10 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
          logfile='excited.log').run(fmax=0.01)
 
     write('structure.json', atoms)
-    atoms.calc.write('gs.gpw')
+    try:
+        atoms.calc.write('gs.gpw')
+    except:
+        continue
 
 
 @prepare_result
