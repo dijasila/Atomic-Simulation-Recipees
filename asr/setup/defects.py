@@ -16,7 +16,7 @@ from asr.core import command, option, ASRResult
 import click
 import os
 
-
+"""
 @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.')
@@ -50,7 +50,8 @@ import os
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
-def main(atoms, #F.N take from totree #file: str = 'unrelaxed.json',
+"""
+def main(rn, atoms, #F.N take from totree #file: str = 'unrelaxed.json',
          supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
@@ -96,6 +97,14 @@ def main(atoms, #F.N take from totree #file: str = 'unrelaxed.json',
     from ase.io import read
     from asr.core import read_json
 
+    # XXX replace with appropriate syntax
+    # Please remind askhl to take care of this when necessary.
+    if hasattr(atoms, 'has_output'):
+        if not atoms.has_output():
+            return
+        atoms = atoms.value().output
+
+
     # convert extrinsic defect string
     extrinsic = extrinsic.split(',')
 
@@ -131,14 +140,36 @@ def main(atoms, #F.N take from totree #file: str = 'unrelaxed.json',
                                    max_lattice=maxsize, is_2D=is2d,
                                    vacuum=uniform_vacuum,
                                    general_algorithm=general_algorithm)
-    
-    # based on this dictionary, create a folder structure for all defects
-    create_folder_structure(structure, structure_dict,
-                            intrinsic=intrinsic, vacancies=vacancies,
-                            extrinsic=extrinsic,
-                            sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
-    return ASRResult()
+    # based on this dictionary, create a folder structure for all defects
+    structures = {}
+
+
+    for element, atoms in structure_dict.items():
+        rn2 = rn.with_subdirectory(element)
+        structures[element] = rn2.task('asr.setup.defects.defect',
+                                       element=element, atoms=atoms)
+    return structures
+
+    #for defect in create_folder_structure(
+    #        structure, structure_dict,
+    #        intrinsic=intrinsic, vacancies=vacancies,
+    #        extrinsic=extrinsic,
+    #        sc=supercell, max_lattice=maxsize, is_2D=is2d):
+
+    #    structures.append(rn.define(defect=defect))
+
+    #return structures
+def defect(element, atoms):
+    from ase.io import write
+    write('atoms.json', atoms)
+    return Defect(element, atoms)
+
+
+class Defect:
+    def __init__(self, element, atoms):
+        self.element = element
+        self.atoms = atoms
 
 
 def setup_supercell(structure, max_lattice, is_2D):
@@ -549,8 +580,8 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
     
     parameters = {}
     string = 'defects.pristine_sc.{}{}{}'.format(N_x, N_y, N_z)
-    calculator_relax = relax_calc_dict.copy()
-    calculator_gs = gs_calc_dict.copy()
+    calculator_relax = {}  # relax_calc_dict.copy()
+    calculator_gs = {}  # gs_calc_dict.copy()
     parameters['asr.gs@calculate'] = {
         'calculator': calculator_gs}
     parameters['asr.relax'] = {'calculator': calculator_relax}
@@ -664,6 +695,9 @@ def create_folder_structure(structure, structure_dict,
         except FileExistsError:
             print('WARNING: files already exist inside this folder.')
     return None
+
+
+
 def create_general_supercell(structure, size=12.5):
     """
     Use algorithm to generate general supercell.
