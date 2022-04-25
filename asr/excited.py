@@ -91,7 +91,7 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     try:
         atoms.calc.write('gs.gpw')
     except:
-        continue
+        pass
 
 
 @prepare_result
