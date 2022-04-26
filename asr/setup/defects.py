@@ -96,13 +96,21 @@ def main(rn, atoms, #F.N take from totree #file: str = 'unrelaxed.json',
     """
     from ase.io import read
     from asr.core import read_json
-    
+    from ase import Atoms
+
     # If atoms is a Reference created by asr.database.totree, 
     #replace atoms with corresponding Atoms-object output
     if hasattr(atoms, 'future'):
         if not atoms.future.has_output():
             return
         atoms = atoms.future.value().output
+        #Ugly quick fix, at the moment atoms.future.value().output is dict
+        if(isinstance(atoms,dict)):
+            if('structure' in atoms):
+                atoms=atoms['structure']
+            else:
+                raise ValueError("Input dict atoms need structure key")
+                
 
     # convert extrinsic defect string
     extrinsic = extrinsic.split(',')
@@ -118,6 +126,7 @@ def main(rn, atoms, #F.N take from totree #file: str = 'unrelaxed.json',
 
     # first, read input atomic structure and store it in ase's atoms object
     structure = atoms #read(atomfile) #F.N takes atoms object rather than file as input
+    
     print('INFO: starting recipe for setting up defect systems of '
           '{} host system.'.format(structure.symbols))
     # check dimensionality of initial parent structure
