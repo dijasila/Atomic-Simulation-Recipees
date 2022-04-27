@@ -19,6 +19,7 @@ def test_asr():
     assert '--help  Show this message and exit.' in help_result.output
 
 
+@pytest.mark.xfail(reason='CLI port')
 @pytest.mark.ci
 def test_asr_run(asr_tmpdir_w_params):
     import pathlib
@@ -68,6 +69,7 @@ def test_asr_list():
     assert 'Description' in result.output
 
 
+@pytest.mark.xfail(reason='CLI port')
 @pytest.mark.ci
 def test_asr_results_help():
     runner = CliRunner()

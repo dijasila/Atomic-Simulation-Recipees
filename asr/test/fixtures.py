@@ -93,8 +93,8 @@ def in_tempdir(request, tmp_path_factory):
 
 @pytest.fixture
 def repo(in_tempdir):
-    from htwutil.repository import Repository
-    return Repository.create(in_tempdir)
+    from asr.core.repository import ASRRepository
+    return ASRRepository.create(in_tempdir)
 
 
 @pytest.fixture

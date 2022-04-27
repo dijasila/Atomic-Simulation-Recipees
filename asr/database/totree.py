@@ -131,9 +131,9 @@ def main(
         # chunks: int = 1, copy: bool = False,
         # patterns: str = '*', update_tree: bool = False
 ) -> ASRResult:
-    from htwutil.repository import Repository
+    from asr.core.repository import ASRRepository
 
-    repo = Repository.find(Path.cwd())
+    repo = ASRRepository.find(Path.cwd())
     with repo:
         _main(repo, database, run, select, tree_structure)
 

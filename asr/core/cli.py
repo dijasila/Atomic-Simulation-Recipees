@@ -1185,17 +1185,13 @@ def setinfo(key_value_pairs: List[Tuple[str, str]]):
 
 
 from htwutil.cli import define_commandline_interface
-from htwutil.storage import JSONCodec
-
-class JSONCodec:
-    def encode(self, obj):
-        from asr.core.serialize import asr_default
-        return asr_default(obj)
-
-    def decode(self, dct):
-        from asr.core.serialize import json_hook
-        return json_hook(dct)
+from asr.core.repository import ASRRepository
 
 
-cli = define_commandline_interface()
+@click.group(context_settings=CONTEXT_SETTINGS)
+@click.version_option(version=asr.__version__)
+def cli():
+    ...
 
+
+define_commandline_interface(cli, repocls=ASRRepository)
