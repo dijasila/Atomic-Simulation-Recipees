@@ -46,7 +46,7 @@ def hiphive_fc23(
         number_structures,
         rattle,
         mindistance,
-        nat_dim,
+        nd,
         cut1,
         cut2,
         cut3,
@@ -66,7 +66,7 @@ def hiphive_fc23(
 
     # 2D or 3D calculation
 
-    if nat_dim == 3:
+    if nd == 3:
         # 3D calc
         multiplier = np.array([[cellsize, 0, 0], [0, cellsize, 0], [0, 0, cellsize]])
     else:
@@ -138,7 +138,7 @@ def hiphive_fc23(
         fcs.write_to_phono3py('fc3.hdf5')
 
 
-def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3,
+def phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
                       t1, t2, tstep):
     from phono3py import Phono3py
     from phonopy.structure.atoms import PhonopyAtoms
@@ -153,7 +153,7 @@ def phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3,
         cell=atoms.cell)
 
     # 2D or 3D calculation
-    if nat_dim == 3:
+    if nd == 3:
         # 3D calc
         multiplier = np.array([[cellsize, 0, 0], [0, cellsize, 0],
                                [0, 0, cellsize]])
@@ -222,7 +222,7 @@ class Result(ASRResult):
 @option("--cut1", help="cutoff 2nd", type=float)
 @option("--cut2", help="cutoff 3rd", type=float)
 @option("--cut3", help="cutoff 4th", type=float)
-@option("--nat_dim", help="spatial dimension number: 2D or 3D calculation", type=int)
+@option("--nd", help="spatial dimension number: 2D or 3D calculation", type=int)
 @option("--mindistance", help="minimum distance hiphive", type=float)
 @option("--number_structures", help="no. of structures rattle hiphive", type=int)
 @option("--mesh_ph3", help="phono3py mesh", type=int)
@@ -235,7 +235,7 @@ def main(
         cellsize: int = 5,
         calculator: str = 'DFT',
         rattle: float = 0.03,
-        nat_dim: int = 2,
+        nd: int = 2,
         cut1: float = 6.0,
         cut2: float = 5.0,
         cut3: float = 4.0,
@@ -254,13 +254,13 @@ def main(
         number_structures,
         rattle,
         mindistance,
-        nat_dim,
+        nd,
         cut1,
         cut2,
         cut3,
         calculator)
 
-    phono3py_lifetime(atoms, cellsize, nat_dim, mesh_ph3,
+    phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
                       t1, t2, tstep)
     
     # write results to json file
@@ -268,7 +268,7 @@ def main(
     # read the hdf5 file with the rta results
 
     phonopy_mesh = np.ones(3, int)
-    phonopy_mesh[:nat_dim] = mesh_ph3
+    phonopy_mesh[:nd] = mesh_ph3
 
     label = ''.join(str(x) for x in phonopy_mesh)
     phonopy_outputfilename = f'kappa-m{label}.hdf5'
