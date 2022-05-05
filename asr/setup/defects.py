@@ -1,13 +1,3 @@
-"""
-F.N: Todo:
-- Remove chargestates and halfinteger: --should be moved to relax.defects and SJ resp OK
-- Move everything that has to do with setup parameters to asr.relax_defects and remove from here. I.e. OK 
-  no params.py files should be written. Only strcuture files and defect info files.! OK
-- Make correct folder structure according to workflow OK (need clean-up)
-- Take structure task as input
-- Make defect tasks
-"""
-
 """Generate defective atomic structures."""
 import numpy as np
 from typing import Sequence
@@ -51,8 +41,7 @@ import os
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
 """
-def main(rn, atoms, #F.N take from totree #file: str = 'unrelaxed.json',
-         supercell: Sequence[int] = (3, 3, 3),
+def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
          scaling_double: float = 1.7, uniform_vacuum: bool = False,
@@ -68,25 +57,35 @@ def main(rn, atoms, #F.N take from totree #file: str = 'unrelaxed.json',
       of the desired system in the folder you run setup.defects. The tree
       structure will then look like this:
 
-    BN
-    ├── defects.BN_331.B_N
-    │   └── structure
-    │       └── unrelaxed.json
-    ├── defects.BN_331.N_B
-    │   └── structure
-    │       └── unrelaxed.json
-    ├── defects.BN_331.v_B
-    │   └── structure
-    │       └── unrelaxed.json
-    ├── defects.BN_331.v_N
-    │   └── structure
-    │       └── unrelaxed.json
-    ├── defects.pristine_sc.331
-    │   └── structure
-    │       └── unrelaxed.json
-    ├── results-asr.setup.defects.json
-    └── unrelaxed.json
-
+MoS2/
+├── defects.MoS2_331.Mo_S
+│   └── asr.setup.defects.defect-irxvl8uy
+│       ├── atoms.json
+│       ├── input.json
+│       └── output.json
+├── defects.MoS2_331.S_Mo
+│   └── asr.setup.defects.defect-cd9l_90u
+│       ├── atoms.json
+│       ├── input.json
+│       └── output.json
+├── defects.MoS2_331.v_Mo
+│   └── asr.setup.defects.defect-jl1ivb5g
+│       ├── atoms.json
+│       ├── input.json
+│       └── output.json
+├── defects.MoS2_331.v_S
+│   └── asr.setup.defects.defect-3pmt0aic
+│       ├── atoms.json
+│       ├── input.json
+│       └── output.json
+├── defects.pristine_sc.331
+│   └── asr.setup.defects.defect-xms9yiy1
+│       ├── atoms.json
+│       ├── input.json
+│       └── output.json
+└── define-h7y1gtln
+    ├── input.json
+    └── output.json
 
     - Here, the notation for the defects is the following:
       'formula_supercellsize.defect_sustitutionposition' where 'v' denotes a vacancy
@@ -159,24 +158,16 @@ def main(rn, atoms, #F.N take from totree #file: str = 'unrelaxed.json',
                                        element=element, atoms=atoms)
     return structures
 
-    #for defect in create_folder_structure(
-    #        structure, structure_dict,
-    #        intrinsic=intrinsic, vacancies=vacancies,
-    #        extrinsic=extrinsic,
-    #        sc=supercell, max_lattice=maxsize, is_2D=is2d):
 
-    #    structures.append(rn.define(defect=defect))
-
-    #return structures
 def defect(element, atoms):
     from ase.io import write
-    write('atoms.json', atoms)
+    write('unrelaxed.json', atoms)
     return Defect(element, atoms)
 
 
 class Defect:
     def __init__(self, element, atoms):
-        self.element = element
+        self.info = element
         self.atoms = atoms
 
 
@@ -654,56 +645,6 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
           'system.'.format(len(structure_dict)-1))
     
     return structure_dict
-
-
-def create_folder_structure(structure, structure_dict,
-                            intrinsic, vacancies, extrinsic,
-                            sc, max_lattice, is_2D):
-    """Create folder for all configurations.
-
-    Creates a folder for every configuration of the defect supercell in
-    the following way:
-
-    - see example directory tree in 'main()'
-    - these each contain two files: 'unrelaxed.json' (the defect
-      supercell structure), 'params.json' (the non-general parameters
-      of each system)
-    - the content of those folders can then be used to do further
-      processing (e.g. relax the defect structure)
-    """
-    from ase.io import write
-    from asr.core import write_json
-
-    # create a seperate folder for each possible defect
-    # configuration of this parent folder, as well as the pristine
-    # supercell system
-
-    # create undelying folder structure, write params.json and
-    # unrelaxed.json for the neutral defect
-    for element in structure_dict: #Now treating defects and pristine on same footing
-        folder_name = element
-        try:
-            #if not folder_name == 'defects': #ie. for pristine
-            Path(folder_name).mkdir()
-        except FileExistsError:
-            print('WARNING: folder ("{0}") already exists in this '
-                  'directory. Skip creating it.'.format(folder_name))
-        #if structure_dict[element] is not None:
-        folder_name+='/structure'
-        try:
-            Path(folder_name).mkdir()
-        except FileExistsError:
-            print(
-                'WARNING: folder ("{0}") already exists in this '
-                'directory. Skip creating '
-                'it.'.format(folder_name))
-        struc = structure_dict[element]
-        try:
-            write(folder_name + '/unrelaxed.json', struc)
-        except FileExistsError:
-            print('WARNING: files already exist inside this folder.')
-    return None
-
 
 
 def create_general_supercell(structure, size=12.5):

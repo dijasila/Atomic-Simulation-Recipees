@@ -1,7 +1,6 @@
 import pytest
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
 def test_nearest_distance():
     from asr.setup.defects import return_distances_cell
@@ -17,8 +16,11 @@ def test_nearest_distance():
     for i, dist in enumerate(distances):
         assert dist == refs[i]
 
+#How to test workflow? Discuss with Ask
 
-@pytest.mark.xfail
+#@pytest.fixture
+#def repo_defects()
+
 @pytest.mark.ci
 def test_setup_defects(asr_tmpdir):
     from pathlib import Path
@@ -26,24 +28,35 @@ def test_setup_defects(asr_tmpdir):
     from asr.setup.defects import main
     from ase.io import write, read
     from ase.calculators.calculator import compare_atoms
+    from htwutil.runner import Runner
+    from htwutil.repository import Repository
 
+    repo = Repository.create(asr_tmpdir)
+    rn = Runner(repo,
+                directory=asr_tmpdir)
+    pathname='asr.setup.defects.defect*/'
     atoms = std_test_materials[1]
-    write('unrelaxed.json', atoms)
+    defects = main(rn,atoms=atoms,supercell=(3, 3, 1))
     atoms = atoms.repeat((3, 3, 1))
-    main(supercell=(3, 3, 1))
-    pristine = read('defects.pristine_sc.331/structure.json')
+    pathlist=list(Path('.').glob('defects.pristine_sc.331/'+pathname))
+    assert len(pathlist)==1
+    pristine = read(pathlist[0]+'/unrelaxed.json')
     assert compare_atoms(atoms, pristine) == []
 
-    pathlist = list(Path('.').glob('defects.BN_331*/charge_*/'))
-    for path in pathlist:
-        print(Path(path / 'params.json'))
-        assert Path(path / 'params.json').is_file()
-        if str(path.absolute()).endswith('charge_0'):
-            assert Path(path / 'unrelaxed.json').is_file()
-        else:
-            assert Path(path / 'unrelaxed.json').is_symlink()
+    print(Path(pathlist[0] / 'input.json'))
+    assert Path(pathlist[0] / 'input.json').is_file()
+    print(Path(pathlist[0] / 'output.json'))
+    assert Path(pathlist[0] / 'output.json').is_file()
 
-    assert Path('defects.pristine_sc.331/structure.json').is_file()
+
+    pathlist = list(Path('.').glob('defects.BN_331*/'+pathname))
+    for path in pathlist:
+        print(Path(path / 'unrelaxed.json'))
+        assert Path(path / 'unrelaxed.json').is_file()
+        print(Path(path / 'input.json'))
+        assert Path(path / 'input.json').is_file()
+        print(Path(path / 'output.json'))
+        assert Path(path / 'output.json').is_file()
 
 
 @pytest.mark.xfail
@@ -73,7 +86,6 @@ def test_apply_vacuum(asr_tmpdir):
                         atoms.get_cell().lengths()[2])
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
 def test_setup_supercell(asr_tmpdir):
     from asr.setup.defects import setup_supercell
@@ -116,7 +128,6 @@ def test_intrinsic_single_defects(asr_tmpdir):
             assert len(pathlist) == lengths[i]
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
 def test_chemical_elements(asr_tmpdir):
     from .materials import std_test_materials
@@ -226,7 +237,6 @@ def test_get_maximum_distance(M, X, scaling):
     assert R == pytest.approx(reference)
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
 def test_new_double():
     from asr.setup.defects import is_new_double_defect
