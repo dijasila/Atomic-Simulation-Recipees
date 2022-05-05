@@ -105,13 +105,13 @@ def format_list(content, indent=0, title=None, pad=2):
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-@click.group(context_settings=CONTEXT_SETTINGS)
+# @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=asr.__version__)
 def cli():
     ...
 
 
-@cli.command()
+# @cli.command()
 @click.argument("directories", nargs=-1,
                 type=click.Path(resolve_path=True),
                 metavar='[directory]')
@@ -131,7 +131,7 @@ def init(directories):
         Repository.initialize(directory)
 
 
-@cli.command()
+# @cli.command()
 @click.argument('command', nargs=1)
 @click.argument('folders', nargs=-1)
 @click.option('-n', '--not-recipe', is_flag=True,
@@ -292,7 +292,7 @@ def run_command(folders, *, command: str, not_recipe: bool, dry_run: bool,
                     raise
 
 
-@cli.command(name='list')
+# @cli.command(name='list')
 @click.argument('search', required=False)
 def asrlist(search):
     """List and search for recipes.
@@ -328,7 +328,7 @@ def recipes_as_dict():
     return {recipe.name: recipe for recipe in get_recipes()}
 
 
-@cli.command()
+# @cli.command()
 @click.argument('recipe', nargs=1)
 @click.argument(
     'params', nargs=-1, type=str, required=True,
@@ -407,7 +407,7 @@ def _params(name: str, params: str):
         write_json(params_path, paramdict)
 
 
-@cli.group()
+# @cli.group()
 def cache():
     """Inspect results."""
 
@@ -435,7 +435,7 @@ def get_item(attrs: List[str], obj):
     return obj
 
 
-@cache.command()
+# @cache.command()
 @click.argument("directories", nargs=-1,
                 type=click.Path(resolve_path=True),
                 metavar='[directory]')
@@ -469,7 +469,7 @@ def add_resultfile_records(directories):
                 cache.add(record)
 
 
-@cache.command()
+# @cache.command()
 @selection_argument
 @click.option('-a', '--apply', is_flag=True, help='Apply migrations.')
 @click.option('-v', '--verbose', is_flag=True, help='Apply migrations.')
@@ -517,7 +517,7 @@ def migrate(selection, apply=False, verbose=False, show_errors=False):
             migration.apply(cache)
 
 
-@cache.command()
+# @cache.command()
 def new_uid():
     from .specification import get_new_uuid
 
@@ -537,7 +537,7 @@ def make_selector_from_selection(cache, selection):
     return selector
 
 
-@cache.command()
+# @cache.command()
 @selection_argument
 @formatting_option
 @sorting_option
@@ -587,7 +587,7 @@ def print_record_listing(formatting, sort, width, records):
         print(' '.join(row))
 
 
-@cache.command()
+# @cache.command()
 @selection_argument
 @click.option('-z', '--dry-run', is_flag=True,
               help='Print what will happen without doing anything.')
@@ -610,7 +610,7 @@ def rm(selection, dry_run):
         print(f'Deleted {len(records)} record(s).')
 
 
-@cache.command()
+# @cache.command()
 @selection_argument
 def detail(selection):
     """Detail records."""
@@ -729,7 +729,7 @@ def draw_networkx_graph(G, labels=False, saveto=None):
     plt.show()
 
 
-@cache.command()
+# @cache.command()
 @click.option('--draw', is_flag=True)
 @click.option('--labels', is_flag=True)
 @click.option('--saveto', help='Save to filename')
@@ -797,7 +797,7 @@ class BadResults(Exception):
     pass
 
 
-@cli.command()
+# @cli.command()
 @click.argument('selection', required=False, nargs=-1)
 @click.option('--show/--dont-show', default=True, is_flag=True,
               help='Show generated figures')
@@ -834,18 +834,18 @@ def results(selection, show):
         plt.show()
 
 
-@cli.group()
+# @cli.group()
 def database():
     """ASR material project database."""
 
 
-@database.group(name="cache")
+# @database.group(name="cache")
 def db_cache():
     """Inspect caches in database rows."""
     pass
 
 
-@db_cache.command(name="ls")
+# @db_cache.command(name="ls")
 @click.argument("database")
 @click.option("--db-selection", help="ASE DB query.")
 @selection_argument
@@ -879,7 +879,7 @@ def get_record_selection_from_row(selection, row):
     return records
 
 
-@db_cache.command(name="detail")
+# @db_cache.command(name="detail")
 @click.argument("database")
 @click.option("--db-selection", help="ASE DB query.")
 @selection_argument
@@ -894,7 +894,7 @@ def db_cache_detail(database, db_selection, selection):
             print(record)
 
 
-@database.command()
+# @database.command()
 @click.argument("databasein", type=str)
 @click.argument("databaseout", type=str)
 def collapse(databasein: str, databaseout: str) -> None:
@@ -919,7 +919,7 @@ def collapse(databasein: str, databaseout: str) -> None:
     collapse_database(databasein, databaseout)
 
 
-@database.command()
+# @database.command()
 @click.argument("databasein", type=str)
 @click.argument("databaseout", type=str)
 def convert(databasein: str, databaseout: str) -> None:
@@ -942,7 +942,7 @@ def convert(databasein: str, databaseout: str) -> None:
     convert_database(databasein, databaseout)
 
 
-@database.command(name="migrate")
+# @database.command(name="migrate")
 @click.argument("databasein", type=str)
 @click.argument("databaseout", type=str)
 def migrate_database_cli(databasein: str, databaseout: str) -> None:
@@ -951,7 +951,7 @@ def migrate_database_cli(databasein: str, databaseout: str) -> None:
     migrate_database(databasein, databaseout)
 
 
-@database.command()
+# @database.command()
 @click.argument('folders', nargs=-1, type=str)
 @click.option('-r', '--recursive', is_flag=True,
               help='Recurse and collect subdirectories.')
@@ -1049,7 +1049,7 @@ def with_docstring(doc):
     return set_doc
 
 
-@database.command()
+# @database.command()
 @click.argument('database', nargs=1, type=str)
 @click.option('--run/--dry-run', is_flag=True,
               help='use --run to actually unpack the database.  Default is '
@@ -1106,7 +1106,7 @@ def totree(
     )
 
 
-@database.command()
+# @database.command()
 @click.argument("databases", nargs=-1, type=str)
 @click.option("--host", help="Host address.", type=str, default='localhost')
 @click.option("--test", is_flag=True, help="Test the app.")
@@ -1119,7 +1119,7 @@ def app(databases, host, test, extra_kvp_descriptions):
          extra_kvp_descriptions_file=extra_kvp_descriptions)
 
 
-@database.command()
+# @database.command()
 @click.option('--target', type=str,
               help='Target DB you want to create the links in.')
 @click.argument('dbs', nargs=-1, type=str)
@@ -1129,7 +1129,7 @@ def crosslinks(target: str,
     main(target=target, dbs=dbs)
 
 
-@database.command()
+# @database.command()
 @click.option('--include', help='Comma-separated string of folders to include.',
               type=CommaStr())
 @click.option('--exclude', help='Comma-separated string of folders to exclude.',
@@ -1152,7 +1152,7 @@ class KeyValuePair(click.ParamType):
         return key, value
 
 
-@database.command()
+# @database.command()
 @click.argument('key_value_pairs', metavar='key:value', nargs=-1,
                 type=KeyValuePair())
 def setinfo(key_value_pairs: List[Tuple[str, str]]):
@@ -1182,3 +1182,16 @@ def setinfo(key_value_pairs: List[Tuple[str, str]]):
     from asr.setinfo import main
 
     main(key_value_pairs)
+
+
+from htwutil.cli import define_commandline_interface
+from asr.core.repository import ASRRepository
+
+
+@click.group(context_settings=CONTEXT_SETTINGS)
+@click.version_option(version=asr.__version__)
+def cli():
+    ...
+
+
+define_commandline_interface(cli, repocls=ASRRepository)

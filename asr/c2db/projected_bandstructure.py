@@ -93,7 +93,6 @@ def add_bsrestart(record):
     return record
 
 
-@command()
 def main(bscalculateresult) -> Result:
     # We need to depend on bsmain, otherwise we cannot make the web panels
     # since we do not have the requisite metadata.

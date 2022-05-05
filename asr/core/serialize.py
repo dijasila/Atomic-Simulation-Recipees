@@ -5,12 +5,24 @@ import typing
 
 import numpy as np
 import simplejson as json
+from htwutil.storage import JSONCodec
 from ase.io.jsonio import (object_hook as ase_object_hook,
                            default as ase_default)
 
 from asr.core.results import get_object_matching_obj_id
 
 from .results import obj_to_id
+
+
+
+class ASRJSONCodec(JSONCodec):
+    def encode(self, obj):
+        from asr.core.serialize import asr_default
+        return asr_default(obj)
+
+    def decode(self, dct):
+        from asr.core.serialize import json_hook
+        return json_hook(dct)
 
 
 def asr_default(obj):

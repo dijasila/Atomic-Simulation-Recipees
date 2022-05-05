@@ -74,15 +74,15 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command('asr.c2db.shift')
-@option('--kptdensity', help='K-point density', type=float)
-@option('--bandfactor', type=int,
-        help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
-@option('--eta', help='Broadening [eV]', type=float)
-@option('--maxomega', help='Max pump frequency [eV]', type=float)
-@option('--nromega', help='Number of pump frequencies', type=int)
-@option('--energytol', help='Energy tolernce [eV]', type=float)
-@option('--removefiles', help='Remove created files', type=bool)
+# @command('asr.c2db.shift')
+# @option('--kptdensity', help='K-point density', type=float)
+# @option('--bandfactor', type=int,
+#         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
+# @option('--eta', help='Broadening [eV]', type=float)
+# @option('--maxomega', help='Max pump frequency [eV]', type=float)
+# @option('--nromega', help='Number of pump frequencies', type=int)
+# @option('--energytol', help='Energy tolernce [eV]', type=float)
+# @option('--removefiles', help='Remove created files', type=bool)
 def main(
         gsresult,
         kptdensity: float = 25.0,
