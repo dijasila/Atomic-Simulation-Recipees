@@ -136,7 +136,7 @@ def hiphive_fc23(
         # write force constants
         fcs.write_to_phonopy('fc2.hdf5')
         fcs.write_to_phono3py('fc3.hdf5')
-
+    world.barrier()
 
 def phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
                       t1, t2, tstep):
@@ -170,9 +170,9 @@ def phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
 
         # create phono3py object
         ph3 = Phono3py(
-            atoms_phonopy,
-            supercell_matrix=multiplier,
-            primitive_matrix=None)
+          atoms_phonopy,
+          supercell_matrix=multiplier,
+          primitive_matrix=None)
         ph3.mesh_numbers = meshnu
         ph3.set_fc3(fc3)
         ph3.set_fc2(fc2)
@@ -180,12 +180,13 @@ def phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
         # run thermal conductivity calculation
         ph3.set_phph_interaction()
         ph3.run_thermal_conductivity(
-            temperatures=range(
-                t1,
-                t2,
-                tstep),
-            boundary_mfp=1e6,
-            write_kappa=True)
+           temperatures=range(
+               t1,
+               t2,
+               tstep),
+           boundary_mfp=1e6,
+           write_kappa=True)
+    world.barrier()
 
 @prepare_result
 class Result(ASRResult):
@@ -247,18 +248,19 @@ def main(
         tstep=10) -> Result:
 
     # call the two main functions
+
     atoms = read('structure.json')
     hiphive_fc23(
-        atoms,
-        cellsize,
-        number_structures,
-        rattle,
-        mindistance,
-        nd,
-        cut1,
-        cut2,
-        cut3,
-        calculator)
+       atoms,
+       cellsize,
+       number_structures,
+       rattle,
+       mindistance,
+       nd,
+       cut1,
+       cut2,
+       cut3,
+       calculator)
 
     phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
                       t1, t2, tstep)
@@ -274,19 +276,20 @@ def main(
     phonopy_outputfilename = f'kappa-m{label}.hdf5'
 
     with h5py.File(phonopy_outputfilename, 'r') as fd:
-         temperatures = fd['temperature'][:]
-         frequencies = fd['frequency'][:]
-         gamma = fd['gamma'][:]
-         kappa = fd['kappa'][:]
-    
+          temperatures = fd['temperature'][:]
+          frequencies = fd['frequency'][:]
+          gamma = fd['gamma'][:]
+          kappa = fd['kappa'][:]
+
     results = {
-          "temperatures": temperatures,
-          "frequencies": frequencies,
-          "gamma": gamma,
-         "kappa": kappa,
-       }
+        "temperatures": temperatures,
+        "frequencies": frequencies,
+        "gamma": gamma,
+        "kappa": kappa,
+            }
+  
+    world.barrier()
     return results
-    
 
 if __name__ == "__main__":
     main.cli()
