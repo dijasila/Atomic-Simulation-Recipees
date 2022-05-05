@@ -196,16 +196,27 @@ class Result(ASRResult):
     temperatures: typing.List[float]
     frequencies: typing.List[float]
     gamma: typing.List[float]
-    #kappa_00: float
     kappa: typing.List[float]
+    heat_capacity: typing.List[float]
+    group_velocity: typing.List[float]
+    gv_by_gv: typing.List[float]
+    mesh: typing.List[float]
+    mode_kappa: typing.List[float]
+    qpoint: typing.List[float]
+    weight: typing.List[float]
 
     key_descriptions = dict(
-        #kappa_00='Thermal conductivity',
         kappa='kappa',
         temperatures='temperature',
         frequencies='frequency',
-        gamma='gamma')
-
+        gamma='gamma',
+        heat_capacity='heat_capacity',
+        group_velocity='group_velocity',
+        gv_by_gv='gv_by_gv',
+        mesh='mesh',
+        mode_kappa='mode_kappa',
+        qpoint='qpoint',
+        weight='weight')
 
 @command(
     "asr.anharmonic_phonons3_result",
@@ -280,13 +291,27 @@ def main(
           frequencies = fd['frequency'][:]
           gamma = fd['gamma'][:]
           kappa = fd['kappa'][:]
+          heat_capacity = fd['heat_capacity'][:]
+          group_velocity = fd['group_velocity'][:]
+          gv_by_gv = fd['gv_by_gv'][:]
+          mesh = fd['mesh'][:]
+          mode_kappa = fd['mode_kappa'][:]
+          qpoint = fd['qpoint'][:]
+          weight = fd['weight'][:]
 
     results = {
         "temperatures": temperatures,
         "frequencies": frequencies,
         "gamma": gamma,
         "kappa": kappa,
-            }
+        "heat_capacity":heat_capacity,
+        "group_velocity":group_velocity,
+        "gv_by_gv":gv_by_gv,
+        "mesh":mesh,
+        "mode_kappa":mode_kappa,
+        "qpoint":qpoint,
+        "weight":weight
+         }
   
     world.barrier()
     return results
