@@ -7,13 +7,13 @@ from asr.database.totree import main
 
 
 @pytest.mark.ci
-def test_database_totree(repo):
+def test_database_totree(unlocked_repo):
     dbname = 'database.db'
     db = connect(dbname)
     for atoms in std_test_materials:
         db.write(atoms)
 
-    tree = repo.root / 'tree'
+    tree = unlocked_repo.root / 'tree'
     assert tree.is_dir()
 
     main(database=dbname,

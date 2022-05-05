@@ -17,7 +17,7 @@ from .fixtures import (  # noqa
     external_file,
     various_object_types,
     record,
-    repo, in_tempdir,
+    repo, unlocked_repo, in_tempdir,
     fscache,
     crosslinks_test_dbs,
     duplicates_test_db,

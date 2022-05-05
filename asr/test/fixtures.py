@@ -92,9 +92,15 @@ def in_tempdir(request, tmp_path_factory):
 
 
 @pytest.fixture
-def repo(in_tempdir):
+def unlocked_repo(in_tempdir):
     from asr.core.repository import ASRRepository
     return ASRRepository.create(in_tempdir)
+
+
+@pytest.fixture
+def repo(unlocked_repo):
+    with unlocked_repo:
+        yield unlocked_repo
 
 
 @pytest.fixture
