@@ -104,7 +104,7 @@ def test_intrinsic_single_defects(repo):
     materials = std_test_materials.copy()
     materials.pop(2)
     for i, atoms in enumerate(materials):
-        defects = repo.run_workflow_blocking(main,atoms=atoms) 
+        defects = repo.run_workflow_blocking(main,atoms=atoms)
         name = atoms.get_chemical_formula()
         pathlist = list(Path('./tree').glob('defects.'+name+'_*/asr.setup.defects.defect*'))
         assert len(pathlist) == lengths[i]
@@ -126,9 +126,8 @@ def test_chemical_elements(asr_tmpdir):
             assert len(elements) == len(results[name])
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
-def test_extrinsic_single_defects(asr_tmpdir):
+def test_extrinsic_single_defects(repo):
     from pathlib import Path
     from asr.core import chdir
     from asr.setup.defects import main
@@ -138,21 +137,17 @@ def test_extrinsic_single_defects(asr_tmpdir):
     lengths = [3, 8, 3]
     std_test_materials.pop(2)
     for i, atoms in enumerate(std_test_materials):
+        defects = repo.run_workflow_blocking(main,atoms=atoms,extrinsic='V,Nb')
         name = atoms.get_chemical_formula()
-        Path(name).mkdir()
-        write(f'{name}/unrelaxed.json', atoms)
-        with chdir(name):
-            main(extrinsic='V,Nb')
-            pathlist = list(Path('.').glob('defects.*/charge_0'))
-            assert len(pathlist) == lengths[i]
+        pathlist = list(Path('./tree').glob('defects.'+name+'_*/asr.setup.defects.defect*'))
+        assert len(pathlist) == lengths[i]
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize('double_type', ['vac-vac',
                                          'vac-sub',
                                          'sub-sub'])
 @pytest.mark.ci
-def test_extrinsic_double_defects(double_type, asr_tmpdir):
+def test_extrinsic_double_defects(double_type, repo):
     from pathlib import Path
     from asr.core import chdir
     from asr.setup.defects import main
@@ -164,22 +159,18 @@ def test_extrinsic_double_defects(double_type, asr_tmpdir):
                'sub-sub': 13}
     std_test_materials = [std_test_materials[1]]
     for i, atoms in enumerate(std_test_materials):
+        defects = repo.run_workflow_blocking(main,atoms=atoms,extrinsic='Nb',
+                double=double_type, scaling_double=1.5)
         name = atoms.get_chemical_formula()
-        Path(name).mkdir()
-        write(f'{name}/unrelaxed.json', atoms)
-        with chdir(name):
-            main(extrinsic='Nb',
-                 double=double_type, scaling_double=1.5)
-            pathlist = list(Path('.').glob('defects.*/charge_0'))
-            assert len(pathlist) == lengths[double_type]
+        pathlist = list(Path('./tree').glob('defects.'+name+'_*/asr.setup.defects.defect*'))
+        assert len(pathlist) == lengths[double_type]
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize('double_type', ['vac-vac',
                                          'vac-sub',
                                          'sub-sub'])
 @pytest.mark.ci
-def test_exclude_double_defects(double_type, asr_tmpdir):
+def test_exclude_double_defects(double_type, repo):
     from pathlib import Path
     from asr.core import chdir
     from asr.setup.defects import main
@@ -190,6 +181,7 @@ def test_exclude_double_defects(double_type, asr_tmpdir):
                'sub-sub': 21}
     std_test_materials = [std_test_materials[1]]
     for i, atoms in enumerate(std_test_materials):
+        """
         name = atoms.get_chemical_formula()
         Path(name).mkdir()
         write(f'{name}/unrelaxed.json', atoms)
@@ -197,7 +189,12 @@ def test_exclude_double_defects(double_type, asr_tmpdir):
             main(extrinsic='Nb,Yb',
                  double=double_type, double_exclude='Yb', scaling_double=1.5)
             pathlist = list(Path('.').glob('defects.*/charge_0'))
-            assert len(pathlist) == lengths[double_type]
+        """
+        defects = repo.run_workflow_blocking(main,atoms=atoms,extrinsic='Nb,Yb',
+                double=double_type, double_exclude='Yb',scaling_double=1.5)
+        name = atoms.get_chemical_formula()
+        pathlist = list(Path('./tree').glob('defects.'+name+'_*/asr.setup.defects.defect*'))
+        assert len(pathlist) == lengths[double_type]
 
 
 @pytest.mark.parametrize('M', ['Mo', 'W'])
