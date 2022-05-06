@@ -1,10 +1,7 @@
 """Generate defective atomic structures."""
 import numpy as np
 from typing import Sequence
-from pathlib import Path
-from asr.core import command, option, ASRResult
-import click
-import os
+from asr.core import ASRResult
 
 """
 @command('asr.setup.defects')
@@ -41,6 +38,8 @@ import os
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
 """
+
+
 def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
@@ -93,23 +92,17 @@ MoS2/
       foldernames will contain '000' instead of the supersize.
     - In the resulting folders you can find the unrelaxed structures.
     """
-    from ase.io import read
-    from asr.core import read_json
-    from ase import Atoms
 
-    # If atoms is a Reference created by asr.database.totree, 
-    #replace atoms with corresponding Atoms-object output
     if hasattr(atoms, 'future'):
         if not atoms.future.has_output():
             return
         atoms = atoms.future.value().output
-        #Ugly quick fix, at the moment atoms.future.value().output is dict
-        if(isinstance(atoms,dict)):
+        # Ugly quick fix, at the moment atoms.future.value().output is dict
+        if(isinstance(atoms, dict)):
             if('structure' in atoms):
-                atoms=atoms['structure']
+                atoms = atoms['structure']
             else:
                 raise ValueError("Input dict atoms need structure key")
-                
 
     # convert extrinsic defect string
     extrinsic = extrinsic.split(',')
@@ -124,8 +117,8 @@ MoS2/
         double_exclude = frozenset(double_exclude.split(','))
 
     # first, read input atomic structure and store it in ase's atoms object
-    structure = atoms #read(atomfile) #F.N takes atoms object rather than file as input
-    
+    structure = atoms
+
     print('INFO: starting recipe for setting up defect systems of '
           '{} host system.'.format(structure.symbols))
     # check dimensionality of initial parent structure
@@ -150,7 +143,6 @@ MoS2/
 
     # based on this dictionary, create a folder structure for all defects
     structures = {}
-
 
     for element, atoms in structure_dict.items():
         rn2 = rn.with_subdirectory(element)
@@ -269,6 +261,7 @@ def create_vacancies(structure, pristine, eq_pos, base_id):
         finished_list.append(eq_pos[i])
 
     return defect_dict
+
 
 def is_new_double_defect(el1, el2, double_defects):
     """Check whether a new double defect exists already."""
@@ -543,14 +536,12 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
     """
     import spglib
 
-    
     # set up artificial array in order to check for equivalent positions later
     cell = (structure.cell.array, structure.get_scaled_positions(),
             structure.numbers)
 
     # set up a dictionary
     structure_dict = {}
-    
     formula = structure.symbols
 
     # first, find the desired supercell
@@ -576,7 +567,7 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
     # for 2D structures, adjust vacuum size according to given input
     if is_2D and vacuum:
         pristine = apply_vacuum(pristine)
-    
+
     parameters = {}
     string = 'defects.pristine_sc.{}{}{}'.format(N_x, N_y, N_z)
     calculator_relax = {}  # relax_calc_dict.copy()
@@ -585,20 +576,20 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
         'calculator': calculator_gs}
     parameters['asr.relax'] = {'calculator': calculator_relax}
     structure_dict[string] = pristine
-    
+
     # incorporate the possible vacancies
     dataset = spglib.get_symmetry_dataset(cell)
     eq_pos = dataset.get('equivalent_atoms')
     base_id = f'{formula}_{N_x}{N_y}{N_z}'
 
-    #defects_dict = {}
+    # defects_dict = {}
     if vacancies:
         defect_dict = create_vacancies(structure,
                                        pristine,
                                        eq_pos,
                                        base_id)
         structure_dict.update(defect_dict)
-    
+
     # incorporate substitutional defects
     if intrinsic:
         defect_dict = create_substitutional(structure,
@@ -633,17 +624,17 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
                                             double_type,
                                             double_exclude)
             structure_dict.update(defect_dict)
-    
+
     # put together structure dict
-    #structure_dict['defects'] = defects_dict
-    
+    # structure_dict['defects'] = defects_dict
+
     print('INFO: rattled atoms to make sure defect systems do not get stuck at'
           ' a saddle point.')
 
     print('INFO: setting up {0} different defect supercell systems '
           ' as well as the pristine supercell '
-          'system.'.format(len(structure_dict)-1))
-    
+          'system.'.format(len(structure_dict) - 1))
+
     return structure_dict
 
 
