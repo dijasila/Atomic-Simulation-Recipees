@@ -16,13 +16,9 @@ def test_nearest_distance():
     for i, dist in enumerate(distances):
         assert dist == refs[i]
 
-#How to test workflow? Discuss with Ask
-
-#@pytest.fixture
-#def repo_defects()
 
 @pytest.mark.ci
-def test_setup_defects(asr_tmpdir):
+def test_setup_defects(repo):
     from pathlib import Path
     from .materials import std_test_materials
     from asr.setup.defects import main
@@ -31,33 +27,23 @@ def test_setup_defects(asr_tmpdir):
     from htwutil.runner import Runner
     from htwutil.repository import Repository
 
-    repo = Repository.create(asr_tmpdir)
-    rn = Runner(repo,
-                directory=asr_tmpdir)
     pathname='asr.setup.defects.defect*/'
     atoms = std_test_materials[1]
-    defects = main(rn,atoms=atoms,supercell=(3, 3, 1))
+    defects = repo.run_workflow_blocking(main,atoms=atoms,supercell=(3,3,1))
     atoms = atoms.repeat((3, 3, 1))
-    pathlist=list(Path('.').glob('defects.pristine_sc.331/'+pathname))
+    pathlist=list(Path('.').glob('tree/defects.pristine_sc.331/'+pathname))
     assert len(pathlist)==1
-    pristine = read(pathlist[0]+'/unrelaxed.json')
+    pristine = read(str(pathlist[0])+'/unrelaxed.json')
     assert compare_atoms(atoms, pristine) == []
-
-    print(Path(pathlist[0] / 'input.json'))
     assert Path(pathlist[0] / 'input.json').is_file()
-    print(Path(pathlist[0] / 'output.json'))
     assert Path(pathlist[0] / 'output.json').is_file()
 
 
-    pathlist = list(Path('.').glob('defects.BN_331*/'+pathname))
+    pathlist = list(Path('.').glob('tree/defects.BN_331*/'+pathname))
     for path in pathlist:
-        print(Path(path / 'unrelaxed.json'))
         assert Path(path / 'unrelaxed.json').is_file()
-        print(Path(path / 'input.json'))
         assert Path(path / 'input.json').is_file()
-        print(Path(path / 'output.json'))
         assert Path(path / 'output.json').is_file()
-
 
 @pytest.mark.xfail
 @pytest.mark.ci
