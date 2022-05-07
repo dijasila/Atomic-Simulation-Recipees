@@ -7,7 +7,7 @@ import h5py
 # ase
 from ase import Atoms
 from ase.io import read, write
-from ase.calculators.emt import EMT
+from ase.calculators.idealgas import IdealGas
 from ase.parallel import world
 from ase.build import make_supercell
 
@@ -94,7 +94,7 @@ def hiphive_fc23(
           calc = calculate()
 
     else:
-        calc = EMT()
+        calc = IdealGas()
     # create rattled structures or read them from file
 
     if not path.exists(structures_fname):
