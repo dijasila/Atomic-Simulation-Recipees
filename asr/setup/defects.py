@@ -46,7 +46,6 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
          scaling_double: float = 1.7, uniform_vacuum: bool = False,
          general_algorithm: float = None) -> ASRResult:
     """Set up defect structures for a given host.
-
     Recipe setting up all possible defects within a reasonable supercell as well as the
     respective pristine system for a given input structure. Defects include: vacancies,
     intrinsic substitutional defects. For a given primitive input structure this recipe
@@ -56,35 +55,35 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
       of the desired system in the folder you run setup.defects. The tree
       structure will then look like this:
 
-MoS2/
-├── defects.MoS2_331.Mo_S
-│   └── asr.setup.defects.defect-irxvl8uy
-│       ├── atoms.json
-│       ├── input.json
-│       └── output.json
-├── defects.MoS2_331.S_Mo
-│   └── asr.setup.defects.defect-cd9l_90u
-│       ├── atoms.json
-│       ├── input.json
-│       └── output.json
-├── defects.MoS2_331.v_Mo
-│   └── asr.setup.defects.defect-jl1ivb5g
-│       ├── atoms.json
-│       ├── input.json
-│       └── output.json
-├── defects.MoS2_331.v_S
-│   └── asr.setup.defects.defect-3pmt0aic
-│       ├── atoms.json
-│       ├── input.json
-│       └── output.json
-├── defects.pristine_sc.331
-│   └── asr.setup.defects.defect-xms9yiy1
-│       ├── atoms.json
-│       ├── input.json
-│       └── output.json
-└── define-h7y1gtln
-    ├── input.json
-    └── output.json
+    MoS2/
+    ├── defects.MoS2_331.Mo_S
+    │   └── asr.setup.defects.defect-irxvl8uy
+    │       ├── atoms.json
+    │       ├── input.json
+    │       └── output.json
+    ├── defects.MoS2_331.S_Mo
+    │   └── asr.setup.defects.defect-cd9l_90u
+    │       ├── atoms.json
+    │       ├── input.json
+    │       └── output.json
+    ├── defects.MoS2_331.v_Mo
+    │   └── asr.setup.defects.defect-jl1ivb5g
+    │       ├── atoms.json
+    │       ├── input.json
+    │       └── output.json
+    ├── defects.MoS2_331.v_S
+    │   └── asr.setup.defects.defect-3pmt0aic
+    │       ├── atoms.json
+    │       ├── input.json
+    │       └── output.json
+    ├── defects.pristine_sc.331
+    │   └── asr.setup.defects.defect-xms9yiy1
+    │       ├── atoms.json
+    │       ├── input.json
+    │       └── output.json
+    └── define-h7y1gtln
+        ├── input.json
+        └── output.json
 
     - Here, the notation for the defects is the following:
       'formula_supercellsize.defect_sustitutionposition' where 'v' denotes a vacancy
