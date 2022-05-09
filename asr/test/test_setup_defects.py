@@ -1,7 +1,6 @@
 import pytest
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
 def test_nearest_distance():
     from asr.setup.defects import return_distances_cell
@@ -18,62 +17,57 @@ def test_nearest_distance():
         assert dist == refs[i]
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
-def test_setup_defects(asr_tmpdir):
+def test_setup_defects(repo):
     from pathlib import Path
     from .materials import std_test_materials
     from asr.setup.defects import main
-    from ase.io import write, read
     from ase.calculators.calculator import compare_atoms
+    from ase.io import read
 
+    pathname = 'asr.setup.defects.defect*/'
     atoms = std_test_materials[1]
-    write('unrelaxed.json', atoms)
+    repo.run_workflow_blocking(main, atoms=atoms, supercell=(3, 3, 1))
     atoms = atoms.repeat((3, 3, 1))
-    main(supercell=(3, 3, 1))
-    pristine = read('defects.pristine_sc.331/structure.json')
+    pathlist = list(Path('.').glob('tree/defects.pristine_sc.331/' + pathname))
+    assert len(pathlist) == 1
+    pristine = read(str(pathlist[0]) + '/unrelaxed.json')
     assert compare_atoms(atoms, pristine) == []
+    assert Path(pathlist[0] / 'input.json').is_file()
+    assert Path(pathlist[0] / 'output.json').is_file()
 
-    pathlist = list(Path('.').glob('defects.BN_331*/charge_*/'))
+    pathlist = list(Path('.').glob('tree/defects.BN_331*/' + pathname))
     for path in pathlist:
-        print(Path(path / 'params.json'))
-        assert Path(path / 'params.json').is_file()
-        if str(path.absolute()).endswith('charge_0'):
-            assert Path(path / 'unrelaxed.json').is_file()
-        else:
-            assert Path(path / 'unrelaxed.json').is_symlink()
-
-    assert Path('defects.pristine_sc.331/structure.json').is_file()
+        assert Path(path / 'unrelaxed.json').is_file()
+        assert Path(path / 'input.json').is_file()
+        assert Path(path / 'output.json').is_file()
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
-def test_apply_vacuum(asr_tmpdir):
+@pytest.mark.parametrize('vac', [True, False])
+def test_apply_vacuum(repo, vac):
     from pathlib import Path
     from asr.setup.defects import main
     from ase.io import read, write
-    from asr.core import chdir
     from .materials import std_test_materials
-
     atoms = std_test_materials[1]
-    for vac in [True, False]:
-        Path(f'{int(vac)}').mkdir()
-        with chdir(f'{int(vac)}'):
-            write('unrelaxed.json', atoms)
-            main(general_algorithm=15., uniform_vacuum=vac)
-            pathlist = list(Path('.').glob('defects.BN_*/charge_0/'))
-            for path in pathlist:
-                structure = read(path / 'unrelaxed.json')
-                cell = structure.get_cell()
-                ref = (cell.lengths()[0] + cell.lengths()[1]) / 2.
-                if vac:
-                    assert cell[2, 2] == pytest.approx(ref)
-                else:
-                    assert cell[2, 2] == pytest.approx(
-                        atoms.get_cell().lengths()[2])
+    write('unrelaxed.json', atoms)
+    repo.run_workflow_blocking(main, atoms=atoms, general_algorithm=15.,
+                               uniform_vacuum=vac)
+    pathlist = list(Path('.').glob('../*'))
+    pathlist = list(Path('.').glob('tree/defects.BN_*/asr.setup.defects.defect*'))
+    assert len(pathlist) > 0
+    for path in pathlist:
+        structure = read(path / 'unrelaxed.json')
+        cell = structure.get_cell()
+        ref = (cell.lengths()[0] + cell.lengths()[1]) / 2.
+        if vac:
+            assert cell[2, 2] == pytest.approx(ref)
+        else:
+            assert cell[2, 2] == pytest.approx(
+                atoms.get_cell().lengths()[2])
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
 def test_setup_supercell(asr_tmpdir):
     from asr.setup.defects import setup_supercell
@@ -94,29 +88,23 @@ def test_setup_supercell(asr_tmpdir):
         assert len(structure) == x[i] * y[i] * z[i] * len(atom)
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
-def test_intrinsic_single_defects(asr_tmpdir):
+def test_intrinsic_single_defects(repo):
     from pathlib import Path
-    from asr.core import chdir
     from asr.setup.defects import main
-    from ase.io import write
     from .materials import std_test_materials
 
     lengths = [1, 4, 1]
     materials = std_test_materials.copy()
     materials.pop(2)
     for i, atoms in enumerate(materials):
+        repo.run_workflow_blocking(main, atoms=atoms)
         name = atoms.get_chemical_formula()
-        Path(name).mkdir()
-        write(f'{name}/unrelaxed.json', atoms)
-        with chdir(name):
-            main()
-            pathlist = list(Path('.').glob('defects.*/charge_0'))
-            assert len(pathlist) == lengths[i]
+        pathlist = list(Path('./tree').glob('defects.'
+                        + name + '_*/asr.setup.defects.defect*'))
+        assert len(pathlist) == lengths[i]
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
 def test_chemical_elements(asr_tmpdir):
     from .materials import std_test_materials
@@ -133,37 +121,29 @@ def test_chemical_elements(asr_tmpdir):
             assert len(elements) == len(results[name])
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
-def test_extrinsic_single_defects(asr_tmpdir):
+def test_extrinsic_single_defects(repo):
     from pathlib import Path
-    from asr.core import chdir
     from asr.setup.defects import main
-    from ase.io import write
     from .materials import std_test_materials
 
     lengths = [3, 8, 3]
     std_test_materials.pop(2)
     for i, atoms in enumerate(std_test_materials):
+        repo.run_workflow_blocking(main, atoms=atoms, extrinsic='V,Nb')
         name = atoms.get_chemical_formula()
-        Path(name).mkdir()
-        write(f'{name}/unrelaxed.json', atoms)
-        with chdir(name):
-            main(extrinsic='V,Nb')
-            pathlist = list(Path('.').glob('defects.*/charge_0'))
-            assert len(pathlist) == lengths[i]
+        pathlist = list(Path('./tree').glob('defects.'
+                        + name + '_*/asr.setup.defects.defect*'))
+        assert len(pathlist) == lengths[i]
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize('double_type', ['vac-vac',
                                          'vac-sub',
                                          'sub-sub'])
 @pytest.mark.ci
-def test_extrinsic_double_defects(double_type, asr_tmpdir):
+def test_extrinsic_double_defects(double_type, repo):
     from pathlib import Path
-    from asr.core import chdir
     from asr.setup.defects import main
-    from ase.io import write
     from .materials import std_test_materials
 
     lengths = {'vac-vac': 8,
@@ -171,40 +151,34 @@ def test_extrinsic_double_defects(double_type, asr_tmpdir):
                'sub-sub': 13}
     std_test_materials = [std_test_materials[1]]
     for i, atoms in enumerate(std_test_materials):
+        repo.run_workflow_blocking(main, atoms=atoms, extrinsic='Nb',
+                                   double=double_type, scaling_double=1.5)
         name = atoms.get_chemical_formula()
-        Path(name).mkdir()
-        write(f'{name}/unrelaxed.json', atoms)
-        with chdir(name):
-            main(extrinsic='Nb',
-                 double=double_type, scaling_double=1.5)
-            pathlist = list(Path('.').glob('defects.*/charge_0'))
-            assert len(pathlist) == lengths[double_type]
+        pathlist = list(Path('./tree').glob('defects.' + name
+                        + '_*/asr.setup.defects.defect*'))
+        assert len(pathlist) == lengths[double_type]
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize('double_type', ['vac-vac',
                                          'vac-sub',
                                          'sub-sub'])
 @pytest.mark.ci
-def test_exclude_double_defects(double_type, asr_tmpdir):
+def test_exclude_double_defects(double_type, repo):
     from pathlib import Path
-    from asr.core import chdir
     from asr.setup.defects import main
-    from ase.io import write
     from .materials import std_test_materials
     lengths = {'vac-vac': 10,
                'vac-sub': 17,
                'sub-sub': 21}
     std_test_materials = [std_test_materials[1]]
     for i, atoms in enumerate(std_test_materials):
+        repo.run_workflow_blocking(main, atoms=atoms, extrinsic='Nb,Yb',
+                                   double=double_type, double_exclude='Yb',
+                                   scaling_double=1.5)
         name = atoms.get_chemical_formula()
-        Path(name).mkdir()
-        write(f'{name}/unrelaxed.json', atoms)
-        with chdir(name):
-            main(extrinsic='Nb,Yb',
-                 double=double_type, double_exclude='Yb', scaling_double=1.5)
-            pathlist = list(Path('.').glob('defects.*/charge_0'))
-            assert len(pathlist) == lengths[double_type]
+        pathlist = list(Path('./tree').glob('defects.' + name
+                        + '_*/asr.setup.defects.defect*'))
+        assert len(pathlist) == lengths[double_type]
 
 
 @pytest.mark.parametrize('M', ['Mo', 'W'])
@@ -226,7 +200,6 @@ def test_get_maximum_distance(M, X, scaling):
     assert R == pytest.approx(reference)
 
 
-@pytest.mark.xfail
 @pytest.mark.ci
 def test_new_double():
     from asr.setup.defects import is_new_double_defect
