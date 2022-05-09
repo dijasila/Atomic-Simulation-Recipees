@@ -176,8 +176,8 @@ def test_exclude_double_defects(double_type, repo):
                                    double=double_type, double_exclude='Yb',
                                    scaling_double=1.5)
         name = atoms.get_chemical_formula()
-        pathlist = list(Path('./tree').glob('defects.' + name +
-                        '_*/asr.setup.defects.defect*'))
+        pathlist = list(Path('./tree').glob('defects.' + name
+                        + '_*/asr.setup.defects.defect*'))
         assert len(pathlist) == lengths[double_type]
 
 
