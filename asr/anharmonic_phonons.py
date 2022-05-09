@@ -60,6 +60,7 @@ def hiphive_fc23(
     from hiphive import (ClusterSpace, StructureContainer,
                          ForceConstantPotential)
     from hiphive.fitting import Optimizer
+    from hiphive import enforce_rotational_sum_rules
 
     structures_fname = str(cellsize) + '_' + str(number_structures) + \
         '_' + str(rattle) + '_' + str(mindistance) + '.extxyz'
@@ -114,8 +115,11 @@ def hiphive_fc23(
         sc.add_structure(structure)
     opt = Optimizer(sc.get_fit_data())
     opt.train()
+    parameters = opt.parameters
+    parameters_rot = enforce_rotational_sum_rules(cs, parameters, ['Huang', 'Born-Huang'])
+    fcp = ForceConstantPotential(cs, parameters_rot)
     # construct force constant potential
-    fcp = ForceConstantPotential(cs, opt.parameters)
+    #fcp = ForceConstantPotential(cs, opt.parameters)
 
     # get phono3py supercell and build phonopy object. Done in series
 
