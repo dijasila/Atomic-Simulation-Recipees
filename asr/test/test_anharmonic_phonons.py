@@ -1,3 +1,4 @@
+"""Test for anharmonic_phonons recipe."""
 import pytest
 from pathlib import Path
 
