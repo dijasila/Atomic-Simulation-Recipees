@@ -7,7 +7,7 @@ import h5py
 # ase
 from ase import Atoms
 from ase.io import read, write
-from ase.calculators.idealgas import IdealGas
+from ase.calculators.lj import LennardJones
 from ase.parallel import world
 from ase.build import make_supercell
 
@@ -95,7 +95,7 @@ def hiphive_fc23(
           calc = calculate()
 
     else:
-        calc = IdealGas()
+        calc = LennardJones()
     # create rattled structures or read them from file
 
     if not path.exists(structures_fname):
@@ -113,24 +113,21 @@ def hiphive_fc23(
     sc = StructureContainer(cs)
     for structure in structures:
         sc.add_structure(structure)
+
     opt = Optimizer(sc.get_fit_data())
     opt.train()
     parameters = opt.parameters
     parameters_rot = enforce_rotational_sum_rules(cs, parameters, ['Huang', 'Born-Huang'])
     fcp = ForceConstantPotential(cs, parameters_rot)
-    # construct force constant potential
-    #fcp = ForceConstantPotential(cs, opt.parameters)
-
-    # get phono3py supercell and build phonopy object. Done in series
-
+    print('fcp written')
     if world.rank == 0:
         atoms_phonopy = PhonopyAtoms(
-            symbols=list(atoms.symbols),
-            scaled_positions=atoms.get_scaled_positions(),
-            cell=atoms.cell)
+          symbols=list(atoms.symbols),
+          scaled_positions=atoms.get_scaled_positions(),
+          cell=atoms.cell)
         phonopy = Phonopy(
-            atoms_phonopy, supercell_matrix=multiplier,
-            primitive_matrix=None)
+          atoms_phonopy, supercell_matrix=multiplier,
+          primitive_matrix=None)
         supercell = phonopy.get_supercell()
         supercell = Atoms(cell=supercell.cell, numbers=supercell.numbers, pbc=True,
                           scaled_positions=supercell.get_scaled_positions())
@@ -223,15 +220,13 @@ class Result(ASRResult):
         weight='weight')
 
 @command(
-    "asr.anharmonic_phonons3_result",
+    "asr.anharmonic_phonons_result",
     dependencies=[],
     requires=[
         "structure.json",
     ],
     returns=Result,
 )
-# @command('asr.anharmonic_phonons3')
-#@option('--atoms', type=str, default='structure.json')
 @option("--cellsize", help="supercell multiplication for hiphive", type=int)
 @option("--calculator", help="calculator type. DFT is the default", type=str)
 @option("--rattle", help="rattle standard hiphive", type=float)
