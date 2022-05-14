@@ -4,10 +4,10 @@ import typing
 import os.path as path
 import h5py
 
+
 # ase
 from ase import Atoms
 from ase.io import read, write
-from ase.calculators.lj import LennardJones
 from ase.parallel import world
 from ase.build import make_supercell
 
@@ -21,27 +21,25 @@ from asr.core import (
     ASRResult,
     prepare_result)
 
-# gpaw
-from gpaw import GPAW, FermiDirac
 
 def calculate(calculator):
     from ase.calculators.calculator import get_calculator_class
     name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
-    print('calc',calc)
+    print('calc', calc)
     return calc
 
-def hiphive_fc23(
-        atoms,
-        cellsize,
-        number_structures,
-        rattle,
-        mindistance,
-        nd,
-        cut1,
-        cut2,
-        cut3,
-        calculator):
+
+def hiphive_fc23(atoms,
+                 cellsize,
+                 number_structures,
+                 rattle,
+                 mindistance,
+                 nd,
+                 cut1,
+                 cut2,
+                 cut3,
+                 calculator):
 
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy import Phonopy
@@ -68,11 +66,11 @@ def hiphive_fc23(
     atoms_ideal = make_supercell(atoms, multiplier)
     atoms_ideal.pbc = (1, 1, 1)
     if path.exists('params.json'):
-          setup_params = read_json('params.json')
-          myparams = setup_params['asr.gs']['calculator']
-          calc = calculate(myparams)
+        setup_params = read_json('params.json')
+        myparams = setup_params['asr.gs']['calculator']
+        calc = calculate(myparams)
     else:
-          calc = calculate(calculator)     
+        calc = calculate(calculator)
 
     # create rattled structures or read them from file
 
@@ -95,17 +93,16 @@ def hiphive_fc23(
     opt = Optimizer(sc.get_fit_data())
     opt.train()
     parameters = opt.parameters
-    parameters_rot = enforce_rotational_sum_rules(cs, parameters, ['Huang', 'Born-Huang'])
+    parameters_rot = enforce_rotational_sum_rules(cs,
+                     parameters, ['Huang', 'Born-Huang'])
     fcp = ForceConstantPotential(cs, parameters_rot)
     print('fcp written')
     if world.rank == 0:
-        atoms_phonopy = PhonopyAtoms(
-          symbols=list(atoms.symbols),
-          scaled_positions=atoms.get_scaled_positions(),
-          cell=atoms.cell)
-        phonopy = Phonopy(
-          atoms_phonopy, supercell_matrix=multiplier,
-          primitive_matrix=None)
+        atoms_phonopy = PhonopyAtoms(symbols=list(atoms.symbols),
+                                     scaled_positions=atoms.get_scaled_positions(),
+                                     cell=atoms.cell)
+        phonopy = Phonopy(atoms_phonopy, supercell_matrix=multiplier,
+                          primitive_matrix=None)
         supercell = phonopy.get_supercell()
         supercell = Atoms(cell=supercell.cell, numbers=supercell.numbers, pbc=True,
                           scaled_positions=supercell.get_scaled_positions())
@@ -117,11 +114,11 @@ def hiphive_fc23(
         fcs.write_to_phono3py('fc3.hdf5')
     world.barrier()
 
+
 def phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
                       t1, t2, tstep):
     from phono3py import Phono3py
     from phonopy.structure.atoms import PhonopyAtoms
-    import h5py
     from phono3py.file_IO import read_fc3_from_hdf5, read_fc2_from_hdf5
 
     # get phono3py supercell
@@ -144,28 +141,24 @@ def phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
     if world.rank == 0:
 
         # read force constants from hdf5
-        fc3 = read_fc3_from_hdf5(filename = 'fc3.hdf5')
-        fc2 = read_fc2_from_hdf5(filename = 'fc2.hdf5')
+        fc3 = read_fc3_from_hdf5(filename='fc3.hdf5')
+        fc2 = read_fc2_from_hdf5(filename='fc2.hdf5')
 
         # create phono3py object
-        ph3 = Phono3py(
-          atoms_phonopy,
-          supercell_matrix=multiplier,
-          primitive_matrix=None)
+        ph3 = Phono3py(atoms_phonopy,
+                       supercell_matrix=multiplier,
+                       primitive_matrix=None)
         ph3.mesh_numbers = meshnu
         ph3.set_fc3(fc3)
         ph3.set_fc2(fc2)
 
         # run thermal conductivity calculation
         ph3.set_phph_interaction()
-        ph3.run_thermal_conductivity(
-           temperatures=range(
-               t1,
-               t2,
-               tstep),
-           boundary_mfp=1e6,
-           write_kappa=True)
+        ph3.run_thermal_conductivity(temperatures=range(t1, t2, tstep),
+                                     boundary_mfp=1e6,
+                                     write_kappa=True)
     world.barrier()
+
 
 @prepare_result
 class Result(ASRResult):
@@ -197,6 +190,7 @@ class Result(ASRResult):
         qpoint='qpoint',
         weight='weight')
 
+
 @command(
     "asr.anharmonic_phonons_result",
     dependencies=[],
@@ -206,7 +200,8 @@ class Result(ASRResult):
     returns=Result,
 )
 @option("--cellsize", help="supercell multiplication for hiphive", type=int)
-@option("--calculator", help="calculator parameters. DFT is the default", type=DictStr())
+@option("--calculator", help="calculator parameters. DFT is the default",
+        type=DictStr())
 @option("--rattle", help="rattle standard hiphive", type=float)
 @option("--cut1", help="cutoff 2nd", type=float)
 @option("--cut2", help="cutoff 3rd", type=float)
@@ -220,41 +215,42 @@ class Result(ASRResult):
 @option("--tstep", help=" temperature step for thermal conductivity calculation",
         type=int)
 def main(
-        cellsize: int = 5,
-        calculator:  dict = {'name': 'gpaw','mode': {'name': 'pw', 'ecut': 700},
-        'xc': 'PBE', 'basis': 'dzp', 'kpts': {'density': 8.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac', 'width': 0.05},'convergence': {'forces': 1e-6},
-        'txt': 'gs.txt', 'charge': 0},
-        rattle: float = 0.03,
-        nd: int = 2,
-        cut1: float = 6.0,
-        cut2: float = 5.0,
-        cut3: float = 4.0,
-        mindistance: float = 2.3,
-        number_structures: int = 15,
-        mesh_ph3: int = 20,
-        t1=0,
-        t2=1001,
-        tstep=10) -> Result:
+    cellsize: int = 5,
+    calculator: dict = {'name': 'gpaw', 'mode': {'name': 'pw', 'ecut': 700},
+                        'xc': 'PBE', 'basis': 'dzp',
+                        'kpts': {'density': 8.0, 'gamma': True},
+                        'occupations': {'name': 'fermi-dirac', 'width': 0.05},
+                        'convergence': {'forces': 1e-6},
+                        'txt': 'gs.txt', 'charge': 0},
+    rattle: float = 0.03,
+    nd: int = 2,
+    cut1: float = 6.0,
+    cut2: float = 5.0,
+    cut3: float = 4.0,
+    mindistance: float = 2.3,
+    number_structures: int = 15,
+    mesh_ph3: int = 20,
+    t1=0,
+    t2=1001,
+    tstep=10) -> Result:
 
     # call the two main functions
 
     atoms = read('structure.json')
-    hiphive_fc23(
-       atoms,
-       cellsize,
-       number_structures,
-       rattle,
-       mindistance,
-       nd,
-       cut1,
-       cut2,
-       cut3,
-       calculator)
+    hiphive_fc23(atoms,
+                 cellsize,
+                 number_structures,
+                 rattle,
+                 mindistance,
+                 nd,
+                 cut1,
+                 cut2,
+                 cut3,
+                 calculator)
 
     phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
                       t1, t2, tstep)
-    
+
     # read the hdf5 file with the rta results
 
     phonopy_mesh = np.ones(3, int)
@@ -264,35 +260,33 @@ def main(
     phonopy_outputfilename = f'kappa-m{label}.hdf5'
 
     with h5py.File(phonopy_outputfilename, 'r') as fd:
-          temperatures = fd['temperature'][:]
-          frequencies = fd['frequency'][:]
-          gamma = fd['gamma'][:]
-          kappa = fd['kappa'][:]
-          heat_capacity = fd['heat_capacity'][:]
-          group_velocity = fd['group_velocity'][:]
-          gv_by_gv = fd['gv_by_gv'][:]
-          mesh = fd['mesh'][:]
-          mode_kappa = fd['mode_kappa'][:]
-          qpoint = fd['qpoint'][:]
-          weight = fd['weight'][:]
+        temperatures = fd['temperature'][:]
+        frequencies = fd['frequency'][:]
+        gamma = fd['gamma'][:]
+        kappa = fd['kappa'][:]
+        heat_capacity = fd['heat_capacity'][:]
+        group_velocity = fd['group_velocity'][:]
+        gv_by_gv = fd['gv_by_gv'][:]
+        mesh = fd['mesh'][:]
+        mode_kappa = fd['mode_kappa'][:]
+        qpoint = fd['qpoint'][:]
+        weight = fd['weight'][:]
 
-    results = {
-        "temperatures": temperatures,
-        "frequencies": frequencies,
-        "gamma": gamma,
-        "kappa": kappa,
-        "heat_capacity":heat_capacity,
-        "group_velocity":group_velocity,
-        "gv_by_gv":gv_by_gv,
-        "mesh":mesh,
-        "mode_kappa":mode_kappa,
-        "qpoint":qpoint,
-        "weight":weight
-         }
-  
+    results = {"temperatures": temperatures,
+               "frequencies": frequencies,
+               "gamma": gamma,
+               "kappa": kappa,
+               "heat_capacity": heat_capacity,
+               "group_velocity": group_velocity,
+               "gv_by_gv": gv_by_gv,
+               "mesh": mesh,
+               "mode_kappa": mode_kappa,
+               "qpoint": qpoint,
+               "weight": weight}
+
     world.barrier()
     return results
 
+
 if __name__ == "__main__":
     main.cli()
-
