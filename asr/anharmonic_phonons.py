@@ -94,7 +94,7 @@ def hiphive_fc23(atoms,
     opt.train()
     parameters = opt.parameters
     parameters_rot = enforce_rotational_sum_rules(cs,
-                     parameters, ['Huang', 'Born-Huang'])
+                                                  parameters, ['Huang', 'Born-Huang'])
     fcp = ForceConstantPotential(cs, parameters_rot)
     print('fcp written')
     if world.rank == 0:
@@ -210,29 +210,30 @@ class Result(ASRResult):
 @option("--mindistance", help="minimum distance hiphive", type=float)
 @option("--number_structures", help="no. of structures rattle hiphive", type=int)
 @option("--mesh_ph3", help="phono3py mesh", type=int)
-@option("--t1", help="first temperature for thermal conductivity calculation", type=int)
-@option("--t2", help="last temperature for thermal conductivity calculation", type=int)
+@option("--t1", help="first temperature for thermal conductivity calculation",
+        type=float)
+@option("--t2", help="last temperature for thermal conductivity calculation",
+        type=float)
 @option("--tstep", help=" temperature step for thermal conductivity calculation",
-        type=int)
-def main(
-    cellsize: int = 5,
-    calculator: dict = {'name': 'gpaw', 'mode': {'name': 'pw', 'ecut': 700},
-                        'xc': 'PBE', 'basis': 'dzp',
-                        'kpts': {'density': 8.0, 'gamma': True},
-                        'occupations': {'name': 'fermi-dirac', 'width': 0.05},
-                        'convergence': {'forces': 1e-6},
-                        'txt': 'gs.txt', 'charge': 0},
-    rattle: float = 0.03,
-    nd: int = 2,
-    cut1: float = 6.0,
-    cut2: float = 5.0,
-    cut3: float = 4.0,
-    mindistance: float = 2.3,
-    number_structures: int = 15,
-    mesh_ph3: int = 20,
-    t1=0,
-    t2=1001,
-    tstep=10) -> Result:
+        type=float)
+def main(cellsize: int = 5,
+         calculator: dict = {'name': 'gpaw', 'mode': {'name': 'pw', 'ecut': 700},
+                             'xc': 'PBE', 'basis': 'dzp',
+                             'kpts': {'density': 8.0, 'gamma': True},
+                             'occupations': {'name': 'fermi-dirac', 'width': 0.05},
+                             'convergence': {'forces': 1e-6},
+                             'txt': 'gs.txt', 'charge': 0},
+         rattle: float = 0.03,
+         nd: int = 2,
+         cut1: float = 6.0,
+         cut2: float = 5.0,
+         cut3: float = 4.0,
+         mindistance: float = 2.3,
+         number_structures: int = 15,
+         mesh_ph3: int = 20,
+         t1: float = 0,
+         t2: float = 1001,
+         tstep: float = 10) -> Result:
 
     # call the two main functions
 
