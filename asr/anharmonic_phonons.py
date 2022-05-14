@@ -1,9 +1,10 @@
-# general python
+"""Anharmonic phonon properties with hiphive and phono3py."""
+
+# eneral python
 import numpy as np
 import typing
 import os.path as path
 import h5py
-
 
 # ase
 from ase import Atoms
@@ -11,15 +12,12 @@ from ase.io import read, write
 from ase.parallel import world
 from ase.build import make_supercell
 
-
 # asr
-from asr.core import (
-    command,
-    DictStr,
-    option,
-    read_json,
-    ASRResult,
-    prepare_result)
+from asr.core import (command,
+                      DictStr,
+                      option,
+                      ASRResult,
+                      prepare_result)
 
 
 def calculate(calculator):
@@ -50,6 +48,8 @@ def hiphive_fc23(atoms,
                          ForceConstantPotential)
     from hiphive.fitting import Optimizer
     from hiphive import enforce_rotational_sum_rules
+
+    from asr.core import read_json
 
     structures_fname = str(cellsize) + '_' + str(number_structures) + \
         '_' + str(rattle) + '_' + str(mindistance) + '.extxyz'
