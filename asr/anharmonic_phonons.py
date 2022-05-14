@@ -15,6 +15,7 @@ from ase.build import make_supercell
 # asr
 from asr.core import (
     command,
+    DictStr,
     option,
     read_json,
     ASRResult,
@@ -23,21 +24,11 @@ from asr.core import (
 # gpaw
 from gpaw import GPAW, FermiDirac
 
-def calculate(name: str = 'gpaw',calculator: dict = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800},
-        'xc': 'PBE',
-        'basis': 'dzp',
-        'kpts': {'density': 12.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'bands': 'CBM+3.0'},
-        'nbands': '200%',
-        'txt': 'gs.txt',
-        'charge': 0}):
-
+def calculate(calculator):
     from ase.calculators.calculator import get_calculator_class
+    name = calculator.pop('name')
     calc = get_calculator_class(name)(**calculator)
+    print('calc',calc)
     return calc
 
 def hiphive_fc23(
@@ -73,29 +64,16 @@ def hiphive_fc23(
     else:
         # 2D calc
         multiplier = np.array([[cellsize, 0, 0], [0, cellsize, 0], [0, 0, 1]])
-    # calculator type
 
     atoms_ideal = make_supercell(atoms, multiplier)
     atoms_ideal.pbc = (1, 1, 1)
-    print(atoms_ideal)
-    if calculator == 'DFT':
-
-       # if params.json exists, read params from there
-
-       if path.exists('params.json'):
+    if path.exists('params.json'):
           setup_params = read_json('params.json')
           myparams = setup_params['asr.gs']['calculator']
-          myname = setup_params['asr.gs']['calculator']['name']
-          myparams.pop('name')
-          calc = calculate(myname,myparams)
-
-       # or read default gpaw parameters for DFT
-
-       else:
-          calc = calculate()
-
+          calc = calculate(myparams)
     else:
-        calc = LennardJones()
+          calc = calculate(calculator)     
+
     # create rattled structures or read them from file
 
     if not path.exists(structures_fname):
@@ -228,7 +206,7 @@ class Result(ASRResult):
     returns=Result,
 )
 @option("--cellsize", help="supercell multiplication for hiphive", type=int)
-@option("--calculator", help="calculator type. DFT is the default", type=str)
+@option("--calculator", help="calculator parameters. DFT is the default", type=DictStr())
 @option("--rattle", help="rattle standard hiphive", type=float)
 @option("--cut1", help="cutoff 2nd", type=float)
 @option("--cut2", help="cutoff 3rd", type=float)
@@ -242,9 +220,11 @@ class Result(ASRResult):
 @option("--tstep", help=" temperature step for thermal conductivity calculation",
         type=int)
 def main(
-        #atoms: Atoms,
         cellsize: int = 5,
-        calculator: str = 'DFT',
+        calculator:  dict = {'name': 'gpaw','mode': {'name': 'pw', 'ecut': 700},
+        'xc': 'PBE', 'basis': 'dzp', 'kpts': {'density': 8.0, 'gamma': True},
+        'occupations': {'name': 'fermi-dirac', 'width': 0.05},'convergence': {'forces': 1e-6},
+        'txt': 'gs.txt', 'charge': 0},
         rattle: float = 0.03,
         nd: int = 2,
         cut1: float = 6.0,
@@ -274,8 +254,6 @@ def main(
 
     phono3py_lifetime(atoms, cellsize, nd, mesh_ph3,
                       t1, t2, tstep)
-    
-    # write results to json file
     
     # read the hdf5 file with the rta results
 
