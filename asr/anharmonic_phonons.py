@@ -1,6 +1,6 @@
 """Anharmonic phonon properties with hiphive and phono3py."""
 
-# eneral python
+# python
 import numpy as np
 import typing
 import os.path as path
@@ -96,7 +96,6 @@ def hiphive_fc23(atoms,
     parameters_rot = enforce_rotational_sum_rules(cs,
                                                   parameters, ['Huang', 'Born-Huang'])
     fcp = ForceConstantPotential(cs, parameters_rot)
-    print('fcp written')
     if world.rank == 0:
         atoms_phonopy = PhonopyAtoms(symbols=list(atoms.symbols),
                                      scaled_positions=atoms.get_scaled_positions(),
@@ -211,11 +210,11 @@ class Result(ASRResult):
 @option("--number_structures", help="no. of structures rattle hiphive", type=int)
 @option("--mesh_ph3", help="phono3py mesh", type=int)
 @option("--t1", help="first temperature for thermal conductivity calculation",
-        type=float)
+        type=int)
 @option("--t2", help="last temperature for thermal conductivity calculation",
-        type=float)
+        type=int)
 @option("--tstep", help=" temperature step for thermal conductivity calculation",
-        type=float)
+        type=int)
 def main(cellsize: int = 5,
          calculator: dict = {'name': 'gpaw', 'mode': {'name': 'pw', 'ecut': 700},
                              'xc': 'PBE', 'basis': 'dzp',
@@ -231,9 +230,9 @@ def main(cellsize: int = 5,
          mindistance: float = 2.3,
          number_structures: int = 15,
          mesh_ph3: int = 20,
-         t1: float = 0,
-         t2: float = 1001,
-         tstep: float = 10) -> Result:
+         t1: int = 0,
+         t2: int = 100,
+         tstep: int = 10) -> Result:
 
     # call the two main functions
 
