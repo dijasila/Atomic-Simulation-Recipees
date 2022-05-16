@@ -4,8 +4,8 @@ from ase.units import Bohr, Ha
 from ase import Atoms
 import numpy as np
 
-from asr.emasses2 import (connect, extract_stuff_from_gpaw_calculation,
-                          find_extrema, fit)
+from asr.emasses2 import (connect, extract_soc_stuff_from_gpaw_calculation,
+                          find_minima, fit)
 from gpaw import GPAW
 
 
@@ -60,7 +60,7 @@ def test_extract_stuff_from_gpaw_calculation():
         atoms=SN(
             cell=np.eye(3)),
         get_fermi_level=lambda: 0.5)
-    dct = extract_stuff_from_gpaw_calculation(calc, False)
+    dct = extract_soc_stuff_from_gpaw_calculation(calc)
     print(dct)
     bands = connect(dct['proj_ijknI'])
     print(bands[0, 0].tolist())
@@ -75,7 +75,7 @@ def test_extract_stuff_from_gpaw_calculation():
                                     [0, 1, 2, 3, 4, 5],
                                     [0, 1, 2, 3, 4, 5]]
 
-    bands = find_extrema(**dct)
+    bands = find_minima(**dct)
     for band in bands[:2]:
         print(band)
         assert (band[1] == 2.0).all()
@@ -97,9 +97,9 @@ def test_emass_h2():
                    kpts=[20, 1, 1],
                    txt=None)
     h2.get_potential_energy()
-    dct = extract_stuff_from_gpaw_calculation(h2.calc, soc=True)
+    dct = extract_soc_stuff_from_gpaw_calculation(h2.calc)
     # print(dct)
-    bands = find_extrema(**dct, kind='vbm')
+    bands = find_minima(**dct, kind='vbm')
     print(bands)
     for band in bands:
         fit(*band)

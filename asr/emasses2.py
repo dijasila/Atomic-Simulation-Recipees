@@ -1,15 +1,14 @@
 """Effective masses - version 117."""
-# noqa: W504
-import pickle
+from __future__ import annotations
 from math import pi
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING
 
 import numpy as np
 from ase.units import Bohr, Ha
 
 from asr.magnetic_anisotropy import get_spin_axis
-from asr.nppdpoly import PolyFit
+from asr.utils.ndpoly import PolyFit
+from asr.core import command, ASRResult
 
 if TYPE_CHECKING:
     from gpaw.calculator import GPAW
@@ -19,17 +18,13 @@ else:
     KPointDescriptor = None
 
 
-def extract_stuff_from_gpw_file(gpwpath: Path,
-                                soc: False,
-                                outpath: Path = None) -> None:
-    from gpaw.calculator import GPAW
-    calc = GPAW(gpwpath)
-    stuff = extract_stuff_from_gpaw_calculation(calc, soc)
-    outpath.write_bytes(pickle.dumps(stuff))
-    return stuff
-
-
-def extract_stuff_from_gpaw_calculation(calc: GPAW) -> Dict[str, Any]:
+def extract_soc_stuff_from_gpaw_calculation(calc: GPAW
+                                            ) -> tuple[np.ndarray,
+                                                       np.ndarray,
+                                                       np.ndarray,
+                                                       np.ndarray,
+                                                       np.ndarray]:
+    """Do SOC calculation."""
     from gpaw.spinorbit import soc_eigenstates
     assert calc.world.size == 1
     kd: KPointDescriptor = calc.wfs.kd
@@ -43,23 +38,21 @@ def extract_stuff_from_gpaw_calculation(calc: GPAW) -> Dict[str, Any]:
                          for wf in states])
     spinproj_knv = states.spin_projections()
     fermilevel = states.fermi_level
+    eig_kn -= fermilevel
 
-    nocc = (eig_kn[0] < fermilevel).sum()
-    N = range(nocc - 4, nocc + 4)
     K1, K2, K3 = tuple(kd.N_c)
-    _, _, nI = proj_knI.shape
-    return {'cell_cv': calc.atoms.cell,
-            'kpt_ijkc': k_kc.reshape((K1, K2, K3, 3)),
-            'fermilevel': fermilevel,
-            'eig_ijkn': eig_kn.reshape((K1, K2, K3, -1))[..., N],
-            'proj_ijknI': proj_knI.reshape(
-                (K1, K2, K3, -1, nI))[..., N, :].astype(np.complex64),
-            'spinproj_ijknv': spinproj_knv.reshape(
-                (K1, K2, K3, -1, 3))[..., N, :].astype(np.float16)}
+    _, N, I = proj_knI.shape
+    return (calc.atoms.cell,
+            k_kc.reshape((K1, K2, K3, 3)),
+            eig_kn.reshape((K1, K2, K3, N)),
+            proj_knI.reshape((K1, K2, K3, N, I)),
+            spinproj_knv.reshape((K1, K2, K3, N, 3)))
 
 
-def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
-    K1, K2, K3, N = fingerprint_ijknx.shape[:-1]
+def connect(eig_ijkn: np.ndarray,
+            fingerprint_ijknx: np.ndarray) -> None:
+    """Reorder eigenvalues to give connected bands."""
+    K1, K2, K3, N = eig_ijkn.shape[:-1]
     for k1 in range(K1 - 1):
         con2(eig_ijkn[k1:k1 + 2, 0, 0],
              fingerprint_ijknx[k1:k1 + 2, 0, 0])
@@ -75,10 +68,9 @@ def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
                 con2(eig_ijkn[k1, k2, k3:k3 + 2],
                      fingerprint_ijknx[k1, k2, k3:k3 + 2])
 
-    return eig_ijkn
 
-
-def con2(e_kn, fingerprint_knx):
+def con2(e_kn: np.ndarray,
+         fingerprint_knx: np.ndarray) -> list[int]:
     """Connect 2 k-points."""
     K, N = e_kn.shape
     assert K == 2
@@ -103,84 +95,106 @@ def con2(e_kn, fingerprint_knx):
     return n2_n1
 
 
-def main(data: dict,
-         log=print):
+class EMassesResult(ASRResult):
+    vbm_k_v: list[float]
+    vbm_mass_w: list[float]
+    vbm_direction_wv: list[list[float]]
+    cbm_k_v: list[float]
+    cbm_mass_w: list[float]
+    cbm_direction_wv: list[list[float]]
+
+    key_descriptions = {
+        'vbm_k_v': 'Position of VBM [Ang^-1]',
+        'vbm_mass_w': 'VBM masses [m_e]',
+        'vbm_dirction_wv': 'VBM directions',
+        'cbm_k_v': 'Position of CBM [Ang^-1]',
+        'cbm_mass_w': 'CBM masses [m_e]',
+        'cbm_dirction_wv': 'CBM directions'}
+
+
+@command('asr.emasses2',
+         requires=['pdos.gpw'],
+         dependencies=['asr.pdos'])
+def main() -> EMassesResult:
+    """"""
+    calc = GPAW('pdos.gpw')
+    cell_cv, K_ijkc, eig_ijkn, proj_ijknI, spinproj_ijknv = \
+        extract_soc_stuff_from_gpaw_calculation(calc)
+
+    extrema = _main(cell_cv, K_ijkc, eig_ijkn, proj_ijknI)
+    dct = {}
+    for xbm, (k_v, energy, mass_w, dir_wv) in zip(['vbm', 'cbm'], extrema):
+        dct[f'{xbm}_k_v'] = k_v
+        dct[f'{xbm}_mass_w'] = mass_w
+        dct[f'{xbm}_direction_wv'] = dir_wv
+
+    return EMassesResult.fromdata(**dct)
+
+
+class BadFitError(ValueError):
+    """Bad fit to data"""
+
+
+def _main(cell_cv: np.ndarray,
+          K_ijkc: np.ndarray,
+          eig_ijkn: np.ndarray,
+          proj_ijknI: np.ndarray) -> list[tuple[np.ndarray,
+                                                float,
+                                                np.ndarray,
+                                                np.ndarray]]:
+    nocc = (eig_ijkn[0, 0, 0] < 0.0).sum()
+
+    K1, K2, K3 = K_ijkc.shape[:3]
+    axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
+    cell_cv = cell_cv[axes][:, axes]
+
+    extrema = []
     for kind in ['vbm', 'cbm']:
-        k_ijkc, e_ijkn, axes, gap = find_extrema(
-            kind=kind,
-            **data)
-        print(k_ijkc.shape, e_ijkn.shape, axes, gap)
+        if kind == 'cbm':
+            E_ijkn = eig_ijkn[:, :, :, nocc:nocc + 4]
+        else:
+            E_ijkn = eig_ijkn[:, :, :, nocc - 5:nocc - 1:-1]
 
-        cell_cv = data['cell_cv'][axes][:, axes]
+        k_kc, e_kn = find_minima(K_ijkc, E_ijkn, proj_ijknI)
 
-        k_kc = k_ijkc.reshape((-1, 3))[:, axes]
-        e_kn = e_ijkn.reshape((-1, e_ijkn.shape[3]))
+        k_kc = k_kc[:, axes]
 
-        extrema = []
         for e_k in e_kn.T:
             try:
                 k_v, energy, mass_w, direction_wv, error_k = fit(
-                    k_kc, e_k, None, cell_cv)
+                    k_kc, e_k, cell_cv)
             except NoMinimum:
                 pass
             else:
-                if kind == 'vbm':
-                    energy *= -1
-                extrema.append((k_v, energy, mass_w, direction_wv, error_k))
-
-        print(extrema)
+                break
+        else:  # no break
+            raise NoMinimum
 
         if kind == 'vbm':
-            vbm = bm = max(extrema, key=lambda x: x[1])
-        else:
-            cbm = bm = min(extrema, key=lambda x: x[1])
+            energy *= -1
 
-        k_v, energy, mass_w, direction_wv, error_k = bm
-        log(f'{kind}:')
-        log('K-point:', k2str(k_v, cell_cv))
-        log(f'Energy:  {energy:.3f} eV')
-        log(f'Mass:    {mass_w} m_e')
+        error = abs(error_k).max()
+        if error > e_k.ptp() * 0.01:
+            raise BadFitError(f'Error: {error} eV')
 
-    diff = cbm[1] - vbm[1] - gap
-    assert -0.01 < diff <= 0.0, diff
+        error = abs(energy - e_kn.min())
+        if error > e_k.ptp() * 0.01:
+            raise BadFitError(f'Error: {error} eV')
 
-    return vbm, cbm
+        extrema.append((k_v, energy, mass_w, direction_wv))
+
+    return extrema
 
 
-def find_extrema(cell_cv,
-                 kpt_ijkc,
-                 fermilevel,
-                 eig_ijkn,
-                 proj_ijknI,
-                 spinproj_ijknv=None,
-                 kind='cbm',
-                 log=print,
-                 npoints=3):
-    assert kind in ['vbm', 'cbm']
-
-    nocc = (eig_ijkn[0, 0, 0] < fermilevel).sum()
-    gap = eig_ijkn[..., nocc].min() - eig_ijkn[..., nocc - 1].max()
-    print(eig_ijkn[..., nocc].min(), eig_ijkn[..., nocc - 1].max())
-    log(f'Occupied bands: {nocc}')
-    log(f'Fermi level: {fermilevel} eV')
-    log(f'Gap: {gap} eV')
-    log(proj_ijknI.shape)
+def find_minima(kpt_ijkc: np.ndarray,
+                eig_ijkn: np.ndarray,
+                proj_ijknI: np.ndarray,
+                spinproj_ijknv: np.ndarray = None,
+                npoints: int = 3) -> tuple[np.ndarray, np.ndarray]:
     K1, K2, K3, N, _ = proj_ijknI.shape
 
     if spinproj_ijknv is None:
         spinproj_ijknv = np.zeros((K1, K2, K3, N, 3))
-
-    if kind == 'cbm':
-        # bands = slice(nocc, N)
-        bands = slice(nocc, nocc + 6)
-        eig_ijkn = eig_ijkn[..., bands]
-    else:
-        bands = slice(nocc - 1, nocc - 7 if nocc - 7 >= 0 else None, -1)
-        # bands = slice(nocc - 1, nocc-4, -1)
-        eig_ijkn = -eig_ijkn[..., bands]
-
-    proj_ijknI = proj_ijknI[..., bands, :]
-    spinproj_ijknv = spinproj_ijknv[..., bands, :]
 
     ijk = eig_ijkn[:, :, :, 0].ravel().argmin()
     i, j, k = np.unravel_index(ijk, (K1, K2, K3))
@@ -189,35 +203,31 @@ def find_extrema(cell_cv,
     r1 = [0] if K1 == 1 else [x % K1 for x in range(i - dk, i + dk + 1)]
     r2 = [0] if K2 == 1 else [x % K2 for x in range(j - dk, j + dk + 1)]
     r3 = [0] if K3 == 1 else [x % K3 for x in range(k - dk, k + dk + 1)]
+
     e_ijkn = eig_ijkn[r1][:, r2][:, :, r3]
     fingerprint_ijknI = proj_ijknI[r1][:, r2][:, :, r3]
     k_ijkc = (kpt_ijkc[r1][:, r2][:, :, r3] - kpt_ijkc[i, j, k] + 0.5) % 1
     k_ijkc += kpt_ijkc[i, j, k] - 0.5
 
-    log('Connecting bands')
     connect(e_ijkn, fingerprint_ijknI)
 
-    axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
-
-    return k_ijkc, e_ijkn, axes, gap
+    return (k_ijkc.reshape((-1, 3)),
+            e_ijkn.sort().reshape((-1, N)))
 
 
 class NoMinimum(ValueError):
-    """Band doesn't have a minumum."""
+    """Band doesn't have a minimum."""
 
 
-def k2str(k_v, cell_cv):
-    k_c = cell_cv @ k_v / (2 * pi)
-    v = ', '.join(f'{k:7.3f}' for k in k_v)
-    c = ', '.join(f'{k:6.3f}' for k in k_c)
-    return f'({v}) Ang^-1 = ({c})'
-
-
-def fit(k_kc, eig_k, spinproj_kv,
-        cell_cv,
-        npoints=None):
+def fit(k_kc: np.ndarray,
+        eig_k: np.ndarray,
+        cell_cv: np.ndarray) -> tuple[np.ndarray,
+                                      float,
+                                      np.ndarray,
+                                      np.ndarray,
+                                      np.ndarray]:
     dims = k_kc.shape[1]
-    npoints = npoints or [7, 25, 55][dims - 1]
+    npoints = [7, 25, 55][dims - 1]
 
     k0_c = k_kc[eig_k.argmin()]
     if (k0_c <= k_kc.min(0)).any() or (k0_c >= k_kc.max(0)).any():
@@ -260,16 +270,5 @@ def fit(k_kc, eig_k, spinproj_kv,
     return k_v + k0_v, emin, mass_w, evec_vw.T, error_k
 
 
-def cli():
-    import sys
-    path = Path(sys.argv[1])
-    if path.suffix == '.gpw':
-        stuff = extract_stuff_from_gpw_file(path, True,
-                                            path.with_suffix('.pckl'))
-    else:
-        stuff = pickle.loads(path.read_bytes())
-    main(stuff)
-
-
 if __name__ == '__main__':
-    cli()
+    main.cli()
