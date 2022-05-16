@@ -1,13 +1,15 @@
 """Effective masses - version 117."""
 # noqa: W504
 import pickle
-from itertools import combinations_with_replacement
 from math import pi
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict
 
 import numpy as np
 from ase.units import Bohr, Ha
+
+from asr.magnetic_anisotropy import get_spin_axis
+from asr.nppdpoly import PolyFit
 
 if TYPE_CHECKING:
     from gpaw.calculator import GPAW
@@ -27,51 +29,20 @@ def extract_stuff_from_gpw_file(gpwpath: Path,
     return stuff
 
 
-def extract_stuff_from_gpaw_calculation(calc: GPAW,
-                                        soc: False) -> Dict[str, Any]:
+def extract_stuff_from_gpaw_calculation(calc: GPAW) -> Dict[str, Any]:
+    from gpaw.spinorbit import soc_eigenstates
     assert calc.world.size == 1
     kd: KPointDescriptor = calc.wfs.kd
-    if soc:
-        from gpaw.spinorbit import soc_eigenstates
-        states = soc_eigenstates(calc)  # , scale=1)
-        k_kc = np.array([kd.bzk_kc[wf.bz_index]
+    theta, phi = get_spin_axis()
+    states = soc_eigenstates(calc, theta=theta, phi=phi)
+    k_kc = np.array([kd.bzk_kc[wf.bz_index]
+                     for wf in states])
+    eig_kn = np.array([wf.eig_m
+                       for wf in states])
+    proj_knI = np.array([wf.projections.matrix.array
                          for wf in states])
-        eig_kn = np.array([wf.eig_m
-                           for wf in states])
-        proj_knI = np.array([wf.projections.matrix.array
-                             for wf in states])
-        spinproj_knv = states.spin_projections()
-        fermilevel = states.fermi_level
-    else:
-        k_kc = kd.bzk_kc
-        assert kd.ibzk_kc.shape == k_kc.shape
-        eig_ksn = np.array([[calc.get_eigenvalues(kpt=k, spin=s)
-                             for s in range(kd.nspins)]
-                            for k in range(kd.nibzkpts)])
-        proj_ksnI = np.array([[calc.wfs.kpt_qs[k][s].projections.collect()
-                               for s in range(kd.nspins)]
-                              for k in range(kd.nibzkpts)])
-        K, S, N, nI = proj_ksnI.shape
-        if kd.nspins == 2:
-            proj1_ksnI = proj_ksnI
-            proj_ksnI = np.zeros((K, S, N, 2 * nI))
-            proj_ksnI[:, 0, :, :nI] = proj1_ksnI[:, 0]
-            proj_ksnI[:, 1, :, nI:] = proj1_ksnI[:, 1]
-            nI *= 2
-
-        spinproj_ksnv = np.zeros((K, S, N, 3))
-        for s in range(kd.nspins):
-            spinproj_ksnv[:, s, :, 2] = 1 - 2 * s
-
-        eig_kn = eig_ksn.reshape((K, S * N))
-        proj_knI = proj_ksnI.reshape((K, S * N, nI))
-        spinproj_knv = spinproj_ksnv.reshape((K, S * N, 3))
-        n_kn = eig_kn.argsort(axis=1)
-        eig_kn = np.take_along_axis(eig_kn, n_kn, axis=1)
-        proj_knI = np.take_along_axis(proj_knI, n_kn[:, :, None], axis=1)
-        spinproj_knv = np.take_along_axis(spinproj_knv, n_kn[:, :, None],
-                                          axis=1)
-        fermilevel = calc.get_fermi_level()
+    spinproj_knv = states.spin_projections()
+    fermilevel = states.fermi_level
 
     nocc = (eig_kn[0] < fermilevel).sum()
     N = range(nocc - 4, nocc + 4)
@@ -107,47 +78,12 @@ def connect(eig_ijkn, fingerprint_ijknx, threshold=2.0):
     return eig_ijkn
 
 
-def clusters(eigs,
-             eps: float = 1e-3) -> List[Tuple[int, int]]:
-    """Find clusters of degenerate eigenvalues.
-
-    >>> list(clusters(np.zeros(4)))
-    [(0, 4)]
-    >>> list(clusters(np.arange(4)))
-    []
-    >>> list(clusters(np.array([0, 0, 1, 1, 1, 2])))
-    [(0, 2), (2, 5)]
-    """
-    e1 = eigs[0]
-    n = 0
-    c = []
-    for i2, e2 in enumerate(eigs[1:], 1):
-        if e2 - e1 < eps:
-            n += 1
-        else:
-            e1 = e2
-            if n:
-                c.append((i2 - n - 1, i2))
-                n = 0
-    if n:
-        c.append((i2 - n, i2 + 1))
-    return c
-
-
-def con2(e_kn, fp_knx, verbose=False):
+def con2(e_kn, fingerprint_knx):
+    """Connect 2 k-points."""
     K, N = e_kn.shape
-    assert K == 2, K
+    assert K == 2
 
-    ovl_n1n2 = abs(fp_knx[0] @ fp_knx[1].conj().T)
-
-    c2 = []  # clusters(e_kn[1])
-
-    for a, b in c2:
-        o = ovl_n1n2[:, a:b]
-        o[:] = o.max(axis=1)[:, np.newaxis]
-
-    if verbose:
-        print(ovl_n1n2)
+    ovl_n1n2 = abs(fingerprint_knx[0] @ fingerprint_knx[1].conj().T)
 
     n2_n1 = []
     n1_n2: dict[int, int] = {}
@@ -157,18 +93,12 @@ def con2(e_kn, fp_knx, verbose=False):
         n2_n1.append(n2)
         n1_n2[n2] = n1
 
-    fp2_nx = fp_knx[1].copy()
-    for a, b in c2:
-        for n2 in range(a, b):
-            fp2_nx[n2] = fp_knx[0, n1_n2[n2]]
-
-    if verbose:
-        print(n2_n1, n1_n2)
+    fingerprint2_nx = fingerprint_knx[1].copy()
 
     e2_n = e_kn[1, n2_n1]
-    fp2_nx = fp2_nx[n2_n1]
+    fingerprint2_nx = fingerprint2_nx[n2_n1]
     e_kn[1] = e2_n
-    fp_knx[1] = fp2_nx
+    fingerprint_knx[1] = fingerprint2_nx
 
     return n2_n1
 
@@ -178,8 +108,8 @@ def main(data: dict,
     for kind in ['vbm', 'cbm']:
         k_ijkc, e_ijkn, axes, gap = find_extrema(
             kind=kind,
-            log=lambda *args: None,
             **data)
+        print(k_ijkc.shape, e_ijkn.shape, axes, gap)
 
         cell_cv = data['cell_cv'][axes][:, axes]
 
@@ -197,6 +127,8 @@ def main(data: dict,
                 if kind == 'vbm':
                     energy *= -1
                 extrema.append((k_v, energy, mass_w, direction_wv, error_k))
+
+        print(extrema)
 
         if kind == 'vbm':
             vbm = bm = max(extrema, key=lambda x: x[1])
@@ -228,6 +160,7 @@ def find_extrema(cell_cv,
 
     nocc = (eig_ijkn[0, 0, 0] < fermilevel).sum()
     gap = eig_ijkn[..., nocc].min() - eig_ijkn[..., nocc - 1].max()
+    print(eig_ijkn[..., nocc].min(), eig_ijkn[..., nocc - 1].max())
     log(f'Occupied bands: {nocc}')
     log(f'Fermi level: {fermilevel} eV')
     log(f'Gap: {gap} eV')
@@ -257,12 +190,12 @@ def find_extrema(cell_cv,
     r2 = [0] if K2 == 1 else [x % K2 for x in range(j - dk, j + dk + 1)]
     r3 = [0] if K3 == 1 else [x % K3 for x in range(k - dk, k + dk + 1)]
     e_ijkn = eig_ijkn[r1][:, r2][:, :, r3]
-    fp_ijknI = proj_ijknI[r1][:, r2][:, :, r3]
+    fingerprint_ijknI = proj_ijknI[r1][:, r2][:, :, r3]
     k_ijkc = (kpt_ijkc[r1][:, r2][:, :, r3] - kpt_ijkc[i, j, k] + 0.5) % 1
     k_ijkc += kpt_ijkc[i, j, k] - 0.5
 
     log('Connecting bands')
-    connect(e_ijkn, fp_ijknI)
+    connect(e_ijkn, fingerprint_ijknI)
 
     axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
 
@@ -327,77 +260,6 @@ def fit(k_kc, eig_k, spinproj_kv,
     return k_v + k0_v, emin, mass_w, evec_vw.T, error_k
 
 
-def deriv(f, d):
-    return [f[:i] + f[i + 1:] for i, x in enumerate(f) if x == d]
-
-
-def tuples2str(tuples):
-    if not tuples:
-        return '0'
-    assert len(set(tuples)) == 1
-    return '*'.join([str(len(tuples))] + ['xyz'[d] for d in tuples[0]])
-
-
-class PolyFit:
-    def __init__(self, x, y, order=2, verbose=False):
-        ndims = x.shape[1]
-        self.ndims = ndims
-
-        t0 = []
-        for n in range(order + 1):
-            t0.extend(combinations_with_replacement(range(ndims), n))
-        args = ', '.join('xyz'[:ndims])
-        s0 = ', '.join(tuples2str([t]) for t in t0)
-        self.f0 = eval(compile(f'lambda {args}: [{s0}]', '', 'eval'))
-
-        t1 = [[deriv(t, d) for t in t0] for d in range(ndims)]
-        s1 = '], ['.join(', '.join(tuples2str(tt)
-                                   for tt in t1[d])
-                         for d in range(ndims))
-        self.f1 = eval(compile(f'lambda {args}: [[{s1}]]', '', 'eval'))
-
-        t2 = [[[sum((deriv(t, d2) for t in tt), start=[]) for tt in t1[d1]]
-               for d1 in range(ndims)]
-              for d2 in range(ndims)]
-        s2 = ']], [['.join('], ['.join(', '.join(tuples2str(tt)
-                                                 for tt in t2[d1][d2])
-                                       for d1 in range(ndims))
-                           for d2 in range(ndims))
-        self.f2 = eval(compile(f'lambda {args}: [[[{s2}]]]', '', 'eval'))
-
-        M = self.f0(*x.T)
-        M[0] = np.ones(len(x))
-        M = np.array(M)
-        self.coefs = np.linalg.solve(M @ M.T, M @ y)
-
-        if verbose:
-            print(f'[{s0}]')
-            print(f'[[{s1}]]')
-            print(f'[[[{s2}]]]')
-            print(self.coefs)
-
-    def value(self, k_v):
-        return self.f0(*k_v) @ self.coefs
-
-    def gradient(self, k_v):
-        return self.f1(*k_v) @ self.coefs
-
-    def hessian(self, k_v):
-        return self.f2(*k_v) @ self.coefs
-
-    def find_minimum(self, k_v=None):
-        from scipy.optimize import minimize
-
-        def f(k_v):
-            return self.value(k_v), self.gradient(k_v)
-
-        if k_v is None:
-            k_v = np.zeros(self.ndims)
-
-        result = minimize(f, k_v, jac=True, method='Newton-CG')
-        return result.x
-
-
 def cli():
     import sys
     path = Path(sys.argv[1])
@@ -406,7 +268,6 @@ def cli():
                                             path.with_suffix('.pckl'))
     else:
         stuff = pickle.loads(path.read_bytes())
-
     main(stuff)
 
 
