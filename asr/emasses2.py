@@ -18,17 +18,33 @@ else:
     KPointDescriptor = None
 
 
-def extract_soc_stuff_from_gpaw_calculation(calc: GPAW
+def extract_soc_stuff_from_gpaw_calculation(calc: GPAW,
+                                            theta: float = 0.0,
+                                            phi: float = 0.0,
                                             ) -> tuple[np.ndarray,
                                                        np.ndarray,
                                                        np.ndarray,
-                                                       np.ndarray,
                                                        np.ndarray]:
-    """Do SOC calculation."""
+    """Do SOC calculation.
+
+    Returns:
+
+    * k-point vectors
+    * eigenvalues
+    * PAW-projections
+    * spin-projections
+
+    Parameters
+    ----------
+    calc:
+        GPAW ground-state object
+    theta:
+        Polar angle in degrees.
+    phi:
+        Azimuthal angle in degrees.
+    """
     from gpaw.spinorbit import soc_eigenstates
-    assert calc.world.size == 1
     kd: KPointDescriptor = calc.wfs.kd
-    theta, phi = get_spin_axis()
     states = soc_eigenstates(calc, theta=theta, phi=phi)
     k_kc = np.array([kd.bzk_kc[wf.bz_index]
                      for wf in states])
@@ -42,8 +58,7 @@ def extract_soc_stuff_from_gpaw_calculation(calc: GPAW
 
     K1, K2, K3 = tuple(kd.N_c)
     _, N, I = proj_knI.shape
-    return (calc.atoms.cell,
-            k_kc.reshape((K1, K2, K3, 3)),
+    return (k_kc.reshape((K1, K2, K3, 3)),
             eig_kn.reshape((K1, K2, K3, N)),
             proj_knI.reshape((K1, K2, K3, N, I)),
             spinproj_knv.reshape((K1, K2, K3, N, 3)))
@@ -52,7 +67,7 @@ def extract_soc_stuff_from_gpaw_calculation(calc: GPAW
 def connect(eig_ijkn: np.ndarray,
             fingerprint_ijknx: np.ndarray) -> None:
     """Reorder eigenvalues to give connected bands."""
-    K1, K2, K3, N = eig_ijkn.shape[:-1]
+    K1, K2, K3, N = eig_ijkn.shape
     for k1 in range(K1 - 1):
         con2(eig_ijkn[k1:k1 + 2, 0, 0],
              fingerprint_ijknx[k1:k1 + 2, 0, 0])
@@ -118,8 +133,12 @@ class EMassesResult(ASRResult):
 def main() -> EMassesResult:
     """"""
     calc = GPAW('pdos.gpw')
-    cell_cv, K_ijkc, eig_ijkn, proj_ijknI, spinproj_ijknv = \
-        extract_soc_stuff_from_gpaw_calculation(calc)
+
+    theta, phi = get_spin_axis()
+
+    K_ijkc, eig_ijkn, proj_ijknI, spinproj_ijknv = \
+        extract_soc_stuff_from_gpaw_calculation(calc, theta, phi)
+    cell_cv = calc.atoms.cell
 
     extrema = _main(cell_cv, K_ijkc, eig_ijkn, proj_ijknI)
     dct = {}
@@ -151,11 +170,13 @@ def _main(cell_cv: np.ndarray,
     extrema = []
     for kind in ['vbm', 'cbm']:
         if kind == 'cbm':
-            E_ijkn = eig_ijkn[:, :, :, nocc:nocc + 4]
+            E_ijkn = eig_ijkn[..., nocc:nocc + 4]
+            P_ijknI = proj_ijknI[..., nocc:nocc + 4, :]
         else:
-            E_ijkn = eig_ijkn[:, :, :, nocc - 5:nocc - 1:-1]
+            E_ijkn = -eig_ijkn[..., max(nocc - 4, 0):nocc][..., ::-1]
+            P_ijknI = proj_ijknI[..., max(nocc - 4, 0):nocc, :][..., ::-1, :]
 
-        k_kc, e_kn = find_minima(K_ijkc, E_ijkn, proj_ijknI)
+        k_kc, e_kn = find_minima(K_ijkc, E_ijkn, P_ijknI)
 
         k_kc = k_kc[:, axes]
 
@@ -170,16 +191,20 @@ def _main(cell_cv: np.ndarray,
         else:  # no break
             raise NoMinimum
 
-        if kind == 'vbm':
-            energy *= -1
-
+        print(   k_v, energy, mass_w, direction_wv, error_k)
+        import matplotlib.pyplot as plt
+        plt.plot(k_kc[:, 0], e_kn[:, 0])
+        plt.show()
         error = abs(error_k).max()
-        if error > e_k.ptp() * 0.01:
+        if error > max(0.02 * e_k.ptp(), 0.001):
             raise BadFitError(f'Error: {error} eV')
 
         error = abs(energy - e_kn.min())
-        if error > e_k.ptp() * 0.01:
+        if error > 0.1:
             raise BadFitError(f'Error: {error} eV')
+
+        if kind == 'vbm':
+            energy *= -1
 
         extrema.append((k_v, energy, mass_w, direction_wv))
 
@@ -204,15 +229,16 @@ def find_minima(kpt_ijkc: np.ndarray,
     r2 = [0] if K2 == 1 else [x % K2 for x in range(j - dk, j + dk + 1)]
     r3 = [0] if K3 == 1 else [x % K3 for x in range(k - dk, k + dk + 1)]
 
-    e_ijkn = eig_ijkn[r1][:, r2][:, :, r3]
-    fingerprint_ijknI = proj_ijknI[r1][:, r2][:, :, r3]
+    e_ijkn = eig_ijkn[r1][:, r2][:, :, r3].copy()
+    fingerprint_ijknI = proj_ijknI[r1][:, r2][:, :, r3].copy()
     k_ijkc = (kpt_ijkc[r1][:, r2][:, :, r3] - kpt_ijkc[i, j, k] + 0.5) % 1
     k_ijkc += kpt_ijkc[i, j, k] - 0.5
 
     connect(e_ijkn, fingerprint_ijknI)
 
-    return (k_ijkc.reshape((-1, 3)),
-            e_ijkn.sort().reshape((-1, N)))
+    e_ijkn.sort()
+
+    return k_ijkc.reshape((-1, 3)), e_ijkn.reshape((-1, N))
 
 
 class NoMinimum(ValueError):
