@@ -27,13 +27,6 @@ def extract_soc_stuff_from_gpaw_calculation(calc: GPAW,
                                                        np.ndarray]:
     """Do SOC calculation.
 
-    Returns:
-
-    * k-point vectors
-    * eigenvalues
-    * PAW-projections
-    * spin-projections
-
     Parameters
     ----------
     calc:
@@ -42,6 +35,13 @@ def extract_soc_stuff_from_gpaw_calculation(calc: GPAW,
         Polar angle in degrees.
     phi:
         Azimuthal angle in degrees.
+
+    Returns
+    -------
+    * k-point vectors
+    * eigenvalues
+    * PAW-projections
+    * spin-projections
     """
     from gpaw.spinorbit import soc_eigenstates
     kd: KPointDescriptor = calc.wfs.kd
@@ -151,7 +151,7 @@ def main() -> EMassesResult:
 
 
 class BadFitError(ValueError):
-    """Bad fit to data"""
+    """Bad fit to data."""
 
 
 def _main(cell_cv: np.ndarray,
@@ -191,10 +191,6 @@ def _main(cell_cv: np.ndarray,
         else:  # no break
             raise NoMinimum
 
-        print(   k_v, energy, mass_w, direction_wv, error_k)
-        import matplotlib.pyplot as plt
-        plt.plot(k_kc[:, 0], e_kn[:, 0])
-        plt.show()
         error = abs(error_k).max()
         if error > max(0.02 * e_k.ptp(), 0.001):
             raise BadFitError(f'Error: {error} eV')
