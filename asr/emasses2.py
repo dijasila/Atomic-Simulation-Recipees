@@ -1,7 +1,6 @@
 """Effective masses - version 117."""
 from __future__ import annotations
 from math import pi
-from typing import TYPE_CHECKING
 
 import numpy as np
 from ase.units import Bohr, Ha
@@ -10,15 +9,8 @@ from asr.magnetic_anisotropy import get_spin_axis
 from asr.utils.ndpoly import PolyFit
 from asr.core import command, ASRResult
 
-if TYPE_CHECKING:
-    from gpaw.calculator import GPAW
-    from gpaw.kpt_descriptor import KPointDescriptor
-else:
-    GPAW = None
-    KPointDescriptor = None
 
-
-def extract_soc_stuff_from_gpaw_calculation(calc: GPAW,
+def extract_soc_stuff_from_gpaw_calculation(calc,
                                             theta: float = 0.0,
                                             phi: float = 0.0,
                                             ) -> tuple[np.ndarray,
@@ -44,7 +36,7 @@ def extract_soc_stuff_from_gpaw_calculation(calc: GPAW,
     * spin-projections
     """
     from gpaw.spinorbit import soc_eigenstates
-    kd: KPointDescriptor = calc.wfs.kd
+    kd = calc.wfs.kd
     states = soc_eigenstates(calc, theta=theta, phi=phi)
     k_kc = np.array([kd.bzk_kc[wf.bz_index]
                      for wf in states])
@@ -132,6 +124,7 @@ class EMassesResult(ASRResult):
          dependencies=['asr.pdos'])
 def main() -> EMassesResult:
     """"""
+    from gpaw import GPAW
     calc = GPAW('pdos.gpw')
 
     theta, phi = get_spin_axis()
