@@ -1,19 +1,19 @@
 """Effective masses - version 117."""
-from __future__ import annotations
 from math import pi
+from typing import List, Tuple
 
 import numpy as np
 from ase.units import Bohr, Ha
 
+from asr.core import ASRResult, command
 from asr.magnetic_anisotropy import get_spin_axis
 from asr.utils.ndpoly import PolyFit
-from asr.core import command, ASRResult
 
 
 def extract_soc_stuff_from_gpaw_calculation(calc,
                                             theta: float = 0.0,
                                             phi: float = 0.0,
-                                            ) -> tuple[np.ndarray,
+                                            ) -> Tuple[np.ndarray,
                                                        np.ndarray,
                                                        np.ndarray,
                                                        np.ndarray]:
@@ -77,7 +77,7 @@ def connect(eig_ijkn: np.ndarray,
 
 
 def con2(e_kn: np.ndarray,
-         fingerprint_knx: np.ndarray) -> list[int]:
+         fingerprint_knx: np.ndarray) -> List[int]:
     """Connect 2 k-points."""
     K, N = e_kn.shape
     assert K == 2
@@ -103,12 +103,12 @@ def con2(e_kn: np.ndarray,
 
 
 class EMassesResult(ASRResult):
-    vbm_k_v: list[float]
-    vbm_mass_w: list[float]
-    vbm_direction_wv: list[list[float]]
-    cbm_k_v: list[float]
-    cbm_mass_w: list[float]
-    cbm_direction_wv: list[list[float]]
+    vbm_k_v: List[float]
+    vbm_mass_w: List[float]
+    vbm_direction_wv: List[List[float]]
+    cbm_k_v: List[float]
+    cbm_mass_w: List[float]
+    cbm_direction_wv: List[List[float]]
 
     key_descriptions = {
         'vbm_k_v': 'Position of VBM [Ang^-1]',
@@ -123,7 +123,7 @@ class EMassesResult(ASRResult):
          requires=['pdos.gpw'],
          dependencies=['asr.pdos'])
 def main() -> ASRResult:
-    """"""
+    """Find effective masses."""
     from gpaw import GPAW
     calc = GPAW('pdos.gpw')
 
@@ -150,7 +150,7 @@ class BadFitError(ValueError):
 def _main(cell_cv: np.ndarray,
           K_ijkc: np.ndarray,
           eig_ijkn: np.ndarray,
-          proj_ijknI: np.ndarray) -> list[tuple[np.ndarray,
+          proj_ijknI: np.ndarray) -> List[Tuple[np.ndarray,
                                                 float,
                                                 np.ndarray,
                                                 np.ndarray]]:
@@ -204,7 +204,7 @@ def find_minima(kpt_ijkc: np.ndarray,
                 eig_ijkn: np.ndarray,
                 proj_ijknI: np.ndarray,
                 spinproj_ijknv: np.ndarray = None,
-                npoints: int = 3) -> tuple[np.ndarray, np.ndarray]:
+                npoints: int = 3) -> Tuple[np.ndarray, np.ndarray]:
     K1, K2, K3, N, _ = proj_ijknI.shape
 
     if spinproj_ijknv is None:
@@ -236,7 +236,7 @@ class NoMinimum(ValueError):
 
 def fit(k_kc: np.ndarray,
         eig_k: np.ndarray,
-        cell_cv: np.ndarray) -> tuple[np.ndarray,
+        cell_cv: np.ndarray) -> Tuple[np.ndarray,
                                       float,
                                       np.ndarray,
                                       np.ndarray,
