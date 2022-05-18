@@ -122,7 +122,7 @@ class EMassesResult(ASRResult):
 @command('asr.emasses2',
          requires=['pdos.gpw'],
          dependencies=['asr.pdos'])
-def main() -> EMassesResult:
+def main() -> ASRResult:
     """"""
     from gpaw import GPAW
     calc = GPAW('pdos.gpw')
