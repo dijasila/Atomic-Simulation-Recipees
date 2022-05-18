@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 from ase import Atoms
 from ase.units import Bohr, Ha
-from gpaw import GPAW
 
 from asr.emasses2 import (_main, connect,
                           extract_soc_stuff_from_gpaw_calculation, fit)
@@ -39,7 +38,10 @@ def test_1d():
         k0 *= -1
 
 
+@pytest.mark.integration_test
+@pytest.mark.integration_test_gpaw
 def test_emass_h2():
+    from gpaw import GPAW
     h2 = Atoms('H2',
                [[0, 0, 0], [0, 0, 0.74]],
                cell=[2.0, 3.0, 3.0],
