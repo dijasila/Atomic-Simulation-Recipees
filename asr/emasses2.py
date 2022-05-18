@@ -5,9 +5,40 @@ from typing import List, Tuple
 import numpy as np
 from ase.units import Bohr, Ha
 
-from asr.core import ASRResult, command
+from asr.core import ASRResult, command, prepare_result
+from asr.database.browser import (describe_entry, entry_parameter_description,
+                                  make_panel_description)
 from asr.magnetic_anisotropy import get_spin_axis
 from asr.utils.ndpoly import PolyFit
+
+panel_description = make_panel_description(
+    """The effective mass tensor represents the second derivative of the band
+energy w.r.t. wave vector at a band extremum. The effective masses of the
+valence bands (VB) and conduction bands (CB) are obtained as the eigenvalues
+of the mass tensor.  Spin–orbit interactions are included.""")
+
+
+def webpanel(result, row, key_descriptions):
+    rows = []
+    for kind in ['cbm', 'vbm']:
+        for n, mass in enumerate(getattr(result, f'{kind}_mass_w')):
+            rows.append([f'{kind}, direction {n + 1}',
+                         f'{mass:.2f} m<sub>0</sub>'])
+    table = {'type': 'table',
+             'header': ['', 'value'],
+             'rows': rows}
+
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.emasses2')
+
+    title_description = panel_description + parameter_description
+
+    panel = {'title': describe_entry('Effective masses',
+                                     description=title_description),
+             'columns': [[table]]}
+
+    return [panel]
 
 
 def extract_soc_stuff_from_gpaw_calculation(calc,
@@ -102,21 +133,24 @@ def con2(e_kn: np.ndarray,
     return n2_n1
 
 
+@prepare_result
 class EMassesResult(ASRResult):
-    vbm_k_v: List[float]
+    vbm_k_c: List[float]
     vbm_mass_w: List[float]
     vbm_direction_wv: List[List[float]]
-    cbm_k_v: List[float]
+    cbm_k_c: List[float]
     cbm_mass_w: List[float]
     cbm_direction_wv: List[List[float]]
 
     key_descriptions = {
-        'vbm_k_v': 'Position of VBM [Ang^-1]',
+        'vbm_k_c': 'Position of VBM',
         'vbm_mass_w': 'VBM masses [m_e]',
         'vbm_dirction_wv': 'VBM directions',
-        'cbm_k_v': 'Position of CBM [Ang^-1]',
+        'cbm_k_c': 'Position of CBM',
         'cbm_mass_w': 'CBM masses [m_e]',
         'cbm_dirction_wv': 'CBM directions'}
+
+    formats = {'ase_webpanel': webpanel}
 
 
 @command('asr.emasses2',
@@ -135,8 +169,8 @@ def main() -> ASRResult:
 
     extrema = _main(cell_cv, K_ijkc, eig_ijkn, proj_ijknI)
     dct = {}
-    for xbm, (k_v, energy, mass_w, dir_wv) in zip(['vbm', 'cbm'], extrema):
-        dct[f'{xbm}_k_v'] = k_v
+    for xbm, (k_c, energy, mass_w, dir_wv) in zip(['vbm', 'cbm'], extrema):
+        dct[f'{xbm}_k_c'] = k_c
         dct[f'{xbm}_mass_w'] = mass_w
         dct[f'{xbm}_direction_wv'] = dir_wv
 
@@ -195,7 +229,9 @@ def _main(cell_cv: np.ndarray,
         if kind == 'vbm':
             energy *= -1
 
-        extrema.append((k_v, energy, mass_w, direction_wv))
+        k_c = cell_cv @ k_v / (2 * pi)
+
+        extrema.append((k_c, energy, mass_w, direction_wv))
 
     return extrema
 
