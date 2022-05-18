@@ -25,39 +25,47 @@ build:
 
 # -------------- Style tests --------------
 flake8:
-  image: python:3.7
+  image: python:3.9
   stage: style
   script: tox -e flake8
 
 readme:
-  image: python:3.7
+  image: python:3.9
   stage: style
   script: tox -e readme
 
 docs:
-  image: python:3.7
+  image: python:3.9
   stage: style
   script: tox -e docs
 
 # -------------- Unit tests --------------
 doctest:
-  image: python:3.7
+  image: python:3.9
   stage: test
   script: tox -e doctest
 
-python37:
-  image: python:3.7
+python38:
+  image: python:3.8
   stage: test
-  script: tox -e py37
+  timeout: 20m
+  script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
+    - tox -e py38
   artifacts:
     paths:
       - .tox/.coverage*
     expire_in: 3 weeks
 
-python38:
-  image: python:3.8
+python39:
+  image: python:3.9
   stage: test
-  script: tox -e py38
+  timeout: 20m
+  script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
+    - tox -e py39
   artifacts:
     paths:
       - .tox/.coverage*
@@ -65,44 +73,23 @@ python38:
 
 # -------------- Parallel tests --------------
 
-python37-mpi:
-  image: python:3.7
+python39-mpi:
+  image: python:3.9
   stage: test
   script:
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
     - useradd -m user
-    - su user -c 'tox -e py37-mpi'
+    - su user -c 'tox -e py39-mpi'
 
 # -------------- Integration tests --------------
-python37-gpaw:
-  image: python:3.7
-  stage: integrationtest
-  script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py37-gpaw
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
-
-python37-gpaw:
-  image: python:3.7
-  stage: integrationtest
-  script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py37-gpaw
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
 
 python38-gpaw:
   image: python:3.8
   stage: integrationtest
   script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
     - apt-get update -qy
     - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
     - tox -e py38-gpaw
@@ -111,13 +98,27 @@ python38-gpaw:
       - .tox/.coverage*
     expire_in: 3 weeks
 
+python39-gpaw:
+  image: python:3.9
+  stage: integrationtest
+  script:
+    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
+    - export ASR_TEST_DATA="$PWD"/asr-test-data
+    - apt-get update -qy
+    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
+    - tox -e py39-gpaw
+  artifacts:
+    paths:
+      - .tox/.coverage*
+    expire_in: 3 weeks
 
 # -------------- Coverage --------------
 coverage:
-  image: python:3.7
+  image: python:3.9
   stage: coverage
   script:
     - tox -e coverage-report
+  coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
   artifacts:
     paths:
       - .tox/htmlcov/
