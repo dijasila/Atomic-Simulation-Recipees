@@ -145,10 +145,10 @@ class EMassesResult(ASRResult):
     key_descriptions = {
         'vbm_k_c': 'Position of VBM',
         'vbm_mass_w': 'VBM masses [m_e]',
-        'vbm_dirction_wv': 'VBM directions',
+        'vbm_direction_wv': 'VBM directions',
         'cbm_k_c': 'Position of CBM',
         'cbm_mass_w': 'CBM masses [m_e]',
-        'cbm_dirction_wv': 'CBM directions'}
+        'cbm_direction_wv': 'CBM directions'}
 
     formats = {'ase_webpanel': webpanel}
 
