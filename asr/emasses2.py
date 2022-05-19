@@ -1,14 +1,16 @@
-"""Effective masses - version 117."""
+"""Effective masses - version 117-b."""
 from __future__ import annotations
+
 from math import pi
 from typing import TypedDict
 
+import matplotlib.pyplot as plt
 import numpy as np
 from ase.units import Bohr, Ha
 
 from asr.core import ASRResult, command, prepare_result
 from asr.database.browser import (describe_entry, entry_parameter_description,
-                                  make_panel_description)
+                                  make_panel_description, fig)
 from asr.magnetic_anisotropy import get_spin_axis
 from asr.utils.ndpoly import PolyFit
 
@@ -38,9 +40,59 @@ def webpanel(result, row, key_descriptions):
 
     panel = {'title': describe_entry('Effective masses',
                                      description=title_description),
-             'columns': [[table]]}
+             'columns': [[fig('cbm-mass.png'), table],
+                         [fig('vbm-mass.png')]],
+             'plot_descriptions':
+                 [{'function': mass_plots,
+                   'filenames': ['cbm-mass.png',
+                                 'vbm-mass.png']}]}
 
     return [panel]
+
+
+def mass_plots(row, *filenames):
+    result = row.data.get('results-asr.emasses2.json')
+    cbm = result.cbm_mass
+    vbm = result.vbm_mass
+
+    x_p = np.linspace(-0.2, 0.2, 51)
+    y_bwp = []
+    height = 0.0
+    offset = -vbm['energy']
+    for data in [cbm, vbm]:
+        y_wp = []
+        dir_wv = np.array(data['direction_wv'])
+        fit = PolyFit.from_coefs(coefs=data['fit_data_i'],
+                                 order=4,
+                                 ndims=len(dir_wv))
+        for dir_v in dir_wv:
+            y_p = [fit.value(x * dir_v) + offset for x in x_p]
+            height = max(height, np.ptp(y_p))
+            y_wp.append(y_p)
+        y_bwp.append(y_wp)
+
+    height *= 1.1
+    plots = []
+    for data, y_wp, filename in zip([cbm, vbm], y_bwp, filenames):
+        dir_wv = data['direction_wv']
+        fig, ax = plt.subplots()
+        for n, (dir_v, y_p, ls) in enumerate(zip(dir_wv,
+                                                 y_wp,
+                                                 ['-', '--', '..']),
+                                             1):
+            d = ','.join(f'{d:.2f}' for d in dir_v)
+            ax.plot(x_p, y_p,
+                    ls=ls,
+                    label=f'direction {n}: [{d}]')
+        plots.append(ax)
+        ax.legend()
+        y0 = (np.max(y_wp) + np.min(y_wp)) / 2
+        ax.axis(ymin=y0 - height / 2, ymax=y0 + height / 2)
+        ax.set_xlabel(r'$\Delta k [1/Å]$')
+        ax.set_ylabel(r'$E - E_{\mathrm{VBM}}$ [eV]')
+        fig.tight_layout()
+        fig.savefig(filename)
+    return plots
 
 
 def extract_soc_stuff_from_gpaw_calculation(calc,
@@ -224,6 +276,7 @@ def _main(cell_cv: np.ndarray,
 
         if kind == 'vbm':
             energy *= -1
+            fit.coefs *= -1
 
         k_c = cell_cv @ k_v / (2 * pi)
 
@@ -233,7 +286,7 @@ def _main(cell_cv: np.ndarray,
                                 mass_w=mass_w.tolist(),
                                 direction_wv=direction_wv.tolist(),
                                 max_fit_error=fit_error,
-                                fit_data=fit.coefs.tolist()))
+                                fit_data_i=fit.coefs.tolist()))
 
     return extrema
 
@@ -301,7 +354,7 @@ def fit_band(k_kc: np.ndarray,
 
     try:
         # fit = Fit3D(k_kv, eig_k)
-        fit = PolyFit(k_kv, eig_k, 4)
+        fit = PolyFit(k_kv, eig_k, order=4)
     except np.linalg.LinAlgError:
         raise NoMinimum('Bad minimum!')
 

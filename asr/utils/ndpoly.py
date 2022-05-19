@@ -14,8 +14,18 @@ def tuples2str(tuples):
 
 
 class PolyFit:
-    def __init__(self, x, y, order=2, verbose=False):
-        ndims = x.shape[1]
+    def __init__(self,
+                 x=None,
+                 y=None,
+                 *,
+                 order=2,
+                 verbose=False,
+                 _ndims_and_coefs=None):
+        if _ndims_and_coefs is None:
+            ndims = x.shape[1]
+        else:
+            ndims, coefs = _ndims_and_coefs
+
         self.ndims = ndims
 
         t0 = []
@@ -40,16 +50,23 @@ class PolyFit:
                            for d2 in range(ndims))
         self.f2 = eval(compile(f'lambda {args}: [[[{s2}]]]', '', 'eval'))
 
-        M = self.f0(*x.T)
-        M[0] = np.ones(len(x))
-        M = np.array(M)
-        self.coefs = np.linalg.solve(M @ M.T, M @ y)
+        if _ndims_and_coefs is None:
+            M = self.f0(*x.T)
+            M[0] = np.ones(len(x))
+            M = np.array(M)
+            self.coefs = np.linalg.solve(M @ M.T, M @ y)
+        else:
+            self.coefs = np.array(coefs)
 
         if verbose:
             print(f'[{s0}]')
             print(f'[[{s1}]]')
             print(f'[[[{s2}]]]')
             print(self.coefs)
+
+    @classmethod
+    def from_coefs(cls, *, coefs, ndims, order):
+        return cls(order=order, _ndims_and_coefs=(ndims, coefs))
 
     def value(self, k_v):
         return self.f0(*k_v) @ self.coefs
