@@ -278,7 +278,8 @@ def fit_band(k_kc: np.ndarray,
                                            float,
                                            np.ndarray,
                                            np.ndarray,
-                                           np.ndarray]:
+                                           np.ndarray,
+                                           PolyFit]:
     dims = k_kc.shape[1]
     npoints = [7, 25, 55][dims - 1]
 

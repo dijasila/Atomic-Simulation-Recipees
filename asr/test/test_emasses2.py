@@ -6,7 +6,7 @@ from ase import Atoms
 from ase.units import Bohr, Ha
 
 from asr.emasses2 import (_main, connect,
-                          extract_soc_stuff_from_gpaw_calculation, fit)
+                          extract_soc_stuff_from_gpaw_calculation, fit_band)
 
 
 def test_1d():
@@ -27,10 +27,10 @@ def test_1d():
                                   axis=3)
     connect(eig_ijkn, fp_ijknx)
     for n in [0, 1]:
-        r = fit(k_i[:, np.newaxis] * (a / (2 * pi)),
-                eig_ijkn[:, 0, 0, n],
-                np.ones((1, 1)) * a)
-        k_v, emin, mass_w, evec_wv, error_i = r
+        r = fit_band(k_i[:, np.newaxis] * (a / (2 * pi)),
+                     eig_ijkn[:, 0, 0, n],
+                     np.ones((1, 1)) * a)
+        k_v, emin, mass_w, evec_wv, error_i, fit = r
         assert k_v[0] == pytest.approx(-k0)
         assert emin == pytest.approx(0.0)
         assert mass_w[0] == pytest.approx(m)
