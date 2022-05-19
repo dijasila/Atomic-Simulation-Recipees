@@ -170,9 +170,9 @@ def main() -> ASRResult:
     extrema = _main(cell_cv, K_ijkc, eig_ijkn, proj_ijknI)
     dct = {}
     for xbm, (k_c, energy, mass_w, dir_wv) in zip(['vbm', 'cbm'], extrema):
-        dct[f'{xbm}_k_c'] = k_c
-        dct[f'{xbm}_mass_w'] = mass_w
-        dct[f'{xbm}_direction_wv'] = dir_wv
+        dct[f'{xbm}_k_c'] = k_c.tolist()
+        dct[f'{xbm}_mass_w'] = mass_w.tolist()
+        dct[f'{xbm}_direction_wv'] = dir_wv.tolist()
 
     return EMassesResult.fromdata(**dct)
 
