@@ -1,6 +1,7 @@
 """Effective masses - version 117."""
+from __future__ import annotations
 from math import pi
-from typing import List, Tuple
+from typing import TypedDict
 
 import numpy as np
 from ase.units import Bohr, Ha
@@ -20,9 +21,10 @@ of the mass tensor.  Spin–orbit interactions are included.""")
 
 def webpanel(result, row, key_descriptions):
     rows = []
-    for kind in ['cbm', 'vbm']:
-        for n, mass in enumerate(getattr(result, f'{kind}_mass_w')):
-            rows.append([f'{kind}, direction {n + 1}',
+    for data in [result.cbm_mass, result.vbm_mass]:
+        for n, mass in enumerate(data['mass_w'], start=1):
+            kind = data['kind']
+            rows.append([f'{kind}, direction {n}',
                          f'{mass:.2f} m<sub>0</sub>'])
     table = {'type': 'table',
              'header': ['', 'value'],
@@ -44,7 +46,7 @@ def webpanel(result, row, key_descriptions):
 def extract_soc_stuff_from_gpaw_calculation(calc,
                                             theta: float = 0.0,
                                             phi: float = 0.0,
-                                            ) -> Tuple[np.ndarray,
+                                            ) -> tuple[np.ndarray,
                                                        np.ndarray,
                                                        np.ndarray,
                                                        np.ndarray]:
@@ -108,7 +110,7 @@ def connect(eig_ijkn: np.ndarray,
 
 
 def con2(e_kn: np.ndarray,
-         fingerprint_knx: np.ndarray) -> List[int]:
+         fingerprint_knx: np.ndarray) -> list[int]:
     """Connect 2 k-points."""
     K, N = e_kn.shape
     assert K == 2
@@ -133,22 +135,24 @@ def con2(e_kn: np.ndarray,
     return n2_n1
 
 
+class MassDict(TypedDict):
+    kind: str
+    k_c: list[float]
+    mass_w: list[float]
+    direction_wv: list[list[float]]
+    energy: float
+    max_fit_error: float
+    fit_data_i: list[float]
+
+
 @prepare_result
 class EMassesResult(ASRResult):
-    vbm_k_c: List[float]
-    vbm_mass_w: List[float]
-    vbm_direction_wv: List[List[float]]
-    cbm_k_c: List[float]
-    cbm_mass_w: List[float]
-    cbm_direction_wv: List[List[float]]
+    vbm_mass: MassDict
+    cbm_mass: MassDict
 
     key_descriptions = {
-        'vbm_k_c': 'Position of VBM',
-        'vbm_mass_w': 'VBM masses [m_e]',
-        'vbm_direction_wv': 'VBM directions',
-        'cbm_k_c': 'Position of CBM',
-        'cbm_mass_w': 'CBM masses [m_e]',
-        'cbm_direction_wv': 'CBM directions'}
+        'vbm_mass': 'Mass data for VBM',
+        'cbm_mass': 'Mass data for CBM'}
 
     formats = {'ase_webpanel': webpanel}
 
@@ -167,14 +171,9 @@ def main() -> ASRResult:
         extract_soc_stuff_from_gpaw_calculation(calc, theta, phi)
     cell_cv = calc.atoms.cell
 
-    extrema = _main(cell_cv, K_ijkc, eig_ijkn, proj_ijknI)
-    dct = {}
-    for xbm, (k_c, energy, mass_w, dir_wv) in zip(['vbm', 'cbm'], extrema):
-        dct[f'{xbm}_k_c'] = k_c.tolist()
-        dct[f'{xbm}_mass_w'] = mass_w.tolist()
-        dct[f'{xbm}_direction_wv'] = dir_wv.tolist()
+    vbm, cbm = _main(cell_cv, K_ijkc, eig_ijkn, proj_ijknI)
 
-    return EMassesResult.fromdata(**dct)
+    return EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
 
 
 class BadFitError(ValueError):
@@ -184,10 +183,7 @@ class BadFitError(ValueError):
 def _main(cell_cv: np.ndarray,
           K_ijkc: np.ndarray,
           eig_ijkn: np.ndarray,
-          proj_ijknI: np.ndarray) -> List[Tuple[np.ndarray,
-                                                float,
-                                                np.ndarray,
-                                                np.ndarray]]:
+          proj_ijknI: np.ndarray) -> tuple[MassDict, MassDict]:
     nocc = (eig_ijkn[0, 0, 0] < 0.0).sum()
 
     K1, K2, K3 = K_ijkc.shape[:3]
@@ -209,7 +205,7 @@ def _main(cell_cv: np.ndarray,
 
         for e_k in e_kn.T:
             try:
-                k_v, energy, mass_w, direction_wv, error_k = fit(
+                k_v, energy, mass_w, direction_wv, error_k, fit = fit_band(
                     k_kc, e_k, cell_cv)
             except NoMinimum:
                 pass
@@ -218,9 +214,9 @@ def _main(cell_cv: np.ndarray,
         else:  # no break
             raise NoMinimum
 
-        error = abs(error_k).max()
-        if error > max(0.02 * e_k.ptp(), 0.001):
-            raise BadFitError(f'Error: {error} eV')
+        fit_error = abs(error_k).max()
+        if fit_error > max(0.02 * e_k.ptp(), 0.001):
+            raise BadFitError(f'Error: {fit_error} eV')
 
         error = abs(energy - e_kn.min())
         if error > 0.1:
@@ -231,7 +227,13 @@ def _main(cell_cv: np.ndarray,
 
         k_c = cell_cv @ k_v / (2 * pi)
 
-        extrema.append((k_c, energy, mass_w, direction_wv))
+        extrema.append(MassDict(kind=kind,
+                                k_c=k_c.tolist(),
+                                energy=energy,
+                                mass_w=mass_w.tolist(),
+                                direction_wv=direction_wv.tolist(),
+                                max_fit_error=fit_error,
+                                fit_data=fit.coefs.tolist()))
 
     return extrema
 
@@ -240,7 +242,7 @@ def find_minima(kpt_ijkc: np.ndarray,
                 eig_ijkn: np.ndarray,
                 proj_ijknI: np.ndarray,
                 spinproj_ijknv: np.ndarray = None,
-                npoints: int = 3) -> Tuple[np.ndarray, np.ndarray]:
+                npoints: int = 3) -> tuple[np.ndarray, np.ndarray]:
     K1, K2, K3, N, _ = proj_ijknI.shape
 
     if spinproj_ijknv is None:
@@ -270,13 +272,13 @@ class NoMinimum(ValueError):
     """Band doesn't have a minimum."""
 
 
-def fit(k_kc: np.ndarray,
-        eig_k: np.ndarray,
-        cell_cv: np.ndarray) -> Tuple[np.ndarray,
-                                      float,
-                                      np.ndarray,
-                                      np.ndarray,
-                                      np.ndarray]:
+def fit_band(k_kc: np.ndarray,
+             eig_k: np.ndarray,
+             cell_cv: np.ndarray) -> tuple[np.ndarray,
+                                           float,
+                                           np.ndarray,
+                                           np.ndarray,
+                                           np.ndarray]:
     dims = k_kc.shape[1]
     npoints = [7, 25, 55][dims - 1]
 
@@ -318,7 +320,7 @@ def fit(k_kc: np.ndarray,
     if (mass_w < 0.01).any():
         raise NoMinimum('Unrealistic mass!')
 
-    return k_v + k0_v, emin, mass_w, evec_vw.T, error_k
+    return k_v + k0_v, emin, mass_w, evec_vw.T, error_k, fit
 
 
 if __name__ == '__main__':
