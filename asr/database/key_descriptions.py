@@ -96,9 +96,9 @@ key_descriptions = {
     },
     "magnetic_anisotropy": {
         "spin_axis": "KVP: Magnetic easy axis",
-        "E_x": "KVP: Soc. total energy, x-direction [eV/unit cell]",
-        "E_y": "KVP: Soc. total energy, y-direction [eV/unit cell]",
-        "E_z": "KVP: Soc. total energy, z-direction [eV/unit cell]",
+        "E_x": "KVP: Soc. total energy, x-direction [meV/unit cell]",
+        "E_y": "KVP: Soc. total energy, y-direction [meV/unit cell]",
+        "E_z": "KVP: Soc. total energy, z-direction [meV/unit cell]",
         "theta": "Easy axis, polar coordinates, theta [radians]",
         "phi": "Easy axis, polar coordinates, phi [radians]",
         "dE_zx":
