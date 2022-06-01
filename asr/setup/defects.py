@@ -38,13 +38,12 @@ from asr.core import ASRResult
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
 """
-
-
 def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
          scaling_double: float = 1.7, uniform_vacuum: bool = False,
          general_algorithm: float = None) -> ASRResult:
+
     """Set up defect structures for a given host.
     Recipe setting up all possible defects within a reasonable supercell as well as the
     respective pristine system for a given input structure. Defects include: vacancies,
@@ -145,7 +144,7 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
 
     for element, atoms in structure_dict.items():
         rn2 = rn.with_subdirectory(element)
-        structures[element] = rn2.task('asr.setup.defects.defect',
+        structures[element] = rn2.task('asr_defect',
                                        element=element, atoms=atoms)
     return structures
 
