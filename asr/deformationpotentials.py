@@ -20,26 +20,12 @@ panel_description = make_panel_description(
     at a given k-point, under an applied strain.
     This panel shows the VB and CB deformation potentials at the high-symmetry k-points,
     subdivided into the different strain components.
-    In case the band edges of the material are not found at any of the special
-    points, the corresponding k-point(s) are added to the list as `VBM` and `CBM`
+    In case one or both the band extrema of the material are not found at any of the special
+    points, the corresponding k-point(s) are added to the list as `VBM` and/or `CBM`
     (indirect-gap materials) or `VBM/CBM` (direct-gap materials)
     """,
     articles=['C2DB'],
 )
-
-socflags = {
-        'deformation_potentials_nosoc': False,
-        'deformation_potentials_soc': True
-}
-
-ijflags = {
-        (0, 0): 'xx',
-        (1, 1): 'yy',
-        (2, 2): 'zz',
-        (0, 1): 'xy',
-        (0, 2): 'xz',
-        (1, 2): 'yz',
-}
 
 
 def get_relevant_kpts(atoms, calc):
@@ -49,6 +35,7 @@ def get_relevant_kpts(atoms, calc):
     If the band edges of the unstrained material are found away
     from any of the special points, the corresponding 
     k-points will be added to the list as 'VBM' and 'CBM'
+    or 'VBM/CBM' (direct-gap materials)
     """
     from ase.dft.bandgap import bandgap
 
@@ -58,7 +45,6 @@ def get_relevant_kpts(atoms, calc):
                 return True
         return False
 
-    # Horrible workaround needed because ASE and GPAW use different reciprocal cells.
     specpts = atoms.cell.get_bravais_lattice(pbc=atoms.pbc).get_special_points()
 
     _, ivbm, icbm = bandgap(calc, output=None)
@@ -71,7 +57,6 @@ def get_relevant_kpts(atoms, calc):
                 'VBM': ivbm,
                 'CBM': icbm
         }
-
     for label, i_kpt in kdict.items():
         kpt = calc.get_ibz_k_points()[i_kpt[1]]
         if not is_in_list(kpt, specpts.values()):
@@ -83,7 +68,12 @@ def get_relevant_kpts(atoms, calc):
 
 
 def get_edges(calc, atoms, soc):
-
+    """Obtain the edges states at the different k-points
+    
+    Returns, for each k-point included in the calculation,
+    the top eigenvalue of the valence band and the bottom
+    eigenvalue of the conduction band.
+    """
     all_eigs, efermi = calc2eigs(calc, soc=soc)
     vac = vacuumlevels(atoms, calc)
 
@@ -115,10 +105,12 @@ class Result(ASRResult):
             'kpts': 'k-points at which deformation potentials were calculated'
     }
 
+    formats = {"ase_webpanel": webpanel}
 
-@command('asr.defpots',
+
+@command('asr.deformationpotentials',
          returns=Result)
-@option('-s', '--strain_percent', help='Strain percentage', type=float)
+@option('-s', '--percent-strain', help='Strain percentage', type=float)
 @option('--all-ibz', is_flag=True, 
         help="Calculate deformation potentials at all the irreducible Brillouin zone k-points.", type=bool)
 def main(strain_percent=1.0, all_ibz=False) -> Result:
@@ -128,7 +120,20 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
     coupling, for both the conduction band and the valence band, and return as
     a dictionary.
 
+    Parameters
+    ----------
+    strain-percent: float
+        Percent strain to apply, in both direction and for all
+        the relevant strain components, to the current material.
+    all-ibz: bool
+        If True, calculate the deformation potentials at all
+        the k-points in the irreducible Brillouin zone.
+        Otherwise, just use the special points and the k-points
+        where the edge states are found (if they are not already 
+        at one of the special points).
     """
+    #TODO complete documentation
+
     from gpaw import GPAW
     from ase.io import read
     from asr.setup.strains import (get_strained_folder_name,
@@ -152,12 +157,26 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
             'kpts': kptdict
         })
 
-    strains = [-abs(strain_percent), abs(strain_percent)]
-    results.update({socflag: {kpt: {} for kpt in kptlabels} for socflag in socflags})
+    soclabels = {
+            'deformation_potentials_nosoc': False,
+            'deformation_potentials_soc': True
+    }
 
-    for socflag, soc in socflags.items():
+    ijlabels = {
+            (0, 0): 'xx',
+            (1, 1): 'yy',
+            (2, 2): 'zz',
+            (0, 1): 'xy',
+            (0, 2): 'xz',
+            (1, 2): 'yz',
+    }
+
+    strains = [-abs(strain_percent), abs(strain_percent)]
+    results.update({socflag: {kpt: {} for kpt in kptlabels} for socflag in soclabels})
+
+    for socflag, soc in soclabels.items():
         for ij in get_relevant_strains(atoms.pbc):
-            straincomp = ijflags.get(ij)
+            straincomp = ijlabels.get(ij)
             edges_ij = []
             for strain in strains:
                 folder = get_strained_folder_name(strain, ij[0], ij[1])
@@ -180,6 +199,7 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
                 }
     
     return results
+
 
 if __name__ == '__main__':
     main.cli()
