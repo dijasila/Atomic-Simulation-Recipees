@@ -107,13 +107,13 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         E_lumo = cbm
         for i in range(len(state_array)):
             if float(state_array[i, 4]) > ef:
-                rowlabels[i] = f'LUMO+{N_lumo - 1}'
+                rowlabels[i] = f'LUMO + {N_lumo - 1}'
                 N_lumo = N_lumo - 1
                 if N_lumo == 0:
                     rowlabels[i] = 'LUMO'
                     E_lumo = float(state_array[i, 4])
             elif float(state_array[i, 4]) <= ef:
-                rowlabels[i] = f'HOMO-{N_homo}'
+                rowlabels[i] = f'HOMO - {N_homo}'
                 if N_homo == 0:
                     rowlabels[i] = 'HOMO'
                     E_homo = float(state_array[i, 4])
@@ -717,7 +717,7 @@ def draw_band_edge(energy, edge, color, *, offset=2, ax):
     ax.plot([0, 1], [energy] * 2, color='black', zorder=1)
     ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color='grey', alpha=0.5)
     ax.text(0.5, elabel, edge.upper(), color='w', weight='bold', ha='center',
-            va='center')
+            va='center', fontsize=12)
 
 
 class Level:
@@ -823,7 +823,7 @@ def plot_gapstates(row, fname):
     ax1.set_ylim(evbm - gap / 5, ecbm + gap / 5)
     ax1.plot([0, 1], [ef] * 2, '--k')
     ax1.set_yticks([ef])
-    ax1.set_yticklabels([r'E$_\mathrm{F}$'])
+    ax1.set_yticklabels([r'$E_\mathrm{F}$'])
     ax.set_xticks([])
     ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
 
