@@ -144,10 +144,11 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
 
     for element, atoms in structure_dict.items():
         rn2 = rn.with_subdirectory(element)
-        structures[element] = rn2.task('asr.setup.defects.defect',
-                                       element=element, atoms=atoms)
+        structures[element] = {}
+        structures[element]['atoms'] = rn2.task('asr.setup.defects.defect',
+                                                element=element, atoms=atoms)
+        structures[element]['path'] = rn2._directory
     return structures
-
 
 def defect(element, atoms):
     from ase.io import write

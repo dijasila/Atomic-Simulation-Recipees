@@ -47,5 +47,6 @@ class SetupAndRelaxDefects:
         self.Defect_dict = main_setup(rn, atoms, **setup_defect_kwargs)
         self.relaxed_defect = {}
         for key, item in self.Defect_dict.items():
-            self.relaxed_defect[key] = main(rn, atoms=item.output,
+            rn2 = rn.with_subdirectory(str(item['path']))
+            self.relaxed_defect[key] = main(rn, atoms=item['atoms'].output,
                                             charge_states=charge_states)
