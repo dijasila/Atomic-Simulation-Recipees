@@ -28,8 +28,6 @@ def main(rn, atoms,
          charge_states: Sequence[int] = [0],
          calculator: dict = relax_calc_dict):
     atoms_dict = {}
-    if(type(charge_states) == int):
-        charge_states = [charge_states]
     for q in charge_states:
         subfolder = f"charge_{q}"
         calculator['charge'] = q
@@ -49,6 +47,6 @@ class Relax_Defects_Workflow:
         from asr.setup.defects import main as main_setup
         
         self.Defect_dict = main_setup(rn,atoms)
-        self.relaxed_defect={}
+        self.relaxed_defect = {}
         for key, item in self.Defect_dict.items():
             self.relaxed_defect[key] = main(rn,atoms=item.output,charge_states=[-1,0,1])
