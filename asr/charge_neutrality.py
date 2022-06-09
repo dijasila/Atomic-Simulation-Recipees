@@ -40,7 +40,7 @@ def webpanel(result, row, key_descriptions):
         scf_overview, scf_summary = get_overview_tables(scresult, result, unitstring)
         plotname = f'neutrality-{condition}.png'
         panel = WebPanel(
-            describe_entry(f'Equilibrium defect energetics ({condition})',
+                describe_entry(f'Equilibrium energetics: all defects ({condition})',
                            panel_description),
             columns=[[fig(f'{plotname}'), scf_overview], tables],
             plot_descriptions=[{'function': plot_formation_scf,
@@ -73,8 +73,8 @@ def get_overview_tables(scresult, result, unitstring):
         ntype_val = int((100 - ptype_val))
     pn_strength = f'{ptype_val:3}% / {ntype_val:3}%'
     pn = describe_entry(
-        'p-type / n-type strength',
-        'Strength of p-/n-type dopability in percent '
+        'p-type / n-type balance',
+        'Balance of p-/n-type dopability in percent '
         f'(normalized wrt. band gap) at T = {int(result.temperature):d} K.'
         + dl(
             [
