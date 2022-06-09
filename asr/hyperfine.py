@@ -214,14 +214,6 @@ def get_hf_table(hf_results, ordered_args):
 
     table['rows'] = rows
 
-    # hf_table = matrixtable(hf_array,
-    #                        title='Symbol (index)',
-    #                        columnlabels=['Magn. moment',
-    #                                      'A<sub>xx</sub> [MHz]',
-    #                                      'A<sub>yy</sub> [MHz]',
-    #                                      'A<sub>zz</sub> [MHz]'],
-    #                        rowlabels=hf_atoms)
-
     return table
 
 
