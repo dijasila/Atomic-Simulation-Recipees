@@ -40,7 +40,7 @@ def webpanel(result, row, key_descriptions):
         scf_overview, scf_summary = get_overview_tables(scresult, result, unitstring)
         plotname = f'neutrality-{condition}.png'
         panel = WebPanel(
-                describe_entry(f'Equilibrium energetics: all defects ({condition})',
+            describe_entry(f'Equilibrium energetics: all defects ({condition})',
                            panel_description),
             columns=[[fig(f'{plotname}'), scf_overview], tables],
             plot_descriptions=[{'function': plot_formation_scf,
