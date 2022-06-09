@@ -38,6 +38,8 @@ from asr.core import ASRResult
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
 """
+
+
 def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
@@ -144,24 +146,17 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
 
     for element, atoms in structure_dict.items():
         rn2 = rn.with_subdirectory(element)
-        structures[element] = {}
-        structures[element]['atoms'] = rn2.task('asr.setup.defects.defect',
-                                                element=element, atoms=atoms)
-        structures[element]['path'] = rn2._directory
+        structures[element] = rn2.task('asr.setup.defects.defect',
+                                       element=element, atoms=atoms)
     return structures
+
 
 def defect(element, atoms):
     from ase.io import write
     write('unrelaxed.json', atoms)
-    return atoms #Defect(element, atoms)
+    return atoms
 
-"""
-class Defect:
-    def __init__(self, element, atoms):
-        self.info = element
-        self.atoms = atoms
 
-"""
 def setup_supercell(structure, max_lattice, is_2D):
     """Set up the supercell of a given structure.
 
