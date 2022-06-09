@@ -1,27 +1,32 @@
 from typing import Sequence
 
+# Define calculators that are needed for the params.json file                                                                                                                                              
+# of each individual defect and charge folder.                                                                                                                                                             
+# Note, that the only real change to the default relax and gs                                                                                                                                              
+# parameters is 'spinpol' here. Should be changed in 'master'.                                                                                                      
+relax_calc_dict = {'name': 'gpaw',
+                   'mode': {
+                       'name': 'pw',
+                       'ecut': 800,
+                       'dedecut': 'estimate'},
+                   'xc': 'PBE',
+                   'kpts': {
+                       'density': 6.0,
+                       'gamma': True},
+                   'basis': 'dzp',
+                   'symmetry': {
+                       'symmorphic': False},
+                   'convergence': {
+                       'forces': 1e-4},
+                   'txt': 'relax.txt',
+                   'occupations': {
+                       'name': 'fermi-dirac',
+                       'width': 0.02},
+                   'spinpol': True}
 
 def main(rn, atoms,
          charge_states: Sequence[int] = [0],
-         calculator: dict = {'name': 'gpaw',
-                             'mode': {
-                                 'name': 'pw',
-                                 'ecut': 800,
-                                 'dedecut': 'estimate'},
-                             'xc': 'PBE',
-                             'kpts': {
-                                 'density': 6.0,
-                                 'gamma': True},
-                             'basis': 'dzp',
-                             'symmetry': {
-                                 'symmorphic': False},
-                             'convergence': {
-                                 'forces': 1e-4},
-                             'txt': 'relax.txt',
-                             'occupations': {
-                                 'name': 'fermi-dirac',
-                                 'width': 0.02},
-                             'spinpol': True}):
+         calculator: dict = relax_calc_dict):
     atoms_dict = {}
     if(type(charge_states) == int):
         charge_states = [charge_states]
@@ -33,3 +38,17 @@ def main(rn, atoms,
                                              atoms=atoms,
                                              calculator=calculator)
     return atoms_dict
+
+
+
+
+class Relax_Defects_Workflow:
+    def __init__(self, rn, atoms, calculator=relax_calc_dict):
+        #from asr.relax.defects import relax_calc_dict as calc
+        #from asr.relax_defects import main as relax_defects
+        from asr.setup.defects import main as main_setup
+        
+        self.Defect_dict = main_setup(rn,atoms)
+        self.relaxed_defect={}
+        for key, item in self.Defect_dict.items():
+            self.relaxed_defect[key] = main(rn,atoms=item.output,charge_states=[-1,0,1])
