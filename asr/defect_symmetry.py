@@ -1,6 +1,6 @@
 from ase.io import read
 from asr.core import command, option, ASRResult, prepare_result, read_json
-from asr.database.browser import make_panel_description, href
+from asr.database.browser import make_panel_description, href, describe_entry
 import spglib as spg
 import typing
 import numpy as np
@@ -75,8 +75,6 @@ def get_matrixtable_array(state_results, vbm, cbm, ef,
 
 
 def get_symmetry_tables(state_results, vbm, cbm, row, style):
-    from asr.database.browser import matrixtable
-
     state_tables = []
     gsdata = row.data.get('results-asr.gs.json')
     eref = row.data.get('results-asr.get_wfs.json')['eref']
@@ -91,11 +89,11 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
             columnlabels = ['Symmetry',
                             'Spin',
                             'Localization ratio',
-                            'Energy [eV]']
+                            'Energy']
         elif style == 'state':
             delete = [0, 2, 3]
             columnlabels = ['Spin',
-                            'Energy [eV]']
+                            'Energy']
 
         N_homo = 0
         N_lumo = 0
@@ -122,11 +120,31 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         E_hls.append(E_hl)
 
         state_array = np.delete(state_array, delete, 1)
-        state_table = matrixtable(state_array,
-                                  digits=None,
-                                  title='Orbital',
-                                  columnlabels=columnlabels,
-                                  rowlabels=rowlabels)
+        headerlabels = ['Orbital']
+        for columnlabel in columnlabels:
+            headerlabels.append(columnlabel)
+
+        rows = []
+        state_table = {'type': 'table',
+                       'header': headerlabels}
+        for i in range(len(state_array)):
+            if style == 'symmetry':
+                rows.append((rowlabels[i],
+                             state_array[i, 0],
+                             state_array[i, 1],
+                             state_array[i, 2],
+                             f'{state_array[i, 3]} eV'))
+            elif style == 'state':
+                rows.append((rowlabels[i],
+                             state_array[i, 0],
+                             f'{state_array[i, 1]} eV'))
+
+        state_table['rows'] = rows
+        # state_table = matrixtable(state_array,
+        #                           digits=None,
+        #                           title='Orbital',
+        #                           columnlabels=columnlabels,
+        #                           rowlabels=rowlabels)
         state_tables.append(state_table)
 
     transition_table = get_transition_table(row, E_hls)
@@ -136,7 +154,7 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
 
 def get_transition_table(row, E_hls):
     """Create table for HOMO-LUMO transition in both spin channels."""
-    from asr.database.browser import table, describe_entry
+    from asr.database.browser import table
 
     transition_table = table(row, 'Kohn-Sham HOMO-LUMO gap', [])
     for i, element in enumerate(E_hls):
