@@ -144,7 +144,7 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
 
     for element, atoms in structure_dict.items():
         rn2 = rn.with_subdirectory(element)
-        structures[element] = rn2.task('asr_defect',
+        structures[element] = rn2.task('asr.setup.defects.defect',
                                        element=element, atoms=atoms)
     return structures
 
