@@ -152,15 +152,15 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
 def defect(element, atoms):
     from ase.io import write
     write('unrelaxed.json', atoms)
-    return Defect(element, atoms)
+    return atoms #Defect(element, atoms)
 
-
+"""
 class Defect:
     def __init__(self, element, atoms):
         self.info = element
         self.atoms = atoms
 
-
+"""
 def setup_supercell(structure, max_lattice, is_2D):
     """Set up the supercell of a given structure.
 
