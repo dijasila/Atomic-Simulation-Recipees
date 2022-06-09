@@ -40,13 +40,21 @@ def main(rn, atoms,
 
 
 class SetupAndRelaxDefects:
-    def __init__(self, rn, atoms, charge_states=[0], calculator=relax_calc_dict,
+    def __init__(self, rn, atoms, charge_states=[0],
+                 calculator=relax_calc_dict,
                  setup_defect_kwargs={}):
         from asr.setup.defects import main as main_setup
+        """
+        atoms: host atoms object
+        charge_states: Sequence of integer numbers defining charge states
+        calculator: dict defining calculator for relax calculation
+        setup_defect_kwargs: dict including any changes to default
+                             input arguments for setup.defect.main
+        """
 
         self.Defect_dict = main_setup(rn, atoms, **setup_defect_kwargs)
         self.relaxed_defect = {}
         for key, item in self.Defect_dict.items():
-            rn2 = rn.with_subdirectory(str(item['path']))
-            self.relaxed_defect[key] = main(rn, atoms=item['atoms'].output,
+            rn2 = rn.with_subdirectory(key)
+            self.relaxed_defect[key] = main(rn2, atoms=item.output,
                                             charge_states=charge_states)
