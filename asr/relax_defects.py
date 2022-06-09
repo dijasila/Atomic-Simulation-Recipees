@@ -40,13 +40,11 @@ def main(rn, atoms,
 
 
 
-class Relax_Defects_Workflow:
-    def __init__(self, rn, atoms, calculator=relax_calc_dict):
-        #from asr.relax.defects import relax_calc_dict as calc
-        #from asr.relax_defects import main as relax_defects
+class SetupAndRelaxDefects:
+    def __init__(self, rn, atoms, charge_states=[0], calculator=relax_calc_dict,setup_defect_kwargs={}):
         from asr.setup.defects import main as main_setup
         
-        self.Defect_dict = main_setup(rn,atoms)
+        self.Defect_dict = main_setup(rn,atoms,**setup_defect_kwargs)
         self.relaxed_defect = {}
         for key, item in self.Defect_dict.items():
-            self.relaxed_defect[key] = main(rn,atoms=item.output,charge_states=[-1,0,1])
+            self.relaxed_defect[key] = main(rn,atoms=item.output,charge_states=charge_states)
