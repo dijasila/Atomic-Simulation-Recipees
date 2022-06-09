@@ -159,8 +159,6 @@ def get_conc_table(result, element, unitstring):
 
     name = element['defect_name']
     def_type = name.split('_')[0]
-    if def_type == 'v':
-        def_type = 'V'
     def_name = name.split('_')[1]
     scf_table = table(result, f'Eq. concentrations of '
                               f'{def_type}<sub>{def_name}</sub> [{unitstring}]', [])
@@ -736,8 +734,6 @@ def plot_formation_scf(row, fname):
                 name = defect['defect_name']
                 def_type = name.split('_')[0]
                 def_name = name.split('_')[-1]
-                if def_type == 'v':
-                    def_type = 'V'
                 namestring = f"{def_type}$_\\{'mathrm{'}{def_name}{'}'}$"
                 array = np.zeros((len(defect['concentrations']), 2))
                 for num, conc_tuple in enumerate(defect['concentrations']):
