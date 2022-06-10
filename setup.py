@@ -14,7 +14,6 @@ with open('HISTORY.rst') as history_file:
 
 python_requires = '>=3.7'
 requirements = [
-    'pyparsing>=3.0.6',
     'Click>=8.0.3',
     'ase', 'matplotlib',
     'simplejson',
