@@ -15,9 +15,6 @@ import warnings
 
 import typing
 
-import numpy as np
-from ase.io import jsonio
-import ase.parallel as parallel
 from ast import literal_eval
 
 
@@ -138,6 +135,7 @@ def read_file(filename: typing.Union[Path, str]) -> str:
 
 
 def decode_json(text: str) -> dict:
+    from ase.io import jsonio
     dct = jsonio.decode(text)
     return dct
 
@@ -153,6 +151,7 @@ def read_json(filename):
 
 def unlink(path: Union[str, Path], world=None):
     """Safely unlink path (delete file or symbolic link)."""
+    import ase.parallel as parallel
     if isinstance(path, str):
         path = Path(path)
     if world is None:
@@ -182,6 +181,7 @@ def file_barrier(paths: List[Union[str, Path]], world=None,
 
     This will remove the file, write the file and wait for the file.
     """
+    import ase.parallel as parallel
     if world is None:
         world = parallel.world
 
@@ -222,6 +222,7 @@ def cleanup_files(paths: List[Union[str, Path]],
     This will remove the file upon exiting the context manager.
 
     """
+    import ase.parallel as parallel
     if world is None:
         world = parallel.world
 
@@ -236,6 +237,7 @@ def cleanup_files(paths: List[Union[str, Path]],
 
 
 def singleprec_dict(dct):
+    import numpy as np
     assert isinstance(dct, dict), f'Input {dct} is not dict.'
 
     for key, value in dct.items():
@@ -334,6 +336,8 @@ def only_master(func, broadcast=True):
 def compare_equal(value1: typing.Any, value2: typing.Any) -> bool:
     """Test equality with support for nested np.ndarrays."""
     # Numpy arrays are annoyingly special, comparing two empty array yields False.
+    import numpy as np
+
     if isinstance(value1, (np.ndarray, list, tuple)) and \
        isinstance(value2, (np.ndarray, list, tuple)):
         if len(value1) == len(value2) == 0:
