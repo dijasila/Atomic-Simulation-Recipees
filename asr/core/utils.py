@@ -314,9 +314,9 @@ def get_dep_tree(name, reload=True):
 
 
 def only_master(func, broadcast=True):
-    from ase.parallel import world, broadcast
 
     def wrapped(*args, **kwargs):
+        from ase.parallel import world, broadcast
         world.barrier()
 
         if world.rank == 0:

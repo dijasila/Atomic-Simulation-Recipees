@@ -6,7 +6,6 @@ import typing
 from pathlib import Path
 
 import click
-from ase.parallel import parprint
 
 from . import clickify_docstring
 from .cache import get_cache
@@ -278,7 +277,7 @@ class ASRCommand:
             parameters = run_spec.parameters
             paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                      parameters.items()])
-            parprint(f'Running {name}({paramstring})')
+            # parprint(f'Running {name}({paramstring})')
             result = run_spec()
             record = Record(
                 result=result,

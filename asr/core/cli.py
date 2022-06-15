@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
 
 import click
-from ase.parallel import parprint
 
 import asr
 from asr.core import (ASRCommand, ASRResult, CommaStr, DictStr, chdir,
@@ -40,7 +39,9 @@ width_option = click.option(
 )
 
 
-prt = partial(parprint, flush=True)
+def prt(*args, **kwargs):
+    from ase.parallel import parprint
+    parprint(*args, **kwargs, flush=True)
 
 
 def fileno(file_or_fd):

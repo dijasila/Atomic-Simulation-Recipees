@@ -1,12 +1,12 @@
 import textwrap
 import typing
 import importlib
-from ase.utils import search_current_git_hash
 from dataclasses import dataclass
 
 
 def get_package_version_and_hash(package: str):
     """Get parameter and software version information as a dictionary."""
+    from ase.utils import search_current_git_hash
     mod = importlib.import_module(package)
     githash = search_current_git_hash(mod)
     version = mod.__version__

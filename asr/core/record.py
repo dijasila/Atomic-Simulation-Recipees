@@ -1,6 +1,5 @@
 """Implement RunSpec and Record."""
 from __future__ import annotations
-import numpy as np
 
 import textwrap
 import typing
@@ -124,6 +123,8 @@ def compare_dct_with_numpy_arrays(dct1, dct2):
     that would raise an error.
 
     """
+    import numpy as np
+
     if set(dct1) != set(dct2):
         return False
 
