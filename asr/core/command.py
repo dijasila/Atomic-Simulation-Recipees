@@ -273,11 +273,12 @@ class ASRCommand:
         # @runner()
         @register_resources()
         def execute_run_spec(run_spec):
+            from ase.parallel import parprint
             name = run_spec.name
             parameters = run_spec.parameters
             paramstring = ', '.join([f'{key}={repr(value)}' for key, value in
                                      parameters.items()])
-            # parprint(f'Running {name}({paramstring})')
+            parprint(f'Running {name}({paramstring})')
             result = run_spec()
             record = Record(
                 result=result,
