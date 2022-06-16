@@ -424,7 +424,7 @@ def vacuumlevels(atoms, calc, n=8) -> VacuumLevelResults:
 
     z_z = None
     v_z = None
-    evacdiff = None
+    devac = None
     dipz = None
     evac1 = None
     evac2 = None
@@ -441,9 +441,9 @@ def vacuumlevels(atoms, calc, n=8) -> VacuumLevelResults:
                 evacmean += v.mean() / (3 - nperiodic)
     elif nperiodic == 2:
         # Record electrostatic potential as a function of z
-        z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
         assert not atoms.pbc[2]
         v_z = ves.mean(0).mean(0)
+        z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
         dipz = atoms.get_dipole_moment()[2]
         devac = evacdiff(atoms)
         evac1 = v_z[n]
