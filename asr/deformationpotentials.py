@@ -34,6 +34,13 @@ panel_description = make_panel_description(
 )
 
 
+def is_in_list(element, lst):
+    for obj in lst:
+        if np.allclose(element, obj, rtol=0.05, atol=0):
+            return True
+    return False
+
+
 def get_relevant_kpts(atoms, calc):
     """
     Obtain the high-symmetry k-points.
@@ -45,13 +52,8 @@ def get_relevant_kpts(atoms, calc):
     """
     from ase.dft.bandgap import bandgap
 
-    def is_in_list(element, lst):
-        for obj in lst:
-            if np.allclose(element, obj, rtol=0.05, atol=0):
-                return True
-        return False
-
-    specpts = atoms.cell.get_bravais_lattice(pbc=atoms.pbc).get_special_points()
+    # XXX investigate issue with special points falling outside cell vectors
+    specpts = atoms.cell.bandpath(pbc=atoms.pbc, npoints=0).special_points
 
     _, ivbm, icbm = bandgap(calc, output=None)
     if ivbm[1] == icbm[1]:
@@ -63,14 +65,14 @@ def get_relevant_kpts(atoms, calc):
                 'VBM': ivbm,
                 'CBM': icbm
         }
-    for label, i_kpt in kdict.items():
-        kpt = calc.get_ibz_k_points()[i_kpt[1]]
-        if not is_in_list(kpt, specpts.values()):
-            specpts.update({
-                label: kpt
-            })
 
-    return specpts, list(specpts.values()), list(specpts.keys())
+    ibz_kpoints = calc.get_ibz_k_points()
+    for label, i_kpt in kdict.items():
+        kpt = ibz_kpoints[i_kpt[1]]
+        if not is_in_list(kpt, specpts.values()):
+            specpts[label] = kpt
+
+    return specpts
 
 
 def get_edges(calc, atoms, soc):
@@ -94,6 +96,21 @@ def get_edges(calc, atoms, soc):
         edges[i, 0] = max(vb)
         edges[i, 1] = min(cb)
     return edges - vac.evacmean
+
+
+soclabels = {
+        'deformation_potentials_nosoc': False,
+        'deformation_potentials_soc': True
+}
+
+ijlabels = {
+        (0, 0): 'xx',
+        (1, 1): 'yy',
+        (2, 2): 'zz',
+        (0, 1): 'xy',
+        (0, 2): 'xz',
+        (1, 2): 'yz',
+}
 
 
 @prepare_result
@@ -153,32 +170,15 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
 
     if all_ibz:
         kpts = kptlabels = calc.get_ibz_k_points()
-        results.update({
-            'kpts': kpts
-        })
-
+        results['kpts'] = kpts
     else:
-        kptdict, kpts, kptlabels = get_relevant_kpts(atoms, calc)
-        results.update({
-            'kpts': kptdict
-        })
-
-    soclabels = {
-            'deformation_potentials_nosoc': False,
-            'deformation_potentials_soc': True
-    }
-
-    ijlabels = {
-            (0, 0): 'xx',
-            (1, 1): 'yy',
-            (2, 2): 'zz',
-            (0, 1): 'xy',
-            (0, 2): 'xz',
-            (1, 2): 'yz',
-    }
+        kptdict = get_relevant_kpts(atoms, calc)
+        kptlabels = kptdict.values()
+        results['kpts'] = kptdict
 
     strains = [-abs(strain_percent), abs(strain_percent)]
-    results.update({socflag: {kpt: {} for kpt in kptlabels} for socflag in soclabels})
+    results.update({socflag: {kpt: {} for kpt in kptlabels}
+                    for socflag in soclabels})
 
     for socflag, soc in soclabels.items():
         for ij in get_relevant_strains(atoms.pbc):
@@ -188,7 +188,7 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
                 folder = get_strained_folder_name(strain, ij[0], ij[1])
                 strainedatoms = read(f'{folder}/structure.json')
                 gpw = GPAW(f'{folder}/gs.gpw').fixed_density(
-                        kpts=kpts,
+                        kpts=list(kptdct),
                         symmetry='off',
                         txt=None
                 )
@@ -196,7 +196,8 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
                 edges_ij.append(get_edges(gpw, strainedatoms, soc))
 
             # Actual calculation of the deformation potentials
-            defpots_ij = np.squeeze(np.diff(edges_ij, axis=0) / (np.ptp(strains) * 0.01))
+            defpots_ij = np.squeeze(
+                np.diff(edges_ij, axis=0) / (np.ptp(strains) * 0.01))
 
             for dp, kpt in zip(defpots_ij, kptlabels):
                 results[socflag][kpt][straincomp] = {
