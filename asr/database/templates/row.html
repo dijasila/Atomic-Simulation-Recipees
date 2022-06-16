@@ -115,8 +115,7 @@
 {% endmacro %}
 
 {% block title %}
-{{row.defect_name.split('_')[0]}} @ {{row.defect_name.split('_')[1]}} in {{row.host_name}}
-{{row.charge_state}}
+{{row.defect_name.split('_')[0]}} @ {{row.defect_name.split('_')[1]}} in {{row.host_name}} {{row.charge_state}}
 {% endblock %}
 
 {% block head %}
