@@ -31,7 +31,12 @@ def asr_default(obj):
 def object_to_dict(obj) -> dict:
     import numpy as np
     if hasattr(obj, '__dict__'):
-        cls_id = obj_to_id(obj.__class__)
+        try:
+            cls_id = obj_to_id(obj.__class__)
+        except Exception as err:
+            raise TypeError(
+                f'Cannot convert to dict: {obj}') from err
+
         obj = {
             'cls_id': cls_id, '__dict__':
             copy.copy(obj.__dict__)
