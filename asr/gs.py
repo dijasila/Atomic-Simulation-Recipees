@@ -401,8 +401,8 @@ class VacuumLevelResults(ASRResult):
         'efermi_nosoc': 'Fermi level without SOC [eV].'}
 
 
-def vacuumlevels(atoms, calc, n=8):
-    """Get the vacuumlevels on both sides of a 2D material.
+def vacuumlevels(atoms, calc, n=8) -> VacuumLevelResults:
+    """Get the vacuumlevel(s).
 
     Get the vacuumlevels on both sides of a 2D material. Will
     do a dipole corrected dft calculation, if needed (Janus structures).
@@ -414,41 +414,51 @@ def vacuumlevels(atoms, calc, n=8):
 
     Parameters
     ----------
-    gpw: str
-       name of gpw file to base the dipole corrected calc on
-    evacdiffmin: float
-        thresshold in eV for doing a dipole moment corrected
-        dft calculations if the predicted evac difference is less
-        than this value don't do it
+    atoms: Atoms
+       The Atoms object.
+    calc: GPAW-calculator
+        The calculator object.  Provides the electrostativ potential.
     n: int
-        number of gridpoints away from the edge to evaluate the vac levels
+        Number of gridpoints away from the edge to evaluate the vacuum levels.
     """
     import numpy as np
 
-    if not np.sum(atoms.get_pbc()) == 2:
-        return VacuumLevelResults.fromdata(
-            z_z=None,
-            v_z=None,
-            evacdiff=None,
-            dipz=None,
-            evac1=None,
-            evac2=None,
-            evacmean=None,
-            efermi_nosoc=None)
+    z_z = None
+    v_z = None
+    evacdiff = None
+    dipz = None
+    evac1 = None
+    evac2 = None
+    evacmean = None
 
-    # Record electrostatic potential as a function of z
-    v_z = calc.get_electrostatic_potential().mean(0).mean(0)
-    z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
+    ves = calc.get_electrostatic_potential()
 
-    # Store data
+    nperiodic = atoms.pbc.sum()
+    if nperiodic < 2:
+        evacmean = 0.0
+        for v, periodic in zip([ves[0], ves[:, 0], ves[:, :, 0]],
+                               atoms.pbc):
+            if not periodic:
+                evacmean += v.mean() / (3 - nperiodic)
+    elif nperiodic == 2:
+        # Record electrostatic potential as a function of z
+        z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
+        assert not atoms.pbc[2]
+        v_z = ves.mean(0).mean(0)
+        dipz = atoms.get_dipole_moment()[2]
+        devac = evacdiff(atoms)
+        evac1 = v_z[n]
+        evac2 = v_z[-n]
+        evacmean = (v_z[n] + v_z[-n]) / 2
+
     return VacuumLevelResults.fromdata(
         z_z=z_z,
         v_z=v_z,
-        dipz=atoms.get_dipole_moment()[2],
-        evacdiff=evacdiff(atoms),
-        evac1=v_z[n],
-        evac2=v_z[-n],
-        evacmean=(v_z[n] + v_z[-n]) / 2,
+        dipz=dipz,
+        evacdiff=devac,
+        evac1=evac1,
+        evac2=evac2,
+        evacmean=evacmean,
         efermi_nosoc=calc.get_fermi_level())
 
 
