@@ -402,22 +402,21 @@ class VacuumLevelResults(ASRResult):
 
 
 def vacuumlevels(atoms, calc, n=8) -> VacuumLevelResults:
-    """Get the vacuumlevel(s).
+    """Get the vacuum level(s).
 
-    Get the vacuumlevels on both sides of a 2D material. Will
-    do a dipole corrected dft calculation, if needed (Janus structures).
-    Assumes the 2D material periodic directions are x and y.
-    Assumes that the 2D material is centered in the z-direction of
-    the unit cell.
+    Special case for 2D:
 
-    Dipole corrected dft calculation -> dipcorrgs.gpw
+        Get the vacuumlevels on both sides of a material.
+        Assumes the 2D material periodic directions are x and y.
+        Assumes that the 2D material is centered in the z-direction of
+        the unit cell.
 
     Parameters
     ----------
     atoms: Atoms
        The Atoms object.
     calc: GPAW-calculator
-        The calculator object.  Provides the electrostativ potential.
+        The GPAW object.  Provides the electrostatic potential.
     n: int
         Number of gridpoints away from the edge to evaluate the vacuum levels.
     """
