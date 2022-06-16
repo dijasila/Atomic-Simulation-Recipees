@@ -13,17 +13,23 @@ from asr.database.browser import (
 )
 
 
+description_text = """\
+The deformation potentials represent the energy shifts of the
+bottom of the conduction band (CB) and the top of the valence band
+(VB) at a given k-point, under an applied strain.
+
+This panel shows the VB and CB deformation potentials at the
+high-symmetry k-points, subdivided into the different strain
+components.
+
+In case one or both the band extrema of the material are not found
+at any of the special points, the corresponding k-point(s) are
+added to the list as `VBM` and/or `CBM` (indirect-gap materials)
+or `VBM/CBM` (direct-gap materials) """
+
+
 panel_description = make_panel_description(
-    """
-    The deformation potentials represent the energy shifts
-    of the bottom of the conduction band (CB) and the top of the valence band (VB)
-    at a given k-point, under an applied strain.
-    This panel shows the VB and CB deformation potentials at the high-symmetry k-points,
-    subdivided into the different strain components.
-    In case one or both the band extrema of the material are not found at any of the special
-    points, the corresponding k-point(s) are added to the list as `VBM` and/or `CBM`
-    (indirect-gap materials) or `VBM/CBM` (direct-gap materials)
-    """,
+    description_text,
     articles=['C2DB'],
 )
 
