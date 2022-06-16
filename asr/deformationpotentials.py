@@ -103,6 +103,7 @@ soclabels = {
         'deformation_potentials_soc': True
 }
 
+
 ijlabels = {
         (0, 0): 'xx',
         (1, 1): 'yy',
@@ -121,11 +122,14 @@ class Result(ASRResult):
     kpts: typing.Union[list, typing.Dict[str, float]]
 
     key_descriptions = {
-            'deformation_potentials_nosoc': 'Deformation potentials under different types \
-             of deformations (xx, yy, zz, yz, xz, xy) at each k-point, without SOC',
-            'deformation_potentials_soc': 'Deformation potentials under different \
-             applied strains (xx, yy, zz, yz, xz, xy) at each k-point, with SOC',
-            'kpts': 'k-points at which deformation potentials were calculated'
+        'deformation_potentials_nosoc': (
+            'Deformation potentials under different types of '
+            'deformations (xx, yy, zz, yz, xz, xy) at each k-point, '
+            'without SOC'),
+        'deformation_potentials_soc': (
+            'Deformation potentials under different applied strains '
+            '(xx, yy, zz, yz, xz, xy) at each k-point, with SOC'),
+        'kpts': 'k-points at which deformation potentials were calculated'
     }
 
     formats = {"ase_webpanel": webpanel}
@@ -159,13 +163,29 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
 
     from gpaw import GPAW
     from ase.io import read
-    from asr.setup.strains import (get_strained_folder_name,
-                                   get_relevant_strains)
-    from asr.core import read_json
-    from ase.visualize import view
+    from asr.setup.strains import get_strained_folder_name
 
     atoms = read('structure.json')
     calc = GPAW('gs.gpw')
+
+    def gpaw_get_edges(strain, i, j):
+        folder = get_strained_folder_name(strain, i, j)
+        strainedatoms = read(f'{folder}/structure.json')
+        gpw = GPAW(f'{folder}/gs.gpw').fixed_density(
+                kpts=list(kptdict),
+                symmetry='off',
+                txt=None
+        )
+        gpw.get_potential_energy()
+        edges = get_edges(gpw, strainedatoms, soc)
+        return edges
+
+    return _main(atoms, calc, gpaw_get_edges, all_ibz, strain_percent)
+
+
+def _main(atoms, calc, get_edges, all_ibz, strain_percent):
+    from asr.setup.strains import get_relevant_strains
+
     results = {}
 
     if all_ibz:
@@ -185,15 +205,8 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
             straincomp = ijlabels.get(ij)
             edges_ij = []
             for strain in strains:
-                folder = get_strained_folder_name(strain, ij[0], ij[1])
-                strainedatoms = read(f'{folder}/structure.json')
-                gpw = GPAW(f'{folder}/gs.gpw').fixed_density(
-                        kpts=list(kptdct),
-                        symmetry='off',
-                        txt=None
-                )
-                gpw.get_potential_energy()
-                edges_ij.append(get_edges(gpw, strainedatoms, soc))
+                edges = get_edges(strain, ij[0], ij[1])
+                edges_ij.append(edges)
 
             # Actual calculation of the deformation potentials
             defpots_ij = np.squeeze(
