@@ -39,7 +39,7 @@ def get_relevant_kpts(atoms, calc):
     Obtain the high-symmetry k-points.
 
     If the band edges of the unstrained material are found away
-    from any of the special points, the corresponding 
+    from any of the special points, the corresponding
     k-points will be added to the list as 'VBM' and 'CBM'
     or 'VBM/CBM' (direct-gap materials)
     """
@@ -58,7 +58,7 @@ def get_relevant_kpts(atoms, calc):
         kdict = {
                 'VBM/CBM': ivbm
         }
-    else: 
+    else:
         kdict = {
                 'VBM': ivbm,
                 'CBM': icbm
@@ -75,7 +75,7 @@ def get_relevant_kpts(atoms, calc):
 
 def get_edges(calc, atoms, soc):
     """Obtain the edges states at the different k-points
-    
+
     Returns, for each k-point included in the calculation,
     the top eigenvalue of the valence band and the bottom
     eigenvalue of the conduction band.
@@ -84,7 +84,7 @@ def get_edges(calc, atoms, soc):
     vac = vacuumlevels(atoms, calc)
 
     # This will take care of the spin polarization
-    if not soc: 
+    if not soc:
         all_eigs = np.hstack(all_eigs)
 
     edges = np.zeros((len(all_eigs), 2))
@@ -117,7 +117,7 @@ class Result(ASRResult):
 @command('asr.deformationpotentials',
          returns=Result)
 @option('-s', '--percent-strain', help='Strain percentage', type=float)
-@option('--all-ibz', is_flag=True, 
+@option('--all-ibz', is_flag=True,
         help="Calculate deformation potentials at all the irreducible Brillouin zone k-points.", type=bool)
 def main(strain_percent=1.0, all_ibz=False) -> Result:
     """Calculate deformation potentials.
@@ -135,7 +135,7 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
         If True, calculate the deformation potentials at all
         the k-points in the irreducible Brillouin zone.
         Otherwise, just use the special points and the k-points
-        where the edge states are found (if they are not already 
+        where the edge states are found (if they are not already
         at one of the special points).
     """
     #TODO complete documentation
@@ -203,7 +203,7 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
                         'VB': dp[0],
                         'CB': dp[1]
                 }
-    
+
     return results
 
 
