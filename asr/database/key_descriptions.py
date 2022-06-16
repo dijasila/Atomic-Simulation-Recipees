@@ -247,6 +247,7 @@ for recipe in get_recipes():
     key = 'has_' + recipe.name.replace('.', '_').replace('@', '_')
     extras[key] = f'{recipe.name} is calculated'
 
+extras['sct'] = 'Spin coherence time T2 [ms]'
 key_descriptions['extra'] = extras
 
 

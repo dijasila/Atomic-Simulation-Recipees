@@ -271,7 +271,8 @@ def main(temp: float = 300,
     # evaluate host crystal elements and hof
     host = read('../unrelaxed.json')
     el_list = get_element_list(host)
-    hof = get_hof_from_sj_results()
+    # hof = get_hof_from_sj_results()
+    hof = 0
 
     # read in pristine ground state calculation and evaluate,
     # renormalize density of states
@@ -287,7 +288,10 @@ def main(temp: float = 300,
 
     sc_results = []
     for element in el_list:
-        defectdict = adjust_formation_energies(host, inputdict, element, hof)
+        # defectdict = adjust_formation_energies(host, inputdict, element, hof)
+        # REMOVE
+        defectdict = inputdict
+        # REMOVE
         # Initialize self-consistent loop for finding Fermi energy
         E, d, i, maxsteps, E_step, epsilon, converged = initialize_scf_loop(gap)
         # Start the self-consistent loop
