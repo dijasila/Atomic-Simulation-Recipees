@@ -4,7 +4,6 @@ import typing
 
 from ase import Atoms
 from asr.core import command, option, ASRResult, prepare_result
-from asr.gs import vacuumlevels
 from asr.utils.gpw2eigs import calc2eigs
 from asr.database.browser import (
     table, fig,
@@ -173,6 +172,7 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
     """
     from gpaw import GPAW
     from ase.io import read
+    from asr.gs import vacuumlevels
 
     atoms = read('structure.json')
     calc = GPAW('gs.gpw')
@@ -183,15 +183,34 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
         kpts = get_relevant_kpts(atoms, calc)
 
     def gpaw_get_edges(folder, kpts, soc):
-        strainedatoms = read(f'{folder}/structure.json')
+        """Obtain the edge states at the different k-points
+           from a GPAW calculator object.
+
+        Returns, for each k-point included in the calculation,
+        the top eigenvalue of the valence band and the bottom
+        eigenvalue of the conduction band.
+        """
+        atoms = read(f'{folder}/structure.json')
         gpw = GPAW(f'{folder}/gs.gpw').fixed_density(
                 kpts=kpts,
                 symmetry='off',
                 txt=None
         )
         gpw.get_potential_energy()
-        edges = get_edges_at_all_k(gpw, strainedatoms, soc)
-        return edges
+        all_eigs, efermi = calc2eigs(gpw, soc=soc)
+        vac = vacuumlevels(atoms, calc)
+
+        # This will take care of the spin polarization
+        if not soc:
+            all_eigs = np.hstack(all_eigs)
+
+        edges = np.zeros((len(all_eigs), 2))
+        for i, eigs_k in enumerate(all_eigs):
+            vb = [eig for eig in eigs_k if eig - efermi < 0]
+            cb = [eig for eig in eigs_k if eig - efermi > 0]
+            edges[i, 0] = max(vb)
+            edges[i, 1] = min(cb)
+        return edges - vac.evacmean
 
     return _main(atoms.pbc, kpts, gpaw_get_edges, strain_percent)
 
@@ -215,6 +234,8 @@ def _main(pbc, kpts, strain_percent, get_edges):
     results.update({socstr: {kpt: {} for kpt in kptlabels}
                     for socstr in soclabels})
 
+    # Navigate the directories containing the ground states of
+    # the strained structures and extract the band edges
     for socstr, soc in soclabels.items():
         for ij in get_relevant_strains(pbc):
             straincomp = ijlabels[ij]
@@ -229,6 +250,7 @@ def _main(pbc, kpts, strain_percent, get_edges):
                 np.diff(edges_ij, axis=0) / (np.ptp(strains) * 0.01)
             )
 
+            # Update results at each 
             for dp, kpt in zip(defpots_ij, kptlabels):
                 results[socstr][kpt][straincomp] = {
                         'VB': dp[0],
