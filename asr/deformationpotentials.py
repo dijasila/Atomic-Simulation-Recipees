@@ -75,29 +75,6 @@ def get_relevant_kpts(atoms, calc):
     return specpts
 
 
-def get_edges_at_all_k(calc, atoms, soc):
-    """Obtain the edges states at the different k-points
-
-    Returns, for each k-point included in the calculation,
-    the top eigenvalue of the valence band and the bottom
-    eigenvalue of the conduction band.
-    """
-    all_eigs, efermi = calc2eigs(calc, soc=soc)
-    vac = vacuumlevels(atoms, calc)
-
-    # This will take care of the spin polarization
-    if not soc:
-        all_eigs = np.hstack(all_eigs)
-
-    edges = np.zeros((len(all_eigs), 2))
-    for i, eigs_k in enumerate(all_eigs):
-        vb = [eig for eig in eigs_k if eig - efermi < 0]
-        cb = [eig for eig in eigs_k if eig - efermi > 0]
-        edges[i, 0] = max(vb)
-        edges[i, 1] = min(cb)
-    return edges - vac.evacmean
-
-
 soclabels = {
         'deformation_potentials_nosoc': False,
         'deformation_potentials_soc': True
