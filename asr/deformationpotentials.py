@@ -127,8 +127,10 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
 
     {'deformation_potentials_soc': {'kpt_1': {'xx': {'CB': <value>,
                                                      'VB': <value>},
+
                                               'yy': {...},
                                               'xy': {...}}
+
                                     'kpt_2': {...},
                                       ...
                                     'kpt_N': {...}},
