@@ -2,6 +2,7 @@
 import numpy as np
 import typing
 
+from ase import Atoms
 from asr.core import command, option, ASRResult, prepare_result
 from asr.gs import vacuumlevels
 from asr.utils.gpw2eigs import calc2eigs
@@ -75,7 +76,7 @@ def get_relevant_kpts(atoms, calc):
     return specpts
 
 
-def get_edges(calc, atoms, soc):
+def get_edges_at_all_k(calc, atoms, soc):
     """Obtain the edges states at the different k-points
 
     Returns, for each k-point included in the calculation,
@@ -163,57 +164,64 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
 
     from gpaw import GPAW
     from ase.io import read
-    from asr.setup.strains import get_strained_folder_name
 
     atoms = read('structure.json')
     calc = GPAW('gs.gpw')
 
-    def gpaw_get_edges(strain, i, j):
-        folder = get_strained_folder_name(strain, i, j)
+    if all_ibz:
+        kpts = calc.get_ibz_k_points()
+    else:
+        kpts = get_relevant_kpts(atoms, calc)
+
+    def gpaw_get_edges(folder, kpts, soc):
         strainedatoms = read(f'{folder}/structure.json')
         gpw = GPAW(f'{folder}/gs.gpw').fixed_density(
-                kpts=list(kptdict),
+                kpts=kpts,
                 symmetry='off',
                 txt=None
         )
         gpw.get_potential_energy()
-        edges = get_edges(gpw, strainedatoms, soc)
+        edges = get_edges_at_all_k(gpw, strainedatoms, soc)
         return edges
 
-    return _main(atoms, calc, gpaw_get_edges, all_ibz, strain_percent)
+    return _main(atoms.pbc, kpts, gpaw_get_edges, strain_percent)
 
 
-def _main(atoms, calc, get_edges, all_ibz, strain_percent):
-    from asr.setup.strains import get_relevant_strains
+def _main(pbc, kpts, strain_percent, get_edges):
+    from asr.setup.strains import (get_relevant_strains,
+                                   get_strained_folder_name)
 
-    results = {}
+    results = {
+        'kpts': kpts
+    }
 
-    if all_ibz:
-        kpts = kptlabels = calc.get_ibz_k_points()
-        results['kpts'] = kpts
+    if isinstance(kpts, dict):
+        kptlabels = list(kpts)
+        kpts = list(kpts.values())
     else:
-        kptdict = get_relevant_kpts(atoms, calc)
-        kptlabels = kptdict.values()
-        results['kpts'] = kptdict
+        kptlabels = kpts
 
+    # Initialize strains and deformation potentials results
     strains = [-abs(strain_percent), abs(strain_percent)]
-    results.update({socflag: {kpt: {} for kpt in kptlabels}
-                    for socflag in soclabels})
+    results.update({socstr: {kpt: {} for kpt in kptlabels}
+                    for socstr in soclabels})
 
-    for socflag, soc in soclabels.items():
-        for ij in get_relevant_strains(atoms.pbc):
-            straincomp = ijlabels.get(ij)
+    for socstr, soc in soclabels.items():
+        for ij in get_relevant_strains(pbc):
+            straincomp = ijlabels[ij]
             edges_ij = []
             for strain in strains:
-                edges = get_edges(strain, ij[0], ij[1])
+                folder = get_strained_folder_name(strain, ij[0], ij[1])
+                edges = get_edges(folder, kpts, soc)
                 edges_ij.append(edges)
 
             # Actual calculation of the deformation potentials
             defpots_ij = np.squeeze(
-                np.diff(edges_ij, axis=0) / (np.ptp(strains) * 0.01))
+                np.diff(edges_ij, axis=0) / (np.ptp(strains) * 0.01)
+            )
 
             for dp, kpt in zip(defpots_ij, kptlabels):
-                results[socflag][kpt][straincomp] = {
+                results[socstr][kpt][straincomp] = {
                         'VB': dp[0],
                         'CB': dp[1]
                 }
