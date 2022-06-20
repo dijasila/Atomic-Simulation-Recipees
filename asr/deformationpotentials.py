@@ -138,15 +138,26 @@ class Result(ASRResult):
 
 @command('asr.deformationpotentials',
          returns=Result)
-@option('-s', '--percent-strain', help='Strain percentage', type=float)
-@option('--all-ibz', is_flag=True,
-        help="Calculate deformation potentials at all the irreducible Brillouin zone k-points.", type=bool)
+@option('-s', '--percent-strain', type=float, help='Strain percentage')
+@option('--all-ibz', is_flag=True, type=bool,
+        help=('Calculate deformation potentials at all '
+              'the irreducible Brillouin zone k-points.'))
 def main(strain_percent=1.0, all_ibz=False) -> Result:
     """Calculate deformation potentials.
 
     Calculate the deformation potentials both with and without spin orbit
     coupling, for both the conduction band and the valence band, and return as
-    a dictionary.
+    a dictionary. The dictionary has the following structure:
+
+    {'deformation_potentials_soc': {'kpt_1': {'xx': {'CB': <value>,
+                                                     'VB': <value>},
+                                              'yy': {...},
+                                              'xy': {...}}
+                                    'kpt_2': {...},
+                                      ...
+                                    'kpt_N': {...}},
+
+     'deformation_potentials_nosoc': ...}
 
     Parameters
     ----------
@@ -160,8 +171,6 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
         where the edge states are found (if they are not already
         at one of the special points).
     """
-    #TODO complete documentation
-
     from gpaw import GPAW
     from ase.io import read
 
