@@ -1,7 +1,5 @@
 import typing
 
-from asr.calculators import set_calculator_hook
-
 from .command import get_recipes
 from .old_defaults import get_old_defaults
 from .utils import get_recipe_from_name
@@ -64,6 +62,7 @@ def select_records_that_have_kpts_density_specified(record):
 @mutation(selector=select_records_that_have_kpts_density_specified, eagerness=-2)
 def apply_calculator_hook_to_old_records(record):
     """Fix abstract calculator values to more concrete values."""
+    from asr.calculators import set_calculator_hook
     parameters = set_calculator_hook(record.parameters)
     record.parameters = parameters
     return record

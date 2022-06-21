@@ -1,6 +1,5 @@
 """Implements comparators used for matching objects."""
 import types
-import numpy as np
 from .utils import compare_equal
 
 
@@ -84,6 +83,7 @@ def NOT(comparator):
 
 
 def APPROX(value1, rtol=1e-3) -> Comparator:
+    import numpy as np
 
     return Comparator(
         name='approx',
@@ -153,6 +153,7 @@ def GREATER_THAN_EQUALS(value1) -> Comparator:
 
 
 def compare_atoms(atoms1, atoms2):
+    import numpy as np
     dct1 = atoms1.todict()
     dct2 = atoms2.todict()
     keys = [

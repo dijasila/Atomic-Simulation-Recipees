@@ -17,7 +17,6 @@ A dictionary representation of a result-object can be converted to a
 result object through :py:func:`asr.core.results.decode_object`.
 
 """
-from ase.io import jsonio
 import copy
 import typing
 from abc import ABC, abstractmethod
@@ -218,6 +217,7 @@ def dct_to_result(dct: dict) -> typing.Any:
 
 def encode_object(obj: typing.Any):
     """Encode object such that it can be deserialized with `decode_object`."""
+    from ase.io import jsonio
     if isinstance(obj, dict):
         newobj = {}
         for key, value in obj.items():
@@ -239,6 +239,7 @@ def encode_object(obj: typing.Any):
 
 def decode_object(obj: typing.Any) -> typing.Any:
     """Convert object representing an ASR result to corresponding result object."""
+    from ase.io import jsonio
     if isinstance(obj, dict):
         for key, value in obj.items():
             obj[key] = decode_object(value)
@@ -300,6 +301,7 @@ class JSONEncoder(ResultEncoder):
 
     def decode(self, cls, json_string: str):
         """Decode json string."""
+        from ase.io import jsonio
         dct = jsonio.decode(json_string)
         return cls.from_object_desc(dct)
 

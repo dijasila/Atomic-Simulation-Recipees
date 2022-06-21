@@ -3,16 +3,11 @@ import datetime
 import pathlib
 import typing
 
-import numpy as np
-import simplejson as json
 from htwutil.storage import JSONCodec
-from ase.io.jsonio import (object_hook as ase_object_hook,
-                           default as ase_default)
 
 from asr.core.results import get_object_matching_obj_id
 
 from .results import obj_to_id
-
 
 
 class ASRJSONCodec(JSONCodec):
@@ -26,13 +21,15 @@ class ASRJSONCodec(JSONCodec):
 
 
 def asr_default(obj):
+    from ase.io.jsonio import default
     try:
         return object_to_dict(obj)
     except ValueError:
-        return ase_default(obj)
+        return default(obj)
 
 
 def object_to_dict(obj) -> dict:
+    import numpy as np
     if hasattr(obj, '__dict__'):
         cls_id = obj_to_id(obj.__class__)
         obj = {
@@ -75,11 +72,13 @@ def object_to_dict(obj) -> dict:
 
 
 def json_hook(json_object: dict):
+    from ase.io.jsonio import object_hook
+
     try:
         return dict_to_object(json_object)
     except ValueError:
         pass
-    return ase_object_hook(json_object)
+    return object_hook(json_object)
 
 
 def dict_to_object(json_object) -> typing.Any:
@@ -108,8 +107,10 @@ def dict_to_object(json_object) -> typing.Any:
 class JSONSerializer:
     def serialize(self, obj) -> str:
         """Serialize object to JSON."""
+        import simplejson as json
         return json.dumps(obj, tuple_as_array=False, default=asr_default)
 
     def deserialize(self, serialized: str) -> typing.Any:
         """Deserialize json object."""
+        import simplejson as json
         return json.loads(serialized, object_hook=json_hook)
