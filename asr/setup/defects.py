@@ -58,27 +58,27 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
 
     MoS2/
     ├── defects.MoS2_331.Mo_S
-    │   └── asr.setup.defects.defect-irxvl8uy
+    │   └── define-irxvl8uy
     │       ├── atoms.json
     │       ├── input.json
     │       └── output.json
     ├── defects.MoS2_331.S_Mo
-    │   └── asr.setup.defects.defect-cd9l_90u
+    │   └── define-cd9l_90u
     │       ├── atoms.json
     │       ├── input.json
     │       └── output.json
     ├── defects.MoS2_331.v_Mo
-    │   └── asr.setup.defects.defect-jl1ivb5g
+    │   └── define-jl1ivb5g
     │       ├── atoms.json
     │       ├── input.json
     │       └── output.json
     ├── defects.MoS2_331.v_S
-    │   └── asr.setup.defects.defect-3pmt0aic
+    │   └── define-3pmt0aic
     │       ├── atoms.json
     │       ├── input.json
     │       └── output.json
     ├── defects.pristine_sc.331
-    │   └── asr.setup.defects.defect-xms9yiy1
+    │   └── define-xms9yiy1
     │       ├── atoms.json
     │       ├── input.json
     │       └── output.json
@@ -145,8 +145,7 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
 
     for element, atoms in structure_dict.items():
         rn2 = rn.with_subdirectory(element)
-        structures[element] = rn2.task('asr.setup.defects.defect',
-                                       element=element, atoms=atoms)
+        structures[element] = rn2.define(structure=atoms)
     return structures
 
 
