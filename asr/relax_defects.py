@@ -1,4 +1,5 @@
 from typing import Sequence
+from gpaw.atom.generator2 import get_number_of_electrons
 
 # Define calculators that are needed for the params.json file
 # of each individual defect and charge folder.
@@ -24,8 +25,32 @@ relax_calc_dict = {'name': 'gpaw',
                        'width': 0.02},
                    'spinpol': True}
 
+gs_calc_dict = {'name': 'gpaw',
+                'mode': {'name': 'pw', 'ecut': 800},
+                'xc': 'PBE',
+                'basis': 'dzp',
+                'kpts': {'density': 12.0, 'gamma': True},
+                'occupations': {'name': 'fermi-dirac',
+                                'width': 0.02},
+                'convergence': {'bands': 'CBM+3.0'},
+                'nbands': '200%',
+                'txt': 'gs.txt',
+                'spinpol': True}
 
-def main(rn, atoms,
+# Counts number of electrons and returns True if even number and False if odd number
+def count_e(atoms):
+    from asr.setup.defects import ref_to_atoms
+    atoms1 = ref_to_atoms(atoms)
+    Ne = sum([get_number_of_electrons(atom.symbol, name = None) for atom in atoms1])
+    print('  Number of electrons: ', Ne)
+    if Ne % 2 == 0:
+        Neven = True
+    else:
+        Neven = False
+    return Neven
+
+
+def relax_defects(rn, atoms,
          charge_states: Sequence[int] = [0],
          calculator: dict = relax_calc_dict):
     atoms_dict = {}
@@ -38,6 +63,15 @@ def main(rn, atoms,
                                              calculator=calculator)
     return atoms_dict
 
+
+def gs_defects(rn,relax_dict,
+               calculator: dict = gs_calc_dict):
+    scf={}
+    for key, item in relax_dict.items():
+        rn2 = rn.with_subdirectory(key)
+        scf[key] = rn2.task('asr.c2db.gs.calculate',
+                       atoms=item)
+    return scf
 
 class SetupAndRelaxDefects:
     def __init__(self, rn, atoms, charge_states=[0],
@@ -56,5 +90,6 @@ class SetupAndRelaxDefects:
         self.relaxed_defect = {}
         for key, item in self.Defect_dict.items():
             rn2 = rn.with_subdirectory(key)
-            self.relaxed_defect[key] = main(rn2, atoms=item.output,
+            self.relaxed_defect[key] = relax_defects(rn2, atoms=item.output,
                                             charge_states=charge_states)
+

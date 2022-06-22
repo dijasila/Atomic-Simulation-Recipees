@@ -92,17 +92,8 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
       foldernames will contain '000' instead of the supersize.
     - In the resulting folders you can find the unrelaxed structures.
     """
-    if hasattr(atoms, 'future'):
-        if not atoms.future.has_output():
-            return
-        atoms = atoms.future.value().output
-        # Ugly quick fix, at the moment atoms.future.value().output is dict
-        if(isinstance(atoms, dict)):
-            if('structure' in atoms):
-                atoms = atoms['structure']
-            else:
-                raise ValueError("Input dict atoms need structure key")
-
+    # convert future reference to atoms
+    atoms = ref_to_atoms(atoms)
     # convert extrinsic defect string
     extrinsic = extrinsic.split(',')
 
@@ -713,3 +704,16 @@ def return_distances_cell(cell):
             sign * cell[0][2] + cell[1][2])**2))
 
     return distances
+
+def ref_to_atoms(atoms):
+    if hasattr(atoms, 'future'):
+        if not atoms.future.has_output():
+            raise ValueError("Future without output")
+        atoms_out = atoms.future.value().output
+        # Ugly quick fix, at the moment atoms.future.value().output is dict                                                                                                                                 
+        if(isinstance(atoms_out, dict)):
+            if('structure' in atoms_out):
+                atoms_out = atoms_out['structure']
+            else:
+                raise ValueError("Input dict atoms need structure key")
+    return atoms_out
