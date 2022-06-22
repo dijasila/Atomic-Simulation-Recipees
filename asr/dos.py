@@ -1,13 +1,55 @@
 """Density of states."""
-from asr.core import command, option, ASRResult
+from __future__ import annotations
+from asr.core import command, option, ASRResult, prepare_result
+from asr.database.browser import (describe_entry, entry_parameter_description,
+                                  make_panel_description, fig)
 
 
-@command('asr.dos')
+panel_description = make_panel_description(
+    """DOS
+...""")
+
+
+def webpanel(result, row, key_descriptions):
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.dos')
+
+    title_description = panel_description + parameter_description
+
+    panel = {'title': describe_entry('Effective masses',
+                                     description=title_description),
+             'columns': [[fig('dos.png')]],
+             'plot_descriptions':
+                 [{'function': dos_plot,
+                   'filenames': ['dos.png']}]}
+
+    return [panel]
+
+
+@prepare_result
+class DOSResult(ASRResult):
+    dosspin0_e: list[float]
+    dosspin1_e: list[float]
+    energies_e: list[float]
+    natoms: int
+    volume: float
+
+    key_descriptions = {'dosspin0_e': '...',
+                        'dosspin1_e': '...',
+                        'energies_e': '...',
+                        'natoms': '...',
+                        'volume': '...'}
+    formats = {"ase_webpanel": webpanel}
+
+
+@command('asr.dos',
+         requires=['gs.gpw'],
+         dependencies=['asr.gs@calculate'])
 @option('--name', type=str)
-@option('--filename', type=str)
 @option('--kptdensity', help='K point kptdensity', type=float)
-def main(name: str = 'dos.gpw', filename: str = 'dos.json',
-         kptdensity: float = 12.0) -> ASRResult:
+def main(name: str = 'dos.gpw',
+         kptdensity: float = 12.0) -> DOSResult:
     """Calculate DOS."""
     from pathlib import Path
     from gpaw import GPAW
@@ -20,7 +62,7 @@ def main(name: str = 'dos.gpw', filename: str = 'dos.json',
         calc.write(name)
         del calc
 
-    calc = GPAW(name, txt=None)
+    calc = GPAW(name)
     from ase.dft.dos import DOS
     dos = DOS(calc, width=0.0, window=(-5, 5), npts=1000)
     nspins = calc.get_number_of_spins()
@@ -35,72 +77,19 @@ def main(name: str = 'dos.gpw', filename: str = 'dos.json',
     if nspins == 2:
         dosspin1_e = dos.get_dos(spin=1)
         data['dosspin1_e'] = dosspin1_e.tolist()
-
-    import json
-
-    from ase.parallel import paropen
-    with paropen(filename, 'w') as fd:
-        json.dump(data, fd)
+    return DOSResult(data=data)
 
 
-def collect_data(atoms):
-    """Band structure SCF and GW +- SOC."""
-    from ase.io.jsonio import read_json
-    from pathlib import Path
-
-    if not Path('dos.json').is_file():
-        return {}, {}, {}
-
-    dos = read_json('dos.json')
-
-    return {}, {}, {'dos': dos}
-
-
-def plot(row=None, filename='dos.png', file=None, show=False):
-    """Plot DOS.
-
-    Defaults to dos.json.
-    """
-    import json
+def dos_plot(row, filename):
     import matplotlib.pyplot as plt
     import numpy as np
 
-    dos = None
-
-    # Get data from row
-    if row is not None:
-        if 'dos' not in row.data:
-            return
-        dos = row.data['dos']
-
-    # Otherwise from from file
-    file = file or 'dos.json'
-    if not dos:
-        dos = json.load(open(file, 'r'))
-    plt.figure()
-    plt.plot(dos['energies_e'],
-             np.array(dos['dosspin0_e']) / dos['volume'])
-    plt.xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
-    plt.ylabel(r'DOS (states / (eV Å$^3$)')
-    plt.tight_layout()
-    plt.savefig(filename)
-    if show:
-        plt.show()
-    return plt.gca()
-
-
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
-
-    panel = (f'Density of states ({xcname})',
-             [[fig('dos.png')], []])
-
-    things = [(plot, ['dos.png'])]
-
-    return panel, things
-
-
-if __name__ == '__main__':
-    main.cli()
+    dos = row.data.get('results-asr.dos.json')
+    fig, ax = plt.subplots()
+    ax.plot(dos['energies_e'],
+            np.array(dos['dosspin0_e']) / dos['volume'])
+    ax.set_xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
+    ax.set_ylabel(r'DOS (states / (eV Å$^3$)')
+    fig.tight_layout()
+    fig.savefig(filename)
+    return [ax]
