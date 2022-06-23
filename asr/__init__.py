@@ -1,4 +1,7 @@
 """Top-level package for Atomic Simulation Recipes."""
+import sys
+
+
 from asr.core import (  # noqa
     ASRResult,
     Dependencies,

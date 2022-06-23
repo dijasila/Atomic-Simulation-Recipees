@@ -45,8 +45,8 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
          scaling_double: float = 1.7, uniform_vacuum: bool = False,
          general_algorithm: float = None) -> ASRResult:
-
     """Set up defect structures for a given host.
+
     Recipe setting up all possible defects within a reasonable supercell as well as the
     respective pristine system for a given input structure. Defects include: vacancies,
     intrinsic substitutional defects. For a given primitive input structure this recipe
@@ -92,7 +92,6 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
       foldernames will contain '000' instead of the supersize.
     - In the resulting folders you can find the unrelaxed structures.
     """
-
     if hasattr(atoms, 'future'):
         if not atoms.future.has_output():
             return

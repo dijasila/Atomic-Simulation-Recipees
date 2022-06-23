@@ -1,7 +1,5 @@
 """Implement custom types for ASR."""
 import click
-from ase.io import read
-from ase.io.formats import UnknownFileTypeError
 from asr.core import parse_dict_string
 import pickle
 
@@ -41,6 +39,8 @@ class AtomsFile(click.ParamType):
 
     def convert(self, value, param, ctx):
         """Convert string to atoms object."""
+        from ase.io import read
+        from ase.io.formats import UnknownFileTypeError
         if value.startswith('stdin.'):
             attrs = value.split('.')[1:]
             obj = pickle.loads(click.get_binary_stream('stdin').read())

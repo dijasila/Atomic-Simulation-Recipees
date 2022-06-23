@@ -66,7 +66,7 @@ class Row:
 
     @property
     def cache(self):
-        from asr import get_cache
+        from asr.core import get_cache
 
         mem_cache = get_cache("memory")
         for record in self.records:

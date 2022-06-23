@@ -12,9 +12,8 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-python_requires = '>=3.8'
+python_requires = '>=3.7'
 requirements = [
-    'pyparsing>=3.0.6',
     'Click>=8.0.3',
     'ase', 'matplotlib',
     'simplejson',
