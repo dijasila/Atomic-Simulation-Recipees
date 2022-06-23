@@ -252,7 +252,7 @@ def initialize_project(database, extra_kvp_descriptions=None, pool=None):
         "default_columns": metadata.get("default_columns", ["formula", "uid"]),
         "table_template": str(
             metadata.get(
-                "table_template", f"asr/database/templates/table.html",
+                "table_template", "asr/database/templates/table.html",
             )
         ),
         "search_template": str(
