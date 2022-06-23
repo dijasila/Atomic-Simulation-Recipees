@@ -1,9 +1,12 @@
 """Density of states."""
 from __future__ import annotations
-from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (describe_entry, entry_parameter_description,
-                                  make_panel_description, fig)
 
+from pathlib import Path
+
+import numpy as np
+from asr.core import ASRResult, command, option, prepare_result
+from asr.database.browser import (describe_entry, entry_parameter_description,
+                                  fig, make_panel_description)
 
 panel_description = make_panel_description(
     """DOS
@@ -47,37 +50,37 @@ class DOSResult(ASRResult):
          requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'])
 @option('--name', type=str)
-@option('--kptdensity', help='K point kptdensity', type=float)
+@option('--kptdensity', help='K-point density', type=float)
 def main(name: str = 'dos.gpw',
          kptdensity: float = 12.0) -> DOSResult:
     """Calculate DOS."""
-    from pathlib import Path
     from gpaw import GPAW
-    if not Path(name).is_file():
-        calc = GPAW('gs.gpw', txt='dos.txt',
-                    kpts={'density': kptdensity},
-                    nbands='300%',
-                    convergence={'bands': -10})
-        calc.get_potential_energy()
-        calc.write(name)
-        del calc
 
-    calc = GPAW(name)
-    from ase.dft.dos import DOS
-    dos = DOS(calc, width=0.0, window=(-5, 5), npts=1000)
-    nspins = calc.get_number_of_spins()
-    dosspin0_e = dos.get_dos(spin=0)
-    energies_e = dos.get_energies()
-    natoms = len(calc.atoms)
-    volume = calc.atoms.get_volume()
-    data = {'dosspin0_e': dosspin0_e.tolist(),
-            'energies_e': energies_e.tolist(),
-            'natoms': natoms,
-            'volume': volume}
-    if nspins == 2:
-        dosspin1_e = dos.get_dos(spin=1)
-        data['dosspin1_e'] = dosspin1_e.tolist()
+    path = Path(name)
+    if not path.is_file():
+        calc = GPAW(path.with_name('gs.gpw'),
+                    txt=path.with_name('dos.txt')).fixed_density(
+            kpts={'density': kptdensity},
+            nbands='300%',
+            convergence={'bands': -10})
+        calc.write(path)
+
+    calc = GPAW(path)
+    doscalc = calc.dos()
+    data = _main(doscalc)
+    data['natoms'] = len(calc.atoms)
+    data['volume'] = calc.atoms.get_volume()
     return DOSResult(data=data)
+
+
+def _main(doscalc):
+    energies_e = np.linspace(-10, 10, 201)
+    data = {'energies_e': energies_e.tolist(),
+            'dosspin1_e': []}
+    for spin in range(doscalc.nspins):
+        dos_e = doscalc.raw_dos(energies_e, spin, width=0)
+        data[f'dosspin{spin}_e'] = dos_e.tolist()
+    return data
 
 
 def dos_plot(row, filename):
@@ -86,8 +89,13 @@ def dos_plot(row, filename):
 
     dos = row.data.get('results-asr.dos.json')
     fig, ax = plt.subplots()
-    ax.plot(dos['energies_e'],
-            np.array(dos['dosspin0_e']) / dos['volume'])
+    dos_e = np.array(dos['dosspin0_e'])
+    if 'dosspin1_e' in dos:
+        dos_e += dos['dosspin0_e']
+    else:
+        dos_e *= 2
+
+    ax.plot(dos['energies_e'], dos_e / dos['volume'])
     ax.set_xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
     ax.set_ylabel(r'DOS (states / (eV Å$^3$)')
     fig.tight_layout()
