@@ -4,7 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from asr.core import ASRResult, command, option, prepare_result
@@ -92,17 +91,18 @@ def _main(doscalc) -> dict:
 
 
 def dos_plot(row, filename: str):
+    import matplotlib.pyplot as plt
     dos = row.data.get('results-asr.dos.json')
     fig, ax = plt.subplots()
-    dos_e = np.array(dos['dosspin0_e'])
     if 'dosspin1_e' in dos:
-        dos_e += dos['dosspin0_e']
+        ax.plot(dos['energies_e'], dos['dosspin0_e'], label='up')
+        ax.plot(dos['energies_e'], dos['dosspin1_e'], label='down')
+        ax.legend()
     else:
-        dos_e *= 2
+        ax.plot(dos['energies_e'], dos['dosspin0_e'])
 
-    ax.plot(dos['energies_e'], dos_e / dos['volume'])
-    ax.set_xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
-    ax.set_ylabel(r'DOS (states / (eV Å$^3$)')
+    ax.set_xlabel(r'Energy - $E_\mathrm{F}$ [eV]')
+    ax.set_ylabel('DOS [electrons/eV]')
     fig.tight_layout()
     fig.savefig(filename)
     return [ax]
