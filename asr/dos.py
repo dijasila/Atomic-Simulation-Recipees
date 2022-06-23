@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import List
 
+import matplotlib.pyplot as plt
 import numpy as np
+
 from asr.core import ASRResult, command, option, prepare_result
 from asr.database.browser import (describe_entry, entry_parameter_description,
                                   fig, make_panel_description)
@@ -13,7 +16,9 @@ panel_description = make_panel_description(
 ...""")
 
 
-def webpanel(result, row, key_descriptions):
+def webpanel(result: ASRResult,
+             row,
+             key_descriptions: dict) -> list:
     parameter_description = entry_parameter_description(
         row.data,
         'asr.dos')
@@ -32,9 +37,9 @@ def webpanel(result, row, key_descriptions):
 
 @prepare_result
 class DOSResult(ASRResult):
-    dosspin0_e: list[float]
-    dosspin1_e: list[float]
-    energies_e: list[float]
+    dosspin0_e: List[float]
+    dosspin1_e: List[float]
+    energies_e: List[float]
     natoms: int
     volume: float
 
@@ -46,13 +51,16 @@ class DOSResult(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
+Result = DOSResult  # backwards compatibility with old result files
+
+
 @command('asr.dos',
          requires=['gs.gpw'],
          dependencies=['asr.gs@calculate'])
 @option('--name', type=str)
 @option('--kptdensity', help='K-point density', type=float)
 def main(name: str = 'dos.gpw',
-         kptdensity: float = 12.0) -> DOSResult:
+         kptdensity: float = 12.0) -> ASRResult:
     """Calculate DOS."""
     from gpaw import GPAW
 
@@ -73,7 +81,7 @@ def main(name: str = 'dos.gpw',
     return DOSResult(data=data)
 
 
-def _main(doscalc):
+def _main(doscalc) -> dict:
     energies_e = np.linspace(-10, 10, 201)
     data = {'energies_e': energies_e.tolist(),
             'dosspin1_e': []}
@@ -83,10 +91,7 @@ def _main(doscalc):
     return data
 
 
-def dos_plot(row, filename):
-    import matplotlib.pyplot as plt
-    import numpy as np
-
+def dos_plot(row, filename: str):
     dos = row.data.get('results-asr.dos.json')
     fig, ax = plt.subplots()
     dos_e = np.array(dos['dosspin0_e'])
