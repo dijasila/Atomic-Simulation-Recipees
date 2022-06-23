@@ -93,13 +93,16 @@ def _main(doscalc) -> dict:
 def dos_plot(row, filename: str):
     import matplotlib.pyplot as plt
     dos = row.data.get('results-asr.dos.json')
+    x = dos['energies_e']
+    y0 = dos['dosspin0_e']
+    y1 = dos['dosspin1_e']
     fig, ax = plt.subplots()
-    if 'dosspin1_e' in dos:
-        ax.plot(dos['energies_e'], dos['dosspin0_e'], label='up')
-        ax.plot(dos['energies_e'], dos['dosspin1_e'], label='down')
+    if y1:
+        ax.plot(x, y0, label='up')
+        ax.plot(x, y1, label='down')
         ax.legend()
     else:
-        ax.plot(dos['energies_e'], dos['dosspin0_e'])
+        ax.plot(x, y0)
 
     ax.set_xlabel(r'Energy - $E_\mathrm{F}$ [eV]')
     ax.set_ylabel('DOS [electrons/eV]')
