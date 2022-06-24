@@ -95,6 +95,10 @@ ijlabels = {
 }
 
 
+def webpanel():
+    pass
+
+
 @prepare_result
 class Result(ASRResult):
 
@@ -118,11 +122,12 @@ class Result(ASRResult):
 
 @command('asr.deformationpotentials',
          returns=Result)
-@option('-s', '--percent-strain', type=float, help='Strain percentage')
+@option('-s', '--strain', type=float,
+        help='percent strain applied to the material along all components')
 @option('--all-ibz', is_flag=True, type=bool,
         help=('Calculate deformation potentials at all '
               'the irreducible Brillouin zone k-points.'))
-def main(strain_percent=1.0, all_ibz=False) -> Result:
+def main(strain=1.0, all_ibz=False) -> Result:
     """Calculate deformation potentials.
 
     Calculate the deformation potentials both with and without spin orbit
@@ -195,7 +200,7 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
             edges[i, 1] = min(cb)
         return edges - vac.evacmean
 
-    return _main(atoms.pbc, kpts, gpaw_get_edges, strain_percent)
+    return _main(atoms.pbc, kpts, gpaw_get_edges, strain)
 
 
 def _main(pbc, kpts, strain_percent, get_edges):
