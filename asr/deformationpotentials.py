@@ -95,8 +95,14 @@ ijlabels = {
 }
 
 
-def webpanel():
-    pass
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (
+        table, fig,
+        entry_parameter_description,
+        describe_entry, WebPanel,
+        make_panel_description
+    )
+    description = describe_entry('Deformation potentials', panel_description)
 
 
 @prepare_result
