@@ -5,12 +5,7 @@ import typing
 from ase import Atoms
 from asr.core import command, option, ASRResult, prepare_result
 from asr.utils.gpw2eigs import calc2eigs
-from asr.database.browser import (
-    table, fig,
-    entry_parameter_description,
-    describe_entry, WebPanel,
-    make_panel_description
-)
+from asr.database.browser import href, make_panel_description
 
 
 description_text = """\
@@ -20,17 +15,24 @@ bottom of the conduction band (CB) and the top of the valence band
 
 This panel shows the VB and CB deformation potentials at the
 high-symmetry k-points, subdivided into the different strain
-components.
+components. In case one or both the band extrema of the material
+are not found at any of the special points, the corresponding
+k-point(s) are added to the list as `VBM` and/or `CBM`
+(indirect-gap materials) or `VBM/CBM` (direct-gap materials).
 
-In case one or both the band extrema of the material are not found
-at any of the special points, the corresponding k-point(s) are
-added to the list as `VBM` and/or `CBM` (indirect-gap materials)
-or `VBM/CBM` (direct-gap materials) """
+Results are calculated both with and without spin-orbit coupling (SOC).
+If any significant difference (at least 10 meV) if found between
+the two sets of deformation potentials, two separate tables are shown.
+Otherwise, we report only the values calculated with SOC."""
 
 
 panel_description = make_panel_description(
     description_text,
-    articles=['C2DB'],
+    articles=[
+        href("""Wiktor, J. and Pasquarello, A., 2016. Absolute deformation potentials
+of two-dimensional materials. Physical Review B, 94(24), p.245411""",
+             "https://doi.org/10.1103/PhysRevB.94.245411")
+    ],
 )
 
 
@@ -73,7 +75,7 @@ def get_relevant_kpts(atoms, calc):
     ibz_kpoints = calc.get_ibz_k_points()
     for label, i_kpt in kdict.items():
         kpt = ibz_kpoints[i_kpt[1]]
-        if not is_in_list(kpt, specpts.values(), tol=0.05):
+        if not is_in_list(kpt, specpts.values(), tol=0.01):
             specpts[label] = kpt
 
     return specpts
@@ -96,13 +98,61 @@ ijlabels = {
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (
-        table, fig,
-        entry_parameter_description,
-        describe_entry, WebPanel,
-        make_panel_description
-    )
+    from asr.database.browser import matrixtable, describe_entry, WebPanel
+
     description = describe_entry('Deformation potentials', panel_description)
+    columnlabels = [
+        'xx<sup>VB</sup>',
+        'xx<sup>CB</sup>',
+        'yy<sup>VB</sup>',
+        'yy<sup>CB</sup>',
+        'xy<sup>VB</sup>',
+        'xy<sup>CB</sup>'
+    ]
+
+    labeldct = {'deformation_potentials_soc': 'SOC',
+                'deformation_potentials_nosoc': 'NOSOC'}
+
+    dp_arrays = []
+    dp_tables = []
+    for resultname, label in labeldct.items():
+        data = result[resultname]
+        dp_array = []
+        rowlabels = []
+
+        for kpt in data:
+            if kpt == 'G':
+                rowlabels.append('&#x0393')
+            else:
+                rowlabels.append(kpt)
+
+            dp_array_row = []
+            for comp in data[kpt]:
+                for band in data[kpt][comp]:
+                    dp_array_row.append(data[kpt][comp][band])
+            dp_array.append(dp_array_row)
+        dp_arrays.append(np.asarray(dp_array))
+
+        dp_table = matrixtable(
+                dp_array,
+                digits=3,
+                title=f'D<sup>{label}</sup> (eV)',
+                columnlabels=columnlabels,
+                rowlabels=rowlabels
+        )
+        dp_tables.append(dp_table)
+
+    columns = [[dp_tables[0]]]
+    diff = abs(dp_arrays[0] - dp_arrays[1])
+    if np.any(diff > 0.05):
+        columns.append(dp_tables[1])
+
+    panel = WebPanel(
+            description,
+            columns=columns,
+            sort=4
+    )
+    return [panel]
 
 
 @prepare_result
