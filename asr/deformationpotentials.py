@@ -203,7 +203,7 @@ def main(strain=1.0, all_ibz=False) -> Result:
     return _main(atoms.pbc, kpts, gpaw_get_edges, strain)
 
 
-def _main(pbc, kpts, strain_percent, get_edges):
+def _main(pbc, kpts, get_edges, strain):
     from asr.setup.strains import (get_relevant_strains,
                                    get_strained_folder_name)
     results = {
@@ -217,7 +217,7 @@ def _main(pbc, kpts, strain_percent, get_edges):
         kptlabels = kpts
 
     # Initialize strains and deformation potentials results
-    strains = [-abs(strain_percent), abs(strain_percent)]
+    strains = [-abs(strain), abs(strain)]
     results.update({socstr: {kpt: {} for kpt in kptlabels}
                     for socstr in soclabels})
 
