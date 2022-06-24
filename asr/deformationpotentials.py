@@ -34,9 +34,13 @@ panel_description = make_panel_description(
 )
 
 
-def is_in_list(element, lst):
+def is_in_list(element, lst, tol):
+    """
+    Check if a given list of floating-point numbers is contained
+    in an array, within a tolerance on the individual values
+    """
     for obj in lst:
-        if np.allclose(element, obj, rtol=0.05, atol=0):
+        if np.allclose(element, obj, rtol=tol, atol=0):
             return True
     return False
 
@@ -69,7 +73,7 @@ def get_relevant_kpts(atoms, calc):
     ibz_kpoints = calc.get_ibz_k_points()
     for label, i_kpt in kdict.items():
         kpt = ibz_kpoints[i_kpt[1]]
-        if not is_in_list(kpt, specpts.values()):
+        if not is_in_list(kpt, specpts.values(), tol=0.05):
             specpts[label] = kpt
 
     return specpts
@@ -197,7 +201,6 @@ def main(strain_percent=1.0, all_ibz=False) -> Result:
 def _main(pbc, kpts, strain_percent, get_edges):
     from asr.setup.strains import (get_relevant_strains,
                                    get_strained_folder_name)
-
     results = {
         'kpts': kpts
     }
@@ -229,7 +232,6 @@ def _main(pbc, kpts, strain_percent, get_edges):
                 np.diff(edges_ij, axis=0) / (np.ptp(strains) * 0.01)
             )
 
-            # Update results at each 
             for dp, kpt in zip(defpots_ij, kptlabels):
                 results[socstr][kpt][straincomp] = {
                         'VB': dp[0],
