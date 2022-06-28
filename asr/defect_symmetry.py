@@ -132,7 +132,11 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
                 rows.append((rowlabels[i],
                              state_array[i, 0],
                              state_array[i, 1],
-                             state_array[i, 2],
+                             describe_entry(state_array[i, 2],
+                                            'The localization ratio is defined as the '
+                                            'volume of the cell divided by the integral'
+                                            ' of the fourth pover of the '
+                                            'wavefunction.'),
                              f'{state_array[i, 3]} eV'))
             elif style == 'state':
                 rows.append((rowlabels[i],
@@ -140,11 +144,6 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
                              f'{state_array[i, 1]} eV'))
 
         state_table['rows'] = rows
-        # state_table = matrixtable(state_array,
-        #                           digits=None,
-        #                           title='Orbital',
-        #                           columnlabels=columnlabels,
-        #                           rowlabels=rowlabels)
         state_tables.append(state_table)
 
     transition_table = get_transition_table(row, E_hls)
@@ -211,7 +210,7 @@ def webpanel(result, row, key_descriptions):
                      sort=30)
 
     summary = {'title': 'Summary',
-               'columns': [[basictable], []],
+               'columns': [[basictable, transition_table], []],
                'sort': 2}
 
     return [panel, summary]
@@ -754,7 +753,7 @@ class Level:
 
     def get_relative_position(self, spin, deg, off):
         """Set relative position of the level based on spin, degeneracy and offset."""
-        xpos_deg = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]]
+        xpos_deg = [[2 / 12, 4 / 12], [8 / 12, 10 / 12]]
         xpos_nor = [1 / 4, 3 / 4]
         if deg == 2:
             relpos = xpos_deg[spin][off]

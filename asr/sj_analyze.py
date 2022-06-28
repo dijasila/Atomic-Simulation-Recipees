@@ -28,17 +28,22 @@ def get_transition_table(result, defstr):
     transition_labels = []
     transition_array = np.zeros((len(trans_results), 2))
     for i, element in enumerate(trans_results):
+        q = int(element['transition_name'].split('/')[-1])
+        if q > 0:
+            sign = 1
+            transition_array[i, 1] = element['transition_values']['erelax']
+        elif q < 0:
+            sign = -1
+            transition_array[i, 1] = element['transition_values']['erelax']
         transition_labels.append(f"{defstr} ({element['transition_name']})")
         transition_array[i, 0] = (element['transition_values']['transition']
                                   - element['transition_values']['evac']
-                                  - vbm)
-        q = int(element['transition_name'].split('/')[-1])
-        if q > 0:
-            transition_array[i, 1] = element['transition_values']['erelax']
-        elif q < 0:
-            transition_array[i, 1] = -1 * element['transition_values']['erelax']
+                                  - vbm
+                                  + sign * element['transition_values']['erelax'])
 
-    # transition_array = transition_array[transition_array[:, 0].argsort()]
+    argsort = transition_array[:, 0].argsort()
+    transition_array = transition_array[argsort]
+    transition_labels = [transition_labels[i] for i in argsort]
 
     # transition_table = matrixtable(
     #     transition_array,
@@ -53,7 +58,7 @@ def get_transition_table(result, defstr):
     for i, element in enumerate(trans_results):
         rows.append((transition_labels[i],
                      describe_entry(f'{transition_array[i, 0]:.2f} eV',
-                                    'SJ calculated vertical transition.'),
+                                    'SJ calculated thermodynamic transition.'),
                      describe_entry(f'{transition_array[i, 1]:.2f} eV',
                                     'Correction due to ion relaxation.')))
 
