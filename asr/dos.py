@@ -11,8 +11,8 @@ from asr.database.browser import (describe_entry, entry_parameter_description,
                                   fig, make_panel_description)
 
 panel_description = make_panel_description(
-    """DOS
-...""")
+    """Density of States
+""")
 
 
 def webpanel(result: ASRResult,
@@ -24,7 +24,7 @@ def webpanel(result: ASRResult,
 
     title_description = panel_description + parameter_description
 
-    panel = {'title': describe_entry('Effective masses',
+    panel = {'title': describe_entry('Density of States',
                                      description=title_description),
              'columns': [[fig('dos.png')]],
              'plot_descriptions':
@@ -42,11 +42,11 @@ class DOSResult(ASRResult):
     natoms: int
     volume: float
 
-    key_descriptions = {'dosspin0_e': '...',
-                        'dosspin1_e': '...',
-                        'energies_e': '...',
-                        'natoms': '...',
-                        'volume': '...'}
+    key_descriptions = {'dosspin0_e': 'Spin up DOS [states/eV]',
+                        'dosspin1_e': 'Spin up DOS [states/eV]',
+                        'energies_e': 'Energies relative to Fermi level [eV]',
+                        'natoms': 'Number of atoms',
+                        'volume': 'Volume of unit cell [Ang^3]'}
     formats = {"ase_webpanel": webpanel}
 
 
