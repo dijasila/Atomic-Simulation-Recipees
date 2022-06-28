@@ -805,6 +805,7 @@ class Level:
                      self.energy,
                      labelstr,
                      va='center', ha=ha,
+                     size=12,
                      color=labelcolor)
 
 
