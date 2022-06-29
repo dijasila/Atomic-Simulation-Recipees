@@ -608,6 +608,30 @@ class BSWorkflow:
             gspostprocess=gsworkflow.postprocess.output)
 
 
+@asr.workflow
+class NewBSWorkflow:
+    gsworkflow = asr.var()
+    bsrestart = asr.var(default=bsrestart_defaults)
+    kptpath = asr.var(default=None)
+    npoints = asr.var()  # XXX should be a density!!
+
+    @asr.task
+    def bandstructure(self):
+        return asr.node('asr.c2db.bandstructure.calculate',
+                        gsresult=self.gsworkflow.scf,
+                        bsrestart=self.bsrestart,
+                        kptpath=self.kptpath,
+                        npoints=self.npoints)
+
+    @asr.task
+    def postprocess(self):
+        return asr.node('asr.c2db.bandstructure.postprocess',
+                        bsresult=self.bandstructure,
+                        gsresult=self.gsworkflow.scf,
+                        mag_ani=self.gsworkflow.magnetic_anisotropy,
+                        gspostprocess=self.gsworkflow.postprocess)
+
+
 # Temporary class for porting to htw
 class BS:
     def __init__(self, gs, **kwargs):
