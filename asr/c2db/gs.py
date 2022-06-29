@@ -596,6 +596,39 @@ def postprocess(
         workfunction=workfunction)
 
 
+@asr.workflow
+class NewGSWorkflow:
+    atoms = asr.var()
+    calculator = asr.var()
+
+    @asr.task
+    def scf(self):
+        return asr.node(
+            'asr.c2db.gs.calculate',
+            atoms=self.atoms,
+            calculator=self.calculator)
+
+    @asr.task
+    def magstate(self):
+        return asr.node(
+            'asr.c2db.magstate.main',
+            groundstate=self.scf)
+
+    @asr.task
+    def magnetic_anisotropy(self):
+        return asr.node(
+            'asr.c2db.magnetic_anisotropy.main',
+            groundstate=self.scf,
+            magnetic=self.magstate['is_magnetic'])
+
+    @asr.task
+    def postprocess(self):
+        return asr.node(
+            'asr.c2db.gs.postprocess',
+            groundstate=self.scf,
+            mag_ani=self.magnetic_anisotropy)
+
+
 class GSWorkflow:
     def __init__(self, rn, atoms, calculator):
         self.scf = rn.task(
