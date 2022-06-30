@@ -2,6 +2,7 @@
 
 A material object closely mimics the behaviour of an ase.db.atomsrow.
 """
+import warnings
 from pathlib import Path
 from ase.db.row import AtomsRow
 
@@ -77,7 +78,15 @@ def get_material_from_folder(folder='.'):
     kvp = {}
     data = {}
     for filename in Path(folder).glob('results-*.json'):
-        tmpkvp, tmpdata = collect_file(filename)
+        try:
+            tmpkvp, tmpdata = collect_file(filename)
+        except ModuleNotFoundError as err:
+            # If there are result files named after recipes that are not
+            # in the source code, it will trigger import errors.
+            # We just warn instead.
+            warnings.warn(f'No recipe for resultfile {filename}: {err}')
+            continue
+
         if tmpkvp or tmpdata:
             kvp.update(tmpkvp)
             data.update(tmpdata)

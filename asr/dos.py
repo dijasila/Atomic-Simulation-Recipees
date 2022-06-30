@@ -1,106 +1,111 @@
 """Density of states."""
-from asr.core import command, option, ASRResult
+from __future__ import annotations
+
+from pathlib import Path
+from typing import List
+
+import numpy as np
+
+from asr.core import ASRResult, command, option, prepare_result
+from asr.database.browser import (describe_entry, entry_parameter_description,
+                                  fig, make_panel_description)
+
+panel_description = make_panel_description(
+    """Density of States
+""")
 
 
-@command('asr.dos')
+def webpanel(result: ASRResult,
+             row,
+             key_descriptions: dict) -> list:
+    parameter_description = entry_parameter_description(
+        row.data,
+        'asr.dos')
+
+    title_description = panel_description + parameter_description
+
+    panel = {'title': describe_entry('Density of States',
+                                     description=title_description),
+             'columns': [[fig('dos.png')]],
+             'plot_descriptions':
+                 [{'function': dos_plot,
+                   'filenames': ['dos.png']}]}
+
+    return [panel]
+
+
+@prepare_result
+class DOSResult(ASRResult):
+    dosspin0_e: List[float]
+    dosspin1_e: List[float]
+    energies_e: List[float]
+    natoms: int
+    volume: float
+
+    key_descriptions = {'dosspin0_e': 'Spin up DOS [states/eV]',
+                        'dosspin1_e': 'Spin up DOS [states/eV]',
+                        'energies_e': 'Energies relative to Fermi level [eV]',
+                        'natoms': 'Number of atoms',
+                        'volume': 'Volume of unit cell [Ang^3]'}
+    formats = {"ase_webpanel": webpanel}
+
+
+Result = DOSResult  # backwards compatibility with old result files
+
+
+@command('asr.dos',
+         requires=['gs.gpw'],
+         dependencies=['asr.gs@calculate'])
 @option('--name', type=str)
-@option('--filename', type=str)
-@option('--kptdensity', help='K point kptdensity', type=float)
-def main(name: str = 'dos.gpw', filename: str = 'dos.json',
+@option('--kptdensity', help='K-point density', type=float)
+def main(name: str = 'dos.gpw',
          kptdensity: float = 12.0) -> ASRResult:
     """Calculate DOS."""
-    from pathlib import Path
     from gpaw import GPAW
-    if not Path(name).is_file():
-        calc = GPAW('gs.gpw', txt='dos.txt',
-                    kpts={'density': kptdensity},
-                    nbands='300%',
-                    convergence={'bands': -10})
-        calc.get_potential_energy()
-        calc.write(name)
-        del calc
 
-    calc = GPAW(name, txt=None)
-    from ase.dft.dos import DOS
-    dos = DOS(calc, width=0.0, window=(-5, 5), npts=1000)
-    nspins = calc.get_number_of_spins()
-    dosspin0_e = dos.get_dos(spin=0)
-    energies_e = dos.get_energies()
-    natoms = len(calc.atoms)
-    volume = calc.atoms.get_volume()
-    data = {'dosspin0_e': dosspin0_e.tolist(),
-            'energies_e': energies_e.tolist(),
-            'natoms': natoms,
-            'volume': volume}
-    if nspins == 2:
-        dosspin1_e = dos.get_dos(spin=1)
-        data['dosspin1_e'] = dosspin1_e.tolist()
+    path = Path(name)
+    if not path.is_file():
+        calc = GPAW(path.with_name('gs.gpw'),
+                    txt=path.with_name('dos.txt')).fixed_density(
+            kpts={'density': kptdensity},
+            nbands='300%',
+            convergence={'bands': -10})
+        calc.write(path)
 
-    import json
-
-    from ase.parallel import paropen
-    with paropen(filename, 'w') as fd:
-        json.dump(data, fd)
+    calc = GPAW(path)
+    doscalc = calc.dos()
+    data = _main(doscalc)
+    data['natoms'] = len(calc.atoms)
+    data['volume'] = calc.atoms.get_volume()
+    return DOSResult(data=data)
 
 
-def collect_data(atoms):
-    """Band structure SCF and GW +- SOC."""
-    from ase.io.jsonio import read_json
-    from pathlib import Path
-
-    if not Path('dos.json').is_file():
-        return {}, {}, {}
-
-    dos = read_json('dos.json')
-
-    return {}, {}, {'dos': dos}
+def _main(doscalc) -> dict:
+    energies_e = np.linspace(-10, 10, 201)
+    data = {'energies_e': energies_e.tolist(),
+            'dosspin1_e': []}
+    for spin in range(doscalc.nspins):
+        dos_e = doscalc.raw_dos(energies_e, spin, width=0)
+        data[f'dosspin{spin}_e'] = dos_e.tolist()
+    return data
 
 
-def plot(row=None, filename='dos.png', file=None, show=False):
-    """Plot DOS.
-
-    Defaults to dos.json.
-    """
-    import json
+def dos_plot(row, filename: str):
     import matplotlib.pyplot as plt
-    import numpy as np
+    dos = row.data.get('results-asr.dos.json')
+    x = dos['energies_e']
+    y0 = dos['dosspin0_e']
+    y1 = dos['dosspin1_e']
+    fig, ax = plt.subplots()
+    if y1:
+        ax.plot(x, y0, label='up')
+        ax.plot(x, y1, label='down')
+        ax.legend()
+    else:
+        ax.plot(x, y0)
 
-    dos = None
-
-    # Get data from row
-    if row is not None:
-        if 'dos' not in row.data:
-            return
-        dos = row.data['dos']
-
-    # Otherwise from from file
-    file = file or 'dos.json'
-    if not dos:
-        dos = json.load(open(file, 'r'))
-    plt.figure()
-    plt.plot(dos['energies_e'],
-             np.array(dos['dosspin0_e']) / dos['volume'])
-    plt.xlabel(r'Energy - $E_\mathrm{F}$ (eV)')
-    plt.ylabel(r'DOS (states / (eV Å$^3$)')
-    plt.tight_layout()
-    plt.savefig(filename)
-    if show:
-        plt.show()
-    return plt.gca()
-
-
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import fig
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
-
-    panel = (f'Density of states ({xcname})',
-             [[fig('dos.png')], []])
-
-    things = [(plot, ['dos.png'])]
-
-    return panel, things
-
-
-if __name__ == '__main__':
-    main.cli()
+    ax.set_xlabel(r'Energy - $E_\mathrm{F}$ [eV]')
+    ax.set_ylabel('DOS [electrons/eV]')
+    fig.tight_layout()
+    fig.savefig(filename)
+    return [ax]

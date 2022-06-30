@@ -22,6 +22,14 @@ key_descriptions = {
         "hform": "KVP: Heat of formation [eV/atom]",
         "thermodynamic_stability_level": "KVP: Thermodynamic stability level",
     },
+    "defectinfo": {
+        "defect_name": "KVP: Defect name {type}_{position} !Defect name!",
+        "host_name": "KVP: Host formula",
+        "charge_state": "KVP: Charge state"
+    },
+    "defect_symmetry": {
+        "defect_pointgroup": "KVP: Defect point group !Point group!"
+    },
     "magstate": {
         "magstate": "KVP: Magnetic state",
         "is_magnetic": "KVP: Material is magnetic !Magnetic!",
@@ -88,9 +96,9 @@ key_descriptions = {
     },
     "magnetic_anisotropy": {
         "spin_axis": "KVP: Magnetic easy axis",
-        "E_x": "KVP: Soc. total energy, x-direction [eV/unit cell]",
-        "E_y": "KVP: Soc. total energy, y-direction [eV/unit cell]",
-        "E_z": "KVP: Soc. total energy, z-direction [eV/unit cell]",
+        "E_x": "KVP: Soc. total energy, x-direction [meV/unit cell]",
+        "E_y": "KVP: Soc. total energy, y-direction [meV/unit cell]",
+        "E_z": "KVP: Soc. total energy, z-direction [meV/unit cell]",
         "theta": "Easy axis, polar coordinates, theta [radians]",
         "phi": "Easy axis, polar coordinates, phi [radians]",
         "dE_zx":
@@ -204,11 +212,6 @@ key_descriptions = {
     },
     "database.fromtree": {
         "folder": "KVP: Path to collection folder",
-    },
-    "defect_symmetry": {
-        "defect_pointgroup":
-        ("KVP: Defect point group in Schoenflies notation. "
-         "!Defect point group! [string]")
     }
 }
 
@@ -238,6 +241,8 @@ extras = {}
 for recipe in get_recipes():
     key = 'has_' + recipe.name.replace('.', '_').replace('@', '_')
     extras[key] = f'{recipe.name} is calculated'
+# Additional key description for spin coherence times of QPOD
+extras['sct'] = 'Spin coherence time T2 [ms]'
 
 key_descriptions['extra'] = extras
 

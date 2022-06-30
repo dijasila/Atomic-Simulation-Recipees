@@ -82,8 +82,9 @@ def webpanel(result, row, key_descriptions):
 def plot_fermi(row, fname, sfs=1, dpi=200):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
+    from asr.utils.symmetry import c2db_symmetry_eps
     cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
+    lat = cell.get_bravais_lattice(pbc=row.pbc, eps=c2db_symmetry_eps)
     plt.figure(figsize=(5, 4))
     ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
     add_fermi(row, ax=ax, s=sfs)
@@ -102,9 +103,10 @@ def add_fermi(row, ax, s=0.25):
                     s=s, cmap='viridis', marker=',',
                     norm=normalize, alpha=1, zorder=2)
 
+    sdir = row.get('spin_axis', 'z')
     cbar = plt.colorbar(im, ticks=[-1, -0.5, 0, 0.5, 1])
     cbar.ax.tick_params()
-    cbar.set_label('$\\langle S_z \\rangle$')
+    cbar.set_label(r'$\langle S_{} \rangle $'.format(sdir))
 
 
 @prepare_result
@@ -149,9 +151,6 @@ def main() -> Result:
     selection = ~np.logical_or(eigs_mk.max(1) < 0, eigs_mk.min(1) > 0)
     eigs_mk = eigs_mk[selection, :]
     s_mk = s_mk[selection, :]
-    bz2ibz_k = calc.get_bz_to_ibz_map()
-    eigs_mk = eigs_mk[:, bz2ibz_k]
-    s_mk = s_mk[:, bz2ibz_k]
 
     n = 5
     N_xc = np.indices((n, n, 1)).reshape((3, n**2)).T - n // 2
