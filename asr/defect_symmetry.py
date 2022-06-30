@@ -6,7 +6,6 @@ import typing
 import numpy as np
 import warnings
 from pathlib import Path
-from ase import Atoms
 
 
 panel_description = make_panel_description(
@@ -322,7 +321,7 @@ def main(primitivefile: str = 'primitive.json',
     # construct mapped structure, or return relaxed defect structure in
     # case mapping is not needed
     if mapping:
-        mapped_structure = get_mapped_structure_new(structure,
+        mapped_structure = get_mapped_structure(structure,
                                                 unrelaxed,
                                                 primitive,
                                                 pristine,
@@ -455,13 +454,12 @@ def find_wf_result(wf_result, state, spin):
                     f'wavefunction no. {state}/{spin}!')
 
 
-def get_mapped_structure_new(structure, unrelaxed, primitive, pristine, defectinfo):
+def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     """Return centered and mapped structure."""
     vac = defectinfo.is_vacancy
     translation = return_defect_coordinates(structure, primitive, pristine, defectinfo)
     rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
         structure, unrelaxed, primitive, pristine, translation, delta=0)
-    from ase.visualize import view
     for delta in [0.1, 0.3]:
         for cutoff in np.arange(0.1, 1.2, 0.5):
             rel_tmp = rel_struc.copy()
@@ -478,38 +476,11 @@ def get_mapped_structure_new(structure, unrelaxed, primitive, pristine, defectin
                 del ref_tmp[indexlist]
                 del rel_tmp[indexlist]
                 if conserved_atoms(ref_tmp, primitive, N, vac):
-                    print(f'Parameters: delta {delta}, cutoff {cutoff}, threshold {threshold}')
+                    print(f'Parameters: delta {delta}, '
+                          f'cutoff {cutoff}, threshold {threshold}')
                     return rel_tmp
 
     raise ValueError('number of atoms wrong! Mapping not correct!')
-
-
-def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
-    """Return centered and mapped structure."""
-    vac = defectinfo.is_vacancy
-    done = False
-    # for delta in [0, 0.03, 0.5, 0.1, -0.03, -0.1]:
-    for delta in [0]:
-        # for cutoff in np.arange(0.1, 0.81, 0.3):
-        for cutoff in [0.1]:
-            for threshold in [0.99, 1.01]:
-                indexlist = compare_structures(artificial, ref_struc, cutoff)
-                del ref_struc[indexlist]
-                del rel_struc[indexlist]
-                indexlist = indexlist_cut_atoms(ref_struc, threshold)
-                del ref_struc[indexlist]
-                del rel_struc[indexlist]
-                if conserved_atoms(ref_struc, primitive, N, vac):
-                    done = True
-                    break
-            if done:
-                break
-        if done:
-            break
-    if not done:
-        raise ValueError('number of atoms wrong! Mapping not correct!')
-
-    return rel_struc
 
 
 def get_spg_symmetry(structure, symprec=0.1):
