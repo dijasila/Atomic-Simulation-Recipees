@@ -11,6 +11,7 @@ import typing
 import numpy as np
 from ase import Atoms
 
+import asr
 from asr.utils import magnetic_atoms
 
 
@@ -148,6 +149,35 @@ def dos_erange(gspostprocess):
     e2 = gaps.get('cbm') or gaps.get('efermi')
     erange = np.linspace(e1 - 3, e2 + 3, 500)
     return erange
+
+
+@asr.workflow
+class NewPDOSWorkflow:
+    gsworkflow = asr.var()
+    kptdensity = asr.var()
+    emptybands = asr.var(default=20)
+
+    @asr.task
+    def pdos_gpwfile(self):
+        return asr.node(
+            'asr.c2db.pdos.calculate',
+            gsresult=self.gsworkflow.scf,
+            kptdensity=self.kptdensity,
+            emptybands=self.emptybands)
+
+    @asr.task
+    def dos_erange(self):
+        return asr.node(
+            'asr.c2db.pdos.dos_erange',
+            gspostprocess=self.gsworkflow.postprocess)
+
+    @asr.task
+    def postprocess(self):
+        return asr.node(
+            'asr.c2db.pdos.postprocess',
+            gpwfile=self.pdos_gpwfile,
+            mag_ani=self.gsworkflow.magnetic_anisotropy,
+            erange=self.dos_erange)
 
 
 class PDOSWorkflow:
