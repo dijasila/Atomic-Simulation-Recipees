@@ -370,6 +370,7 @@ class NewBSEWorkflow:
     gsworkflow = asr.var()
     kptdensity = asr.var()
     ecut = asr.var()
+    bandfactor = asr.var(default=6)
 
     @asr.task
     def calculate(self):
@@ -377,13 +378,16 @@ class NewBSEWorkflow:
             'asr.c2db.bse.calculate',
             gsresult=self.gsworkflow.scf,
             kptdensity=self.kptdensity,
-            ecut=self.ecut)
+            ecut=self.ecut,
+            bandfactor=self.bandfactor)
 
     @asr.task
     def postprocess(self):
         return asr.node(
             'asr.c2db.bse.postprocess',
-            bsecalculateresult=self.calculate)
+            bsecalculateresult=self.calculate,
+            magstateresult=self.gsworkflow.magstate,
+            gs_post_result=self.gsworkflow.postprocess)
 
 
 class BSEWorkflow:
