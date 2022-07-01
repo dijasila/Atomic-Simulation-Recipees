@@ -705,12 +705,13 @@ def return_distances_cell(cell):
 
     return distances
 
+
 def ref_to_atoms(atoms):
     if hasattr(atoms, 'future'):
         if not atoms.future.has_output():
             raise ValueError("Future without output")
         atoms_out = atoms.future.value().output
-        # Ugly quick fix, at the moment atoms.future.value().output is dict                                                                                                                                 
+
         if(isinstance(atoms_out, dict)):
             if('structure' in atoms_out):
                 atoms_out = atoms_out['structure']
