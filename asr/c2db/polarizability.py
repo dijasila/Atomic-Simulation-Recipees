@@ -163,13 +163,13 @@ def main(
         df = DielectricFunction('es.gpw', **dfkwargs)
         pbc = list(atoms.pbc)  # Fails on ndarray due to "if not pbc"
         alpha0x, alphax = df.get_polarizability(
-            q_c=[0, 0, 0], direction='x', pbc=pbc, filename=None,
+            q_c=[0, 0, 0], direction='x', filename=None,
             xc=xc)
         alpha0y, alphay = df.get_polarizability(
-            q_c=[0, 0, 0], direction='y', pbc=pbc, filename=None,
+            q_c=[0, 0, 0], direction='y', filename=None,
             xc=xc)
         alpha0z, alphaz = df.get_polarizability(
-            q_c=[0, 0, 0], direction='z', pbc=pbc, filename=None,
+            q_c=[0, 0, 0], direction='z', filename=None,
             xc=xc)
 
         plasmafreq_vv = df.chi0.plasmafreq_vv
