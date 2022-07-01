@@ -100,6 +100,37 @@ class PhonopyWorkflow:
             dist_max=dist_max)
 
 
+@asr.workflow
+class NewPhonopyWorkflow:
+    atoms = asr.var()
+    calculator = asr.var(PhonopyWorkflow.default_calculator)
+    d = asr.var(0.05)
+    rc = asr.var(None)
+    sc = asr.var((0, 0, 0))
+    dist_max = asr.var(7.0)
+
+    @asr.task
+    def calculate(self):
+        return asr.node(
+            'asr.c2db.phonopy.calculate',
+            atoms=self.atoms,
+            d=self.d,
+            sc=self.sc,
+            calculator=self.calculator,
+            dist_max=self.dist_max)
+
+    @asr.task
+    def postprocess(self):
+        return asr.node(
+            'asr.c2db.phonopy.postprocess',
+            calculateresult=self.calculate,
+            atoms=self.atoms,
+            sc=self.sc,
+            rc=self.rc,
+            d=self.d,
+            dist_max=self.dist_max)
+
+
 @command('asr.c2db.phonopy')
 # @atomsopt
 # @option("--d", type=float, help="Displacement size")
