@@ -2,7 +2,6 @@
 import numpy as np
 import typing
 
-from ase import Atoms
 from asr.core import command, option, ASRResult, prepare_result
 from asr.utils.gpw2eigs import calc2eigs
 from asr.database.browser import href, make_panel_description
@@ -37,10 +36,7 @@ of two-dimensional materials. Physical Review B, 94(24), p.245411""",
 
 
 def is_in_list(element, lst, tol):
-    """
-    Check if a given list of floating-point numbers is contained
-    in an array, within a tolerance on the individual values
-    """
+    """Check if a list of floating-point numbers is contained in an array."""
     for obj in lst:
         if np.allclose(element, obj, rtol=tol, atol=0):
             return True
@@ -48,8 +44,7 @@ def is_in_list(element, lst, tol):
 
 
 def get_relevant_kpts(atoms, calc):
-    """
-    Obtain the high-symmetry k-points.
+    """Obtain the high-symmetry k-points.
 
     If the band edges of the unstrained material are found away
     from any of the special points, the corresponding
@@ -63,14 +58,10 @@ def get_relevant_kpts(atoms, calc):
 
     _, ivbm, icbm = bandgap(calc, output=None)
     if ivbm[1] == icbm[1]:
-        kdict = {
-                'VBM/CBM': ivbm
-        }
+        kdict = {'VBM/CBM': ivbm}
     else:
-        kdict = {
-                'VBM': ivbm,
-                'CBM': icbm
-        }
+        kdict = {'VBM': ivbm,
+                 'CBM': icbm}
 
     ibz_kpoints = calc.get_ibz_k_points()
     for label, i_kpt in kdict.items():
@@ -79,22 +70,6 @@ def get_relevant_kpts(atoms, calc):
             specpts[label] = kpt
 
     return specpts
-
-
-soclabels = {
-        'deformation_potentials_nosoc': False,
-        'deformation_potentials_soc': True
-}
-
-
-ijlabels = {
-        (0, 0): 'xx',
-        (1, 1): 'yy',
-        (2, 2): 'zz',
-        (0, 1): 'xy',
-        (0, 2): 'xz',
-        (1, 2): 'yz',
-}
 
 
 def webpanel(result, row, key_descriptions):
@@ -134,11 +109,11 @@ def webpanel(result, row, key_descriptions):
         dp_arrays.append(np.asarray(dp_array))
 
         dp_table = matrixtable(
-                dp_array,
-                digits=3,
-                title=f'D<sup>{label}</sup> (eV)',
-                columnlabels=columnlabels,
-                rowlabels=rowlabels
+            dp_array,
+            digits=3,
+            title=f'D<sup>{label}</sup> (eV)',
+            columnlabels=columnlabels,
+            rowlabels=rowlabels
         )
         dp_tables.append(dp_table)
 
@@ -148,9 +123,9 @@ def webpanel(result, row, key_descriptions):
         columns.append(dp_tables[1])
 
     panel = WebPanel(
-            description,
-            columns=columns,
-            sort=4
+        description,
+        columns=columns,
+        sort=4
     )
     return [panel]
 
@@ -174,6 +149,19 @@ class Result(ASRResult):
     }
 
     formats = {"ase_webpanel": webpanel}
+
+
+soclabels = {'deformation_potentials_nosoc': False,
+             'deformation_potentials_soc': True}
+
+ijlabels = {
+    (0, 0): 'xx',
+    (1, 1): 'yy',
+    (2, 2): 'zz',
+    (0, 1): 'xy',
+    (0, 2): 'xz',
+    (1, 2): 'yz',
+}
 
 
 @command('asr.deformationpotentials',
@@ -227,8 +215,7 @@ def main(strain=1.0, all_ibz=False) -> Result:
         kpts = get_relevant_kpts(atoms, calc)
 
     def gpaw_get_edges(folder, kpts, soc):
-        """Obtain the edge states at the different k-points
-           from a GPAW calculator object.
+        """Obtain the edge states at the different k-points.
 
         Returns, for each k-point included in the calculation,
         the top eigenvalue of the valence band and the bottom
@@ -236,9 +223,9 @@ def main(strain=1.0, all_ibz=False) -> Result:
         """
         atoms = read(f'{folder}/structure.json')
         gpw = GPAW(f'{folder}/gs.gpw').fixed_density(
-                kpts=kpts,
-                symmetry='off',
-                txt=None
+            kpts=kpts,
+            symmetry='off',
+            txt=None
         )
         gpw.get_potential_energy()
         all_eigs, efermi = calc2eigs(gpw, soc=soc)
@@ -295,8 +282,8 @@ def _main(pbc, kpts, get_edges, strain):
 
             for dp, kpt in zip(defpots_ij, kptlabels):
                 results[socstr][kpt][straincomp] = {
-                        'VB': dp[0],
-                        'CB': dp[1]
+                    'VB': dp[0],
+                    'CB': dp[1]
                 }
 
     return results
