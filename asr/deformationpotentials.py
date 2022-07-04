@@ -171,7 +171,7 @@ ijlabels = {
 @option('--all-ibz', is_flag=True, type=bool,
         help=('Calculate deformation potentials at all '
               'the irreducible Brillouin zone k-points.'))
-def main(strain=1.0, all_ibz=False) -> Result:
+def main(strain: float=1.0, all_ibz: bool=False) -> Result:
     """Calculate deformation potentials.
 
     Calculate the deformation potentials both with and without spin orbit
