@@ -63,7 +63,7 @@ default_ecut = 200.0
 default_kptdensity = 5.0
 
 
-@command()
+# @command()
 # @atomsopt
 # @calcopt
 # @option('--kptdensity', help='K-point density', type=float)
@@ -121,7 +121,7 @@ def gs_gw(
     }
 
 
-@command()
+# @command()
 # @option('--kptdensity', help='K-point density', type=float)
 # @option('--ecut', help='Plane wave cutoff', type=float)
 def gw(gs_gw_result,
@@ -179,7 +179,7 @@ def gw(gs_gw_result,
 default_correctgw = True
 
 
-@command()
+# @command()
 # @option('--kptdensity', help='K-point density', type=float)
 # @option('--ecut', help='Plane wave cutoff', type=float)
 # @option('-c', '--correctgw', is_flag=True, default=False)
@@ -306,7 +306,7 @@ def migrate_1(record):
 default_empz = 0.75
 
 
-@command()
+# @command()
 # @asr.calcopt(
 #     aliases=['-b', '--bsrestart'],
 #     help='Bandstructure Calculator params.',
@@ -424,6 +424,50 @@ def postprocess(
                     'efermi_gw_soc': efermi_soc})
 
     return Result(data=results)
+
+
+@asr.workflow
+class NewGWWorkflow:
+    bsworkflow = asr.var()
+    kptdensity = asr.var(default_kptdensity)
+    ecut = asr.var(default_ecut)
+    correctgw = asr.var(default_correctgw)
+    empz = asr.var(default_empz)
+
+    @property
+    def gsworkflow(self):
+        return self.bsworkflow.gsworkflow
+
+    @asr.task
+    def gs_gw(self):
+        return asr.node('asr.c2db.gw.gs_gw',
+                        gsresult=self.gsworkflow.scf,
+                        kptdensity=self.kptdensity)
+
+    @asr.task
+    def gw_no_mean_z(self):
+        return asr.node('asr.c2db.gw.gw',
+                        gsresult=self.gsworkflow.scf,
+                        gs_gw_result=self.gs_gw,
+                        kptdensity=self.kptdensity,
+                        ecut=self.ecut)
+
+    @asr.task
+    def gw(self):
+        return asr.node('asr.c2db.gw.empirical_mean_z',
+                        gwresults=self.gw_no_mean_z,
+                        correctgw=self.correctgw,
+                        empz=self.empz)
+
+    @asr.task
+    def postprocess(self):
+        return asr.node('asr.c2db.gw.postprocess',
+                        gsresult=self.gsworkflow.scf,
+                        gs_gw_result=self.gs_gw,
+                        gwresults=self.gw,
+                        results_bscalculate=self.bsworkflow.bandstructure,
+                        results_bspost=self.bsworkflow.postprocess,
+                        mag_ani=self.gsworkflow.magnetic_anisotropy)
 
 
 class GWWorkflow:
