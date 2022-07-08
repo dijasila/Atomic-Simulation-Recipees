@@ -78,7 +78,7 @@ def mass_plots(row, *filenames):
         fig, ax = plt.subplots()
         for n, (dir_v, y_p, ls) in enumerate(zip(dir_wv,
                                                  y_wp,
-                                                 ['-', '--', '..']),
+                                                 ['-', '--', ':']),
                                              1):
             d = ','.join(f'{d:.2f}' for d in dir_v)
             ax.plot(x_p, y_p,
