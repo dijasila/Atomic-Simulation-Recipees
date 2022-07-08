@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 from asr.core import (
     command, ASRResult, prepare_result, atomsopt, calcopt,
@@ -6,19 +7,16 @@ from asr.core import (
 from ase import Atoms
 from ase.io import read
 
-from asr.c2db.gs import calculate as gscalculate
+import asr
+# from asr.c2db.gs import calculate as gscalculate
 
 
 # XXX: Hi Thomas. I removed the calculate step. and simply made it a
 # normal function to not have to save the .gpw files. BR. Morten
-def calculate(
-        atoms,
-        calculator,
-) -> ASRResult:
+def calculate(gsresult):
     """Calculate two spin configurations."""
     from asr.utils import magnetic_atoms
-    result = gscalculate(atoms=atoms, calculator=calculator)
-    calc = result.calculation.load(fixdensity=False)
+    calc = gsresult.calculation.load(fixdensity=False)
     atoms = calc.atoms
 
     nd = sum(atoms.pbc)
@@ -26,6 +24,8 @@ def calculate(
         raise NotImplementedError('asr.c2db.exchange is only implemented '
                                   'for 2D systems.')
 
+    gs_2mag_gpw = Path('gs_2mag.gpw')
+    exchange_gpw = Path('exchange.gpw')
     magnetic = magnetic_atoms(atoms)
     assert sum(magnetic) in [1, 2], \
         ('Cannot handle %d magnetic atoms' % sum(magnetic))
@@ -34,7 +34,7 @@ def calculate(
         calc.set(txt='gs_2mag.txt')
         atoms.calc = calc
         atoms.get_potential_energy()
-        calc.write('gs_2mag.gpw')
+        calc.write(gs_2mag_gpw)
 
         a1, a2 = np.where(magnetic)[0]
         magmoms_i = calc.get_magnetic_moments()
@@ -51,7 +51,7 @@ def calculate(
         calc.set(txt='exchange.txt')
         atoms.calc = calc
         atoms.get_potential_energy()
-        calc.write('exchange.gpw')
+        calc.write(exchange_gpw)
 
     else:
         a1 = np.where(magnetic)[0]
@@ -64,7 +64,7 @@ def calculate(
         calc.set(txt='gs_2mag.txt')
         atoms.calc = calc
         atoms.get_potential_energy()
-        calc.write('gs_2mag.gpw')
+        calc.write(gs_2mag_gpw)
 
         magnetic = magnetic_atoms(atoms)
         a1, a2 = np.where(magnetic)[0]
@@ -80,7 +80,10 @@ def calculate(
         calc.set(txt='exchange.txt')
         atoms.calc = calc
         atoms.get_potential_energy()
-        calc.write('exchange.gpw')
+        calc.write(exchange_gpw)
+
+    return {'gs_2mag_gpw': gs_2mag_gpw,
+            'exchange_gpw': exchange_gpw}
 
 
 def get_parameters(gs, exchange, txt=False,
@@ -247,28 +250,18 @@ class Result(ASRResult):
     formats = {'webpanel2': webpanel}
 
 
-@command(
-    module='asr.c2db.exchange',
-)
-@atomsopt
-@calcopt
-def main(
-        atoms: Atoms,
-        calculator: dict = gscalculate.defaults.calculator,
-) -> Result:
+def postprocess(calculateresult) -> Result:
     """Extract Heisenberg parameters."""
-    calculate(
-        atoms=atoms,
-        calculator=calculator,
-    )
     N_gs = len(atoms)
-    N_exchange = len(read('gs_2mag.gpw'))
+    N_exchange = len(read(calculateresult['gs_2mag_gpw']))
     if N_gs == N_exchange:
         line = False
     else:
         line = True
 
-    J, A, B, S, N = get_parameters('gs_2mag.gpw', 'exchange.gpw', line=line)
+    J, A, B, S, N = get_parameters(calculateresult['gs_2mag_gpw'],
+                                   calculateresult['exchange_gpw'],
+                                   line=line)
 
     results = {'J': J * 1000,
                'A': A * 1000,
@@ -277,3 +270,18 @@ def main(
                'N_nn': N}
 
     return Result(data=results)
+
+
+@asr.workflow
+class ExchangeWorkflow:
+    gsresult = asr.var()
+
+    @asr.task
+    def calculate(self):
+        return asr.node('asr.c2db.exchange.calculate',
+                        gsresult=self.gsresult)
+
+    @asr.task
+    def postprocess(self):
+        return asr.node('asr.c2db.exchange.postprocess',
+                        calculateresult=self.calculate)
