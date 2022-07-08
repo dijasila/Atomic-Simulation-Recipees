@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 from ase.units import Hartree, Bohr
 
+import asr
 from asr.core import ASRResult, prepare_result
 import typing
 from asr.utils.kpts import get_kpts_size
@@ -124,6 +125,23 @@ def postprocess(
         data['plasmafrequency_y'] = plasmafreq_v[1].real
 
     return data
+
+
+@asr.workflow
+class NewPlasmaFrequencyWorkflow:
+    gsresult = asr.var()
+    kptdensity = asr.var()
+
+    @asr.task
+    def calculate(self):
+        return asr.node('asr.c2db.plasmafrequency.calculate',
+                        gsresult=self.gsresult,
+                        kptdensity=self.kptdensity)
+
+    @asr.task
+    def postprocess(self):
+        return asr.node('asr.c2db.plasmafrequency.postprocess',
+                        gpwfile=self.calculate)
 
 
 class PlasmaFrequencyWorkflow:
