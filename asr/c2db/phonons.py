@@ -74,6 +74,7 @@ class NewPhononWorkflow:
         return asr.node(
             'asr.c2db.phonons.postprocess',
             phononresult=self.calculate,
+            n=self.nrepeat,
             atoms=self.atoms)
 
 
@@ -97,8 +98,8 @@ class CalculateResult(ASRResult):
     key_descriptions = {'forces': 'Forces.'}
 
 
-@command('asr.c2db.phonons')
-@option('-n', help='Supercell size', type=int, nargs=1)
+# @command('asr.c2db.phonons')
+# @option('-n', help='Supercell size', type=int, nargs=1)
 def calculate(
         atoms,
         calculator,
