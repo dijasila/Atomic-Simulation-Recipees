@@ -1,4 +1,3 @@
-from ase.io import read
 from asr.core import command, option, ASRResult, prepare_result, read_json
 from asr.database.browser import make_panel_description, href, describe_entry
 import spglib as spg
@@ -105,13 +104,13 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         E_lumo = cbm
         for i in range(len(state_array)):
             if float(state_array[i, 4]) > ef:
-                rowlabels[i] = f'LUMO + {N_lumo - 1}'
+                rowlabels[i] = f'LUMO + {N_lumo — 1}'
                 N_lumo = N_lumo - 1
                 if N_lumo == 0:
                     rowlabels[i] = 'LUMO'
                     E_lumo = float(state_array[i, 4])
             elif float(state_array[i, 4]) <= ef:
-                rowlabels[i] = f'HOMO - {N_homo}'
+                rowlabels[i] = f'HOMO — {N_homo}'
                 if N_homo == 0:
                     rowlabels[i] = 'HOMO'
                     E_homo = float(state_array[i, 4])
@@ -120,9 +119,7 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         E_hls.append(E_hl)
 
         state_array = np.delete(state_array, delete, 1)
-        headerlabels = ['Orbital']
-        for columnlabel in columnlabels:
-            headerlabels.append(columnlabel)
+        headerlabels = ['Orbital', *columnlabels]
 
         rows = []
         state_table = {'type': 'table',
@@ -135,7 +132,7 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
                              describe_entry(state_array[i, 2],
                                             'The localization ratio is defined as the '
                                             'volume of the cell divided by the integral'
-                                            ' of the fourth pover of the '
+                                            ' of the fourth power of the '
                                             'wavefunction.'),
                              f'{state_array[i, 3]} eV'))
             elif style == 'state':
@@ -155,11 +152,11 @@ def get_transition_table(row, E_hls):
     """Create table for HOMO-LUMO transition in both spin channels."""
     from asr.database.browser import table
 
-    transition_table = table(row, 'Kohn-Sham HOMO-LUMO gap', [])
+    transition_table = table(row, 'Kohn—Sham HOMO—LUMO gap', [])
     for i, element in enumerate(E_hls):
         transition_table['rows'].extend(
             [[describe_entry(f'Spin {i}',
-                             f'KS HOMO-LUMO gap for spin {i} channel.'),
+                             f'KS HOMO—LUMO gap for spin {i} channel.'),
               f'{element:.2f} eV']])
 
     return transition_table

@@ -1,10 +1,9 @@
 from asr.core import command, ASRResult, prepare_result
+from asr.database.browser import WebPanel
 import numpy as np
 
 
-def webpanel(result, row, key_description):
-    from asr.database.browser import WebPanel
-
+def get_zfs_table(result):
     zfs_array = np.zeros((2, 3))
     rowlabels = ['Spin 0', 'Spin 1']
     for i, element in enumerate(zfs_array):
@@ -23,8 +22,13 @@ def webpanel(result, row, key_description):
                             'D<sub>xx</sub>',
                             'D<sub>yy</sub>',
                             'D<sub>zz</sub>']}
-
     zfs_table['rows'] = rows
+
+    return zfs_table
+
+
+def webpanel(result, row, key_description):
+    zfs_table = get_zfs_table(result)
     zfs = WebPanel('Zero field splitting (ZFS)',
                    columns=[[], [zfs_table]],
                    sort=41)
