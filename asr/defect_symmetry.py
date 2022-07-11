@@ -410,26 +410,27 @@ def main(primitivefile: str = 'primitive.json',
 
 def get_defect_center_from_wf(wf, cell, Ngrid, shift):
     """Extract defect center from individual wavefunction cubefile."""
-    wf_array = get_gridpoints(cell=cell, Ngrid=Ngrid, shift=shift)
-    center_shifted = get_center_of_mass(wf_array, wf)
+    zrange = range(int(Ngrid[2] / 2. - 2), int(Ngrid[2] / 2. + 2))
+    wf_array = get_gridpoints(cell=cell, Ngrid=Ngrid, shift=shift, zrange=zrange)
+    center_shifted = get_center_of_mass(wf_array, wf, zrange)
     center = shift_positions(center_shifted, shift, cell, invert=True)
 
     return center
 
 
-def get_total_mass(m):
+def get_total_mass(m, zrange):
     """Calculate total mass of an array containing weights."""
-    mflat = m[:, :, :].flatten()
+    mflat = m[:, :, zrange].flatten()
     return np.sum(mflat)
 
 
-def get_center_of_mass(r, m):
+def get_center_of_mass(r, m, zrange):
     """Calculate the center of set of positions r, and weights m."""
-    M = get_total_mass(m)
+    M = get_total_mass(m, zrange)
     coords = [0, 0, 0]
     for i in range(3):
-        rflat = r[:, :, :, i].flatten()
-        mflat = m[:, :, :].flatten()
+        rflat = r[:, :, zrange, i].flatten()
+        mflat = m[:, :, zrange].flatten()
         smd = 0
         for j in range(len(mflat)):
             smd += mflat[j] * rflat[j]
@@ -438,15 +439,15 @@ def get_center_of_mass(r, m):
     return coords / M
 
 
-def grid_generator(Ngrid):
+def grid_generator(Ngrid, zrange):
     """Yield generator looping over x-, y-, and z-grid."""
     for x in range(Ngrid[0]):
         for y in range(Ngrid[1]):
-            for z in range(Ngrid[2]):
+            for z in zrange:
                 yield (x, y, z)
 
 
-def get_gridpoints(cell, Ngrid, shift):
+def get_gridpoints(cell, Ngrid, shift, zrange):
     """
     Get an array of grid point coordinates shifted with 'shift'.
 
@@ -454,12 +455,14 @@ def get_gridpoints(cell, Ngrid, shift):
     function weights.
     """
     fullgrid = [Ngrid[0], Ngrid[1], Ngrid[2], 3]
-    array = np.empty(fullgrid)
+    array = np.zeros(fullgrid)
+
     lengths = [cell[i] / Ngrid[i] for i in range(3)]
-    max_iter_grid = np.prod(Ngrid)
-    grid_indices = grid_generator(Ngrid)
+    grid_indices = grid_generator(Ngrid, zrange)
+    max_iter_grid = np.prod(Ngrid[:2]) * len(zrange)
     for _ in range(max_iter_grid):
         grid_tuple = next(grid_indices)
+        print(grid_tuple)
         positions = [grid_tuple[0] * lengths[0][i]
                      + grid_tuple[1] * lengths[1][i]
                      + grid_tuple[2] * lengths[2][i] for i in range(3)]
