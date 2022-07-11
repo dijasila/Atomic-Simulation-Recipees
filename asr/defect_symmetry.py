@@ -1,4 +1,5 @@
 from asr.core import command, option, ASRResult, prepare_result, read_json
+from ase.geometry import wrap_positions
 from asr.database.browser import make_panel_description, href, describe_entry
 import spglib as spg
 import typing
@@ -353,22 +354,27 @@ def main(primitivefile: str = 'primitive.json',
     center = return_defect_coordinates(structure, primitive, pristine, defectinfo)
     print(f'INFO: defect position: {center}, structural symmetry: {point_group}')
 
-    # symmetry analysis only for point groups implemented in GPAW
-    if point_group in point_group_names:
-        checker = SymmetryChecker(point_group, center, radius=radius)
-
     # loop over cubefiles to save symmetry results
     symmetry_results = []
     for cubefilepath in cubefilepaths:
         cubefilename = str(cubefilepath)
         wfcubefile = WFCubeFile.fromfilename(cubefilename)
+        # read cubefile and atoms
+        wf, atoms = read_cube_data(wfcubefile.filename)
+        # calculate localization ratio
+        localization = get_localization_ratio(atoms, wf, calc)
+        # evaluate defect center
+        Ngrid = calc.get_number_of_grid_points()
+        shift = [0.5, 0.5, 0]
+        center = get_defect_center_from_wf(wf=wf, cell=atoms.cell, Ngrid=Ngrid,
+                                           shift=shift)
+        # extract WF results and energies
         res_wf = find_wf_result(wf_result, wfcubefile.band, wfcubefile.spin)
         energy = res_wf['energy']
-        # calculate localization ratio
-        wf, atoms = read_cube_data(wfcubefile.filename)
-        localization = get_localization_ratio(atoms, wf, calc)
         # only evaluate 'best' and 'error' for knows point groups
         if point_group in point_group_names:
+            # symmetry analysis only for point groups implemented in GPAW
+            checker = SymmetryChecker(point_group, center, radius=radius)
             dct = checker.check_function(wf, (atoms.cell.T / wf.shape).T)
             best = dct['symmetry']
             error = (np.array(list(dct['characters'].values()))**2).sum()
@@ -400,6 +406,85 @@ def main(primitivefile: str = 'primitive.json',
         defect_name=defectname,
         symmetries=symmetry_results,
         pristine=pris_result)
+
+
+def get_defect_center_from_wf(wf, cell, Ngrid, shift):
+    """Extract defect center from individual wavefunction cubefile."""
+    wf_array = get_gridpoints(cell=cell, Ngrid=Ngrid, shift=shift)
+    center_shifted = get_center_of_mass(wf_array, wf)
+    center = shift_positions(center_shifted, shift, cell, invert=True)
+
+    return center
+
+
+def get_total_mass(m):
+    """Calculate total mass of an array containing weights."""
+    mflat = m[:, :, :].flatten()
+    return np.sum(mflat)
+
+
+def get_center_of_mass(r, m):
+    """Calculate the center of set of positions r, and weights m."""
+    M = get_total_mass(m)
+    coords = [0, 0, 0]
+    for i in range(3):
+        rflat = r[:, :, :, i].flatten()
+        mflat = m[:, :, :].flatten()
+        smd = 0
+        for j in range(len(mflat)):
+            smd += mflat[j] * rflat[j]
+        coords[i] = smd
+
+    return coords / M
+
+
+def grid_generator(Ngrid):
+    """Yield generator looping over x-, y-, and z-grid."""
+    for x in range(Ngrid[0]):
+        for y in range(Ngrid[1]):
+            for z in range(Ngrid[2]):
+                yield (x, y, z)
+
+
+def get_gridpoints(cell, Ngrid, shift):
+    """
+    Get an array of grid point coordinates shifted with 'shift'.
+
+    The shape of the array now matches the one containing the wave-
+    function weights.
+    """
+    fullgrid = [Ngrid[0], Ngrid[1], Ngrid[2], 3]
+    array = np.empty(fullgrid)
+    lengths = [cell[i] / Ngrid[i] for i in range(3)]
+    max_iter_grid = np.prod(Ngrid)
+    grid_indices = grid_generator(Ngrid)
+    for _ in range(max_iter_grid):
+        grid_tuple = next(grid_indices)
+        positions = [grid_tuple[0] * lengths[0][i]
+                     + grid_tuple[1] * lengths[1][i]
+                     + grid_tuple[2] * lengths[2][i] for i in range(3)]
+        shifts = shift_positions(positions, shift, cell)
+        wrap = wrap_positions([shifts],
+                              cell)
+        if wrap[0][0] != shifts[0] or wrap[0][1] != shifts[1]:
+            newpos = wrap[0]
+        else:
+            newpos = shifts
+        for i in range(3):
+            array[grid_tuple[0], grid_tuple[1], grid_tuple[2], i] = newpos[i]
+
+    return array
+
+
+def shift_positions(pos, shift, cell, invert=False):
+    """Shift position vector by shift vector in termns of the cell."""
+    if invert:
+        sgn = -1
+    else:
+        sgn = 1
+    newpos = [pos[i] + sgn * shift[i] * np.sum(cell[:, i]) for i in range(3)]
+
+    return newpos
 
 
 def get_spin_and_band(wf_file):
