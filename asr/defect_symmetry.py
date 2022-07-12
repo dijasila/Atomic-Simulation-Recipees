@@ -412,8 +412,8 @@ def get_defect_center_from_wf(wf, cell, Ngrid, shift):
     """Extract defect center from individual wavefunction cubefile."""
     zrange = range(int(Ngrid[2] / 2. - 2), int(Ngrid[2] / 2. + 2))
     wf_array = get_gridpoints(cell=cell, Ngrid=Ngrid, shift=shift, zrange=zrange)
-    center_shifted = get_center_of_mass(wf_array, wf, zrange)
-    print(center_shifted)
+    density = np.square(wf)
+    center_shifted = get_center_of_mass(wf_array, density, zrange)
     center = shift_positions(center_shifted, shift, cell, invert=True)
 
     return center
