@@ -570,7 +570,7 @@ def find_wf_result(wf_result, state, spin):
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     """Return centered and mapped structure."""
     Nvac = defectinfo.number_of_vacancies
-    translation = return_defect_coordinates(structure, primitive, pristine, defectinfo)
+    translation = return_defect_coordinates(pristine, defectinfo)
     rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
         structure, unrelaxed, primitive, pristine, translation, delta=0)
     for delta in [0.1, 0.3]:
@@ -789,9 +789,11 @@ class DefectInfo:
             defecttoken = dirname.split('.')[2:]
         elif defecttoken is not None:
             defecttoken = defecttoken.split('.')
+        print(defecttoken)
         if len(defecttoken) > 2:
             defects = defecttoken[:-1]
-            specs = defecttoken[-1].split('-')
+            specs_str = defecttoken[-1].split('-')
+            specs = [int(spec) for spec in specs_str]
         else:
             defects = defecttoken
             specs = [0]
@@ -818,9 +820,10 @@ class DefectInfo:
         return Nvac
 
 
-def return_defect_coordinates(structure, primitive, pristine, defectinfo):
+def return_defect_coordinates(pristine, defectinfo):
     """Return the coordinates of the present defect."""
     defect_index = defectinfo.specs[0]
+    print(defect_index)
     pos = pristine.get_positions()[defect_index]
 
     return pos

@@ -9,7 +9,7 @@ from asr.defect_symmetry import (DefectInfo,
                                  get_supercell_shape,
                                  conserved_atoms,
                                  compare_structures,
-                                 # return_defect_coordinates,
+                                 return_defect_coordinates,
                                  get_spg_symmetry,
                                  get_mapped_structure,
                                  indexlist_cut_atoms,
@@ -45,7 +45,8 @@ def test_get_supercell_shape(asr_tmpdir):
 
 
 @pytest.mark.parametrize('tokens',
-                         ['v_N.Se_B.1-2', 'v_N.v_B.v_X.0-3-4'
+                         ['v_N.Se_B.1-2',
+                          'v_N.v_B.v_X.0-3-4',
                           'Se_B', 'v_S'])
 @pytest.mark.ci
 def test_number_of_vacancies(tokens):
@@ -88,25 +89,26 @@ def test_compare_structures(sc_size):
     assert len(indices) == sc_size * sc_size * len(atoms) - 2
 
 
-# @pytest.mark.parametrize('defecttype', ['v', 'S'])
-# @pytest.mark.parametrize('defectkind', ['Te', 'W'])
-# @pytest.mark.ci
-# def test_return_defect_coordinates(defecttype, defectkind):
-#     atoms = BN.copy()
-#     supercell = atoms.repeat((3, 3, 1))
-#     defectinfo = DefectInfo(defecttype=defecttype, defectkind=defectkind)
-#
-#     for i in range(len(atoms)):
-#         system = supercell.copy()
-#         if defecttype == 'v':
-#             system.pop(i)
-#         else:
-#             system.symbols[i] = defecttype
-#         ref_position = supercell.get_positions()[i]
-#         position = return_defect_coordinates(
-#             system, atoms, supercell, defectinfo)
-#
-#         assert position == pytest.approx(ref_position)
+@pytest.mark.parametrize('defecttoken',
+                         ['v_Mo',
+                          'v_N.Se_S.0-1',
+                          'v_Se.v_Se.v_X.2-3-4',
+                          'v_B.S_Mo.Te_Se.v_N.5-0-1-2'])
+@pytest.mark.ci
+def test_return_defect_coordinates(defecttoken):
+    atoms = BN.copy()
+    supercell = atoms.repeat((3, 3, 1))
+    defectinfo = DefectInfo(defecttoken=defecttoken)
+    reference = defecttoken.split('.')
+    if len(reference) == 1:
+        index = 0
+    else:
+        index = int(reference[-1].split('-')[0])
+    position = return_defect_coordinates(
+        supercell, defectinfo)
+    ref_position = supercell.get_positions()[index]
+
+    assert position == pytest.approx(ref_position)
 
 
 @pytest.mark.ci
