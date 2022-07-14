@@ -9,6 +9,10 @@ from pathlib import Path
 from ase.io import read
 
 
+# TODO: make zrange an input
+# TODO: make shift an input
+
+
 panel_description = make_panel_description(
     """
 Analysis of defect states localized inside the pristine bandgap (energetics and
@@ -760,50 +764,54 @@ class DefectInfo:
 
     def __init__(self,
                  defectpath=None,
-                 defecttype=None,
-                 defectkind=None,
-                 defectname=None):
-        if defectpath is None:
-            if defectname is None:
-                assert (defecttype is not None and defectkind is not None), (
-                    'DefectInfo class either needs a defect path (from asr.setup.'
-                    'defects) or a defecttype and defectposition passed to it!')
-                self.defecttype = defecttype
-                self.defectkind = defectkind
-            else:
-                assert len(defectname.split('_')) == 2, (
-                    'Defect name has to be of the following structure: '
-                    f'"<defecttype>_<defectkind>"')
-                self.defecttype = defectname.split('_')[0]
-                self.defectkind = defectname.split('_')[1]
-        else:
-            self.defecttype, self.defectkind = self._get_defect_type_and_kind_from_path(
-                defectpath)
-        self.defectpath = defectpath
-        self.defectname = f'{self.defecttype}_{self.defectkind}'
+                 defecttoken=None):
+        assert not (defectpath is None and defecttoken is None), (
+            'either defectpath or defecttoken has to be given as input to the '
+            'DefectBuilder class!')
+        assert not (defectpath is not None and defecttoken is not None), (
+            'please give either defectpath or defecttoken as an input, not both!')
+        if defectpath is not None:
+            self.names, self.specs = self._defects_from_path_or_token(
+                defectpath=defectpath)
+        elif defecttoken is not None:
+            self.names, self.specs = self._defects_from_path_or_token(
+                defecttoken=defecttoken)
 
-    def _get_defect_type_and_kind_from_path(self, defectpath):
+    def _defects_from_path_or_token(self, defectpath=None, defecttoken=None):
         """Return defecttype, and kind."""
-        complete_defectpath = Path(defectpath.absolute())
-        dirname = complete_defectpath.parent.name
-        defect_tokens = dirname.split('_')
-        defecttype = defect_tokens[-2].split('.')[-1]
-        defectkind = defect_tokens[-1]
+        if defectpath is not None:
+            complete_defectpath = Path(defectpath.absolute())
+            dirname = complete_defectpath.parent.name
+            defecttoken = dirname.split('.')[2:]
+        elif defecttoken is not None:
+            defecttoken = defecttoken.split('.')
+        if len(defecttoken) > 2:
+            defects = defecttoken[:-1]
+            specs = defecttoken[-1].split('-')
+        else:
+            defects = defecttoken
+            specs = [None]
 
-        return defecttype, defectkind
+        return defects, specs
 
-    def get_defect_type_and_kind(self):
-        deftype = self.defecttype
-        defkind = self.defectkind
+    def get_defect_type_and_kind_from_defectname(self, defectname):
+        tokens = defectname.split('_')
+        return tokens[0], tokens[1]
 
-        return deftype, defkind
+    def is_vacancy(self, defectname):
+        return defectname.split('_')[0] == 'v'
 
-    def get_defect_name(self):
-        return self.defectname
+    def is_interstitial(self, defectname):
+        return defectname.split('_')[0] == 'i'
 
     @property
-    def is_vacancy(self):
-        return self.defecttype == 'v'
+    def number_of_vacancies(self):
+        Nvac = 0
+        for name in self.names:
+            if self.is_vacancy(name):
+                Nvac += 1
+
+        return Nvac
 
 
 def return_defect_coordinates(structure, primitive, pristine, defectinfo):
