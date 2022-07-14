@@ -269,7 +269,7 @@ def main(temp: float = 300,
     # evaluate host crystal elements and hof
     host = read('../unrelaxed.json')
     el_list = get_element_list(host)
-    hof = get_hof_from_sj_results()
+    # hof = get_hof_from_sj_results()
 
     # read in pristine ground state calculation and evaluate,
     # renormalize density of states
@@ -284,8 +284,16 @@ def main(temp: float = 300,
     unit = get_concentration_unit(host)
 
     sc_results = []
+    # FIX - needs to be updated once new chemical potential interfacing is in place
+    el_list = ['standard-states']
+    # note, that this is a list with only one element solely for QPOD compatibility
+    # and such that the old results will not be broken
+    # FIX - needs to be updated once new chemical potential interfacing is in place
     for element in el_list:
-        defectdict = adjust_formation_energies(host, inputdict, element, hof)
+        # FIX - this needs to be adjusted once chemical potential recipe is ready
+        # defectdict = adjust_formation_energies(host, inputdict, element, hof)
+        defectdict = inputdict.copy()  # just for the time being here
+        # FIX - this needs to be adjusted once chemical potential recipe is ready
         # Initialize self-consistent loop for finding Fermi energy
         E, d, i, maxsteps, E_step, epsilon, converged = initialize_scf_loop(gap)
         # Start the self-consistent loop
@@ -340,12 +348,12 @@ def main(temp: float = 300,
                 concentration_results.append(concentration_result)
         else:
             raise RuntimeError('self-consistent E_F evaluation failed '
-                               f'for {element}-poor conditions!')
+                               f'for {element} conditions!')
 
         dopability = get_dopability_type(E, gap)
 
         sc_results.append(SelfConsistentResult.fromdata(
-            condition=f'{element}-poor',
+            condition=f'{element}',
             efermi_sc=E,
             n0=n0,
             p0=p0,
