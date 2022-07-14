@@ -215,7 +215,7 @@ def main(structurefile: str = 'structure.json',
 
 def get_defectinfo_from_path(path):
     defectinfo = DefectInfo(defectpath=path)
-    defectname = defectinfo.defectname
+    defectname = defectinfo.defecttoken
     charge = get_charge_from_folder(path)
     chargestate = f'(charge {charge})'
 

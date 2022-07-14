@@ -779,7 +779,7 @@ class DefectInfo:
     def _defect_token_from_path(self, defectpath):
         complete_defectpath = Path(defectpath.absolute())
         dirname = complete_defectpath.parent.name
-        return "".join(dirname.split('.')[2:])
+        return ".".join(dirname.split('.')[2:])
 
     def _defects_from_path_or_token(self, defectpath=None, defecttoken=None):
         """Return defecttype, and kind."""
