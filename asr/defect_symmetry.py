@@ -789,7 +789,6 @@ class DefectInfo:
             defecttoken = dirname.split('.')[2:]
         elif defecttoken is not None:
             defecttoken = defecttoken.split('.')
-        print(defecttoken)
         if len(defecttoken) > 2:
             defects = defecttoken[:-1]
             specs_str = defecttoken[-1].split('-')
