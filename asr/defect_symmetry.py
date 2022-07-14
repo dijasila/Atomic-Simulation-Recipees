@@ -569,7 +569,7 @@ def find_wf_result(wf_result, state, spin):
 
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     """Return centered and mapped structure."""
-    vac = defectinfo.is_vacancy
+    Nvac = defectinfo.number_of_vacancies
     translation = return_defect_coordinates(structure, primitive, pristine, defectinfo)
     rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
         structure, unrelaxed, primitive, pristine, translation, delta=0)
@@ -588,7 +588,7 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
                 indexlist = indexlist_cut_atoms(ref_tmp, threshold)
                 del ref_tmp[indexlist]
                 del rel_tmp[indexlist]
-                if conserved_atoms(ref_tmp, primitive, N, vac):
+                if conserved_atoms(ref_tmp, primitive, N, Nvac):
                     print(f'Parameters: delta {delta}, '
                           f'cutoff {cutoff}, threshold {threshold}')
                     return rel_tmp
@@ -603,14 +603,9 @@ def get_spg_symmetry(structure, symprec=0.1):
     return spg_sym.split('^')[0]
 
 
-def conserved_atoms(ref_struc, primitive, N, is_vacancy):
+def conserved_atoms(ref_struc, primitive, N, Nvac):
     """Return whether number of atoms is correct after the mapping or not."""
-    if is_vacancy:
-        removed = 1
-    else:
-        removed = 0
-
-    if len(ref_struc) == (N * N * len(primitive) - removed):
+    if len(ref_struc) == (N * N * len(primitive) - Nvac):
         print('INFO: number of atoms correct after mapping.')
         return True
     else:
@@ -799,7 +794,7 @@ class DefectInfo:
             specs = defecttoken[-1].split('-')
         else:
             defects = defecttoken
-            specs = [None]
+            specs = [0]
 
         return defects, specs
 
