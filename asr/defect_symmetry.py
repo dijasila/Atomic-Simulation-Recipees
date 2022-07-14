@@ -351,15 +351,11 @@ def main(primitivefile: str = 'primitive.json',
 
     # return point group of the defect structure
     point_group = get_spg_symmetry(mapped_structure)
-
-    # evaluate coordinates of defect in the supercell
-    defecttype, defectpos = defectinfo.get_defect_type_and_kind()
-    defectname = defectinfo.get_defect_name()
-    center = return_defect_coordinates(structure, primitive, pristine, defectinfo)
-    print(f'INFO: defect position: {center}, structural symmetry: {point_group}')
+    print(f'INFO: point group of the defect: {point_group}')
 
     # loop over cubefiles to save symmetry results
     symmetry_results = []
+    centers = []
     for cubefilepath in cubefilepaths:
         cubefilename = str(cubefilepath)
         wfcubefile = WFCubeFile.fromfilename(cubefilename)
@@ -372,6 +368,7 @@ def main(primitivefile: str = 'primitive.json',
         shift = [0.5, 0.5, 0]
         center = get_defect_center_from_wf(wf=wf, cell=atoms.cell, Ngrid=Ngrid,
                                            shift=shift)
+        centers.append(center)
         # extract WF results and energies
         res_wf = find_wf_result(wf_result, wfcubefile.band, wfcubefile.spin)
         energy = res_wf['energy']
@@ -404,12 +401,18 @@ def main(primitivefile: str = 'primitive.json',
                                                   energy=energy)
         symmetry_results.append(symmetry_result)
 
+    defect_center = average_centers(centers)
+
     return Result.fromdata(
         defect_pointgroup=point_group,
-        defect_center=center,
-        defect_name=defectname,
+        defect_center=defect_center,
+        defect_name=defectinfo.defecttoken,
         symmetries=symmetry_results,
         pristine=pris_result)
+
+
+def average_centers(centers):
+    return np.average(centers, axis=0)
 
 
 def get_defect_center_from_wf(wf, cell, Ngrid, shift):
@@ -425,8 +428,8 @@ def get_defect_center_from_wf(wf, cell, Ngrid, shift):
 
 def get_total_mass(m, zrange):
     """Calculate total mass of an array containing weights."""
-    # mflat = m[:, :, zrange].flatten()
-    mflat = m[:, :, 60].flatten()
+    mflat = m[:, :, zrange].flatten()
+    # mflat = m[:, :, 60].flatten()
     return np.sum(mflat)
 
 
@@ -435,10 +438,10 @@ def get_center_of_mass(r, m, zrange):
     M = get_total_mass(m, zrange)
     coords = [0, 0, 0]
     for i in range(3):
-        # rflat = r[:, :, zrange, i].flatten()
-        # mflat = m[:, :, zrange].flatten()
-        rflat = r[:, :, 60, i].flatten()
-        mflat = m[:, :, 60].flatten()
+        rflat = r[:, :, zrange, i].flatten()
+        mflat = m[:, :, zrange].flatten()
+        # rflat = r[:, :, 60, i].flatten()
+        # mflat = m[:, :, 60].flatten()
         smd = 0
         for j in range(len(mflat)):
             smd += mflat[j] * rflat[j]
@@ -773,9 +776,15 @@ class DefectInfo:
         if defectpath is not None:
             self.names, self.specs = self._defects_from_path_or_token(
                 defectpath=defectpath)
+            self.defecttoken = self._defect_token_from_path(defectpath)
         elif defecttoken is not None:
             self.names, self.specs = self._defects_from_path_or_token(
                 defecttoken=defecttoken)
+
+    def _defect_token_from_path(self, defectpath):
+        complete_defectpath = Path(defectpath.absolute())
+        dirname = complete_defectpath.parent.name
+        return "".join(dirname.split('.')[2:])
 
     def _defects_from_path_or_token(self, defectpath=None, defecttoken=None):
         """Return defecttype, and kind."""
@@ -816,9 +825,7 @@ class DefectInfo:
 
 def return_defect_coordinates(structure, primitive, pristine, defectinfo):
     """Return the coordinates of the present defect."""
-    from asr.get_wfs import return_defect_index
-
-    defect_index, _ = return_defect_index(defectinfo, primitive, structure)
+    defect_index = defectinfo.specs[0]
     pos = pristine.get_positions()[defect_index]
 
     return pos
