@@ -156,12 +156,16 @@ def get_overview_tables(scresult, result, unitstring):
 
 def get_conc_table(result, element, unitstring):
     from asr.database.browser import table, describe_entry
+    from asr.defectlinks import get_defectstring_from_defectinfo
 
-    name = element['defect_name']
-    def_type = name.split('_')[0]
-    def_name = name.split('_')[1]
+    token = element['defect_name']
+    defectinfo = DefectInfo(defecttoken=token)
+    defectstring = get_defectstring_from_defectinfo(
+        defectinfo, charge=0)  # charge is only a dummy parameter here
+    # remove the charge string from the defectstring again
+    clean_defectstring = defectstring.split('(charge')[0]
     scf_table = table(result, f'Eq. concentrations of '
-                              f'{def_type}<sub>{def_name}</sub> [{unitstring}]', [])
+                              f'{clean_defectstring} [{unitstring}]', [])
     for altel in element['concentrations']:
         if altel[0] > 1e1:
             scf_table['rows'].extend(
@@ -189,7 +193,7 @@ class ConcentrationResult(ASRResult):
     concentrations: typing.List[typing.Tuple[float, float, int]]
 
     key_descriptions = dict(
-        defect_name='Name of the defect ({position}_{type}).',
+        defect_name='Name of the defect (see "defecttoken" of DefectInfo).',
         concentrations='List of concentration tuples containing (conc., eform @ SCEF, '
                        'chargestate).')
 
