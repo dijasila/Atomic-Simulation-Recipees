@@ -291,7 +291,7 @@ class Result(ASRResult):
 @command(module='asr.defect_symmetry',
          requires=['structure.json'],
          dependencies=['asr.get_wfs'],
-         resources='1:1h',
+         resources='1:6h',
          returns=Result)
 @option('--primitivefile', help='Path to the primitive structure file.',
         type=str)
@@ -419,7 +419,7 @@ def average_centers(centers):
 def get_defect_center_from_wf(wf, cell, Ngrid, shift, dim):
     """Extract defect center from individual wavefunction cubefile."""
     if dim == 2:
-        zrange = range(int(Ngrid[2] / 2. - 10), int(Ngrid[2] / 2. + 10))
+        zrange = range(int(Ngrid[2] / 2. - 5), int(Ngrid[2] / 2. + 5))
         print(f'WARNING: {dim}-dimensional structure read in. For the correct '
               'extraction of the defect center, make sure that the structure '
               'is centered along the z-direction of the cell.')
