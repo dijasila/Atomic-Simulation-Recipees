@@ -91,13 +91,13 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         if style == 'symmetry':
             delete = [2]
             columnlabels = ['Symmetry',
-                            'Spin',
+                            # 'Spin',
                             'Localization ratio',
                             'Energy']
         elif style == 'state':
             delete = [0, 2, 3]
-            columnlabels = ['Spin',
-                            'Energy']
+            columnlabels = [  # 'Spin',
+                'Energy']
 
         N_homo = 0
         N_lumo = 0
@@ -124,7 +124,8 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         E_hls.append(E_hl)
 
         state_array = np.delete(state_array, delete, 1)
-        headerlabels = ['Orbital', *columnlabels]
+        headerlabels = [f'Orbitals in spin channel {spin}',
+                        *columnlabels]
 
         rows = []
         state_table = {'type': 'table',
@@ -132,7 +133,7 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         for i in range(len(state_array)):
             if style == 'symmetry':
                 rows.append((rowlabels[i],
-                             state_array[i, 0],
+                             # state_array[i, 0],
                              state_array[i, 1],
                              describe_entry(state_array[i, 2],
                                             'The localization ratio is defined as the '
@@ -142,7 +143,7 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
                              f'{state_array[i, 3]} eV'))
             elif style == 'state':
                 rows.append((rowlabels[i],
-                             state_array[i, 0],
+                             # state_array[i, 0],
                              f'{state_array[i, 1]} eV'))
 
         state_table['rows'] = rows
@@ -203,6 +204,7 @@ def webpanel(result, row, key_descriptions):
 
     state_tables, transition_table = get_symmetry_tables(
         result.symmetries, vbm, cbm, row, style=style)
+    print(state_tables)
     panel = WebPanel(description,
                      columns=[[state_tables[0],
                                fig('ks_gap.png')],
