@@ -61,8 +61,8 @@ class Result(ASRResult):
 
 
 @command(module='asr.defectlinks',
-         requires=['structure.json'],
-         dependencies=['asr.relax'],
+         # requires=['structure.json'],
+         # dependencies=['asr.relax'],
          resources='1:1h',
          returns=Result)
 def main() -> Result:

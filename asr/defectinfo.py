@@ -160,7 +160,7 @@ def main(structurefile: str = 'structure.json',
 
     # collect all relevant paths for defect info extraction
     primitivepath, pristinepath = get_primitive_pristine_folderpaths(
-        pristine, p)
+        p, pristine)
 
     # obtain defectname and chargestate string
     if pristine:
