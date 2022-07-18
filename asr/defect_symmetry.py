@@ -366,8 +366,9 @@ def main(primitivefile: str = 'primitive.json',
         # evaluate defect center
         Ngrid = calc.get_number_of_grid_points()
         shift = [0.5, 0.5, 0]
+        dim = sum(atoms.pbc)
         center = get_defect_center_from_wf(wf=wf, cell=atoms.cell, Ngrid=Ngrid,
-                                           shift=shift)
+                                           shift=shift, dim=dim)
         centers.append(center)
         # extract WF results and energies
         res_wf = find_wf_result(wf_result, wfcubefile.band, wfcubefile.spin)
@@ -415,9 +416,15 @@ def average_centers(centers):
     return np.average(centers, axis=0)
 
 
-def get_defect_center_from_wf(wf, cell, Ngrid, shift):
+def get_defect_center_from_wf(wf, cell, Ngrid, shift, dim):
     """Extract defect center from individual wavefunction cubefile."""
-    zrange = range(int(Ngrid[2] / 2. - 2), int(Ngrid[2] / 2. + 2))
+    if dim == 2:
+        zrange = range(int(Ngrid[2] / 2. - 10), int(Ngrid[2] / 2. + 10))
+        print(f'WARNING: {dim}-dimensional structure read in. For the correct '
+              'extraction of the defect center, make sure that the structure '
+              'is centered along the z-direction of the cell.')
+    else:
+        zrange = range(Ngrid[2])
     wf_array = get_gridpoints(cell=cell, Ngrid=Ngrid, shift=shift, zrange=zrange)
     density = np.square(wf)
     center_shifted = get_center_of_mass(wf_array, density, zrange)
@@ -822,7 +829,6 @@ class DefectInfo:
 def return_defect_coordinates(pristine, defectinfo):
     """Return the coordinates of the present defect."""
     defect_index = defectinfo.specs[0]
-    print(defect_index)
     pos = pristine.get_positions()[defect_index]
 
     return pos
