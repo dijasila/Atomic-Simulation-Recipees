@@ -156,12 +156,16 @@ def get_overview_tables(scresult, result, unitstring):
 
 def get_conc_table(result, element, unitstring):
     from asr.database.browser import table, describe_entry
+    from asr.defectlinks import get_defectstring_from_defectinfo
 
-    name = element['defect_name']
-    def_type = name.split('_')[0]
-    def_name = name.split('_')[1]
+    token = element['defect_name']
+    defectinfo = DefectInfo(defecttoken=token)
+    defectstring = get_defectstring_from_defectinfo(
+        defectinfo, charge=0)  # charge is only a dummy parameter here
+    # remove the charge string from the defectstring again
+    clean_defectstring = defectstring.split('(charge')[0]
     scf_table = table(result, f'Eq. concentrations of '
-                              f'{def_type}<sub>{def_name}</sub> [{unitstring}]', [])
+                              f'{clean_defectstring} [{unitstring}]', [])
     for altel in element['concentrations']:
         if altel[0] > 1e1:
             scf_table['rows'].extend(
@@ -189,7 +193,7 @@ class ConcentrationResult(ASRResult):
     concentrations: typing.List[typing.Tuple[float, float, int]]
 
     key_descriptions = dict(
-        defect_name='Name of the defect ({position}_{type}).',
+        defect_name='Name of the defect (see "defecttoken" of DefectInfo).',
         concentrations='List of concentration tuples containing (conc., eform @ SCEF, '
                        'chargestate).')
 
@@ -269,7 +273,7 @@ def main(temp: float = 300,
     # evaluate host crystal elements and hof
     host = read('../unrelaxed.json')
     el_list = get_element_list(host)
-    hof = get_hof_from_sj_results()
+    # hof = get_hof_from_sj_results()
 
     # read in pristine ground state calculation and evaluate,
     # renormalize density of states
@@ -284,8 +288,16 @@ def main(temp: float = 300,
     unit = get_concentration_unit(host)
 
     sc_results = []
+    # FIX - needs to be updated once new chemical potential interfacing is in place
+    el_list = ['standard-states']
+    # note, that this is a list with only one element solely for QPOD compatibility
+    # and such that the old results will not be broken
+    # FIX - needs to be updated once new chemical potential interfacing is in place
     for element in el_list:
-        defectdict = adjust_formation_energies(host, inputdict, element, hof)
+        # FIX - this needs to be adjusted once chemical potential recipe is ready
+        # defectdict = adjust_formation_energies(host, inputdict, element, hof)
+        defectdict = inputdict.copy()  # just for the time being here
+        # FIX - this needs to be adjusted once chemical potential recipe is ready
         # Initialize self-consistent loop for finding Fermi energy
         E, d, i, maxsteps, E_step, epsilon, converged = initialize_scf_loop(gap)
         # Start the self-consistent loop
@@ -340,12 +352,12 @@ def main(temp: float = 300,
                 concentration_results.append(concentration_result)
         else:
             raise RuntimeError('self-consistent E_F evaluation failed '
-                               f'for {element}-poor conditions!')
+                               f'for {element} conditions!')
 
         dopability = get_dopability_type(E, gap)
 
         sc_results.append(SelfConsistentResult.fromdata(
-            condition=f'{element}-poor',
+            condition=f'{element}',
             efermi_sc=E,
             n0=n0,
             p0=p0,
