@@ -563,23 +563,27 @@ def adjust_formation_energies(defectdict, mu):
     for defecttoken in defectdict:
         defectinfo = DefectInfo(defecttoken=defecttoken)
         defects = defectinfo.names
-        for defectname in defects:
-            def_type, def_pos = defectinfo.get_defect_type_and_kind_from_defectname(
-                defectname)
-            if def_type == 'v':
-                add = 0
-                remove = mu[f'{def_pos}']
-            elif def_pos == 'i':
-                add = mu[f'{def_type}']
-                remove = 0
-            else:
-                add = mu[f'{def_type}']
-                remove = mu[f'{def_pos}']
-            tuple_list = []
-            for tpl in defectdict[f'{defecttoken}']:
-                tuple_list.append((tpl[0] - add + remove,
-                                   tpl[1]))
-            newdict[f'{defecttoken}'] = tuple_list
+        # write adjusted formation energy for defect/defectcomplex to new dict
+        tuple_list = []
+        for tpl in defectdict[f'{defecttoken}']:
+            eform = tpl[0]
+            for defectname in defects:
+                def_type, def_pos = defectinfo.get_defect_type_and_kind_from_defectname(
+                    defectname)
+                if def_type == 'v':
+                    add = 0
+                    remove = mu[f'{def_pos}']
+                elif def_pos == 'i':
+                    add = mu[f'{def_type}']
+                    remove = 0
+                else:
+                    add = mu[f'{def_type}']
+                    remove = mu[f'{def_pos}']
+                # adjust formation energy for defects one by one
+                eform = eform - add + remove
+            tuple_list.append((eform,
+                               tpl[1]))
+        newdict[f'{defecttoken}'] = tuple_list
 
     return newdict
 
