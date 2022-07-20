@@ -246,12 +246,21 @@ class Result(ASRResult):
          resources='1:10m',
          returns=ASRResult)
 @option('--temp', help='Temperature [K]', type=float)
-@option('--defects', help='Defect dictionary.', type=DictStr())
-@option('--dosfile', help='DOS results file. DOS will be generated '
-        'from gs.gpw if no DOS results file is given.', type=str)
+@option('--defects', help='Defect dictionary. If no dict is given '
+        'as an input, the self-consistency will be run for defect '
+        'formation energies extracted from the asr.sj_analyze Recipe',
+        type=DictStr())
+@option('--mu', help='Chemical potentials. If no dict is given '
+        'as an input, the self-consistency will be run for the input '
+        'defect dictionary.', type=DictStr())
+@option('--cornerpoints/--no-cornerpoints',
+        help='Evaluate charge neutrality at chemical potential '
+        'region cornerpoints evaluated from asr.chemical_potential '
+        'Recipe.', is_flag=True)
 def main(temp: float = 300,
          defects: dict = {},
-         dosfile: str = '') -> ASRResult:
+         mu: dict = {},
+         cornerpoints: bool = False) -> ASRResult:
     """Calculate self-consistent Fermi energy for defect systems.
 
     This recipe calculates the self-consistent Fermi energy for a
@@ -273,7 +282,6 @@ def main(temp: float = 300,
     # evaluate host crystal elements and hof
     host = read('../unrelaxed.json')
     el_list = get_element_list(host)
-    # hof = get_hof_from_sj_results()
 
     # read in pristine ground state calculation and evaluate,
     # renormalize density of states
@@ -287,17 +295,32 @@ def main(temp: float = 300,
 
     unit = get_concentration_unit(host)
 
-    sc_results = []
-    # FIX - needs to be updated once new chemical potential interfacing is in place
-    el_list = ['standard-states']
-    # note, that this is a list with only one element solely for QPOD compatibility
+    # handle the different usages, either with cornerpoints, input chemical
+    # potential dictionary, or none of the above
+    if cornerpoints and mu != {}:
+        raise AssertionError, ('give either cornerpoints or mu-dict as input, not both!')
+    elif cornerpoints:
+        # TO BE IMPLEMENTED (JIBAN)
+        resfile = ''
+        mus = extract_cornerpoints(resfile)
+        # TO BE IMPLEMENTED (JIBAN)
+        adjust_eform = True
+    elif mu != {}:
+        mus = {'mu_0': mu}
+        adjust_eform = True
+    else:
+        # dummy element
+        mus = {'standard-states': 0}
+        adjust_eform = False
+    # note, that this can be a list with only one element solely for QPOD compatibility
     # and such that the old results will not be broken
-    # FIX - needs to be updated once new chemical potential interfacing is in place
-    for element in el_list:
+    sc_results = []
+    for element in mus:
         # FIX - this needs to be adjusted once chemical potential recipe is ready
-        # defectdict = adjust_formation_energies(host, inputdict, element, hof)
-        defectdict = inputdict.copy()  # just for the time being here
-        # FIX - this needs to be adjusted once chemical potential recipe is ready
+        if adjust_eform:
+            defectdict = adjust_formation_energies(inputdict, mu)
+        else:
+            defectdict = inputdict.copy()
         # Initialize self-consistent loop for finding Fermi energy
         E, d, i, maxsteps, E_step, epsilon, converged = initialize_scf_loop(gap)
         # Start the self-consistent loop
@@ -369,6 +392,101 @@ def main(temp: float = 300,
         temperature=temp,
         conc_unit=unit,
         gap=gap)
+
+
+def extract_cornerpoints(resfile):
+    """Extract cornerpoints from chemical potential Recipe."""
+    # TODO: @Jiban, please implement the fucntionality here once
+    #       your Recipe is in place
+    return None
+
+
+def return_mu_remove_add(element, mu):
+    """Return chem. pot. contribution (mu_add, mu_remove) to formation energy.
+
+    Returns mu_i * n_i where i is the defect species based on the name of
+    the defect in 'element'.
+
+    Examples: * for vacancies: return mu_remove and set mu_add to zero
+              * for substitutional defects: return both mu_remove and mu_add
+              * for interstitials: return mu_add and set mu_remove to zero
+
+    Note, that this function can currently just handle simple point defects and
+    no defect complexes."""
+    add = element.split('_')[0]
+    remove = element.split('_')[1]
+    if add == 'v':
+        mu_add = 0
+        mu_remove = mu[remove]
+    elif add == 'i':
+        mu_add = mu[remove]
+        mu_remove = 0
+    else:
+        mu_add = mu[add]
+        mu_remove = mu[remove]
+
+    return mu_add, mu_remove
+
+
+def extrapolate_formation(mu, eform_old, project_zero=False):
+    """Return formation energies extrapolated to given chem. pot. values.
+
+    Similar to 'return_formation_zerospace' but instead of mapping from
+    reference to zero chemical potential space it maps from zero chemical
+    potential space to mu space."""
+    # set sign of chemical potential addition and removal based on whether
+    # we project formation energy back to zero space (sign = -1) or
+    # extrapolate it from zero space to a certain chemical potential value
+    # (sign = +1)
+    if project_zero:
+        sign = -1
+    else:
+        sign = +1
+
+    # define new dictionary of formation energies and calculate
+    # extrapolated new values
+    eform_new = {}
+    for element in eform_old:
+        mu_add, mu_remove = return_mu_remove_add(element, mu)
+        oldform = eform_old[element]
+        newform = []
+        for element2 in oldform:
+            form = element2[0]
+            charge = element2[1]
+            new = form - sign * (mu_add - mu_remove)
+            newform.append((new, charge))
+        eform_new[f'{element}'] = newform
+
+    return eform_new
+
+
+def get_dopability_dict(mu_grid, mu_ref, eform_ref, hse):
+    """Evaluate dopability dictionary.
+
+    The data will be generated using the reference points for chem. pot.
+    and formation energies, and uses all the grid points of mu_grid for
+    the correct extrapolation of formation energies."""
+
+    dopability_dict = {}
+    eform_zero = extrapolate_formation(mu_ref, eform_ref, project_zero=True)
+    print('INFO: evaluating dopability corner points: ... .')
+    for i, element in enumerate(mu_grid):
+        eform = extrapolate_formation(mu_grid[element], eform_zero)
+        results = charge_neutrality(defects=eform, refgap=hse)
+        ef = results.efermi_sc
+        quality = check_formation_at_fermi(eform, ef)
+        gap = results.gap
+        dop_qual = results.dopability
+        p0 = results.p0
+        n0 = results.n0
+        dop_quan = ef / gap
+        emin, emax = get_zero_crossings(eform_ref, mu_ref, mu_grid[element],
+                                        gap=hse, rerun=[ef, gap])
+        dopability_dict[f'{element}'] = (ef, dop_quan, dop_qual, quality, p0,
+                                         n0, gap, emin, emax)
+    print('INFO: evaluating dopability corner points: DONE.')
+
+    return dopability_dict
 
 
 def check_convergence(delta, conc_list, n0, p0, E_step, epsilon):
@@ -464,24 +582,30 @@ def obtain_chemical_potential(symbol, db):
     return eref
 
 
-def adjust_formation_energies(host, defectdict, element, hof):
-    """Return defect dict in X-poor conditions given a defect dict @ stand. states."""
+def adjust_formation_energies(defectdict, mu):
+    """Return defect dict extrapolated to mu chemical potential conditions."""
     newdict = {}
-    sstates = get_adjusted_chemical_potentials(host, hof, element)
-    for defect in defectdict:
-        defectinfo = DefectInfo(defectname=defect)
-        def_type = defectinfo.defecttype
-        def_pos = defectinfo.defectkind
-        if def_type == 'v':
-            add = 0
-        else:
-            add = sstates[f'{def_type}']
-        remove = sstates[f'{def_pos}']
-        tuple_list = []
-        for tpl in defectdict[f'{defect}']:
-            tuple_list.append((tpl[0] - add + remove,
-                               tpl[1]))
-        newdict[f'{defect}'] = tuple_list
+    # sstates = get_adjusted_chemical_potentials(host, hof, element)
+    for defecttoken in defectdict:
+        defectinfo = DefectInfo(defecttoken=defecttoken)
+        defects = defectinfo.names
+        for defectname in defects:
+            def_type, def_pos = defectinfo.get_defect_type_and_kind_from_defectname(
+                defectname)
+            if def_type == 'v':
+                add = 0
+                remove = mu[f'{def_pos}']
+            elif def_pos == 'i':
+                add = mu[f'{def_type}']
+                remove = 0
+            else:
+                add = mu[f'{def_type}']
+                remove = mu[f'{def_pos}']
+            tuple_list = []
+            for tpl in defectdict[f'{defect}']:
+                tuple_list.append((tpl[0] - add + remove,
+                                   tpl[1]))
+            newdict[f'{defect}'] = tuple_list
 
     return newdict
 
