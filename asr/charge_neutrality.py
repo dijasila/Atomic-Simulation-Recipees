@@ -281,13 +281,12 @@ def main(temp: float = 300,
 
     # evaluate host crystal elements and hof
     host = read('../unrelaxed.json')
-    el_list = get_element_list(host)
+    # el_list = get_element_list(host)
 
     # read in pristine ground state calculation and evaluate,
     # renormalize density of states
-    if dosfile == '':
-        atoms, calc = restart('gs.gpw', txt=None)
-        dos, EF, gap = get_dos(calc)
+    atoms, calc = restart('gs.gpw', txt=None)
+    dos, EF, gap = get_dos(calc)
     dos = renormalize_dos(calc, dos, EF)
 
     # Calculate initial electron and hole carrier concentration
@@ -298,7 +297,7 @@ def main(temp: float = 300,
     # handle the different usages, either with cornerpoints, input chemical
     # potential dictionary, or none of the above
     if cornerpoints and mu != {}:
-        raise AssertionError, ('give either cornerpoints or mu-dict as input, not both!')
+        raise AssertionError('give either cornerpoints or mu-dict as input, not both!')
     elif cornerpoints:
         # TO BE IMPLEMENTED (JIBAN)
         resfile = ''
@@ -402,7 +401,8 @@ def extract_cornerpoints(resfile):
 
 
 def return_mu_remove_add(element, mu):
-    """Return chem. pot. contribution (mu_add, mu_remove) to formation energy.
+    """
+    Return chem. pot. contribution (mu_add, mu_remove) to formation energy.
 
     Returns mu_i * n_i where i is the defect species based on the name of
     the defect in 'element'.
@@ -412,7 +412,8 @@ def return_mu_remove_add(element, mu):
               * for interstitials: return mu_add and set mu_remove to zero
 
     Note, that this function can currently just handle simple point defects and
-    no defect complexes."""
+    no defect complexes.
+    """
     add = element.split('_')[0]
     remove = element.split('_')[1]
     if add == 'v':
@@ -429,11 +430,13 @@ def return_mu_remove_add(element, mu):
 
 
 def extrapolate_formation(mu, eform_old, project_zero=False):
-    """Return formation energies extrapolated to given chem. pot. values.
+    """
+    Return formation energies extrapolated to given chem. pot. values.
 
     Similar to 'return_formation_zerospace' but instead of mapping from
     reference to zero chemical potential space it maps from zero chemical
-    potential space to mu space."""
+    potential space to mu space.
+    """
     # set sign of chemical potential addition and removal based on whether
     # we project formation energy back to zero space (sign = -1) or
     # extrapolate it from zero space to a certain chemical potential value
@@ -458,35 +461,6 @@ def extrapolate_formation(mu, eform_old, project_zero=False):
         eform_new[f'{element}'] = newform
 
     return eform_new
-
-
-def get_dopability_dict(mu_grid, mu_ref, eform_ref, hse):
-    """Evaluate dopability dictionary.
-
-    The data will be generated using the reference points for chem. pot.
-    and formation energies, and uses all the grid points of mu_grid for
-    the correct extrapolation of formation energies."""
-
-    dopability_dict = {}
-    eform_zero = extrapolate_formation(mu_ref, eform_ref, project_zero=True)
-    print('INFO: evaluating dopability corner points: ... .')
-    for i, element in enumerate(mu_grid):
-        eform = extrapolate_formation(mu_grid[element], eform_zero)
-        results = charge_neutrality(defects=eform, refgap=hse)
-        ef = results.efermi_sc
-        quality = check_formation_at_fermi(eform, ef)
-        gap = results.gap
-        dop_qual = results.dopability
-        p0 = results.p0
-        n0 = results.n0
-        dop_quan = ef / gap
-        emin, emax = get_zero_crossings(eform_ref, mu_ref, mu_grid[element],
-                                        gap=hse, rerun=[ef, gap])
-        dopability_dict[f'{element}'] = (ef, dop_quan, dop_qual, quality, p0,
-                                         n0, gap, emin, emax)
-    print('INFO: evaluating dopability corner points: DONE.')
-
-    return dopability_dict
 
 
 def check_convergence(delta, conc_list, n0, p0, E_step, epsilon):
@@ -602,10 +576,10 @@ def adjust_formation_energies(defectdict, mu):
                 add = mu[f'{def_type}']
                 remove = mu[f'{def_pos}']
             tuple_list = []
-            for tpl in defectdict[f'{defect}']:
+            for tpl in defectdict[f'{defecttoken}']:
                 tuple_list.append((tpl[0] - add + remove,
                                    tpl[1]))
-            newdict[f'{defect}'] = tuple_list
+            newdict[f'{defecttoken}'] = tuple_list
 
     return newdict
 
