@@ -245,10 +245,14 @@ class Result(ASRResult):
          dependencies=['asr.gs@calculate'],
          resources='1:10m',
          returns=ASRResult)
-@option('--temp', help='Temperature [K]', type=float)
+@option('--temp1', help='Synthesis temperature at which defects got created [K].',
+        type=float)
+@option('--temp2', help='Evaluation temperature at which charge neutrality is '
+        'evaluated [K]. If no input is given (i.e. temp2=-1), '
+        'it will default to T1.', type=float)
 @option('--defects', help='Defect dictionary. If no dict is given '
         'as an input, the self-consistency will be run for defect '
-        'formation energies extracted from the asr.sj_analyze Recipe',
+        'formation energies extracted from the asr.sj_analyze Recipe.',
         type=DictStr())
 @option('--mu', help='Chemical potentials. If no dict is given '
         'as an input, the self-consistency will be run for the input '
@@ -257,7 +261,8 @@ class Result(ASRResult):
         help='Evaluate charge neutrality at chemical potential '
         'region cornerpoints evaluated from asr.chemical_potential '
         'Recipe.', is_flag=True)
-def main(temp: float = 300,
+def main(temp1: float = 300,
+         temp2: float = -1,
          defects: dict = {},
          mu: dict = {},
          cornerpoints: bool = False) -> ASRResult:
@@ -279,6 +284,10 @@ def main(temp: float = 300,
     else:
         inputdict = defects
 
+    # if T2 = -1, set T2 equal to T1. Otherwise, simply use input T2
+    if temp2 == -1:
+        temp2 = temp1
+
     # evaluate host crystal elements and hof
     host = read('../unrelaxed.json')
     # el_list = get_element_list(host)
@@ -290,7 +299,7 @@ def main(temp: float = 300,
     dos = renormalize_dos(calc, dos, EF)
 
     # Calculate initial electron and hole carrier concentration
-    n0, p0 = integrate_electron_hole_concentration(dos, EF, gap, temp)
+    n0, p0 = integrate_electron_hole_concentration(dos, EF, gap, temp2)
 
     unit = get_concentration_unit(host)
 
@@ -327,7 +336,7 @@ def main(temp: float = 300,
         # Start the self-consistent loop
         while (i < maxsteps):
             E = get_new_sample_point(E, E_step, d)
-            n0, p0 = integrate_electron_hole_concentration(dos, E, gap, temp)
+            n0, p0 = integrate_electron_hole_concentration(dos, E, gap, temp2)
             # initialise lists for concentrations and charges
             conc_list = []
             charge_list = []
@@ -339,7 +348,7 @@ def main(temp: float = 300,
                     conc_def = calculate_defect_concentration(eform,
                                                               sites,
                                                               degeneracy,
-                                                              temp)
+                                                              temp1)
                     conc_list.append(conc_def)
                     charge_list.append(defect[1])
             delta_new = calculate_delta(conc_list, charge_list, n0, p0)
@@ -358,7 +367,7 @@ def main(temp: float = 300,
             n0, p0 = integrate_electron_hole_concentration(dos,
                                                            E,
                                                            gap,
-                                                           temp)
+                                                           temp2)
             n0 = convert_concentration_units(n0, atoms)
             p0 = convert_concentration_units(p0, atoms)
             concentration_results = []
@@ -367,7 +376,7 @@ def main(temp: float = 300,
                 for defect in defectdict[defecttype]:
                     eform = get_formation_energy(defect, E)
                     conc_def = calculate_defect_concentration(eform, sites, degeneracy,
-                                                              temp)
+                                                              temp1)
                     conc_def = convert_concentration_units(conc_def, atoms)
                     concentration_tuples.append((conc_def, int(defect[1]), eform))
                 concentration_result = ConcentrationResult.fromdata(
@@ -390,7 +399,7 @@ def main(temp: float = 300,
 
     return Result.fromdata(
         scresults=sc_results,
-        temperature=temp,
+        temperature=temp2,
         conc_unit=unit,
         gap=gap)
 
