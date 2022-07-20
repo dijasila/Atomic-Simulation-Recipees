@@ -305,7 +305,7 @@ def main(temp: float = 300,
         # TO BE IMPLEMENTED (JIBAN)
         adjust_eform = True
     elif mu != {}:
-        mus = {'mu_0': mu}
+        mus = {'custom-chem.-pot.': mu}
         adjust_eform = True
     else:
         # dummy element
@@ -318,6 +318,8 @@ def main(temp: float = 300,
         # FIX - this needs to be adjusted once chemical potential recipe is ready
         if adjust_eform:
             defectdict = adjust_formation_energies(inputdict, mu)
+            print(f'INFO: adjusted formation energies for {element}-conditions:')
+            print(defectdict)
         else:
             defectdict = inputdict.copy()
         # Initialize self-consistent loop for finding Fermi energy
@@ -974,6 +976,8 @@ def plot_lowest_lying(ax, array_in, ef, gap, name, color):
     ys = [array_tmp[0, 0]]
     index, xs, ys = get_line_segment(array_tmp, 0, xs, ys, gap)
     for i in range(len(array_tmp)):
+        if len(array_tmp[:, 0]) <= 1:
+            break
         index, xs, ys = get_line_segment(array_tmp, index, xs, ys, gap)
         if index == len(array_tmp):
             break
