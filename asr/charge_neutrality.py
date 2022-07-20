@@ -254,6 +254,10 @@ class Result(ASRResult):
         'as an input, the self-consistency will be run for defect '
         'formation energies extracted from the asr.sj_analyze Recipe.',
         type=DictStr())
+@option('--fixed-concentration', help='Set a fixed background concentration '
+        'which should be considered for the self-consitent evaluation '
+        'in cm^{-d} where d is the dimensionality of the system.',
+        type=float)
 @option('--mu', help='Chemical potentials. If no dict is given '
         'as an input, the self-consistency will be run for the input '
         'defect dictionary.', type=DictStr())
@@ -264,6 +268,7 @@ class Result(ASRResult):
 def main(temp1: float = 300,
          temp2: float = -1,
          defects: dict = {},
+         fixed_concentration: float = 0.0,
          mu: dict = {},
          cornerpoints: bool = False) -> ASRResult:
     """Calculate self-consistent Fermi energy for defect systems.
@@ -338,7 +343,9 @@ def main(temp1: float = 300,
             E = get_new_sample_point(E, E_step, d)
             n0, p0 = integrate_electron_hole_concentration(dos, E, gap, temp2)
             # initialise lists for concentrations and charges
-            conc_list = []
+            # TODO: fix concentration units here
+            conc_list = [fixed_concentration]
+            # TODO: fix concentration units here
             charge_list = []
             sites, degeneracy = get_site_and_state_degeneracy()
             # loop over all defects
