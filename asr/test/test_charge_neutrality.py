@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-# from .materials import std_test_materials
+from .materials import std_test_materials
 from asr.charge_neutrality import convert_concentration_units
 
 
@@ -77,6 +77,16 @@ def test_convert_concentration_units(zsize, conc):
         assert False
     except NotImplementedError:
         assert True
+
+
+@pytest.mark.parametrize('atoms', std_test_materials[:2])
+@pytest.mark.parametrize('conc_in', [0, 1, 1e-4, -2e10])
+@pytest.mark.ci
+def test_double_convert_concentration_units(conc_in, atoms):
+    conc_cm = convert_concentration_units(conc_in, atoms)
+    conc_sc = convert_concentration_units(conc_cm, atoms, invert=True)
+
+    assert conc_sc == pytest.approx(conc_in)
 
 
 @pytest.mark.parametrize('p0', [1e3, 1e-4])

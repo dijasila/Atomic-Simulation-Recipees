@@ -254,10 +254,10 @@ class Result(ASRResult):
         'as an input, the self-consistency will be run for defect '
         'formation energies extracted from the asr.sj_analyze Recipe.',
         type=DictStr())
-@option('--fixed-concentration', help='Set a fixed background concentration '
+@option('--ni', help='Set a fixed background concentration '
         'which should be considered for the self-consitent evaluation '
-        'in cm^{-d} where d is the dimensionality of the system.',
-        type=float)
+        'in cm^{-d} where d is the dimensionality of the system. Positive '
+        'values for holes, negative values for electrons.', type=float)
 @option('--mu', help='Chemical potentials. If no dict is given '
         'as an input, the self-consistency will be run for the input '
         'defect dictionary.', type=DictStr())
@@ -268,7 +268,7 @@ class Result(ASRResult):
 def main(temp1: float = 300,
          temp2: float = -1,
          defects: dict = {},
-         fixed_concentration: float = 0.0,
+         ni: float = 0.0,
          mu: dict = {},
          cornerpoints: bool = False) -> ASRResult:
     """Calculate self-consistent Fermi energy for defect systems.
@@ -328,6 +328,8 @@ def main(temp1: float = 300,
     # note, that this can be a list with only one element solely for QPOD compatibility
     # and such that the old results will not be broken
     sc_results = []
+    # convert units for input fixed concentration
+    ni = convert_concentration_units(ni, atoms, True)
     for element in mus:
         # FIX - this needs to be adjusted once chemical potential recipe is ready
         if adjust_eform:
@@ -343,9 +345,7 @@ def main(temp1: float = 300,
             E = get_new_sample_point(E, E_step, d)
             n0, p0 = integrate_electron_hole_concentration(dos, E, gap, temp2)
             # initialise lists for concentrations and charges
-            # TODO: fix concentration units here
-            conc_list = [fixed_concentration]
-            # TODO: fix concentration units here
+            conc_list = []
             charge_list = []
             sites, degeneracy = get_site_and_state_degeneracy()
             # loop over all defects
@@ -358,7 +358,7 @@ def main(temp1: float = 300,
                                                               temp1)
                     conc_list.append(conc_def)
                     charge_list.append(defect[1])
-            delta_new = calculate_delta(conc_list, charge_list, n0, p0)
+            delta_new = calculate_delta(conc_list, charge_list, n0, p0, ni)
             converged = check_convergence(delta_new, conc_list, n0, p0, E_step, epsilon)
             if converged:
                 break
@@ -395,6 +395,11 @@ def main(temp1: float = 300,
                                f'for {element} conditions!')
 
         dopability = get_dopability_type(E, gap)
+
+        if E < 0 or E > gap:
+            raise RuntimeError(f'{element} conditions, the self-consistent '
+                'Fermi level position is outside the pristine band gap. Check your inputs, '
+                'in particular the input intrinsic carrier concentration "ni"!')
 
         sc_results.append(SelfConsistentResult.fromdata(
             condition=f'{element}',
@@ -628,11 +633,12 @@ def get_element_list(atoms):
     return symbollist
 
 
-def convert_concentration_units(conc, atoms):
+def convert_concentration_units(conc, atoms, invert=False):
     """
-    Convert concentration to units on cm^-n.
+    Convert concentration to units of cm^-n.
 
-    Note, that n is the dimensionality of the system.
+    Note, that n is the dimensionality of the system. If invert is
+    set to True, it does the inversion from cm^-n to per supercell.
     """
     volume = atoms.get_volume()
     dim = sum(atoms.pbc)
@@ -648,7 +654,10 @@ def convert_concentration_units(conc, atoms):
         volume = volume / z
     elif dim == 3:
         volume = volume
-    conc = conc / (volume * (ang_to_cm ** dim))
+    if invert:
+        conc = conc * (volume * (ang_to_cm ** dim))
+    else:
+        conc = conc / (volume * (ang_to_cm ** dim))
 
     return conc
 
@@ -663,13 +672,13 @@ def fermi_dirac_holes(E, EF, T):
     return 1 - fermi_dirac_electrons(E, EF, T)
 
 
-def calculate_delta(conc_list, chargelist, n0, p0):
+def calculate_delta(conc_list, chargelist, n0, p0, ni):
     """
     Calculate charge balance for current energy.
 
     delta = n_0 - p_0 - sum_X(sum_q C_{X^q}).
     """
-    delta = n0 - p0
+    delta = n0 - p0 + ni
     for i, c in enumerate(conc_list):
         delta = delta - c * chargelist[i]
 
