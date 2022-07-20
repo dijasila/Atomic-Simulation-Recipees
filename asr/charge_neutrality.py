@@ -397,8 +397,9 @@ def main(temp1: float = 300,
         dopability = get_dopability_type(E, gap)
 
         if E < 0 or E > gap:
-            raise RuntimeError(f'{element} conditions, the self-consistent '
-                'Fermi level position is outside the pristine band gap. Check your inputs, '
+            raise RuntimeError(
+                f'{element} conditions, the self-consistent Fermi '
+                'level position is outside the pristine band gap. Check your inputs, '
                 'in particular the input intrinsic carrier concentration "ni"!')
 
         sc_results.append(SelfConsistentResult.fromdata(
