@@ -580,7 +580,6 @@ def adjust_formation_energies(defectdict, mu):
                     add = mu[f'{def_type}']
                     remove = mu[f'{def_pos}']
                 # adjust formation energy for defects one by one
-                # TODO: check signs
                 eform = eform - add + remove
             tuple_list.append((eform,
                                tpl[1]))
