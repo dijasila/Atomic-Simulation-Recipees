@@ -5,7 +5,7 @@ import ase.units as units
 from ase.geometry import get_distances
 from asr.core import (ASRResult, prepare_result,
                       read_json)
-from asr.database.browser import make_panel_description, href, matrixtable, table
+from asr.database.browser import make_panel_description, href
 
 
 panel_description = make_panel_description(
@@ -43,7 +43,7 @@ gyromagnetic_ratios = {
     'Ca': (43, -2.86861),
     'Sc': (45, 10.35739),
     'Ti': (47, -2.40390),
-    'V' : (51, 11.21232),
+    'V': (51, 11.21232),
     'Cr': (53, -2.406290),
     'Mn': (55, 10.5163),
     'Fe': (57, 1.382),
@@ -71,7 +71,7 @@ gyromagnetic_ratios = {
     'Sn': (119, -15.9365),
     'Sb': (121, 10.2418),
     'Te': (125, -13.5242),
-    'I' : (127, 8.56477221),
+    'I': (127, 8.56477221),
     'Xe': (129, -11.8420),
     'Cs': (133, 5.614201),
     'Ba': (137, 4.755289),
@@ -110,7 +110,7 @@ nuclear_abundance = {
     'Ca': (0.145, 3.5),
     'Sc': (100, 3.5),
     'Ti': (7.28, 2.5),
-    'V' : (99.76, 3.5),
+    'V': (99.76, 3.5),
     'Cr': (9.55, 1.5),
     'Mn': (100, 2.5),
     'Fe': (2.19, 0.5),
@@ -126,7 +126,7 @@ nuclear_abundance = {
     'Kr': (11.55, 4.5),
     'Rb': (72.15, 2.5),
     'Sr': (7.02, 4.5),
-    'Y' : (100, 0.5),
+    'Y': (100, 0.5),
     'Zr': (11.23, 2.5),
     'Nb': (100, 4.5),
     'Mo': (15.72, 2.5),
@@ -138,7 +138,7 @@ nuclear_abundance = {
     'Sn': (8.58, 0.5),
     'Sb': (57.25, 2.5),
     'Te': (6.99, 0.5),
-    'I' : (100, 2.5),
+    'I': (100, 2.5),
     'Xe': (26.44, 0.5),
     'Cs': (100, 3.5),
     'Ba': (11.32, 3.5),
@@ -150,11 +150,11 @@ nuclear_abundance = {
     'Os': (16.1, 1.5),
     'Ir': (62.7, 1.5),
     'Pt': (33.7, 0.5),
-    'Au': (100 , 1.5),
+    'Au': (100, 1.5),
     'Hg': (16.84, 0.5),
     'Tl': (70.5, 0.5),
-    'Pb': (22.6 , 0.5),
-    'Bi': (100 , 4.5),
+    'Pb': (22.6, 0.5),
+    'Bi': (100, 4.5),
     'La': (99.91, 3.5)}
 scale = units._e / units._hplanck * 1e-6
 
@@ -185,7 +185,7 @@ def get_atoms_close_to_center(center, atoms):
     return args, distances[0][args]
 
 
-def get_hf_matrixtable(hf_results, ordered_args):
+def get_hf_table(hf_results, ordered_args):
     hf_array = np.zeros((10, 4))
     hf_atoms = []
     for i, arg in enumerate(ordered_args[:10]):
@@ -194,23 +194,38 @@ def get_hf_matrixtable(hf_results, ordered_args):
         for j, value in enumerate([hf_result['magmom'], *hf_result['eigenvalues']]):
             hf_array[i, j] = f"{value:.2f}"
 
-    hf_table = matrixtable(hf_array,
-                           title='Symbol (index)',
-                           columnlabels=['Magn. moment',
-                                         'A<sub>xx</sub> [MHz]',
-                                         'A<sub>yy</sub> [MHz]',
-                                         'A<sub>zz</sub> [MHz]'],
-                           rowlabels=hf_atoms)
+    rows = []
+    for i, hf_tuple in enumerate(hf_array):
+        rows.append((hf_atoms[i],
+                     f'{hf_array[i][0]:.2f}',
+                     f'{hf_array[i][1]:.2f} MHz',
+                     f'{hf_array[i][2]:.2f} MHz',
+                     f'{hf_array[i][3]:.2f} MHz',
+                     ))
 
-    return hf_table
+    table = {'type': 'table',
+             'header': ['Nucleus (index)',
+                        'Magn. moment',
+                        'A<sub>1</sub>',
+                        'A<sub>2</sub>',
+                        'A<sub>3</sub>',
+                        ]}
+
+    table['rows'] = rows
+
+    return table
 
 
 def get_gyro_table(row, result):
     """Return table with gyromagnetic ratios for each chemical element."""
-    gyro_table = table(row, 'Gyromagnetic Ratios', [])
+    gyro_table = {'type': 'table',
+                  'header': ['Nucleus', 'Isotope', 'Gyromagnetic ratio']}
+
+    rows = []
     for i, g in enumerate(result.gfactors):
-        gyro_table['rows'].extend(
-            [[g['symbol'], f"{g['g']:.2f}"]])
+        rows.append((g['symbol'], gyromagnetic_ratios[g['symbol']][0],
+                     f"{g['g']:.2f}"))
+    gyro_table['rows'] = rows
 
     return gyro_table
 
@@ -227,7 +242,7 @@ def webpanel(result, row, key_description):
     atoms = row.toatoms()
     args, distances = get_atoms_close_to_center(center, atoms)
 
-    hf_table = get_hf_matrixtable(hf_results, args)
+    hf_table = get_hf_table(hf_results, args)
     gyro_table = get_gyro_table(row, result)
 
     hyperfine = WebPanel(describe_entry('Hyperfine (HF) parameters',

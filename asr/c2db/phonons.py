@@ -92,14 +92,7 @@ def calculate(
         params['txt'] = fd
         calc = construct_calculator(params)
 
-        nd = sum(atoms.get_pbc())
-        if nd == 3:
-            supercell = (n, n, n)
-        elif nd == 2:
-            supercell = (n, n, 1)
-        elif nd == 1:
-            supercell = (n, 1, 1)
-
+        supercell = [n if periodic else 1 for periodic in atoms.pbc]
         phonons = Phonons(atoms=atoms, calc=calc, supercell=supercell)
         if world.rank == 0:
             phonons.cache.strip_empties()
@@ -241,13 +234,7 @@ def main(
         mingo: bool = True,
 ) -> Result:
     calculateresult = calculate(atoms=atoms, calculator=calculator, n=n)
-    nd = sum(atoms.get_pbc())
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
+    supercell = [n if periodic else 1 for periodic in atoms.pbc]
     phonons = Phonons(atoms=atoms, supercell=supercell)
     if world.rank == 0:
         phonons.cache.update(calculateresult.forces)

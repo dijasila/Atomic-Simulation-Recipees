@@ -92,9 +92,9 @@ class Result(ASRResult):
 
     key_descriptions = {
         "spin_axis": "Magnetic easy axis",
-        "E_x": "Soc. total energy, x-direction [eV/unit cell]",
-        "E_y": "Soc. total energy, y-direction [eV/unit cell]",
-        "E_z": "Soc. total energy, z-direction [eV/unit cell]",
+        "E_x": "Soc. total energy, x-direction [meV/unit cell]",
+        "E_y": "Soc. total energy, y-direction [meV/unit cell]",
+        "E_z": "Soc. total energy, z-direction [meV/unit cell]",
         "theta": "Easy axis, polar coordinates, theta [radians]",
         "phi": "Easy axis, polar coordinates, phi [radians]",
         "dE_zx":

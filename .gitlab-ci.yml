@@ -1,136 +1,50 @@
-image: python
-
 stages:
-- build
-- style
-- test
-- integrationtest
-- systemtest
-- coverage
-- release
-- deploy
+  - test
+  - deploy
 
-before_script:
-- pip install pip --upgrade
-- pip install -r dev-requirements.txt
 
-# -------------- Build --------------
-build:
-  stage: build
-  script: tox -e build
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 week
-
-# -------------- Style tests --------------
 flake8:
-  image: python:3.9
-  stage: style
-  script: tox -e flake8
+  image: registry.gitlab.com/ase/ase:ase-paperwork
+  script:
+   - flake8 asr/
 
-readme:
-  image: python:3.9
-  stage: style
-  script: tox -e readme
 
 docs:
-  image: python:3.9
-  stage: style
-  script: tox -e docs
-
-# -------------- Unit tests --------------
-doctest:
-  image: python:3.9
-  stage: test
-  script: tox -e doctest
-
-python38:
-  image: python:3.8
-  stage: test
-  timeout: 20m
+  image: registry.gitlab.com/asr-dev/asr:main
   script:
-    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
-    - export ASR_TEST_DATA="$PWD"/asr-test-data
-    - tox -e py38
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
+    - sphinx-build --keep-going -E -W -c docs -b html docs docs/build
 
-python39:
-  image: python:3.9
-  stage: test
-  timeout: 20m
-  script:
-    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
-    - export ASR_TEST_DATA="$PWD"/asr-test-data
-    - tox -e py39
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
 
-# -------------- Parallel tests --------------
-
-python39-mpi:
-  image: python:3.9
+main:
+  image:  registry.gitlab.com/asr-dev/asr:main
   stage: test
   script:
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev libscalapack-mpi-dev libxc-dev
-    - useradd -m user
-    - su user -c 'tox -e py39-mpi'
+    - pwd
+    - cd asr/test
+    - pytest --color=yes --numprocesses=auto --cov=asr --cov-report=html
+    - coverage report
 
-# -------------- Integration tests --------------
-
-python38-gpaw:
-  image: python:3.8
-  stage: integrationtest
-  script:
-    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
-    - export ASR_TEST_DATA="$PWD"/asr-test-data
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py38-gpaw
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
-
-python39-gpaw:
-  image: python:3.9
-  stage: integrationtest
-  script:
-    - git clone https://gitlab.com/asr-dev/asr-test-data.git 
-    - export ASR_TEST_DATA="$PWD"/asr-test-data
-    - apt-get update -qy
-    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-    - tox -e py39-gpaw
-  artifacts:
-    paths:
-      - .tox/.coverage*
-    expire_in: 3 weeks
-
-# -------------- Coverage --------------
-coverage:
-  image: python:3.9
-  stage: coverage
-  script:
-    - tox -e coverage-report
   coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
   artifacts:
     paths:
-      - .tox/htmlcov/
-    expire_in: 3 weeks
+      - htmlcov
+    expire_in: 1 week
 
-# -------------- Deploy coverage report --------------
+
+parallel:
+  image: registry.gitlab.com/asr-dev/asr:main
+  timeout: 20m
+  script:
+    - cd asr/test
+    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -- -m parallel --color=yes
+
+
 pages:
   stage: deploy
   dependencies:
-    - coverage
+    - main
   script:
-    - mv .tox/htmlcov public
+    - mv htmlcov public
   artifacts:
     paths:
       - public
@@ -139,14 +53,7 @@ pages:
     - master
 
 
-# -------------- Release --------------
-# (Only on git tagged commit)
-release:
-  stage: release
-  script: tox -e release
-  artifacts:
-    paths:
-      - dist
-    expire_in: 3 weeks
-  only:
-    - tags
+# XXX Should re-enable asr-test-data:
+#  script:
+#    - git clone https://gitlab.com/asr-dev/asr-test-data.git
+#    - export ASR_TEST_DATA="$PWD"/asr-test-data

@@ -38,14 +38,8 @@ def client(project):
 
 
 @pytest.mark.ci
-def test_single_project_home_page(client, project):
-    response = client.get("/").data.decode()
-    assert f"<a href='/database.db/'>{project.name}</a>" in response
-
-
-@pytest.mark.ci
 def test_single_project_database_home_page(client, project):
-    response = client.get("/database.db/").data.decode()
+    response = client.get(f"/{project.name}/").data.decode()
     assert f"<h1>{project.name}</h1>" in response
     # XXX We cannot test the table view because the DOMContentLoaded
     # XXX event doesn't fire for some reason.

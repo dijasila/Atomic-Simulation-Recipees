@@ -11,15 +11,15 @@ def webpanel(result, row, key_description):
     baselink = 'https://cmrdb.fysik.dtu.dk/qpod/row/'
 
     # initialize table for charged and neutral systems
-    charged_table = table(row, 'Charged systems', [])
-    neutral_table = table(row, 'Within the same material', [])
+    charged_table = table(row, 'Other charge states', [])
+    neutral_table = table(row, 'Other defects', [])
     # fill in values for the two tables from the result object
     charged_table = extend_table(charged_table, result, 'charged', baselink)
     neutral_table = extend_table(neutral_table, result, 'neutral', baselink)
     neutral_table = extend_table(neutral_table, result, 'pristine', baselink)
 
     # define webpanel
-    panel = WebPanel('Related materials',
+    panel = WebPanel('Other defects',
                      columns=[[charged_table], [neutral_table]],
                      sort=45)
 
@@ -95,7 +95,7 @@ def main() -> Result:
     pristine = list(p.glob('./../../defects.pristine_sc*'))[0]
     if (Path(pristine / 'structure.json').is_file()):
         uid = get_uid_from_fingerprint(pristine)
-        pristinelinks.append((uid, f"pristine material"))
+        pristinelinks.append((uid, "pristine material"))
 
     return Result.fromdata(
         chargedlinks=chargedlinks,
