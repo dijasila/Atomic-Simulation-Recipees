@@ -19,36 +19,53 @@ dichalcogenides, Nano Letters, 16 (4) 2234 (2016)""",
 )
 
 
-def get_transition_table(result):
+def get_transition_table(result, defstr):
     """Set up table for charge transition levels."""
-    from asr.database.browser import (matrixtable,
-                                      describe_entry)
+    from asr.database.browser import describe_entry
 
     trans_results = result.transitions
     vbm = result.pristine.vbm
     transition_labels = []
     transition_array = np.zeros((len(trans_results), 2))
     for i, element in enumerate(trans_results):
-        transition_labels.append(element['transition_name'])
-        transition_array[i, 0] = (element['transition_values']['transition']
-                                  - element['transition_values']['evac']
-                                  - vbm)
         q = int(element['transition_name'].split('/')[-1])
         if q > 0:
+            sign = 1
             transition_array[i, 1] = element['transition_values']['erelax']
         elif q < 0:
-            transition_array[i, 1] = -1 * element['transition_values']['erelax']
+            sign = -1
+            transition_array[i, 1] = element['transition_values']['erelax']
+        transition_labels.append(f"{defstr} ({element['transition_name']})")
+        transition_array[i, 0] = (element['transition_values']['transition']
+                                  - element['transition_values']['evac']
+                                  - vbm
+                                  + sign * element['transition_values']['erelax'])
 
-    transition_array = transition_array[transition_array[:, 0].argsort()]
+    argsort = transition_array[:, 0].argsort()
+    transition_array = transition_array[argsort]
+    transition_labels = [transition_labels[i] for i in argsort]
 
-    transition_table = matrixtable(
-        transition_array,
-        title='Transition',
-        columnlabels=[describe_entry('Transition Energy [eV]',
-                                     description='SJ calculated transition level'),
-                      describe_entry('Relaxation Correction [eV]',
-                                     description='Correction due to ion relaxation')],
-        rowlabels=transition_labels)
+    # transition_table = matrixtable(
+    #     transition_array,
+    #     title='Transition',
+    #     columnlabels=[describe_entry('Transition energy [eV]',
+    #                                  description='SJ calculated transition level'),
+    #                   describe_entry('Relaxation correction [eV]',
+    #                                  description='Correction due to ion relaxation')],
+    #     rowlabels=transition_labels)
+
+    rows = []
+    for i, element in enumerate(trans_results):
+        rows.append((transition_labels[i],
+                     describe_entry(f'{transition_array[i, 0]:.2f} eV',
+                                    'SJ calculated thermodynamic transition.'),
+                     describe_entry(f'{transition_array[i, 1]:.2f} eV',
+                                    'Correction due to ion relaxation.')))
+
+    transition_table = {'type': 'table',
+                        'header': ['Transition', 'Transition energy',
+                                   'Relaxation correction']}
+    transition_table['rows'] = rows
 
     return transition_table
 
@@ -65,13 +82,13 @@ def get_summary_table(result):
     return summary_table
 
 
-def get_formation_table(result):
+def get_formation_table(result, defstr):
     from asr.database.browser import table, describe_entry
 
-    formation_table = table(result, 'Defect formation', [])
+    formation_table = table(result, 'Defect formation energy', [])
     for element in result.eform:
         formation_table['rows'].extend(
-            [[describe_entry(f'Formation energy (q = {element[1]:1d} @ VBM)',
+            [[describe_entry(f'{defstr} (q = {element[1]:1d} @ VBM)',
                              description='Formation energy for charge state q '
                                          'at the valence band maximum [eV].'),
               f'{element[0]:.2f} eV']])
@@ -93,9 +110,12 @@ def webpanel(result, row, key_descriptions):
             explained_key = key
         explained_keys.append(explained_key)
 
+    defname = row.defect_name
+    defstr = f"{defname.split('_')[0]}<sub>{defname.split('_')[1]}</sub>"
     formation_table_sum = get_summary_table(result)
-    formation_table = get_formation_table(result)
-    transition_table = get_transition_table(result)
+    formation_table = get_formation_table(result, defstr)
+    # defectinfo = row.data.get('asr.defectinfo.json')
+    transition_table = get_transition_table(result, defstr)
 
     panel = WebPanel(
         describe_entry('Formation energies and charge transition levels (Slater-Janak)',
@@ -619,9 +639,11 @@ def plot_formation_energies(row, fname):
     ax1.set_xlim(-0.2 * gap, gap + 0.2 * gap)
     yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
     ax1.text(-0.1 * gap, 0.5 * yrange, 'VBM', ha='center',
-             va='center', rotation=90, weight='bold', color='white')
+             va='center', rotation=90, weight='bold', color='white',
+             fontsize=12)
     ax1.text(gap + 0.1 * gap, 0.5 * yrange, 'CBM', ha='center',
-             va='center', rotation=90, weight='bold', color='white')
+             va='center', rotation=90, weight='bold', color='white',
+             fontsize=12)
 
     tickslist = []
     labellist = []
@@ -647,7 +669,7 @@ def plot_formation_energies(row, fname):
     ax2 = ax1.twiny()
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks([])
-    ax1.set_xlabel(r'$E - E_\mathrm{VBM}}$ [eV]')
+    ax1.set_xlabel(r'$E_\mathrm{F} - E_\mathrm{VBM}}$ [eV]')
     ax1.set_ylabel(r'$E^f$ (wrt. standard states) [eV]')
     ax1.legend()
 
@@ -689,9 +711,11 @@ def plot_charge_transitions(row, fname):
     plt.axhline(0, color='black', linestyle='solid')
     plt.axhline(gap, color='black', linestyle='solid')
     plt.text(0, -0.1 * gap, 'VBM', color='white',
-             ha='center', va='center', weight='bold')
+             ha='center', va='center', weight='bold',
+             fontsize=12)
     plt.text(0, gap + 0.1 * gap, 'CBM', color='white',
-             ha='center', va='center', weight='bold')
+             ha='center', va='center', weight='bold',
+             fontsize=12)
 
     i = 1
     for trans in transitions:

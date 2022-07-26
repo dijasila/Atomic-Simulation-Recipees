@@ -40,7 +40,7 @@ def webpanel(result, row, key_descriptions):
         scf_overview, scf_summary = get_overview_tables(scresult, result, unitstring)
         plotname = f'neutrality-{condition}.png'
         panel = WebPanel(
-            describe_entry(f'Equilibrium defect energetics ({condition})',
+            describe_entry(f'Equilibrium energetics: all defects ({condition})',
                            panel_description),
             columns=[[fig(f'{plotname}'), scf_overview], tables],
             plot_descriptions=[{'function': plot_formation_scf,
@@ -73,8 +73,8 @@ def get_overview_tables(scresult, result, unitstring):
         ntype_val = int((100 - ptype_val))
     pn_strength = f'{ptype_val:3}% / {ntype_val:3}%'
     pn = describe_entry(
-        'p-type / n-type strength',
-        'Strength of p-/n-type dopability in percent '
+        'p-type / n-type balance',
+        'Balance of p-/n-type dopability in percent '
         f'(normalized wrt. band gap) at T = {int(result.temperature):d} K.'
         + dl(
             [
@@ -159,8 +159,6 @@ def get_conc_table(result, element, unitstring):
 
     name = element['defect_name']
     def_type = name.split('_')[0]
-    if def_type == 'v':
-        def_type = 'V'
     def_name = name.split('_')[1]
     scf_table = table(result, f'Eq. concentrations of '
                               f'{def_type}<sub>{def_name}</sub> [{unitstring}]', [])
@@ -736,8 +734,6 @@ def plot_formation_scf(row, fname):
                 name = defect['defect_name']
                 def_type = name.split('_')[0]
                 def_name = name.split('_')[-1]
-                if def_type == 'v':
-                    def_type = 'V'
                 namestring = f"{def_type}$_\\{'mathrm{'}{def_name}{'}'}$"
                 array = np.zeros((len(defect['concentrations']), 2))
                 for num, conc_tuple in enumerate(defect['concentrations']):
