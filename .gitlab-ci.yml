@@ -1,82 +1,31 @@
 image: python
 
+
 stages:
   - test
   - deploy
 
-#- build
-#- style
-#- test
-#- coverage
-#- release
-#- deploy
 
-before_script:
-  - pip install pip --upgrade
-  - pip install -r dev-requirements.txt
-
-# -------------- Build --------------
-build:
-  stage: test
-  script: tox -e build
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 week
-
-# -------------- Style tests --------------
 flake8:
-  image: python:3.9
-  stage: test
-  script: tox -e flake8
+  image: registry.gitlab.com/ase/ase:ase-paperwork
+  script:
+   - flake8 asr/
 
-readme:
-  image: python:3.9
-  stage: test
-  script: tox -e readme
 
 docs:
-  image: python:3.9
-  stage: test
-  script: tox -e docs
+  image: registry.gitlab.com/asr-dev/asr:main
+  script:
+    - sphinx-build --keep-going -E -W -c docs -b html docs docs/build
 
-# -------------- Unit tests --------------
-doctest:
-  image: python:3.9
-  stage: test
-  script: tox -e doctest
-
-#python38:
-#  image: python:3.8
-#  stage: test
-#  script: tox -e py38
-#  artifacts:
-#    paths:
-#      - .tox/.coverage*
-#    expire_in: 3 weeks
-
-#python39:
-#  image: python:3.9
-#  stage: test
-#  script: tox -e py39
-#  artifacts:
-#    paths:
-#      - .tox/.coverage*
-#    expire_in: 3 weeks
-
-# -------------- Parallel tests --------------
 
 parallel:
   image: registry.gitlab.com/asr-dev/asr:main
   stage: test
   script:
     - cd asr/test
-    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -k parallel
-  # GPAW swallows "-m" and errors out if we say "-m parallel"
-  # So we use -k instead.
-  # GPAW should not swallow -m.
+    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -- -m parallel
 
-# -------------- Integration tests --------------
+
 main:
   image:  registry.gitlab.com/asr-dev/asr:main
   stage: test
@@ -93,53 +42,6 @@ main:
     expire_in: 1 week
 
 
-
-#        if args.coverage:
-#            add_args('--cov=ase',
-#                     '--cov-config=.coveragerc',
-#                     # '--cov-report=term',
-#                     '--cov-report=html')
-
-
-
-
-#python38-gpaw:
-#  image: python:3.8
-#  stage: integrationtest
-#  script:
-#    - apt-get update -qy
-#    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-#    - tox -e py38-gpaw
-#  artifacts:
-#    paths:
-#      - .tox/.coverage*
-#    expire_in: 3 weeks
-
-#python39-gpaw:
-#  image: python:3.9
-#  stage: integrationtest
-#  script:
-#    - apt-get update -qy
-#    - apt-get install -qy libopenblas-dev liblapack-dev libxc-dev
-#    - tox -e py39-gpaw
-#  artifacts:
-#    paths:
-#      - .tox/.coverage*
-#    expire_in: 3 weeks
-
-
-# -------------- Coverage --------------
-#coverage:
-#  image: python:3.9
-#  stage: coverage
-#  script:
-#    - tox -e coverage-report
-#  artifacts:
-#    paths:
-#      - .tox/htmlcov/
-#    expire_in: 3 weeks
-
-# -------------- Deploy coverage report --------------
 pages:
   stage: deploy
   dependencies:
@@ -152,16 +54,3 @@ pages:
     expire_in: 3 weeks
   only:
     - master
-
-
-# -------------- Release --------------
-# (Only on git tagged commit)
-#release:
-#  stage: release
-#  script: tox -e release
-#  artifacts:
-#    paths:
-#      - dist
-#    expire_in: 3 weeks
-#  only:
-#    - tags
