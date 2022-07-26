@@ -1,6 +1,3 @@
-image: python
-
-
 stages:
   - test
   - deploy
@@ -18,14 +15,6 @@ docs:
     - sphinx-build --keep-going -E -W -c docs -b html docs docs/build
 
 
-parallel:
-  image: registry.gitlab.com/asr-dev/asr:main
-  timeout: 20m
-  script:
-    - cd asr/test
-    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -- -m parallel
-
-
 main:
   image:  registry.gitlab.com/asr-dev/asr:main
   stage: test
@@ -40,6 +29,14 @@ main:
     paths:
       - htmlcov
     expire_in: 1 week
+
+
+parallel:
+  image: registry.gitlab.com/asr-dev/asr:main
+  timeout: 20m
+  script:
+    - cd asr/test
+    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -- -m parallel --color=yes
 
 
 pages:
