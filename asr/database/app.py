@@ -367,7 +367,6 @@ def run_app(
     else:
         dbapp.run(host=host, debug=True)
 
-
 def convert_files_to_projects(filenames, pool=None):
     projects = []
     for filename in filenames:
