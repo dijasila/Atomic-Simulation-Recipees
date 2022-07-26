@@ -31,12 +31,12 @@ main:
     expire_in: 1 week
 
 
-parallel:
-  image: registry.gitlab.com/asr-dev/asr:main
-  timeout: 20m
-  script:
-    - cd asr/test
-    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -- -m parallel --color=yes  -k bader
+#parallel:
+#  image: registry.gitlab.com/asr-dev/asr:main
+#  timeout: 20m
+#  script:
+#    - cd asr/test
+#    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -- -m parallel --color=yes
 
 
 pages:
