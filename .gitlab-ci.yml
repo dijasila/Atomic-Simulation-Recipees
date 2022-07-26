@@ -82,7 +82,25 @@ main:
   script:
     - pwd
     - cd asr/test
-    - pytest --color=yes --numprocesses=auto
+    - pytest --color=yes --numprocesses=auto --cov=asr --cov-report=html -k bader
+    - coverage report
+
+  coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
+  artifacts:
+    paths:
+      - coverage-html
+    expire_in: 1 week
+
+
+
+#        if args.coverage:
+#            add_args('--cov=ase',
+#                     '--cov-config=.coveragerc',
+#                     # '--cov-report=term',
+#                     '--cov-report=html')
+
+
+
 
 #python38-gpaw:
 #  image: python:3.8
