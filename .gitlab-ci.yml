@@ -1,7 +1,8 @@
 image: python
 
 stages:
-- test
+  - test
+  - deploy
 
 #- build
 #- style
@@ -11,8 +12,8 @@ stages:
 #- deploy
 
 before_script:
-- pip install pip --upgrade
-- pip install -r dev-requirements.txt
+  - pip install pip --upgrade
+  - pip install -r dev-requirements.txt
 
 # -------------- Build --------------
 build:
