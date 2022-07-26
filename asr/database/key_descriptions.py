@@ -99,9 +99,9 @@ key_descriptions = {
     },
     "magnetic_anisotropy": {
         "spin_axis": "KVP: Magnetic easy axis",
-        "E_x": "KVP: Soc. total energy, x-direction [eV/unit cell]",
-        "E_y": "KVP: Soc. total energy, y-direction [eV/unit cell]",
-        "E_z": "KVP: Soc. total energy, z-direction [eV/unit cell]",
+        "E_x": "KVP: Soc. total energy, x-direction [meV/unit cell]",
+        "E_y": "KVP: Soc. total energy, y-direction [meV/unit cell]",
+        "E_z": "KVP: Soc. total energy, z-direction [meV/unit cell]",
         "theta": "Easy axis, polar coordinates, theta [radians]",
         "phi": "Easy axis, polar coordinates, phi [radians]",
         "dE_zx":
@@ -244,6 +244,8 @@ extras = {}
 for recipe in get_recipes():
     key = 'has_' + recipe.name.replace('.', '_').replace('@', '_')
     extras[key] = f'{recipe.name} is calculated'
+# Additional key description for spin coherence times of QPOD
+extras['sct'] = 'Spin coherence time T2 [ms]'
 
 key_descriptions['extra'] = extras
 

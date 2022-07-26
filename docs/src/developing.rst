@@ -7,7 +7,7 @@ Run tests
 
 .. code-block::
 
-   $ tox -e flake8 doctest py36 py36-gpaw
+   $ pytest asr/test
 
 
 Build documentation
@@ -17,13 +17,7 @@ Build documentation:
 
 .. code-block::
 
-   $ tox -e docs
-
-Update the shell code output of various .rst files:
-
-.. code-block::
-
-   $ tox -e updatedocs
+   $ sphinx-build docs/ docs/build/
 
 Make a new release
 ------------------
@@ -48,8 +42,4 @@ Make a new version:
 
      $ bumpversion major
 
-Upload to PyPI
-
-.. code-block:: console
-
-   $ tox -e release
+Upload to PyPI using twine.

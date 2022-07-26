@@ -23,7 +23,7 @@ def describe_crystaltype_entry(spglib):
     from asr.database.browser import (describe_entry, code, bold,
                                       br, dl, div)
     crystal_type = describe_entry(
-        'crystal_type',
+        'Crystal type',
         "The crystal type is defined as "
         + br
         + div(bold('-'.join([code('stoi'),
