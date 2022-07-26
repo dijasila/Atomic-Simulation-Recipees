@@ -458,7 +458,7 @@ def get_strucs_and_calcs(path):
     from gpaw import restart
 
     try:
-        pristinelist = list(path.glob(f'./../../defects.pristine_sc*/'))
+        pristinelist = list(path.glob('./../../defects.pristine_sc*/'))
         pris_folder = pristinelist[0]
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         struc_def, calc_def = restart(path / 'gs.gpw', txt=None)

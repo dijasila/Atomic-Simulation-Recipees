@@ -678,7 +678,7 @@ class DefectInfo:
             else:
                 assert len(defectname.split('_')) == 2, (
                     'Defect name has to be of the following structure: '
-                    f'"<defecttype>_<defectkind>"')
+                    '"<defecttype>_<defectkind>"')
                 self.defecttype = defectname.split('_')[0]
                 self.defectkind = defectname.split('_')[1]
         else:

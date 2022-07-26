@@ -95,7 +95,7 @@ def main() -> Result:
     pristine = list(p.glob('./../../defects.pristine_sc*'))[0]
     if (Path(pristine / 'structure.json').is_file()):
         uid = get_uid_from_fingerprint(pristine)
-        pristinelinks.append((uid, f"pristine material"))
+        pristinelinks.append((uid, "pristine material"))
 
     return Result.fromdata(
         chargedlinks=chargedlinks,

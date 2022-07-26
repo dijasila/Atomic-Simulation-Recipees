@@ -388,8 +388,7 @@ def make_property(key, doc, return_type):
     def setter(self, value) -> None:
         if self.data:
             raise AttributeError(
-                f'Data was already set. You cannot overwrite/set data.'
-            )
+                'Data was already set. You cannot overwrite/set data.')
         self.data[key] = value
 
     return property(fget=getter, fset=setter, doc=doc)

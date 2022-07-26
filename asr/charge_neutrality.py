@@ -755,7 +755,7 @@ def plot_formation_scf(row, fname):
 
 def set_labels_and_legend(ax, title):
     ax.set_xlabel(r'$E_\mathrm{F} - E_{\mathrm{VBM}}$ [eV]')
-    ax.set_ylabel(f'$E^f$ [eV]')
+    ax.set_ylabel('$E^f$ [eV]')
     ax.set_title(title)
     ax.legend(bbox_to_anchor=(0.5, 1.1), ncol=5, loc='lower center')
 
