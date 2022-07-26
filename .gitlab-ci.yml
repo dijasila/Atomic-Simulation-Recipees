@@ -38,7 +38,7 @@ main:
   coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
   artifacts:
     paths:
-      - coverage-html
+      - htmlcov
     expire_in: 1 week
 
 
@@ -47,7 +47,7 @@ pages:
   dependencies:
     - main
   script:
-    - mv coverage-html public
+    - mv htmlcov public
   artifacts:
     paths:
       - public
