@@ -432,6 +432,10 @@ def vacuumlevels(atoms, calc, n=8) -> VacuumLevelResults:
 
     ves = calc.get_electrostatic_potential()
 
+    # (Yes, this is illogical)
+    atoms = atoms.copy()
+    atoms.calc = calc
+
     nperiodic = atoms.pbc.sum()
     if nperiodic < 2:
         evacmean = 0.0
