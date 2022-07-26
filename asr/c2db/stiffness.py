@@ -63,7 +63,7 @@ def webpanel(result, context):
             rows=[])
         eig = complex(eigs[0])
         eigrows = ([['<b>Stiffness tensor eigenvalues<b>', '']]
-                   + [[f'Eigenvalue', f'{eig.real:.2f} * 10⁻¹⁰ N']])
+                   + [['Eigenvalue', f'{eig.real:.2f} * 10⁻¹⁰ N']])
 
     eigtable = dict(
         type='table',
