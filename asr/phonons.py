@@ -41,6 +41,7 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
               fconverge: float = 1e-4) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
     from asr.calculators import get_calculator
+    from gpaw.mpi import world
 
     atoms = read('structure.json')
     gsold = get_calculator()('gs.gpw', txt=None)
@@ -71,16 +72,11 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
         params['txt'] = fd
         calc = get_calculator()(**params)
 
-        nd = sum(atoms.get_pbc())
-        if nd == 3:
-            supercell = (n, n, n)
-        elif nd == 2:
-            supercell = (n, n, 1)
-        elif nd == 1:
-            supercell = (n, 1, 1)
-
+        supercell = [n if periodic else 1 for periodic in atoms.pbc]
         p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
-        p.cache.strip_empties()
+        if world.rank == 0:
+            p.cache.strip_empties()
+        world.barrier()
         p.run()
 
 
@@ -159,13 +155,7 @@ def main(mingo: bool = True) -> Result:
     calculateresult = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = calculateresult.metadata.params['n']
-    nd = sum(atoms.get_pbc())
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
+    supercell = [n if periodic else 1 for periodic in atoms.pbc]
     p = Phonons(atoms=atoms, supercell=supercell)
     p.read(symmetrize=0)
 
