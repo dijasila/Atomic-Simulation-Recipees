@@ -6,6 +6,8 @@ import click
 import os
 
 
+# TODO: fix single defect inequivalence bug
+
 # Define calculators that are needed for the params.json file
 # of each individual defect and charge folder.
 # Note, that the only real change to the default relax and gs
