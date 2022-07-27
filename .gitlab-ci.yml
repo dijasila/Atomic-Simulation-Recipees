@@ -41,9 +41,6 @@ pages:
   dependencies:
     - main
   script:
-    - pwd
-    - ls
-    - ls asr/test
     - mv htmlcov public
   artifacts:
     paths:
