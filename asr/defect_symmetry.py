@@ -767,7 +767,7 @@ class WFCubeFile:
 
 
 class DefectInfo:
-    """Class containing all information about a specific single defect."""
+    """Class containing all information about a specific defect."""
 
     def __init__(self,
                  defectpath=None,
@@ -798,7 +798,7 @@ class DefectInfo:
             defecttoken = dirname.split('.')[2:]
         elif defecttoken is not None:
             defecttoken = defecttoken.split('.')
-        if len(defecttoken) > 2:
+        if len(defecttoken) >= 2:
             defects = defecttoken[:-1]
             specs_str = defecttoken[-1].split('-')
             specs = [int(spec) for spec in specs_str]
