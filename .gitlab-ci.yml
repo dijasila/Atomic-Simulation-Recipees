@@ -20,7 +20,7 @@ main:
   timeout: 20m
   script:
     - pytest asr/test --color=yes --numprocesses=auto --cov=asr --cov-report=html --durations 20
-    - coverage report
+    - coverage report --precision=2
 
   coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
   artifacts:
