@@ -18,7 +18,7 @@ docs:
 main:
   image:  registry.gitlab.com/asr-dev/asr:main
   script:
-    - pytest asr/test --color=yes --numprocesses=auto --cov=asr --cov-report=html
+    - pytest asr/test --color=yes --numprocesses=auto --cov=asr --cov-report=html --durations 20
     - coverage report
 
   coverage: '/TOTAL.+ ([0-9]+\.[0-9]+%)/'
@@ -33,7 +33,7 @@ parallel:
   timeout: 20m
   script:
     - cd asr/test
-    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -- asr/test -m parallel --color=yes
+    - mpiexec --oversubscribe -np 2 gpaw python -m pytest -- asr/test -m parallel --color=yes --durations 20
 
 
 pages:
