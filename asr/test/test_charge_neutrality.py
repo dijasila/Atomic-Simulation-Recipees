@@ -91,16 +91,17 @@ def test_double_convert_concentration_units(conc_in, atoms):
 
 @pytest.mark.parametrize('p0', [1e3, 1e-4])
 @pytest.mark.parametrize('n0', [1e3, 2.3e2])
+@pytest.mark.parametrize('ni', [0, 1e5, -1e5])
 @pytest.mark.ci
-def test_calculate_delta(p0, n0):
+def test_calculate_delta(p0, n0, ni):
     from asr.charge_neutrality import (calculate_delta,
                                        check_delta_zero)
 
     conc_list = [1e-2, 2e-2, 2e-2]
     charge_list = [0, 1, -1]
 
-    delta = calculate_delta(conc_list, charge_list, n0, p0)
-    ref_delta = n0 - p0
+    delta = calculate_delta(conc_list, charge_list, n0, p0, ni)
+    ref_delta = n0 - p0 + ni
 
     assert delta == pytest.approx(ref_delta)
     if delta == pytest.approx(0):
