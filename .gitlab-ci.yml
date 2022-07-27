@@ -33,7 +33,6 @@ parallel:
   image: registry.gitlab.com/asr-dev/asr:main
   timeout: 20m
   script:
-    - cd asr/test
     - mpiexec --oversubscribe -np 2 gpaw python -m pytest -- asr/test -m parallel --color=yes --durations 20
 
 
