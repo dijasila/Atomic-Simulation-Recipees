@@ -17,6 +17,7 @@ docs:
 
 main:
   image:  registry.gitlab.com/asr-dev/asr:main
+  timeout: 20m
   script:
     - pytest asr/test --color=yes --numprocesses=auto --cov=asr --cov-report=html --durations 20
     - coverage report
