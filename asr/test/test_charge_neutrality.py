@@ -24,7 +24,7 @@ def test_adjust_formation_energies(defect):
     elif defect == 'N_B':
         offset = mu_ref['B'] - mu_ref['N']
     elif defect == 'N_B.v_N.0-3':
-        offset = mu_ref['B'] + mu_ref['N'] - mu_ref['N']
+        offset = mu_ref['B']
     for i in range(len(defectdict[f'{defect}'])):
         assert adjusted_defectdict[f'{defect}'][i][0] == pytest.approx(
             defectdict[f'{defect}'][i][0] + offset)

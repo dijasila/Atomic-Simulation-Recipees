@@ -311,7 +311,7 @@ def main(temp1: float = 300,
     # handle the different usages, either with cornerpoints, input chemical
     # potential dictionary, or none of the above
     if cornerpoints and mu != {}:
-        raise AssertionError('give either cornerpoints or mu-dict as input, not both!')
+        raise TypeError('give either cornerpoints or mu-dict as input, not both!')
     elif cornerpoints:
         # TO BE IMPLEMENTED (JIBAN)
         resfile = ''
@@ -403,7 +403,7 @@ def main(temp1: float = 300,
                 'in particular the input intrinsic carrier concentration "ni"!')
 
         sc_results.append(SelfConsistentResult.fromdata(
-            condition=f'{element}',
+            condition=element,
             efermi_sc=E,
             n0=n0,
             p0=p0,
@@ -431,7 +431,7 @@ def return_mu_remove_add(element, mu):
     Returns mu_i * n_i where i is the defect species based on the name of
     the defect in 'element'.
 
-    Examples: * for vacancies: return mu_remove and set mu_add to zero
+    examples: * for vacancies: return mu_remove and set mu_add to zero
               * for substitutional defects: return both mu_remove and mu_add
               * for interstitials: return mu_add and set mu_remove to zero
 
