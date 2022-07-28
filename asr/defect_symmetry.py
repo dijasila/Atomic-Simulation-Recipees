@@ -571,7 +571,8 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
         structure, unrelaxed, primitive, pristine, translation, delta=0)
     for delta in [0.1, 0.3]:
-        for cutoff in [0.1, 0.6, 1.1]:
+        # for cutoff in [0.01, 0.03, 0.1]:
+        for cutoff in np.arange(0.1, 1.2, 0.5):
             rel_tmp = rel_struc.copy()
             ref_tmp = ref_struc.copy()
             art_tmp = art_struc.copy()
@@ -680,9 +681,15 @@ def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
 
 def apply_shift(atoms, delta=0):
     newatoms = atoms.copy()
-    spos = newatoms.get_scaled_positions()
-    spos[:2] += 0.5 + delta
-    newatoms.set_scaled_positions(spos)
+    positions = newatoms.get_positions()
+    cell = newatoms.cell
+    positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
+    newatoms.set_positions(positions)
+    # scaled_delta = delta / np.mean(atoms.cell.lengths()[:2])
+    # newatoms = atoms.copy()
+    # spos = newatoms.get_scaled_positions()
+    # spos[:2] += 0.5 + scaled_delta
+    # newatoms.set_scaled_positions(spos)
 
     return newatoms
 
