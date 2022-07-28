@@ -363,87 +363,6 @@ test suite when you push code to Gitlab. Mark your test with
        ...
 
 
-This ends the tutorial on pytest. We will now continue with explaining
-another tool that is very useful in conjunction with pytest.
-
-
-Tox
-===
-
-tox_ is another python package which finds common usage in combination
-with pytest_ (or other test runners). tox_ sets up a virtual
-environment, installs your package with its dependencies and runs all
-tests within that environment. As such it will no longer be important
-exactly which packages you have installed in your system. You have
-seen how to run tests directly using pytest but we actually recommend
-using "tox" for running the entire test suite instead of vanilla
-pytest_. It is beyond the scope of this tutorial to go much further
-into detail about this, but the curious reader can take a look in
-``tox.ini`` which configures the virtual environments.
-
-To install tox_ run:
-
-.. code-block:: console
-
-   $ python3 -m pip install tox --user
-
-To see a list of the virtual environments do
-
-.. code-block:: console
-   :caption: In: asr/
-
-   $ tox -l
-   flake8
-   docs
-   py36
-   py37
-   py38
-   py36-gpaw
-   py37-gpaw
-   py38-gpaw
-
-Each of these environments perform a specific task. A quick rundown of
-the meaning of these environments:
-
-  - The environments ``py3*`` run the test-suite with different
-    versions of the python interpreter, ``python3.*``.
-  - ``py3*-gpaw`` runs specially marked tests that require having
-    ``gpaw`` installed with the ``python3.*`` interpreter.
-  - ``flake8`` runs the the ``flake8`` style checker on the code.
-  - ``docs`` builds the documentation of ASR.
-
-To run all environments simply do
-
-.. code-block:: console
-   :caption: In: asr/
-
-   $ tox
-
-This will however require that you have all the above mentioned Python
-interpreters installed. What you probably want is to run a specific
-environment, for example, ``py36``
-
-.. code-block:: console
-   :caption: In: asr/
-
-   $ tox -e py36
-
-If you want to supply extra arguments for pytest ``tox`` can forward
-them using the ``--`` separator. For example, to run our previous test
-``test_gs_tutorial`` we run the command
-
-.. code-block:: console
-   :caption: In: asr/
-
-   $ tox -e py36 -- -k test_gs_tutorial
-
-Similarly you can append any pytest option and argument.
-
-Since we are now running pytest_ within tox_, we have changed the
-destination of the temporary directory where tests are running. The
-temporary directory can now be found in ``.tox/environment-name/tmp/``
-and ``.tox/`` is located in your ``asr/`` directory.
-
 Coverage
 ========
 
@@ -455,34 +374,10 @@ the tests. As such, coverage does not tell you anything about the
 quality of the tests but it does tell you if nothing is being tested
 at all!
 
-With tox_ we have made it easy to get the test coverage locally on
-your own computer. For example, the canonical way to the get test
-coverage when running the ``py36`` would be
+The gitlab CI configuration (``.gitlab-ci.yml``)
+includes the right incantations to generate coverage
+statistics.
 
-.. code-block:: console
-   :caption: In: asr/
-
-   $ tox -e coverage-clean  # Clean any old coverage data
-   $ tox -e py36
-   $ tox -e coverage-report
-
-This will print an overview of the coverage of the test suite. The
-coverage module also saves a browser friendly version in
-``.tox/htmlcov/index.html`` in which you can see exactly which lines
-have been executed, or more importantly, which haven't.
-
-
-Parallel testing
-================
-
-If a test have been marked using the ``@pytest.mark.parallel`` marker
-it will automatically be run in CI in parallel on two cores. Parallel
-tests can be run locally with the ``py36-mpi`` environment
-
-.. code-block:: console
-   :caption: In: asr/
-
-   $ tox -e py36-mpi 
 
 Summary
 =======
@@ -494,7 +389,7 @@ this tutorial:
     ``pytest.approx``, ``pytest.approx``, ``mocker``
   - ASR fixtures: ``mockgpaw``, ``asr_tmpdir_w_params``,
     ``test_material``, ``get_webcontent``
-  - tox_
+
 
 Where to go now?
 ================
@@ -505,4 +400,3 @@ the existing tests in ``asr/asr/test/test_*.py``. Additionally you can
 take a look at the documentation of pytest_ itself.
 
 .. _pytest: https://docs.pytest.org/en/latest/
-.. _tox: https://tox.readthedocs.io/en/latest/

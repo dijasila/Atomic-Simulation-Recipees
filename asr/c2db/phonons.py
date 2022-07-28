@@ -86,10 +86,6 @@ def calculate(
     # XXX code does not handle n being three integers.
     # We should probably support that.
 
-    ndim = sum(atoms.pbc)
-    supercell = np.ones(3, int)
-    supercell[:ndim] = n
-
     calculator = dict(calculator)
     with paropen('phonons.txt', mode='a') as fd:
         calcname = calculator.pop('name')
@@ -97,6 +93,7 @@ def calculate(
         calculator['txt'] = fd
         calc = GPAW(**calculator)
 
+        supercell = [n if periodic else 1 for periodic in atoms.pbc]
         phonons = Phonons(atoms=atoms, calc=calc, supercell=supercell)
         if world.rank == 0:
             phonons.cache.strip_empties()
@@ -226,13 +223,13 @@ def postprocess(
     # XXX both calculate and postprocess currently take n as an input, and can
     # therefore be inconsistent.  Maybe n should be stored on the phononresult
     # or we should otherwise have access to the inputs of the calculate step.
-
     calculateresult = phononresult
 
     ndim = sum(atoms.pbc)
     supercell = np.ones(3, int)
     supercell[:ndim] = n
 
+    supercell = [n if periodic else 1 for periodic in atoms.pbc]
     phonons = Phonons(atoms=atoms, supercell=supercell)
     if world.rank == 0:
         phonons.cache.update(calculateresult.forces)

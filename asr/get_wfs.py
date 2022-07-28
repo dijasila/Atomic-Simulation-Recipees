@@ -225,7 +225,7 @@ def return_gapstates(calc_def):
     # get calculators and atoms for pristine and defect calculation
     try:
         p = Path('.')
-        pristinelist = list(p.glob(f'./../../defects.pristine_sc*/'))
+        pristinelist = list(p.glob('./../../defects.pristine_sc*/'))
         pris_folder = pristinelist[0]
         res_pris = read_json(pris_folder / 'results-asr.gs.json')
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)

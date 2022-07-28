@@ -401,55 +401,68 @@ class VacuumLevelResults(ASRResult):
         'efermi_nosoc': 'Fermi level without SOC [eV].'}
 
 
-def vacuumlevels(atoms, calc, n=8):
-    """Get the vacuumlevels on both sides of a 2D material.
+def vacuumlevels(atoms, calc, n=8) -> VacuumLevelResults:
+    """Get the vacuum level(s).
 
-    Get the vacuumlevels on both sides of a 2D material. Will
-    do a dipole corrected dft calculation, if needed (Janus structures).
-    Assumes the 2D material periodic directions are x and y.
-    Assumes that the 2D material is centered in the z-direction of
-    the unit cell.
+    Special case for 2D:
 
-    Dipole corrected dft calculation -> dipcorrgs.gpw
+        Get the vacuumlevels on both sides of a material.
+        Assumes the 2D material periodic directions are x and y.
+        Assumes that the 2D material is centered in the z-direction of
+        the unit cell.
 
     Parameters
     ----------
-    gpw: str
-       name of gpw file to base the dipole corrected calc on
-    evacdiffmin: float
-        thresshold in eV for doing a dipole moment corrected
-        dft calculations if the predicted evac difference is less
-        than this value don't do it
+    atoms: Atoms
+       The Atoms object.
+    calc: GPAW-calculator
+        The GPAW object.  Provides the electrostatic potential.
     n: int
-        number of gridpoints away from the edge to evaluate the vac levels
+        Number of gridpoints away from the edge to evaluate the vacuum levels.
     """
     # XXX Actually we have a vacuum level also in 1D or 0D systems.
     # Only for 3D systems can we have trouble.
 
-    if sum(atoms.pbc) != 2:
-        return VacuumLevelResults.fromdata(
-            z_z=None,
-            v_z=None,
-            evacdiff=None,
-            dipz=None,
-            evac1=None,
-            evac2=None,
-            evacmean=None,
-            efermi_nosoc=None)
+    z_z = None
+    v_z = None
+    devac = None
+    dipz = None
+    evac1 = None
+    evac2 = None
+    evacmean = None
 
-    # Record electrostatic potential as a function of z
-    v_z = calc.get_electrostatic_potential().mean(0).mean(0)
-    z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
+    ves = calc.get_electrostatic_potential()
 
-    # Store data
+    # (Yes, this is illogical)
+    atoms = atoms.copy()
+    atoms.calc = calc
+
+    nperiodic = atoms.pbc.sum()
+    if nperiodic < 2:
+        evacmean = 0.0
+        for v, periodic in zip([ves[0], ves[:, 0], ves[:, :, 0]],
+                               atoms.pbc):
+            if not periodic:
+                evacmean += v.mean() / (3 - nperiodic)
+    elif nperiodic == 2:
+        # Record electrostatic potential as a function of z
+        assert not atoms.pbc[2]
+        v_z = ves.mean(0).mean(0)
+        z_z = np.linspace(0, atoms.cell[2, 2], len(v_z), endpoint=False)
+        dipz = atoms.get_dipole_moment()[2]
+        devac = evacdiff(atoms)
+        evac1 = v_z[n]
+        evac2 = v_z[-n]
+        evacmean = (v_z[n] + v_z[-n]) / 2
+
     return VacuumLevelResults.fromdata(
         z_z=z_z,
         v_z=v_z,
-        dipz=calc.atoms.get_dipole_moment()[2],
-        evacdiff=evacdiff(calc.atoms),
-        evac1=v_z[n],
-        evac2=v_z[-n],
-        evacmean=(v_z[n] + v_z[-n]) / 2,
+        dipz=dipz,
+        evacdiff=devac,
+        evac1=evac1,
+        evac2=evac2,
+        evacmean=evacmean,
         efermi_nosoc=calc.get_fermi_level())
 
 

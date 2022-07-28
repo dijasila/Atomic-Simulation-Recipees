@@ -292,7 +292,7 @@ class Intermediate:
             if err > 1e-4:
                 for ref in self.references:
                     print(ref.formula, ref.hform)
-                raise ValueError(f'Could not find solution.')
+                raise ValueError('Could not find solution.')
         else:
             x = np.linalg.solve(A, b)
 
@@ -446,7 +446,7 @@ class ConvexHullReference(Reference):
         2. Heat of formation
         3. List of elements used in convex hull
         """
-        msg = f'ConvexHullReference:' + f'\nFormula: {self.formula}'
+        msg = 'ConvexHullReference:' + f'\nFormula: {self.formula}'
         msg = msg + f'\nHform: {self.hform}' + f'\nElements: {self.elements}'
         return msg
 
@@ -532,7 +532,7 @@ def chcut_plot(context, fname):
     plt.gca().set_xticks(range(len(labels)))
     plt.gca().set_xticklabels(labels)
     plt.xlabel(f'{reactant_ref.formula} content')
-    plt.ylabel(f"Heat of formation")
+    plt.ylabel("Heat of formation")
     plt.tight_layout()
     plt.savefig(fname, bbox_inches='tight')
 
@@ -759,7 +759,7 @@ def calculate_intermediates(mat_ref, reactant_ref, refs):
 def convex_hull_planes(chrefs, mat_formula, react_formula):
     from scipy.spatial import ConvexHull
     if chrefs[0].formula != mat_formula:
-        msg = f'Material must be first in convex hull refs:'
+        msg = 'Material must be first in convex hull refs:'
         msg = msg + f' {(chrefs[0].formula, mat_formula)}'
         raise ValueError(msg)
 
