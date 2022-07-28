@@ -160,10 +160,11 @@ def add_relaxcalculator_parameter(record):
         help='Symmetrize forces and stresses.', is_flag=True)
 def main(
         atoms: Atoms,
+        *,
         strain_percent: float = 1,
-        calculator: dict = formalpolarization.defaults.calculator,
-        relaxcalculator: dict = relax.defaults.calculator,
-        fmax: float = relax.defaults.fmax,
+        calculator: dict,  #  = formalpolarization.defaults.calculator,
+        relaxcalculator: dict,  #  = relax.defaults.calculator,
+        fmax: float,  # = relax.defaults.fmax,
         enforce_symmetry: bool = True,
 ) -> Result:
     """Calculate piezoelectric tensor.

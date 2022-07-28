@@ -5,11 +5,14 @@ import pickle
 import sys
 from ast import literal_eval
 from contextlib import contextmanager
-from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
 
+
 import click
+
+from asr.core.repository import ASRRepository
+from htwutil.cli import define_commandline_interface
 
 import asr
 from asr.core import (ASRCommand, ASRResult, CommaStr, DictStr, chdir,
@@ -107,9 +110,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 # @click.group(context_settings=CONTEXT_SETTINGS)
-@click.version_option(version=asr.__version__)
-def cli():
-    ...
+# @click.version_option(version=asr.__version__)
+# def cli():
+#     ...
 
 
 # @cli.command()
@@ -1183,10 +1186,6 @@ def setinfo(key_value_pairs: List[Tuple[str, str]]):
     from asr.setinfo import main
 
     main(key_value_pairs)
-
-
-from htwutil.cli import define_commandline_interface
-from asr.core.repository import ASRRepository
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)

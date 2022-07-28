@@ -13,10 +13,10 @@ def workflow(rn, atoms, calculator, **kw):
 def test_pdos(repo, mockgpaw,
               test_material, get_webcontent, fast_calc):
 
-    pdospost = repo.run_workflow_blocking(workflow, atoms=test_material,
-                                          calculator=fast_calc,
-                                          emptybands=5,
-                                          kptdensity=2)
+    repo.run_workflow_blocking(workflow, atoms=test_material,
+                               calculator=fast_calc,
+                               emptybands=5,
+                               kptdensity=2)
 
     # PDOS(atoms=test_material, calculator=fast_calc, emptybands=5, kptdensity=2.0)
 

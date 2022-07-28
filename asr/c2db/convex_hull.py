@@ -2,12 +2,7 @@
 from typing import List, Dict, Any, Optional
 
 import asr
-from asr.core import (
-    command, argument, ASRResult, prepare_result,
-    atomsopt, calcopt,
-    File, FileStr,
-)
-from asr.calculators import set_calculator_hook
+from asr.core import ASRResult, prepare_result, File
 
 import numpy as np
 from asr.database.browser import (
@@ -147,7 +142,7 @@ def convert_database_parameter_to_file(record):
 def main(
         formula,
         energy,
-#        calculator: dict = groundstate.defaults.calculator,
+        # calculator: dict = groundstate.defaults.calculator,
         databases: List[File] = [],
 ) -> Result:
     """Calculate convex hull energies.
@@ -259,6 +254,7 @@ class Reference:
 
     def as_ase_phasediagram_ref(self):
         return (str(self.formula), self.hform_total)
+
 
 def calculate_hof_and_hull(
         formula: Formula, energy, references, ref_energies_per_atom):

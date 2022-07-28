@@ -2,9 +2,7 @@
 import numpy as np
 
 import asr
-from asr.core import (
-    command, ASRResult, prepare_result
-)
+from asr.core import ASRResult, prepare_result
 import typing
 
 from asr.database.browser import (make_panel_description,

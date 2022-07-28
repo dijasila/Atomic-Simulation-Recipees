@@ -1,5 +1,4 @@
 """Electronic band structures."""
-from pathlib import Path
 import copy
 from typing import Union
 import asr
@@ -582,7 +581,7 @@ def postprocess(bsresult, gsresult, mag_ani, gspostprocess) -> Result:
     path = bsresults['path']
     sz_mk = s_kvm[:, mag_ani.spin_index(), :].T  # take x, y or z component
 
-    assert sz_mk.shape[1] == len(path.kpts), f'sz_mk has wrong dims'
+    assert sz_mk.shape[1] == len(path.kpts), 'sz_mk has wrong dims'
 
     bsresults['sz_mk'] = sz_mk
 

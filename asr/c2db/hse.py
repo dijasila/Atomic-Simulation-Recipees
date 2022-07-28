@@ -1,7 +1,7 @@
 """HSE06 band structure."""
 from asr.calculators import Calculation
 import asr
-from asr.core import command, ASRResult, prepare_result
+from asr.core import ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
 from asr.c2db.bandstructure import legend_on_top
@@ -54,7 +54,8 @@ class HSECalculationResult(ASRResult):
 default_kptdensity = 8.0
 default_emptybands = 20
 
-@command(module='asr.c2db.hse')
+
+# @command(module='asr.c2db.hse')
 # @option('--kptdensity', help='K-point density', type=float)
 # @option('--emptybands', help='number of empty bands to include', type=int)
 def calculate(
@@ -296,7 +297,7 @@ class Result(ASRResult):
     formats = {"webpanel2": webpanel}
 
 
-@command(module='asr.c2db.hse')
+# @command(module='asr.c2db.hse')
 # @option('--kptdensity', help='K-point density', type=float)
 # @option('--emptybands', help='number of empty bands to include', type=int)
 # @asr.calcopt(

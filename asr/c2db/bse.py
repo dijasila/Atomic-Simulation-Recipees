@@ -369,7 +369,7 @@ def postprocess(bsecalculateresult, gs_post_result, magstateresult) -> Result:
 
 class BSEWorkflow:
     # TODO convert into actual workflow
-    def __init__(self, rn, gs_workflow : GSWorkflow, **kwargs):
+    def __init__(self, rn, gs_workflow: GSWorkflow, **kwargs):
         self.bse = rn.task('asr.c2db.bse.calculate',
                            gsresult=gs_workflow.scf.output, **kwargs)
 

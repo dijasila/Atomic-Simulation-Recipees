@@ -3,9 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from asr.core import (
-    command, option, ASRResult, prepare_result
-)
+from asr.core import ASRResult, prepare_result
 from asr.c2db.shg import CentroSymmetric, get_chi_symmetry, get_kpts
 
 

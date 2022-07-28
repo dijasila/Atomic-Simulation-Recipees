@@ -1,10 +1,6 @@
 """Projected density of states."""
 from pathlib import Path
-from asr.core import (
-    command, ASRResult,
-    prepare_result)
-from asr.c2db.gs import calculate as gscalculate
-# from asr.c2db.gs import main as gsmain
+from asr.core import ASRResult, prepare_result
 from collections import defaultdict
 import typing
 
@@ -106,7 +102,7 @@ class Result(ASRResult):
     formats = {"webpanel2": webpanel}
 
 
-@command(module='asr.c2db.pdos')
+# @command(module='asr.c2db.pdos')
 # @option('-k', '--kptdensity', type=float, help='K-point density')
 # @option('--emptybands', type=int, help='number of empty bands to include')
 def postprocess(
@@ -153,8 +149,6 @@ def dos_erange(gspostprocess):
 class PDOSWorkflow:
     def __init__(self, rn, gsworkflow,
                  kptdensity=20.0, emptybands=20):
-        #gs = GS(atoms=atoms, calculator=calculator)
-
         self.pdos_gpwfile = rn.task(
             'asr.c2db.pdos.calculate',
             gsresult=gsworkflow.scf.output,

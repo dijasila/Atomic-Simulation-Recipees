@@ -1,6 +1,6 @@
 """Top-level package for Atomic Simulation Recipes."""
-import sys
-from htwutil import *  # XXX
+from htwutil import *  # noqa
+# TODO: figure out which specific toplevel things we need from htwutil
 
 from asr.core import (  # noqa
     ASRResult,
