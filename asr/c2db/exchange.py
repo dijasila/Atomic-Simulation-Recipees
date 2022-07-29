@@ -2,8 +2,6 @@ from pathlib import Path
 import numpy as np
 from asr.core import ASRResult, prepare_result
 
-from ase.io import read
-
 import asr
 # from asr.c2db.gs import calculate as gscalculate
 
@@ -84,7 +82,7 @@ def calculate(gsresult):
 
 
 def get_parameters(gs, exchange, txt=False,
-                   dis_cut=0.2, line=False, a0=None):
+                   dis_cut=0.2, a0=None):
     """Extract Heisenberg parameters."""
     from gpaw import GPAW
     from gpaw.occupations import create_occ_calc
@@ -156,6 +154,11 @@ def get_parameters(gs, exchange, txt=False,
     S = S / 2
     if S == 0:
         S = 1 / 2
+
+    # XXX line was always false!
+    # No longer an inputparameter then.
+    # What's the meaning of all the "N ==" checks below?
+    line = False
 
     if line:
         if N == 4:
@@ -249,16 +252,8 @@ class Result(ASRResult):
 
 def postprocess(calculateresult) -> Result:
     """Extract Heisenberg parameters."""
-    N_gs = len(atoms)
-    N_exchange = len(read(calculateresult['gs_2mag_gpw']))
-    if N_gs == N_exchange:
-        line = False
-    else:
-        line = True
-
     J, A, B, S, N = get_parameters(calculateresult['gs_2mag_gpw'],
-                                   calculateresult['exchange_gpw'],
-                                   line=line)
+                                   calculateresult['exchange_gpw'])
 
     results = {'J': J * 1000,
                'A': A * 1000,
