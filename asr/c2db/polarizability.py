@@ -161,7 +161,6 @@ def main(
         calc.write('es.gpw', mode='all')
 
         df = DielectricFunction('es.gpw', **dfkwargs)
-        pbc = list(atoms.pbc)  # Fails on ndarray due to "if not pbc"
         alpha0x, alphax = df.get_polarizability(
             q_c=[0, 0, 0], direction='x', filename=None,
             xc=xc)

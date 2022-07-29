@@ -1,10 +1,7 @@
 from pathlib import Path
 import numpy as np
-from asr.core import (
-    command, ASRResult, prepare_result, atomsopt, calcopt,
-)
+from asr.core import ASRResult, prepare_result
 
-from ase import Atoms
 from ase.io import read
 
 import asr

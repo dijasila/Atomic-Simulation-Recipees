@@ -14,7 +14,7 @@ from ase.dft.kpoints import BandPath
 
 import asr
 from asr.core import (
-    command, option, ASRResult, prepare_result,
+    command, ASRResult, prepare_result,
     Selector,
 )
 from asr.database.browser import (
