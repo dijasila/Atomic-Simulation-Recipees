@@ -1,10 +1,8 @@
 """DFT GW."""
 import numpy as np
 import asr
-from asr.core import (
-    command, ASRResult, prepare_result,
-    ExternalFile,
-)
+from asr.core import ASRResult, prepare_result, ExternalFile
+
 # from asr.c2db.gs import calculate as calculategs
 # from asr.c2db.bandstructure import main as bsmain
 # from asr.c2db.magnetic_anisotropy import main as mag_ani_main

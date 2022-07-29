@@ -162,8 +162,8 @@ def main(
         atoms: Atoms,
         *,
         strain_percent: float = 1,
-        calculator: dict,  #  = formalpolarization.defaults.calculator,
-        relaxcalculator: dict,  #  = relax.defaults.calculator,
+        calculator: dict,  # = formalpolarization.defaults.calculator,
+        relaxcalculator: dict,  # = relax.defaults.calculator,
         fmax: float,  # = relax.defaults.fmax,
         enforce_symmetry: bool = True,
 ) -> Result:
@@ -195,6 +195,9 @@ def main(
     from ase.units import Bohr
     from asr.setup.strains import main as make_strained_atoms
     from asr.setup.strains import get_relevant_strains
+    from asr.c2db.relax import relax
+    from asr.c2db.formalpolarization import formalpolarization
+
     cell_cv = atoms.get_cell() / Bohr
     vol = abs(np.linalg.det(cell_cv))
     pbc_c = atoms.get_pbc()

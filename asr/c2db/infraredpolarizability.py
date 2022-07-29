@@ -244,7 +244,6 @@ class NewInfraredPolarizabilityWorkflow:
             eta=self.eta)
 
 
-
 class InfraredPolarizabilityWorkflow:
     def __init__(self,
                  rn,
