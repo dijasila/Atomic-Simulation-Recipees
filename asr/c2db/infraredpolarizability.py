@@ -200,6 +200,51 @@ def prepare_for_resultfile_mutation(record):
     return record
 
 
+@asr.workflow
+class NewInfraredPolarizabilityWorkflow:
+    atoms = asr.var()
+    phonons = asr.var()
+    polarizability_gs = asr.var()
+    nfreq = asr.var(300)
+    eta = asr.var(1e-2)
+    borncalculator = asr.var(borncharges.defaults.calculator)
+    displacement = asr.var(borncharges.defaults.displacement)
+    kptdensity = asr.var(polarizability.defaults.kptdensity)
+    ecut = asr.var(polarizability.defaults.ecut)
+    xc = asr.var(polarizability.defaults.xc)
+    bandfactor = asr.var(polarizability.defaults.bandfactor)
+
+    @asr.task
+    def borndict(self):
+        return asr.node(
+            'asr.c2db.borncharges.main',
+            atoms=self.atoms,
+            calculator=self.borncalculator,
+            displacement=self.displacement)
+
+    @asr.task
+    def elecdict(self):
+        return asr.node(
+            'asr.c2db.polarizability.main',
+            gsresult=self.polarizability_gs,
+            kptdensity=self.kptdensity,
+            ecut=self.ecut,
+            xc=self.xc,
+            bandfactor=self.bandfactor)
+
+    @asr.task
+    def postprocess(self):
+        return asr.node(
+            'asr.c2db.infraredpolarizability.postprocess',
+            atoms=self.atoms,
+            phresults=self.phonons,
+            borndict=self.borndict,
+            elecdict=self.elecdict,
+            nfreq=self.nfreq,
+            eta=self.eta)
+
+
+
 class InfraredPolarizabilityWorkflow:
     def __init__(self,
                  rn,

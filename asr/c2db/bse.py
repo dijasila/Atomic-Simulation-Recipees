@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 from ase.units import alpha, Ha, Bohr
 
+import asr
 from asr.core import (
     command, option, file_barrier, ASRResult, prepare_result,
     ExternalFile,
@@ -165,21 +166,18 @@ def calculate(
                                            filename='bse_polx.csv',
                                            direction=0,
                                            write_eig='bse_eigx.dat',
-                                           pbc=pbc,
                                            w_w=w_w)
 
     w_w, alphay_w = bse.get_polarizability(eta=eta,
                                            filename='bse_poly.csv',
                                            direction=1,
                                            write_eig='bse_eigy.dat',
-                                           pbc=pbc,
                                            w_w=w_w)
 
     w_w, alphaz_w = bse.get_polarizability(eta=eta,
                                            filename='bse_polz.csv',
                                            direction=2,
                                            write_eig='bse_eigz.dat',
-                                           pbc=pbc,
                                            w_w=w_w)
 
     # XXX below cleanup code fails to check whether removal even succeeded!
@@ -365,6 +363,31 @@ def postprocess(bsecalculateresult, gs_post_result, magstateresult) -> Result:
         data['E_B'] = None
 
     return Result(data=data)
+
+
+@asr.workflow
+class NewBSEWorkflow:
+    gsworkflow = asr.var()
+    kptdensity = asr.var()
+    ecut = asr.var()
+    bandfactor = asr.var(default=6)
+
+    @asr.task
+    def calculate(self):
+        return asr.node(
+            'asr.c2db.bse.calculate',
+            gsresult=self.gsworkflow.scf,
+            kptdensity=self.kptdensity,
+            ecut=self.ecut,
+            bandfactor=self.bandfactor)
+
+    @asr.task
+    def postprocess(self):
+        return asr.node(
+            'asr.c2db.bse.postprocess',
+            bsecalculateresult=self.calculate,
+            magstateresult=self.gsworkflow.magstate,
+            gs_post_result=self.gsworkflow.postprocess)
 
 
 class BSEWorkflow:

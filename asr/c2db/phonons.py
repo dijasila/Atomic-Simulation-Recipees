@@ -54,6 +54,30 @@ class PhononWorkflow:  # not actually a workflow yet
             phononresult=self.calculate.output, atoms=atoms)
 
 
+@asr.workflow
+class NewPhononWorkflow:
+    atoms = asr.var()
+    calculator = asr.var(PhononWorkflow.default_calculator)
+    nrepeat = asr.var(2)
+    mingo = asr.var(True)
+
+    @asr.task
+    def calculate(self):
+        return asr.node(
+            'asr.c2db.phonons.calculate',
+            atoms=self.atoms,
+            calculator=self.calculator,
+            n=self.nrepeat)
+
+    @asr.task
+    def postprocess(self):
+        return asr.node(
+            'asr.c2db.phonons.postprocess',
+            phononresult=self.calculate,
+            n=self.nrepeat,
+            atoms=self.atoms)
+
+
 panel_description = make_panel_description(
     """
 The Gamma-point phonons of a supercell containing the primitive unit cell
@@ -74,8 +98,8 @@ class CalculateResult(ASRResult):
     key_descriptions = {'forces': 'Forces.'}
 
 
-@command('asr.c2db.phonons')
-@option('-n', help='Supercell size', type=int, nargs=1)
+# @command('asr.c2db.phonons')
+# @option('-n', help='Supercell size', type=int, nargs=1)
 def calculate(
         atoms,
         calculator,

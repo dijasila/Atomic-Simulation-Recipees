@@ -439,6 +439,33 @@ def add_missing_hse_keys(record: asr.Record) -> asr.Record:
     return record
 
 
+@asr.workflow
+class NewHSEWorkflow:
+    bsworkflow = asr.var()
+    kptdensity = asr.var(default=default_kptdensity)
+    emptybands = asr.var(default=default_emptybands)
+
+    @asr.task
+    def calculate(self):
+        gsworkflow = self.bsworkflow.gsworkflow
+        return asr.node(
+            'asr.c2db.hse.calculate',
+            gsresult=gsworkflow.scf,
+            mag_ani=gsworkflow.magnetic_anisotropy,
+            kptdensity=self.kptdensity,
+            emptybands=self.emptybands)
+
+    @asr.task
+    def postprocess(self):
+        bsworkflow = self.bsworkflow
+        return asr.node(
+            'asr.c2db.hse.postprocess',
+            results_hse=self.calculate,
+            results_bs_post=bsworkflow.postprocess,
+            results_bs_calculate=bsworkflow.bandstructure,
+            mag_ani=bsworkflow.gsworkflow.magnetic_anisotropy)
+
+
 class HSEWorkflow:
     def __init__(self, rn, bsworkflow, kptdensity=default_kptdensity,
                  emptybands=default_emptybands):
