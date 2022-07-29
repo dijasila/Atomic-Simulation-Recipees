@@ -184,4 +184,4 @@ def _main(repo, database, run, select, tree_structure):
                     directory=directory)
 
         # The name "structure" should likely be a choice
-        future = rn.define(structure=atoms)
+        rn.define(structure=atoms)
