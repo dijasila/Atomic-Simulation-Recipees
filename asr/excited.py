@@ -11,57 +11,70 @@ from gpaw.mom import prepare_mom_calculation
 from gpaw.directmin.exstatetools import excite_and_sort
 from pathlib import Path
 from math import sqrt
-
+import numpy as np
 
 @command('asr.excited')
 @option('--excitation', type=str)
 def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
-    atoms = read('../../structure.json')
+    atoms = read('../structure.json')
     eref = atoms.get_potential_energy()
     ground_traj = Path('./ground.traj')
+    magmoms = np.zeros(len(atoms))
+    #magmoms[0] = 2.0
+    #magmoms[1] = 1.0
+    magmoms[0:len(atoms)]=2/len(atoms)
+    atoms.set_initial_magnetic_moments(magmoms=magmoms)
     if ground_traj.is_file() and ground_traj.stat().st_size:
         ground = Trajectory('ground.traj')[-1]
         eground = ground.get_potential_energy()    
-        assert abs(eground - eref) < 1, 'DO-MOM converged to a wrong ground state!'
+        #assert abs(eground - eref) < 2, 'DO-MOM converged to a wrong ground state!'
         atoms = ground
+        atoms.set_initial_magnetic_moments(magmoms=magmoms)
 
     old_calc = GPAW('../gs.gpw')
 
     old_params = read_json('../params.json')
     charge = old_params['asr.relax']['calculator']['charge']
 
-    calc = GPAW(mode=PW(500),
+    calc = GPAW(mode=PW(800),
                 xc='PBE',
                 kpts={"size": (1,1,1), "gamma": True},
                 spinpol=True,
                 symmetry='off',
-                eigensolver=DirectMin(),
+                eigensolver=DirectMin(convergelumo=True),
+                #eigensolver=DirectMin(exstopt=True, searchdir_algo={'name': 'l-bfgs-p', 'memory': 10},
+                #              linesearch_algo={'name': 'max-step'}),
                 mixer={'name': 'dummy'},
                 occupations={'name': 'fixed-uniform'},
                 charge=charge,
-                nbands='200%',
+                nbands='101%',
+                #nbands='200%',
                 maxiter=5000,
                 txt='excited.txt'
                 )
 
-    f_sn = []
-    ef=old_calc.get_fermi_level()
-    for spin in range(old_calc.get_number_of_spins()):
-        f_n = [[0,1][e < ef] for e in old_calc.get_eigenvalues(kpt=0, spin=spin)]
-        f_sn.append(f_n)
+    #f_sn = []
+    #ef=old_calc.get_fermi_level()
+    #for spin in range(old_calc.get_number_of_spins()):
+    #    f_n = [[0,1][e < ef] for e in old_calc.get_eigenvalues(kpt=0, spin=spin)]
+    #    f_sn.append(f_n)
 
-    prepare_mom_calculation(calc, atoms, f_sn)
-
+    #prepare_mom_calculation(callc, atoms, f_sn, width=0.02, use_projections='True')
+    
+    #calc.initialize(atoms)
+    #prepare_mom_calculation(calc, atoms, f_sn, width=0.02)
+    #prepare_mom_calculation(calc, atoms, f_sn, update_numbers=True, use_projections=True, use_fixed_occupations=False)
     atoms.calc = calc
-    calc.initialize(atoms)
+    #calc.initialize(atoms)
+    #calc.set(eigensolver=DirectMin(exstopt=True, searchdir_algo={'name': 'LBFGS_P'}, linesearch_algo = {'name': 'UnitStep', 'method': 'LBFGS_P', 'maxstep': 0.25}))
+    
+    #calc.initialize(atoms)
 
-    BFGS(atoms,
-         trajectory='ground.traj', 
-         logfile='ground.log').run(fmax=0.01)
+    BFGS(atoms, trajectory='ground.traj', logfile='ground.log').run(fmax=0.01)
     
     write('ground.json', atoms)
     energy = atoms.get_potential_energy()
-    assert abs(energy - eref) < 1, 'DO-MOM converged to a wrong ground state!'
+    #assert abs(energy - eref) < 2, 'DO-MOM converged to a wrong ground state!'
 
     params = read_json('params.json')
     excitation=params['asr.excited@calculate']['excitation']
@@ -69,30 +82,39 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
         excite_and_sort(calc.wfs, 0, 0, (0, 0), 'fdpw')
     if excitation == 'beta':
         excite_and_sort(calc.wfs, 0, 0, (1, 1), 'fdpw')
-
-    calc.set(eigensolver=DirectMin(exstopt=True))
-
+    #wfs = atoms.calc.wfs
+    #for kpt in wfs.kpt_u:
+    #    wfs.pt.integrate(kpt.psit_nG, kpt.P_ani, kpt.q)
+    #calc.set(eigensolver=DirectMin(exstopt=True))
+    
     f_sn = []
     for spin in range(calc.get_number_of_spins()):
         f_n = calc.get_occupation_numbers(spin=spin)
         f_sn.append(f_n)
-
-    prepare_mom_calculation(calc, atoms, f_sn)
-
+    
+    #excited_traj = Path('./excited.traj')
+    #if excited_traj.is_file() and excited_traj.stat().st_size:
+    #    atoms = Trajectory('excited.traj')[-1]
+    #prepare_mom_calculation(calc, atoms, f_sn, width=0.02, use_projections='False')
+    #prepare_mom_calculation(calc, atoms, f_sn, width=0.02)
+    #calc.set(eigensolver=DirectMin(exstopt=True, searchdir_algo={'name': 'LSR1P'},
+    #                          linesearch_algo={'name': 'UnitStep', 'method': 'LSR1P', 'maxstep': 0.20}))
+    #calc.set(eigensolver=DirectMin(exstopt=True))
+    calc.set(eigensolver=DirectMin(exstopt=True, maxstepxst=0.1, maxiterxst=50, momevery=1))
+    prepare_mom_calculation(calc, atoms, f_sn, use_projections=True, use_fixed_occupations=False)
+    
+      
     excited_traj = Path('./excited.traj')
-    if excited_traj.is_file() and excited_traj.stat().st_size:
-        atoms = Trajectory('excited.traj')[-1]
+    #if excited_traj.is_file() and excited_traj.stat().st_size:
+    #    atoms = Trajectory('excited.traj')[-1]
 
-    BFGS(atoms,
-         trajectory='excited.traj', 
-         logfile='excited.log').run(fmax=0.01)
+    BFGS(atoms, trajectory='excited.traj', logfile='excited.log').run(fmax=0.01)
 
     write('structure.json', atoms)
     try:
         atoms.calc.write('gs.gpw')
     except:
         pass
-
 
 @prepare_result
 class ExcitedResults(ASRResult):
