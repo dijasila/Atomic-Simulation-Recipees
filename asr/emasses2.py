@@ -98,8 +98,8 @@ def mass_plots(row, *filenames):
 
 
 def extract_soc_stuff_from_gpaw_calculation(calc,
-                                            npoints: int = 6,
-                                            kspan: float = 0.1,  # Ang^-1
+                                            npoints: int = 7,
+                                            kspan: float = 0.3,  # Ang^-1
                                             nblock: int = 4,
                                             theta: float = 0.0,  # degrees
                                             phi: float = 0.0,  # degrees
@@ -131,7 +131,12 @@ def extract_soc_stuff_from_gpaw_calculation(calc,
     datafile = Path('emass-data.json')
     if datafile.is_file():
         data = json.loads(datafile.read_text())
-        return data
+        # Convert to (complex) ndarrays:
+        return {kind: {name: np.array(array).view(complex)
+                       if name == 'proj_ijknI' else
+                       np.array(array)
+                       for name, array in things.items()}
+                for kind, things in data.items()}
 
     # Extract SOC eigenvalues:
     states = soc_eigenstates(calc, theta=theta, phi=phi)
@@ -150,19 +155,24 @@ def extract_soc_stuff_from_gpaw_calculation(calc,
     dk_vk = [np.linspace(-kspan / 2, kspan / 2, npoints) if K > 1 else
              np.array([0.0])
              for K in K_c]
-    dk_kv = (dk_vk[0][:, np.newaxis, np.newaxis] *
-             dk_vk[1][:, np.newaxis] *
-             dk_vk[2])
+    shape = tuple(len(dk_k) for dk_k in dk_vk)
+    dk_kv = np.empty(shape + (3,))
+    dk_kv[..., 0] = dk_vk[0][:, np.newaxis, np.newaxis]
+    dk_kv[..., 1] = dk_vk[1][:, np.newaxis]
+    dk_kv[..., 2] = dk_vk[2]
+    dk_kv.shape = (-1, 3)
 
     # Break symmetries:
     dk = kspan / npoints * 0.05
-    dk_kv += np.random.default_rng().uniform(-dk, dk, dk_kv.shape)
+    for s, dk_k in zip(shape, dk_kv.T):
+        if s > 1:
+            dk_k += np.random.default_rng().uniform(-dk, dk, npoints)
     world.broadcast(dk_kv, 0)
 
     # Find band extrema and zoom in:
     data = {}
-    for kind, eig_K in [('vbm', -eig_Kn[nocc - 1]),
-                        ('cbm', eig_Kn[nocc])]:
+    for kind, eig_K in [('vbm', -eig_Kn[:, nocc - 1]),
+                        ('cbm', eig_Kn[:, nocc])]:
         K = eig_K.argmin()
         k_c = k_Kc[K]
         k_v = k_c @ np.linalg.inv(cell_cv).T * 2 * pi
@@ -186,17 +196,20 @@ def extract_soc_stuff_from_gpaw_calculation(calc,
 
         eig_kn = eig_kn[:, bands]
         proj_knI = proj_knI[:, bands]
-
-        def fix(a_kx: np.ndarray) -> list:
-            """Fix shape and prepare for json."""
-            return a_kx.reshape(tuple(K_c) + a_kx.shape[1:]).tolist()
-
-        data[kind] = {'k_ijkv': fix(k_kv),
-                      'eig_ijkn': fix(eig_kn),
-                      'proj_ijknI': fix(proj_knI)}
+        data[kind] = {
+            'k_ijkv': k_kv.reshape(shape + (3,)),
+            'eig_ijkn': eig_kn.reshape(shape + (-1,)),
+            'proj_ijknI': proj_knI.reshape(shape + proj_knI.shape[1:])}
 
     if world.rank == 0:
-        datafile.write_text(json.dumps(data))
+        # We need to convert complex to two floats before converting to
+        # json:
+        datafile.write_text(
+            json.dumps(
+                {kind: {name: array.view(float).tolist()
+                        for name, array in things.items()}
+                 for kind, things in data.items()},
+                indent=1))
 
     return data
 
@@ -285,10 +298,7 @@ def main() -> ASRResult:
 
     extrema = []
     for kind in ['vbm', 'cbm']:
-        k_ijkv = np.array(data[kind]['k_ijkv'])
-        e_ijkn = np.array(data[kind]['e_ijkn'])
-        proj_ijknI = np.array(data[kind]['proj_ijknI'])
-        massdata = find_mass(k_ijkv, e_ijkn, proj_ijknI, kind)
+        massdata = find_mass(**data[kind], kind=kind)
         extrema.append(massdata)
 
     vbm, cbm = extrema
@@ -336,7 +346,7 @@ def find_mass(k_ijkv: np.ndarray,
                     mass_w=mass_w.tolist(),
                     direction_wv=direction_wv.tolist(),
                     max_fit_error=fit_error,
-                    fit_data_i=fit.coefs.tolist()))
+                    fit_data_i=fit.coefs.tolist())
 
 
 class NoMinimum(ValueError):
@@ -361,7 +371,7 @@ def fit_band(k_kv: np.ndarray,
     k = (k_kv**2).sum(1).argsort()[:npoints]
 
     if len(k) < npoints:
-        raise NoMinimum('Too few points!')
+        raise NoMinimum(f'Too few points: {len(k)} < {npoints}')
 
     k_kv = k_kv[k]
     eig_k = eig_k[k]
@@ -386,6 +396,9 @@ def fit_band(k_kv: np.ndarray,
 
     if (mass_w < 0.01).any():
         raise NoMinimum('Unrealistic mass!')
+
+    # Centered fit around minumum:
+    fit = PolyFit(k_kv - k_v, eig_k, order=4)
 
     return k_v + k0_v, emin, mass_w, evec_vw.T, error_k, fit
 

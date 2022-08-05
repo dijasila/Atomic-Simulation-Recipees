@@ -1,12 +1,14 @@
 from math import pi
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 from ase import Atoms
 from ase.units import Bohr, Ha
 
-from asr.emasses2 import (_main, connect,
-                          extract_soc_stuff_from_gpaw_calculation, fit_band)
+from asr.emasses2 import (EMassesResult, connect,
+                          extract_soc_stuff_from_gpaw_calculation, find_mass,
+                          fit_band, mass_plots, webpanel)
 
 
 def test_1d():
@@ -25,11 +27,10 @@ def test_1d():
     eig_ijkn = np.take_along_axis(eig_ijkn, n_ijkn, axis=3)
     fp_ijknx = np.take_along_axis(fp_ijknx, n_ijkn[:, :, :, :, np.newaxis],
                                   axis=3)
-    connect(eig_ijkn, fp_ijknx)
+    eig_ijkn = connect(eig_ijkn, fp_ijknx)
     for n in [0, 1]:
-        r = fit_band(k_i[:, np.newaxis] * (a / (2 * pi)),
-                     eig_ijkn[:, 0, 0, n],
-                     np.ones((1, 1)) * a)
+        r = fit_band(k_i[:, np.newaxis],
+                     eig_ijkn[:, 0, 0, n])
         k_v, emin, mass_w, evec_wv, error_i, fit = r
         assert k_v[0] == pytest.approx(-k0)
         assert emin == pytest.approx(0.0)
@@ -52,9 +53,17 @@ def test_emass_h2():
                    kpts=[20, 1, 1],
                    txt=None)
     h2.get_potential_energy()
-    K_ijkc, eig_ijkn, proj_ijknI, spinproj_ijknv = \
-        extract_soc_stuff_from_gpaw_calculation(h2.calc)
-    cell_cv = h2.calc.atoms.cell
+    data = extract_soc_stuff_from_gpaw_calculation(h2.calc)
 
-    extrema = _main(cell_cv, K_ijkc, eig_ijkn, proj_ijknI)
+    extrema = []
+    for kind in ['vbm', 'cbm']:
+        massdata = find_mass(**data[kind], kind=kind)
+        extrema.append(massdata)
+
     print(extrema)
+    vbm, cbm = extrema
+    result = EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
+    row = SimpleNamespace(data={'results-asr.emasses2.json': result})
+
+    mass_plots(row, 'cbm.png', 'vbm.png')
+    print(webpanel(result, row, {}))
