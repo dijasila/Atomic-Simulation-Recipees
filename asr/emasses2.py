@@ -1,7 +1,9 @@
 """Effective masses - version 117-b."""
 from __future__ import annotations
 
+import json
 from math import pi
+from pathlib import Path
 from typing import TypedDict
 
 import matplotlib.pyplot as plt
@@ -10,7 +12,7 @@ from ase.units import Bohr, Ha
 
 from asr.core import ASRResult, command, prepare_result
 from asr.database.browser import (describe_entry, entry_parameter_description,
-                                  make_panel_description, fig)
+                                  fig, make_panel_description)
 from asr.magnetic_anisotropy import get_spin_axis
 from asr.utils.ndpoly import PolyFit
 
@@ -96,8 +98,11 @@ def mass_plots(row, *filenames):
 
 
 def extract_soc_stuff_from_gpaw_calculation(calc,
-                                            theta: float = 0.0,
-                                            phi: float = 0.0,
+                                            npoints: int = 6,
+                                            kspan: float = 0.1,  # Ang^-1
+                                            nblock: int = 4,
+                                            theta: float = 0.0,  # degrees
+                                            phi: float = 0.0,  # degrees
                                             ) -> tuple[np.ndarray,
                                                        np.ndarray,
                                                        np.ndarray,
@@ -121,29 +126,85 @@ def extract_soc_stuff_from_gpaw_calculation(calc,
     * spin-projections
     """
     from gpaw.spinorbit import soc_eigenstates
-    kd = calc.wfs.kd
-    states = soc_eigenstates(calc, theta=theta, phi=phi)
-    k_kc = np.array([kd.bzk_kc[wf.bz_index]
-                     for wf in states])
-    eig_kn = np.array([wf.eig_m
-                       for wf in states])
-    proj_knI = np.array([wf.projections.matrix.array
-                         for wf in states])
-    spinproj_knv = states.spin_projections()
-    fermilevel = states.fermi_level
-    eig_kn -= fermilevel
+    from gpaw.mpi import world
 
-    K1, K2, K3 = tuple(kd.N_c)
-    _, N, I = proj_knI.shape
-    return (k_kc.reshape((K1, K2, K3, 3)),
-            eig_kn.reshape((K1, K2, K3, N)),
-            proj_knI.reshape((K1, K2, K3, N, I)),
-            spinproj_knv.reshape((K1, K2, K3, N, 3)))
+    datafile = Path('emass-data.json')
+    if datafile.is_file():
+        data = json.loads(datafile.read_text())
+        return data
+
+    # Extract SOC eigenvalues:
+    states = soc_eigenstates(calc, theta=theta, phi=phi)
+    kd = calc.wfs.kd
+    k_Kc = np.array([kd.bzk_kc[wf.bz_index]
+                     for wf in states])
+    eig_Kn = np.array([wf.eig_m
+                       for wf in states])
+    fermilevel = states.fermi_level
+    nocc = (eig_Kn[0] < fermilevel).sum()
+
+    K_c = kd.N_c
+    cell_cv = calc.atoms.cell
+
+    # Create box of k-points centered on (0, 0, 0):
+    dk_vk = [np.linspace(-kspan / 2, kspan / 2, npoints) if K > 1 else
+             np.array([0.0])
+             for K in K_c]
+    dk_kv = (dk_vk[0][:, np.newaxis, np.newaxis] *
+             dk_vk[1][:, np.newaxis] *
+             dk_vk[2])
+
+    # Break symmetries:
+    dk = kspan / npoints * 0.05
+    dk_kv += np.random.default_rng().uniform(-dk, dk, dk_kv.shape)
+    world.broadcast(dk_kv, 0)
+
+    # Find band extrema and zoom in:
+    data = {}
+    for kind, eig_K in [('vbm', -eig_Kn[nocc - 1]),
+                        ('cbm', eig_Kn[nocc])]:
+        K = eig_K.argmin()
+        k_c = k_Kc[K]
+        k_v = k_c @ np.linalg.inv(cell_cv).T * 2 * pi
+        k_kv = k_v + dk_kv
+        k_kc = k_kv @ cell_cv.T / (2 * pi)
+
+        nsc_calc = calc.fixed_density(
+            kpts=k_kc,
+            symmetry='off',
+            txt=f'{kind}.txt')
+        states = soc_eigenstates(nsc_calc, theta=theta, phi=phi)
+        eig_kn = np.array([wf.eig_m
+                           for wf in states])
+        proj_knI = np.array([wf.projections.matrix.array
+                             for wf in states])
+
+        if kind == 'vbm':
+            bands = slice(max(nocc - nblock, 0), nocc)
+        else:
+            bands = slice(nocc, nocc + nblock)
+
+        eig_kn = eig_kn[:, bands]
+        proj_knI = proj_knI[:, bands]
+
+        def fix(a_kx: np.ndarray) -> list:
+            """Fix shape and prepare for json."""
+            return a_kx.reshape(tuple(K_c) + a_kx.shape[1:]).tolist()
+
+        data[kind] = {'k_ijkv': fix(k_kv),
+                      'eig_ijkn': fix(eig_kn),
+                      'proj_ijknI': fix(proj_knI)}
+
+    if world.rank == 0:
+        datafile.write_text(json.dumps(data))
+
+    return data
 
 
 def connect(eig_ijkn: np.ndarray,
-            fingerprint_ijknx: np.ndarray) -> None:
+            fingerprint_ijknx: np.ndarray) -> np.ndarray:
     """Reorder eigenvalues to give connected bands."""
+    eig_ijkn = eig_ijkn.copy()
     K1, K2, K3, N = eig_ijkn.shape
     for k1 in range(K1 - 1):
         con2(eig_ijkn[k1:k1 + 2, 0, 0],
@@ -159,6 +220,7 @@ def connect(eig_ijkn: np.ndarray,
             for k3 in range(K3 - 1):
                 con2(eig_ijkn[k1, k2, k3:k3 + 2],
                      fingerprint_ijknx[k1, k2, k3:k3 + 2])
+    return eig_ijkn
 
 
 def con2(e_kn: np.ndarray,
@@ -189,7 +251,7 @@ def con2(e_kn: np.ndarray,
 
 class MassDict(TypedDict):
     kind: str
-    k_c: list[float]
+    k_v: list[float]
     mass_w: list[float]
     direction_wv: list[list[float]]
     energy: float
@@ -219,12 +281,17 @@ def main() -> ASRResult:
 
     theta, phi = get_spin_axis()
 
-    K_ijkc, eig_ijkn, proj_ijknI, spinproj_ijknv = \
-        extract_soc_stuff_from_gpaw_calculation(calc, theta, phi)
-    cell_cv = calc.atoms.cell
+    data = extract_soc_stuff_from_gpaw_calculation(calc, theta=theta, phi=phi)
 
-    vbm, cbm = _main(cell_cv, K_ijkc, eig_ijkn, proj_ijknI)
+    extrema = []
+    for kind in ['vbm', 'cbm']:
+        k_ijkv = np.array(data[kind]['k_ijkv'])
+        e_ijkn = np.array(data[kind]['e_ijkn'])
+        proj_ijknI = np.array(data[kind]['proj_ijknI'])
+        massdata = find_mass(k_ijkv, e_ijkn, proj_ijknI, kind)
+        extrema.append(massdata)
 
+    vbm, cbm = extrema
     return EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
 
 
@@ -232,116 +299,63 @@ class BadFitError(ValueError):
     """Bad fit to data."""
 
 
-def _main(cell_cv: np.ndarray,
-          K_ijkc: np.ndarray,
-          eig_ijkn: np.ndarray,
-          proj_ijknI: np.ndarray) -> tuple[MassDict, MassDict]:
-    nocc = (eig_ijkn[0, 0, 0] < 0.0).sum()
+def find_mass(k_ijkv: np.ndarray,
+              eig_ijkn: np.ndarray,
+              proj_ijknI: np.ndarray,
+              kind: str) -> MassDict:
+    if kind == 'vbm':
+        eig_ijkn = -eig_ijkn[:, :, :, ::-1]
 
-    K1, K2, K3 = K_ijkc.shape[:3]
-    axes = [c for c, size in enumerate([K1, K2, K3]) if size > 1]
-    cell_cv = cell_cv[axes][:, axes]
+    # Connect bands:
+    eig_ijkn = connect(eig_ijkn, proj_ijknI)
 
-    extrema = []
-    for kind in ['vbm', 'cbm']:
-        if kind == 'cbm':
-            E_ijkn = eig_ijkn[..., nocc:nocc + 4]
-            P_ijknI = proj_ijknI[..., nocc:nocc + 4, :]
-        else:
-            E_ijkn = -eig_ijkn[..., max(nocc - 4, 0):nocc][..., ::-1]
-            P_ijknI = proj_ijknI[..., max(nocc - 4, 0):nocc, :][..., ::-1, :]
+    # Find lowest band:
+    _, _, _, n = np.unravel_index(eig_ijkn.argmin(), eig_ijkn.shape)
+    eig_k = eig_ijkn[:, :, :, n].ravel()
 
-        k_kc, e_kn = find_minima(K_ijkc, E_ijkn, P_ijknI)
+    axes = [c for c, size in enumerate(k_ijkv.shape[:3]) if size > 1]
+    k_kv = k_ijkv.reshape((-1, 3))[:, axes]
 
-        k_kc = k_kc[:, axes]
+    k_v, energy, mass_w, direction_wv, error_k, fit = fit_band(k_kv, eig_k)
 
-        for e_k in e_kn.T:
-            try:
-                k_v, energy, mass_w, direction_wv, error_k, fit = fit_band(
-                    k_kc, e_k, cell_cv)
-            except NoMinimum:
-                pass
-            else:
-                break
-        else:  # no break
-            raise NoMinimum
+    fit_error = abs(error_k).max()
+    if fit_error > max(0.02 * eig_k.ptp(), 0.001):
+        raise BadFitError(f'Error: {fit_error} eV')
 
-        fit_error = abs(error_k).max()
-        if fit_error > max(0.02 * e_k.ptp(), 0.001):
-            raise BadFitError(f'Error: {fit_error} eV')
+    error = abs(energy - eig_ijkn.min())
+    if error > 0.1:
+        raise BadFitError(f'Error: {error} eV')
 
-        error = abs(energy - e_kn.min())
-        if error > 0.1:
-            raise BadFitError(f'Error: {error} eV')
+    if kind == 'vbm':
+        energy *= -1
+        fit.coefs *= -1
 
-        if kind == 'vbm':
-            energy *= -1
-            fit.coefs *= -1
-
-        k_c = cell_cv @ k_v / (2 * pi)
-
-        extrema.append(MassDict(kind=kind,
-                                k_c=k_c.tolist(),
-                                energy=energy,
-                                mass_w=mass_w.tolist(),
-                                direction_wv=direction_wv.tolist(),
-                                max_fit_error=fit_error,
-                                fit_data_i=fit.coefs.tolist()))
-
-    return extrema
-
-
-def find_minima(kpt_ijkc: np.ndarray,
-                eig_ijkn: np.ndarray,
-                proj_ijknI: np.ndarray,
-                spinproj_ijknv: np.ndarray = None,
-                npoints: int = 3) -> tuple[np.ndarray, np.ndarray]:
-    K1, K2, K3, N, _ = proj_ijknI.shape
-
-    if spinproj_ijknv is None:
-        spinproj_ijknv = np.zeros((K1, K2, K3, N, 3))
-
-    ijk = eig_ijkn[:, :, :, 0].ravel().argmin()
-    i, j, k = np.unravel_index(ijk, (K1, K2, K3))
-
-    dk = 3
-    r1 = [0] if K1 == 1 else [x % K1 for x in range(i - dk, i + dk + 1)]
-    r2 = [0] if K2 == 1 else [x % K2 for x in range(j - dk, j + dk + 1)]
-    r3 = [0] if K3 == 1 else [x % K3 for x in range(k - dk, k + dk + 1)]
-
-    e_ijkn = eig_ijkn[r1][:, r2][:, :, r3].copy()
-    fingerprint_ijknI = proj_ijknI[r1][:, r2][:, :, r3].copy()
-    k_ijkc = (kpt_ijkc[r1][:, r2][:, :, r3] - kpt_ijkc[i, j, k] + 0.5) % 1
-    k_ijkc += kpt_ijkc[i, j, k] - 0.5
-
-    connect(e_ijkn, fingerprint_ijknI)
-
-    e_ijkn.sort()
-
-    return k_ijkc.reshape((-1, 3)), e_ijkn.reshape((-1, N))
+    return MassDict(kind=kind,
+                    k_v=k_v.tolist(),
+                    energy=energy,
+                    mass_w=mass_w.tolist(),
+                    direction_wv=direction_wv.tolist(),
+                    max_fit_error=fit_error,
+                    fit_data_i=fit.coefs.tolist()))
 
 
 class NoMinimum(ValueError):
     """Band doesn't have a minimum."""
 
 
-def fit_band(k_kc: np.ndarray,
-             eig_k: np.ndarray,
-             cell_cv: np.ndarray) -> tuple[np.ndarray,
-                                           float,
-                                           np.ndarray,
-                                           np.ndarray,
-                                           np.ndarray,
-                                           PolyFit]:
-    dims = k_kc.shape[1]
+def fit_band(k_kv: np.ndarray,
+             eig_k: np.ndarray) -> tuple[np.ndarray,
+                                         float,
+                                         np.ndarray,
+                                         np.ndarray,
+                                         np.ndarray,
+                                         PolyFit]:
+    dims = k_kv.shape[1]
     npoints = [7, 25, 55][dims - 1]
 
-    k0_c = k_kc[eig_k.argmin()]
-    if (k0_c <= k_kc.min(0)).any() or (k0_c >= k_kc.max(0)).any():
-        raise NoMinimum('Minimum too close to edge of box!')
-
-    k_kv = k_kc @ np.linalg.inv(cell_cv).T * 2 * pi
     k0_v = k_kv[eig_k.argmin()].copy()
+    if (k0_v <= k_kv.min(0)).any() or (k0_v >= k_kv.max(0)).any():
+        raise NoMinimum('Minimum outside box!')
 
     k_kv -= k0_v
     k = (k_kv**2).sum(1).argsort()[:npoints]
@@ -353,7 +367,6 @@ def fit_band(k_kc: np.ndarray,
     eig_k = eig_k[k]
 
     try:
-        # fit = Fit3D(k_kv, eig_k)
         fit = PolyFit(k_kv, eig_k, order=4)
     except np.linalg.LinAlgError:
         raise NoMinimum('Bad minimum!')
