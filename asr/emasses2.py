@@ -103,10 +103,8 @@ def extract_soc_stuff_from_gpaw_calculation(calc,
                                             nblock: int = 4,
                                             theta: float = 0.0,  # degrees
                                             phi: float = 0.0,  # degrees
-                                            ) -> tuple[np.ndarray,
-                                                       np.ndarray,
-                                                       np.ndarray,
-                                                       np.ndarray]:
+                                            ) -> dict[str,
+                                                      dict[str, np.ndarray]]:
     """Do SOC calculation.
 
     Parameters

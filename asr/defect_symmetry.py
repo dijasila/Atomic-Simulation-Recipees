@@ -15,7 +15,8 @@ Analysis of defect states localized inside the pristine bandgap (energetics and
  symmetry).
 """,
     articles=[
-        href("""S. Kaappa et al. Point group symmetry analysis of the electronic structure
+        href("""S. Kaappa et al. Point group symmetry analysis of the
+electronic structure
 of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)""",
              'https://doi.org/10.1021/acs.jpca.8b07923'),
     ],
@@ -663,7 +664,7 @@ class DefectInfo:
             else:
                 assert len(defectname.split('_')) == 2, (
                     'Defect name has to be of the following structure: '
-                    f'"<defecttype>_<defectkind>"')
+                    '"<defecttype>_<defectkind>"')
                 self.defecttype = defectname.split('_')[0]
                 self.defectkind = defectname.split('_')[1]
         else:

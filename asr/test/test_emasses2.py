@@ -1,3 +1,4 @@
+import os
 from math import pi
 from types import SimpleNamespace
 
@@ -41,7 +42,8 @@ def test_1d():
 
 @pytest.mark.integration_test
 @pytest.mark.integration_test_gpaw
-def test_emass_h2():
+def test_emass_h2(tmp_path):
+    os.chdir(tmp_path)
     from gpaw import GPAW
     h2 = Atoms('H2',
                [[0, 0, 0], [0, 0, 0.74]],
@@ -62,6 +64,13 @@ def test_emass_h2():
 
     print(extrema)
     vbm, cbm = extrema
+
+    assert cbm['energy'] - vbm['energy'] == pytest.approx(10.8, abs=0.1)
+    assert abs(vbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
+    assert abs(cbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
+    assert abs(vbm['mass_w'][0]) == pytest.approx(0.39, abs=0.01)
+    assert abs(cbm['mass_w'][0]) == pytest.approx(0.31, abs=0.01)
+
     result = EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
     row = SimpleNamespace(data={'results-asr.emasses2.json': result})
 
