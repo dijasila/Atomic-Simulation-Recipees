@@ -69,8 +69,7 @@ def calc2eigs(calc, soc=True,
 
 def gpw2eigs(gpw, soc=True, return_spin=False,
              theta=0, phi=0, symmetry_tolerance=1e-7):
-    """Give the eigenvalues w or w/o spinorbit coupling and the
-    corresponding fermi energy.
+    """Eigenvalues w or w/o SOC and the corresponding fermi energy.
 
     Parameters
     ----------
