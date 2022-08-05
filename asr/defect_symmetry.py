@@ -1,12 +1,12 @@
-from ase.io import read
 from asr.core import command, option, ASRResult, prepare_result, read_json
-from asr.database.browser import make_panel_description, href
+from asr.database.browser import make_panel_description, href, describe_entry
 import spglib as spg
 import typing
 import numpy as np
 import warnings
 from pathlib import Path
 from ase import Atoms
+from ase.io import read
 
 
 panel_description = make_panel_description(
@@ -76,8 +76,6 @@ def get_matrixtable_array(state_results, vbm, cbm, ef,
 
 
 def get_symmetry_tables(state_results, vbm, cbm, row, style):
-    from asr.database.browser import matrixtable
-
     state_tables = []
     gsdata = row.data.get('results-asr.gs.json')
     eref = row.data.get('results-asr.get_wfs.json')['eref']
@@ -92,11 +90,11 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
             columnlabels = ['Symmetry',
                             'Spin',
                             'Localization ratio',
-                            'Energy [eV]']
+                            'Energy']
         elif style == 'state':
             delete = [0, 2, 3]
             columnlabels = ['Spin',
-                            'Energy [eV]']
+                            'Energy']
 
         N_homo = 0
         N_lumo = 0
@@ -108,13 +106,13 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         E_lumo = cbm
         for i in range(len(state_array)):
             if float(state_array[i, 4]) > ef:
-                rowlabels[i] = f'LUMO+{N_lumo - 1}'
+                rowlabels[i] = f'LUMO + {N_lumo - 1}'
                 N_lumo = N_lumo - 1
                 if N_lumo == 0:
                     rowlabels[i] = 'LUMO'
                     E_lumo = float(state_array[i, 4])
             elif float(state_array[i, 4]) <= ef:
-                rowlabels[i] = f'HOMO-{N_homo}'
+                rowlabels[i] = f'HOMO — {N_homo}'
                 if N_homo == 0:
                     rowlabels[i] = 'HOMO'
                     E_homo = float(state_array[i, 4])
@@ -123,11 +121,28 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         E_hls.append(E_hl)
 
         state_array = np.delete(state_array, delete, 1)
-        state_table = matrixtable(state_array,
-                                  digits=None,
-                                  title='Orbital',
-                                  columnlabels=columnlabels,
-                                  rowlabels=rowlabels)
+        headerlabels = ['Orbital', *columnlabels]
+
+        rows = []
+        state_table = {'type': 'table',
+                       'header': headerlabels}
+        for i in range(len(state_array)):
+            if style == 'symmetry':
+                rows.append((rowlabels[i],
+                             state_array[i, 0],
+                             state_array[i, 1],
+                             describe_entry(state_array[i, 2],
+                                            'The localization ratio is defined as the '
+                                            'volume of the cell divided by the integral'
+                                            ' of the fourth power of the '
+                                            'wavefunction.'),
+                             f'{state_array[i, 3]} eV'))
+            elif style == 'state':
+                rows.append((rowlabels[i],
+                             state_array[i, 0],
+                             f'{state_array[i, 1]} eV'))
+
+        state_table['rows'] = rows
         state_tables.append(state_table)
 
     transition_table = get_transition_table(row, E_hls)
@@ -137,13 +152,13 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
 
 def get_transition_table(row, E_hls):
     """Create table for HOMO-LUMO transition in both spin channels."""
-    from asr.database.browser import table, describe_entry
+    from asr.database.browser import table
 
-    transition_table = table(row, 'Kohn-Sham HOMO-LUMO gap', [])
+    transition_table = table(row, 'Kohn—Sham HOMO—LUMO gap', [])
     for i, element in enumerate(E_hls):
         transition_table['rows'].extend(
             [[describe_entry(f'Spin {i}',
-                             f'KS HOMO-LUMO gap for spin {i} channel.'),
+                             f'KS HOMO—LUMO gap for spin {i} channel.'),
               f'{element:.2f} eV']])
 
     return transition_table
@@ -194,7 +209,7 @@ def webpanel(result, row, key_descriptions):
                      sort=30)
 
     summary = {'title': 'Summary',
-               'columns': [[basictable], []],
+               'columns': [[basictable, transition_table], []],
                'sort': 2}
 
     return [panel, summary]
@@ -718,7 +733,7 @@ def draw_band_edge(energy, edge, color, *, offset=2, ax):
     ax.plot([0, 1], [energy] * 2, color='black', zorder=1)
     ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color='grey', alpha=0.5)
     ax.text(0.5, elabel, edge.upper(), color='w', weight='bold', ha='center',
-            va='center')
+            va='center', fontsize=12)
 
 
 class Level:
@@ -737,7 +752,7 @@ class Level:
 
     def get_relative_position(self, spin, deg, off):
         """Set relative position of the level based on spin, degeneracy and offset."""
-        xpos_deg = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]]
+        xpos_deg = [[2 / 12, 4 / 12], [8 / 12, 10 / 12]]
         xpos_nor = [1 / 4, 3 / 4]
         if deg == 2:
             relpos = xpos_deg[spin][off]
@@ -789,6 +804,7 @@ class Level:
                      self.energy,
                      labelstr,
                      va='center', ha=ha,
+                     size=12,
                      color=labelcolor)
 
 
@@ -824,7 +840,7 @@ def plot_gapstates(row, fname):
     ax1.set_ylim(evbm - gap / 5, ecbm + gap / 5)
     ax1.plot([0, 1], [ef] * 2, '--k')
     ax1.set_yticks([ef])
-    ax1.set_yticklabels([r'E$_\mathrm{F}$'])
+    ax1.set_yticklabels([r'$E_\mathrm{F}$'])
     ax.set_xticks([])
     ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
 

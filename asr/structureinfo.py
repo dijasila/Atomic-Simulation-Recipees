@@ -59,7 +59,7 @@ def describe_pointgroup_entry(spglib):
 
 def describe_crystaltype_entry(spglib):
     crystal_type = describe_entry(
-        'crystal_type',
+        'Crystal type',
         "The crystal type is defined as "
         + br
         + div(bold('-'.join([code('stoi'),
