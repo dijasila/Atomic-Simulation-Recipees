@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from math import pi
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +14,11 @@ from asr.core import ASRResult, command, prepare_result
 from asr.database.browser import (describe_entry, entry_parameter_description,
                                   fig, make_panel_description)
 from asr.magnetic_anisotropy import get_spin_axis
-from asr.utils.ndpoly import PolyFit
+from asr.utils.ndpoly import PolyFit, nterms
+
+if TYPE_CHECKING:
+    from gpaw.new.ase_interface import GPAW
+
 
 panel_description = make_panel_description(
     """The effective mass tensor represents the second derivative of the band
@@ -97,9 +101,102 @@ def mass_plots(row, *filenames):
     return plots
 
 
+class GPAWEigenvalueCalculator:
+    def __init__(self,
+                 calc: GPAW,
+                 theta: float = None,  # degrees
+                 phi: float = None):  # degrees
+        """Do SOC calculation.
+
+        Parameters
+        ----------
+        calc:
+            GPAW ground-state object
+        theta:
+            Polar angle in degrees.
+        phi:
+            Azimuthal angle in degrees.
+
+        Returns
+        -------
+        * k-point vectors
+        * eigenvalues
+        * PAW-projections
+        * spin-projections
+        """
+        self.calc = calc
+        self.theta = theta
+        self.phi = phi
+
+        if theta is None and phi is None:
+            eig_Kn, fermilevel = self._eigs()
+        else:
+            assert theta is not None and phi is not None
+            eig_Kn, fermilevel = self._soc_eigs()
+
+        self.nocc = (eig_Kn[0] < fermilevel).sum()
+
+        kshape = tuple(calc.kd.N_c)
+        eig_ijkn = eig_Kn.reshape(kshape + (-1,))
+        self.vbm_ijk = eig_ijkn[..., self.nocc - 1].copy()
+        self.cbm_ijk = eig_ijkn[..., self.nocc].copy()
+
+        self.kpt_ijkc = calc.kd.bzk_kc.reshape(kshape + (3,))
+
+    def band(self, kind, kpt_xv):
+        from gpaw.spinorbit import soc_eigenstates
+
+        kpt_xc = kpt_xv @ self.cell_cv.T / (2 * pi)
+        nsc_calc = self.calc.fixed_density(
+            kpts=kpt_xc,
+            symmetry='off',
+            convergence={'bands': 0 if kind == 'vbm' else -1},
+            txt=f'{kind}.txt')
+        if self.theta is None:
+            nkpts = len(kpt_xv)
+            nspins = self.calc.get_number_of_spins()
+            eig_skn = np.array(
+                [[self.calc.get_eigenvalues(kpt=kpt, spin=spin)
+                  for kpt in range(nkpts)]
+                 for spin in range(nspins)])
+            eig_kns = eig_skn.transpose((1, 2, 0))
+            eig_kn = eig_kns.reshape((nkpts, -1)).sort(axis=1)
+        else:
+            states = soc_eigenstates(nsc_calc, theta=theta, phi=phi)
+            eig_kn = states.eigenvalues()
+        return eig_kn
+
+    def _eigs(self):
+        kd = self.calc.wfs.kd
+        nibzkpts = self.calc.get_number_of_ibz_k_points()
+        nspins = self.calc.get_number_of_spins()
+        eig_skn = np.array(
+            [[self.calc.get_eigenvalues(kpt=kpt, spin=spin)
+              for kpt in range(nibzkpts)]
+             for spin in range(nspins)])
+        eig_kns = eig_skn.transpose((1, 2, 0))
+        eig_kn = eig_kns.reshape((nibzkpts, -1)).sort(axis=1)
+        eig_Kn = eig_kn[kd.bz2ibz_k]
+        fermilevel = self.calc.get_fermi_level()
+        return eig_Kn, fermilevel
+
+    def _soc_eigs(self):
+        # Extract SOC eigenvalues:
+        from gpaw.spinorbit import soc_eigenstates
+
+        states = soc_eigenstates(self.calc, theta=self.theta, phi=self.phi)
+        kd = self.calc.wfs.kd
+        kpt_Kc = np.array([kd.bzk_kc[wf.bz_index]
+                           for wf in states])
+        assert (kpt_Kc == kd.bzk_kc).all()
+        eig_Kn = states.eigenvalues()
+        fermilevel = states.fermi_level
+        return eig_Kn, fermilevel
+
+
 def extract_soc_stuff_from_gpaw_calculation(calc,
                                             npoints: int = 7,
-                                            kspan: float = 0.3,  # Ang^-1
+                                            kspan: float = 0.1,  # Ang^-1
                                             nblock: int = 4,
                                             theta: float = 0.0,  # degrees
                                             phi: float = 0.0,  # degrees
@@ -145,11 +242,13 @@ def extract_soc_stuff_from_gpaw_calculation(calc,
                        for wf in states])
     fermilevel = states.fermi_level
     nocc = (eig_Kn[0] < fermilevel).sum()
-
-    K_c = kd.N_c
     cell_cv = calc.atoms.cell
 
+    k_Kv = k_Kc @ np.linalg.inv(cell_cv).T * 2 * pi
+    kspan2 = ((k_Kv[1:] - k_Kv[0])**2).sum(1).min()**0.5
+
     # Create box of k-points centered on (0, 0, 0):
+    K_c = kd.N_c
     dk_vk = [np.linspace(-kspan / 2, kspan / 2, npoints) if K > 1 else
              np.array([0.0])
              for K in K_c]
@@ -160,104 +259,26 @@ def extract_soc_stuff_from_gpaw_calculation(calc,
     dk_kv[..., 2] = dk_vk[2]
     dk_kv.shape = (-1, 3)
 
-    # Break symmetries:
-    dk = kspan / npoints * 0.05
-    for s, dk_k in zip(shape, dk_kv.T):
-        if s > 1:
-            dk_k += np.random.default_rng().uniform(-dk, dk, npoints)
-    world.broadcast(dk_kv, 0)
-
     # Find band extrema and zoom in:
     data = {}
     for kind, eig_K in [('vbm', -eig_Kn[:, nocc - 1]),
                         ('cbm', eig_Kn[:, nocc])]:
         K = eig_K.argmin()
-        k_c = k_Kc[K]
-        k_v = k_c @ np.linalg.inv(cell_cv).T * 2 * pi
+        k_v = k_Kv[K]
         k_kv = k_v + dk_kv
         k_kc = k_kv @ cell_cv.T / (2 * pi)
-
-        nsc_calc = calc.fixed_density(
-            kpts=k_kc,
-            symmetry='off',
-            txt=f'{kind}.txt')
-        states = soc_eigenstates(nsc_calc, theta=theta, phi=phi)
-        eig_kn = np.array([wf.eig_m
-                           for wf in states])
-        proj_knI = np.array([wf.projections.matrix.array
-                             for wf in states])
-
-        if kind == 'vbm':
-            bands = slice(max(nocc - nblock, 0), nocc)
-        else:
-            bands = slice(nocc, nocc + nblock)
-
-        eig_kn = eig_kn[:, bands]
-        proj_knI = proj_knI[:, bands]
-        data[kind] = {
-            'k_ijkv': k_kv.reshape(shape + (3,)),
-            'eig_ijkn': eig_kn.reshape(shape + (-1,)),
-            'proj_ijknI': proj_knI.reshape(shape + proj_knI.shape[1:])}
 
     if world.rank == 0:
         # We need to convert complex to two floats before converting to
         # json:
         datafile.write_text(
             json.dumps(
-                {kind: {name: array.view(float).tolist()
+                {kind: {name: array.copy().view(float).tolist()
                         for name, array in things.items()}
                  for kind, things in data.items()},
                 indent=1))
 
     return data
-
-
-def connect(eig_ijkn: np.ndarray,
-            fingerprint_ijknx: np.ndarray) -> np.ndarray:
-    """Reorder eigenvalues to give connected bands."""
-    eig_ijkn = eig_ijkn.copy()
-    K1, K2, K3, N = eig_ijkn.shape
-    for k1 in range(K1 - 1):
-        con2(eig_ijkn[k1:k1 + 2, 0, 0],
-             fingerprint_ijknx[k1:k1 + 2, 0, 0])
-
-    for k1 in range(K1):
-        for k2 in range(K2 - 1):
-            con2(eig_ijkn[k1, k2:k2 + 2, 0],
-                 fingerprint_ijknx[k1, k2:k2 + 2, 0])
-
-    for k1 in range(K1):
-        for k2 in range(K2):
-            for k3 in range(K3 - 1):
-                con2(eig_ijkn[k1, k2, k3:k3 + 2],
-                     fingerprint_ijknx[k1, k2, k3:k3 + 2])
-    return eig_ijkn
-
-
-def con2(e_kn: np.ndarray,
-         fingerprint_knx: np.ndarray) -> list[int]:
-    """Connect 2 k-points."""
-    K, N = e_kn.shape
-    assert K == 2
-
-    ovl_n1n2 = abs(fingerprint_knx[0] @ fingerprint_knx[1].conj().T)
-
-    n2_n1 = []
-    n1_n2: dict[int, int] = {}
-    for n1 in range(N):
-        n2 = ovl_n1n2[n1].argmax()
-        ovl_n1n2[:, n2] = -1.0
-        n2_n1.append(n2)
-        n1_n2[n2] = n1
-
-    fingerprint2_nx = fingerprint_knx[1].copy()
-
-    e2_n = e_kn[1, n2_n1]
-    fingerprint2_nx = fingerprint2_nx[n2_n1]
-    e_kn[1] = e2_n
-    fingerprint_knx[1] = fingerprint2_nx
-
-    return n2_n1
 
 
 class MassDict(TypedDict):
@@ -283,12 +304,12 @@ class EMassesResult(ASRResult):
 
 
 @command('asr.emasses2',
-         requires=['pdos.gpw'],
-         dependencies=['asr.pdos'])
+         requires=['gs.gpw'],
+         dependencies=['asr.gs'])
 def main() -> ASRResult:
     """Find effective masses."""
     from gpaw import GPAW
-    calc = GPAW('pdos.gpw')
+    calc = GPAW('gs.gpw')
 
     theta, phi = get_spin_axis()
 
@@ -307,98 +328,134 @@ class BadFitError(ValueError):
     """Bad fit to data."""
 
 
-def find_mass(k_ijkv: np.ndarray,
-              eig_ijkn: np.ndarray,
-              proj_ijknI: np.ndarray,
-              kind: str) -> MassDict:
+def basin(eig_ijk, i, j, k):
+    """...
+
+    >>> eigs = np.array([[[1, 0, 1, 0.5]]])
+    >>> basin(eigs, 0, 0, 1)
+    """
+    include = {(i, j, k): True}
+    mask_ijk = np.empty(eig_ijk.shape, bool)
+    for i0 in range(eig_ijk.shape[0]):
+        for j0 in range(eig_ijk.shape[1]):
+            for k0 in range(eig_ijk.shape[2]):
+                ok = _basin(eig_ijk, i0, j0, k0, include)
+                mask_ijk[i0, j0, k0] = ok
+    return mask_ijk
+
+
+def _basin(eig_ijk, i, j, k, include):
+    ijk = (i, j, k)
+    if ijk in include:
+        return include[ijk]
+
+    candidates = [(eig_ijk[i, j, k], ijk)]
+    x_c = list(ijk)
+    for d in [-1, 1]:
+        for c in [0, 1, 2]:
+            x_c[c] += d
+            if 0 <= x_c[c] < eig_ijk.shape[c]:
+                candidates.append((eig_ijk[x_c[0], x_c[1], x_c[2]],
+                                   tuple(x_c)))
+            x_c[c] -= d
+    _, ijk0 = min(candidates)
+    if ijk0 == ijk:
+        ok = False
+    else:
+        ok = basin(eig_ijk, *ijk0, include)
+    include[ijk] = ok
+    return ok
+
+
+def find_mass(kpt_ijkv: np.ndarray,
+              eig_ijk: np.ndarray,
+              kind: str,
+              eigcalc=None,
+              maxlevels: int = 1) -> MassDict:
     if kind == 'vbm':
-        eig_ijkn = -eig_ijkn[:, :, :, ::-1]
+        eig_ijk = -eig_ijk
 
-    # Connect bands:
-    eig_ijkn = connect(eig_ijkn, proj_ijknI)
+    shape = eig_ijk.shape
+    i, j, k = np.unravel_index(eig_ijk.ravel().argmin(), shape)
+    kpt_v = kpt_ijkv[i, j, k]
+    mask = basin(eig_ijk, i, j, k).ravel()
+    eig_x = eig_ijk.ravel()[mask]
+    kpt_xv = kpt_ijkv.reshape((-1, 3))[mask]
 
-    # Find lowest band:
-    _, _, _, n = np.unravel_index(eig_ijkn.argmin(), eig_ijkn.shape)
-    eig_k = eig_ijkn[:, :, :, n].ravel()
+    axes = [c for c, size in enumerate(eig_ijk.shape) if size > 1]
+    kpt_xv = kpt_xv[:, axes]
 
-    axes = [c for c, size in enumerate(k_ijkv.shape[:3]) if size > 1]
-    k_kv = k_ijkv.reshape((-1, 3))[:, axes]
+    if len(eig_x) > 1.25 * nterms(4, len(axes)):
+        try:
+            kpt_v, energy, mass_w, direction_wv, error_x, fit = fit_band(
+                kpt_xv, eig_x)
+        except FitError:
+            pass
+        else:
+            fit_error = abs(error_x).max()
+            if fit_error < 0.02 * eig_x.ptp():
+                if kind == 'vbm':
+                    energy *= -1
+                    fit.coefs *= -1
+                return MassDict(kind=kind,
+                                k_v=k_v.tolist(),
+                                energy=energy,
+                                mass_w=mass_w.tolist(),
+                                direction_wv=direction_wv.tolist(),
+                                max_fit_error=fit_error,
+                                fit_data_i=fit.coefs.tolist())
+    if maxlevels == 1:
+        raise ValueError
 
-    k_v, energy, mass_w, direction_wv, error_k, fit = fit_band(k_kv, eig_k)
+    kpt_xv = kpt_ijkv.reshape(shape + (3,))
+    knndist = ((kpt_xv[1:] - kpt_xv[0])**2).sum(1).min()**0.5
+    kspan = 2.5 * knndist
 
-    fit_error = abs(error_k).max()
-    if fit_error > max(0.02 * eig_k.ptp(), 0.001):
-        raise BadFitError(f'Error: {fit_error} eV')
+    # Create box of k-points centered on k_v:
+    kpt_vx = [np.linspace(kpt - kspan / 2, kpt + kspan / 2, npoints)
+              if npoints > 1
+              else np.array([0.0])
+              for kpt, npoints in zip(kpt_v, shape)]
+    kpt_ijkv = np.empty(shape + (3,))
+    kpt_ijkv[..., 0] = kpt_vx[0][:, np.newaxis, np.newaxis]
+    kpt_ijkv[..., 1] = kpt_vx[1][:, np.newaxis]
+    kpt_ijkv[..., 2] = kpt_vx[2]
 
-    error = abs(energy - eig_ijkn.min())
-    if error > 0.1:
-        raise BadFitError(f'Error: {error} eV')
-
-    if kind == 'vbm':
-        energy *= -1
-        fit.coefs *= -1
-
-    return MassDict(kind=kind,
-                    k_v=k_v.tolist(),
-                    energy=energy,
-                    mass_w=mass_w.tolist(),
-                    direction_wv=direction_wv.tolist(),
-                    max_fit_error=fit_error,
-                    fit_data_i=fit.coefs.tolist())
+    eig_ijk = eigcalc.band(kpt_ijkv, kind)
+    return find_mass(kpt_ijkv, eig_ijk)
 
 
-class NoMinimum(ValueError):
-    """Band doesn't have a minimum."""
+class FitError(ValueError):
+    ...
 
 
-def fit_band(k_kv: np.ndarray,
-             eig_k: np.ndarray) -> tuple[np.ndarray,
+def fit_band(k_xv: np.ndarray,
+             eig_x: np.ndarray) -> tuple[np.ndarray,
                                          float,
                                          np.ndarray,
                                          np.ndarray,
                                          np.ndarray,
                                          PolyFit]:
-    dims = k_kv.shape[1]
-    npoints = [7, 25, 55][dims - 1]
-
-    k0_v = k_kv[eig_k.argmin()].copy()
-    if (k0_v <= k_kv.min(0)).any() or (k0_v >= k_kv.max(0)).any():
-        raise NoMinimum('Minimum outside box!')
-
-    k_kv -= k0_v
-    k = (k_kv**2).sum(1).argsort()[:npoints]
-
-    if len(k) < npoints:
-        raise NoMinimum(f'Too few points: {len(k)} < {npoints}')
-
-    k_kv = k_kv[k]
-    eig_k = eig_k[k]
-
-    try:
-        fit = PolyFit(k_kv, eig_k, order=4)
-    except np.linalg.LinAlgError:
-        raise NoMinimum('Bad minimum!')
-
-    hessian_vv = fit.hessian(np.zeros(dims))
+    kmin_v = k_xv[eig_x.argmin()].copy()
+    dk_xv = k_xv - kmin_v
+    fit = PolyFit(dk_xv, eig_x, order=4)
+    error_x = np.array([fit.value(k_v) - e for k_v, e in zip(dk_xv, eig_x)])
+    hessian_vv = fit.hessian(np.zeros_like(kmin_v))
     eval_w = np.linalg.eigvalsh(hessian_vv)
     if eval_w.min() <= 0.0:
-        raise NoMinimum('Not a minimum')
+        raise FitError('Not a minimum')
 
-    error_k = np.array([fit.value(k_v) - e for k_v, e in zip(k_kv, eig_k)])
-
-    k_v = fit.find_minimum()
-    emin = fit.value(k_v)
-    hessian_vv = fit.hessian(k_v)
-    evals_w, evec_vw = np.linalg.eigh(hessian_vv)
-    mass_w = Bohr**2 * Ha / evals_w
-
-    if (mass_w < 0.01).any():
-        raise NoMinimum('Unrealistic mass!')
+    dkmin_v = fit.find_minimum()
+    emin = fit.value(dkmin_v)
+    hessian_vv = fit.hessian(dkmin_v)
+    eval_w, evec_vw = np.linalg.eigh(hessian_vv)
+    mass_w = Bohr**2 * Ha / eval_w
+    assert (mass_w > 0.0).all()
 
     # Centered fit around minumum:
-    fit = PolyFit(k_kv - k_v, eig_k, order=4)
+    fit = PolyFit(dk_xv - dkmin_v, eig_x, order=4)
 
-    return k_v + k0_v, emin, mass_w, evec_vw.T, error_k, fit
+    return dkmin_v + kmin_v, emin, mass_w, evec_vw.T, error_x, fit
 
 
 if __name__ == '__main__':

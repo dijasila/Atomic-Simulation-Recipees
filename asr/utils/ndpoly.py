@@ -13,6 +13,11 @@ def tuples2str(tuples):
     return '*'.join([str(len(tuples))] + ['xyz'[d] for d in tuples[0]])
 
 
+def nterms(order, ndims):
+    return sum(len(list(combinations_with_replacement(range(ndims), n)))
+               for n in range(order + 1))
+
+
 class PolyFit:
     def __init__(self,
                  x=None,
