@@ -38,7 +38,7 @@ of two-dimensional materials. Physical Review B, 94(24), p.245411""",
 def is_in_list(element, lst, tol):
     """Check if a list of floating-point numbers is contained in an array."""
     for obj in lst:
-        if np.allclose(element, obj, rtol=tol, atol=0):
+        if np.allclose(element, obj, rtol=tol, atol=1e-6):
             return True
     return False
 
