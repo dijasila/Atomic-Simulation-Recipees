@@ -97,7 +97,7 @@ def webpanel(result, row, key_descriptions):
 
         for kpt in data:
             if kpt == 'G':
-                rowlabels.append('&#x0393')
+                rowlabels.append('Γ')
             else:
                 rowlabels.append(kpt)
 
