@@ -73,10 +73,7 @@ def _main(eigcalc: EigCalc,
                for n, x0 in zip(shape, [i, j, k])]
     print(I, J, K)
     print(i, j, k, kind, eig_ijk[i, j, k])
-    print(i, j, k, kind, eig_ijk[i, j, k])
     eig_ijk = eig_ijk[I][:, J][:, :, K]
-    print(i, j, k, kind, eig_ijk[3, 3, 3])
-    print(i, j, k, kind, eig_ijk[2, 2, 4])
     kpt_ijkv = kpt_ijkv[I][:, J][:, :, K]
     kpt_ijkc = kpt_ijkv @ eigcalc.cell_cv.T / (2 * pi)
     kpt0_c = kpt0_v @ eigcalc.cell_cv.T / (2 * pi)
@@ -147,7 +144,7 @@ def find_mass(kpt_ijkv: np.ndarray,
               if npoints > 1
               else np.array([0.0])
               for kpt, npoints in zip(kpt0_v, shape)]
-    print(kspan, kpt0_v, kpt_vx)
+    print(kspan, kpt0_v, kpt_vx.shape)
     kpt_ijkv = np.empty(shape + (3,))
     kpt_ijkv[..., 0] = kpt_vx[0][:, np.newaxis, np.newaxis]
     kpt_ijkv[..., 1] = kpt_vx[1][:, np.newaxis]
@@ -390,7 +387,7 @@ class GPAWEigenvalueCalculator(EigCalc):
         from gpaw.spinorbit import soc_eigenstates
 
         kpt_xc = kpt_xv @ self.cell_cv.T / (2 * pi)
-        #print(kpt_xc)
+        # print(kpt_xc)
         nsc_calc = self.calc.fixed_density(
             kpts=kpt_xc,
             symmetry='off',
