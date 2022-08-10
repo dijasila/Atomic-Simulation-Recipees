@@ -18,13 +18,6 @@ if TYPE_CHECKING:
     from gpaw.new.ase_interface import GPAW
 
 
-panel_description = make_panel_description(
-    """The effective mass tensor represents the second derivative of the band
-energy w.r.t. wave vector at a band extremum. The effective masses of the
-valence bands (VB) and conduction bands (CB) are obtained as the eigenvalues
-of the mass tensor.  Spin–orbit interactions are included.""")
-
-
 class MassDict(TypedDict):
     kind: str
     k_v: list[float]
@@ -79,8 +72,11 @@ def _main(eigcalc: EigCalc,
                [x % n for x in range(x0 - N, x0 + N + 1)]
                for n, x0 in zip(shape, [i, j, k])]
     print(I, J, K)
-    print(i, j, k, kind)
+    print(i, j, k, kind, eig_ijk[i, j, k])
+    print(i, j, k, kind, eig_ijk[i, j, k])
     eig_ijk = eig_ijk[I][:, J][:, :, K]
+    print(i, j, k, kind, eig_ijk[3, 3, 3])
+    print(i, j, k, kind, eig_ijk[2, 2, 4])
     kpt_ijkv = kpt_ijkv[I][:, J][:, :, K]
     kpt_ijkc = kpt_ijkv @ eigcalc.cell_cv.T / (2 * pi)
     kpt0_c = kpt0_v @ eigcalc.cell_cv.T / (2 * pi)
@@ -108,13 +104,14 @@ def find_mass(kpt_ijkv: np.ndarray,
     i, j, k = (int(x) for x in
                np.unravel_index(eig_ijk.ravel().argmin(), shape))
     print('K')
-    print(kpt_ijkv)
-    print(eig_ijk, i, j, k, shape)
+    print(kpt_ijkv.min((0, 1, 2)))
+    print(kpt_ijkv.max((0, 1, 2)))
+    print(eig_ijk[3, 3], i, j, k, shape)
     mask = basin(eig_ijk, i, j, k).ravel()
-    print(mask)
+    # print(mask.reshape((7, 7, 7)))
     eig_x = eig_ijk.ravel()[mask]
     kpt_xv = kpt_ijkv.reshape((-1, 3))[mask]
-    print(eig_x)
+    print(eig_x.shape)
     axes = [c for c, size in enumerate(eig_ijk.shape) if size > 1]
     kpt_xv = kpt_xv[:, axes]
     print(axes)
@@ -122,8 +119,8 @@ def find_mass(kpt_ijkv: np.ndarray,
     try:
         kpt_v, energy, mass_w, direction_wv, error_x, fit = fit_band(
             kpt_xv, eig_x)
-    except BadFitError:
-        pass
+    except BadFitError as xx:
+        print(xx)
     else:
         if kind == 'vbm':
             energy *= -1
@@ -180,9 +177,6 @@ def fit_band(k_xv: np.ndarray,
 
     error_x = np.array([fit.value(k_v) - e for k_v, e in zip(dk_xv, eig_x)])
     fit_error = abs(error_x).max()
-    if fit_error > max_rel_error * eig_x.ptp():
-        raise BadFitError(f'Error too big: {fit_error} eV')
-
     hessian_vv = fit.hessian(np.zeros_like(kmin_v))
     eval_w = np.linalg.eigvalsh(hessian_vv)
     if eval_w.min() <= 0.0:
@@ -192,8 +186,13 @@ def fit_band(k_xv: np.ndarray,
     emin = fit.value(dkmin_v)
     hessian_vv = fit.hessian(dkmin_v)
     eval_w, evec_vw = np.linalg.eigh(hessian_vv)
+    if eval_w.min() <= 0.0:
+        raise BadFitError('Not a minimum')
     mass_w = Bohr**2 * Ha / eval_w
-    assert (mass_w > 0.0).all()
+    print(dkmin_v + kmin_v, emin, mass_w, evec_vw.T)
+
+    if fit_error > max_rel_error * eig_x.ptp():
+        raise BadFitError(f'Error too big: {fit_error} eV')
 
     # Centered fit around minumum:
     fit = PolyFit(dk_xv - dkmin_v, eig_x, order=4)
@@ -245,6 +244,13 @@ def _basin(eig_ijk: np.ndarray,
         ok = _basin(eig_ijk, *ijk0, include)
     include[ijk] = ok
     return ok
+
+
+panel_description = make_panel_description(
+    """The effective mass tensor represents the second derivative of the band
+energy w.r.t. wave vector at a band extremum. The effective masses of the
+valence bands (VB) and conduction bands (CB) are obtained as the eigenvalues
+of the mass tensor.  Spin–orbit interactions are included.""")
 
 
 def webpanel(result, row, key_descriptions):
@@ -384,7 +390,7 @@ class GPAWEigenvalueCalculator(EigCalc):
         from gpaw.spinorbit import soc_eigenstates
 
         kpt_xc = kpt_xv @ self.cell_cv.T / (2 * pi)
-        print(kpt_xc)
+        #print(kpt_xc)
         nsc_calc = self.calc.fixed_density(
             kpts=kpt_xc,
             symmetry='off',
@@ -394,7 +400,7 @@ class GPAWEigenvalueCalculator(EigCalc):
             nkpts = len(kpt_xv)
             nspins = self.calc.get_number_of_spins()
             eig_skn = np.array(
-                [[self.calc.get_eigenvalues(kpt=kpt, spin=spin)
+                [[nsc_calc.get_eigenvalues(kpt=kpt, spin=spin)
                   for kpt in range(nkpts)]
                  for spin in range(nspins)])
             eig_kns = eig_skn.transpose((1, 2, 0))

@@ -8,7 +8,7 @@ from ase import Atoms
 from ase.units import Bohr, Ha
 
 from asr.emasses2 import (EMassesResult, GPAWEigenvalueCalculator, _main,
-                          fit_band, mass_plots, webpanel)
+                          fit_band, mass_plots, webpanel, basin)
 
 
 def test_1d_mass():
@@ -94,3 +94,15 @@ def test_emass_h2(tmp_path, h2_calc, angles):
 
     mass_plots(row, 'cbm.png', 'vbm.png')
     print(webpanel(result, row, {}))
+
+
+def test_basin():
+    kpt_ijkv = np.indices((7, 7, 7)).transpose((1, 2, 3, 0)) - 1
+    e_ijkn = np.empty((7, 7, 7, 2))
+    e_ijkn[..., 0] = (kpt_ijkv**2).sum(3)
+    kpt_ijkv = np.indices((7, 7, 7)).transpose((1, 2, 3, 0)) - 7
+    e_ijkn[..., 1] = (kpt_ijkv**2).sum(3)
+    e_ijk = e_ijkn.min(3)
+    mask = basin(e_ijk, 1, 1, 1)
+    print(mask)
+
