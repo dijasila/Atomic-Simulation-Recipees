@@ -35,6 +35,18 @@ class MassDict(TypedDict):
     fit_data_i: list[float]
 
 
+class EigCalc:
+    cell_cv: np.ndarray
+
+    def get_band(self, kind: str) -> tuple[np.ndarray, np.ndarray]:
+        raise NotImplementedError
+
+    def get_new_band(self,
+                     kind: str,
+                     kpt_xv: np.ndarray) -> np.ndarray:
+        raise NotImplementedError
+
+
 @command('asr.emasses2',
          requires=['gs.gpw'],
          dependencies=['asr.gs'])
@@ -50,7 +62,9 @@ def main() -> ASRResult:
     return EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
 
 
-def _main(eigcalc, kind, maxlevels=3) -> MassDict:
+def _main(eigcalc: EigCalc,
+          kind: str,
+          maxlevels: int = 4) -> MassDict:
     """Find effective masses."""
     kpt_ijkv, eig_ijk = eigcalc.get_band(kind)
     shape = eig_ijk.shape
@@ -90,7 +104,8 @@ def find_mass(kpt_ijkv: np.ndarray,
         eig_ijk = -eig_ijk
 
     shape = eig_ijk.shape
-    i, j, k = np.unravel_index(eig_ijk.ravel().argmin(), shape)
+    i, j, k = (int(x) for x in
+               np.unravel_index(eig_ijk.ravel().argmin(), shape))
     print('K')
     print(kpt_ijkv)
     print(eig_ijk, i, j, k, shape)
@@ -103,27 +118,24 @@ def find_mass(kpt_ijkv: np.ndarray,
     kpt_xv = kpt_xv[:, axes]
     print(axes)
 
-    if len(eig_x) > 1.25 * nterms(4, len(axes)):
-        try:
-            print(kpt_xv, eig_x)
-            kpt_v, energy, mass_w, direction_wv, error_x, fit = fit_band(
-                kpt_xv, eig_x)
-            print(kpt_v, energy, mass_w, direction_wv, error_x, fit)
-        except FitError:
-            pass
-        else:
-            fit_error = abs(error_x).max()
-            if fit_error < 0.02 * eig_x.ptp():
-                if kind == 'vbm':
-                    energy *= -1
-                    fit.coefs *= -1
-                return MassDict(kind=kind,
-                                k_v=kpt_v.tolist(),
-                                energy=energy,
-                                mass_w=mass_w.tolist(),
-                                direction_wv=direction_wv.tolist(),
-                                max_fit_error=fit_error,
-                                fit_data_i=fit.coefs.tolist())
+    try:
+        kpt_v, energy, mass_w, direction_wv, error_x, fit = fit_band(
+            kpt_xv, eig_x)
+    except BadFitError:
+        pass
+    else:
+        if kind == 'vbm':
+            energy *= -1
+            fit.coefs *= -1
+        fit_error = abs(error_x).max()
+        return MassDict(kind=kind,
+                        k_v=kpt_v.tolist(),
+                        energy=energy,
+                        mass_w=mass_w.tolist(),
+                        direction_wv=direction_wv.tolist(),
+                        max_fit_error=fit_error,
+                        fit_data_i=fit.coefs.tolist())
+
     if maxlevels == 1:
         raise ValueError
 
@@ -148,25 +160,32 @@ def find_mass(kpt_ijkv: np.ndarray,
     return find_mass(kpt_ijkv, eig_ijk, kind, eigcalc, maxlevels - 1)
 
 
-class FitError(ValueError):
-    ...
-
-
 def fit_band(k_xv: np.ndarray,
-             eig_x: np.ndarray) -> tuple[np.ndarray,
-                                         float,
-                                         np.ndarray,
-                                         np.ndarray,
-                                         np.ndarray,
-                                         PolyFit]:
+             eig_x: np.ndarray,
+             order: int = 4,
+             max_rel_error: float = 0.02) -> tuple[np.ndarray,
+                                                   float,
+                                                   np.ndarray,
+                                                   np.ndarray,
+                                                   np.ndarray,
+                                                   PolyFit]:
+    npoints, ndims = k_xv.shape
+    if npoints < 1.25 * nterms(order, ndims):
+        raise BadFitError('Too few points!')
+
     kmin_v = k_xv[eig_x.argmin()].copy()
     dk_xv = k_xv - kmin_v
     fit = PolyFit(dk_xv, eig_x, order=4)
+
     error_x = np.array([fit.value(k_v) - e for k_v, e in zip(dk_xv, eig_x)])
+    fit_error = abs(error_x).max()
+    if fit_error > max_rel_error * eig_x.ptp():
+        raise BadFitError(f'Error too big: {fit_error} eV')
+
     hessian_vv = fit.hessian(np.zeros_like(kmin_v))
     eval_w = np.linalg.eigvalsh(hessian_vv)
     if eval_w.min() <= 0.0:
-        raise FitError('Not a minimum')
+        raise BadFitError('Not a minimum')
 
     dkmin_v = fit.find_minimum()
     emin = fit.value(dkmin_v)
@@ -181,7 +200,10 @@ def fit_band(k_xv: np.ndarray,
     return dkmin_v + kmin_v, emin, mass_w, evec_vw.T, error_x, fit
 
 
-def basin(eig_ijk, i, j, k):
+def basin(eig_ijk: np.ndarray,
+          i: int,
+          j: int,
+          k: int) -> np.ndarray:
     """...
 
     >>> eigs = np.array([[[1, 0, 1, 0.5]]])
@@ -197,7 +219,11 @@ def basin(eig_ijk, i, j, k):
     return mask_ijk
 
 
-def _basin(eig_ijk, i, j, k, include):
+def _basin(eig_ijk: np.ndarray,
+           i: int,
+           j: int,
+           k: int,
+           include: dict[tuple[int, int, int], bool]) -> bool:
     ijk = (i, j, k)
     if ijk in include:
         return include[ijk]
@@ -209,7 +235,7 @@ def _basin(eig_ijk, i, j, k, include):
             x_c[c] += d
             if 0 <= x_c[c] < eig_ijk.shape[c]:
                 candidates.append((eig_ijk[x_c[0], x_c[1], x_c[2]],
-                                   tuple(x_c)))
+                                   (x_c[0], x_c[1], x_c[2])))
             x_c[c] -= d
     _, ijk0 = min(candidates)
     if ijk0 == ijk:
@@ -306,7 +332,7 @@ def mass_plots(row, *filenames):
     return plots
 
 
-class GPAWEigenvalueCalculator:
+class GPAWEigenvalueCalculator(EigCalc):
     def __init__(self,
                  calc: GPAW,
                  theta: float = None,  # degrees
