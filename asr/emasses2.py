@@ -144,7 +144,7 @@ def find_mass(kpt_ijkv: np.ndarray,
               if npoints > 1
               else np.array([0.0])
               for kpt, npoints in zip(kpt0_v, shape)]
-    print(kspan, kpt0_v, kpt_vx.shape)
+    print(kspan, kpt0_v, kpt_vx)
     kpt_ijkv = np.empty(shape + (3,))
     kpt_ijkv[..., 0] = kpt_vx[0][:, np.newaxis, np.newaxis]
     kpt_ijkv[..., 1] = kpt_vx[1][:, np.newaxis]
