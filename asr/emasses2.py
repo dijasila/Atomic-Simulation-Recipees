@@ -72,6 +72,7 @@ def _main(eigcalc: EigCalc,
         i, j, k = np.unravel_index(eig_ijk.ravel().argmax(), shape)
     else:
         i, j, k = np.unravel_index(eig_ijk.ravel().argmin(), shape)
+    kpt0_v = kpt_ijkv[i, j, k].copy()
 
     N = 3
     I, J, K = [[0] if n == 1 else
@@ -82,7 +83,7 @@ def _main(eigcalc: EigCalc,
     eig_ijk = eig_ijk[I][:, J][:, :, K]
     kpt_ijkv = kpt_ijkv[I][:, J][:, :, K]
     kpt_ijkc = kpt_ijkv @ eigcalc.cell_cv.T / (2 * pi)
-    kpt0_c = kpt_ijkc[i, j, k].copy()
+    kpt0_c = kpt0_v @ eigcalc.cell_cv.T / (2 * pi)
     kpt_ijkc += 0.5 - kpt0_c
     kpt_ijkc %= 1
     kpt_ijkc -= 0.5 - kpt0_c

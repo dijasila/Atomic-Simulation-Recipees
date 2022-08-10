@@ -52,10 +52,8 @@ def test_1d_mass2():
     _main(eigcalc, 'cbm', 4)
 
 
-@pytest.mark.integration_test
-@pytest.mark.integration_test_gpaw
-def test_emass_h2(tmp_path):
-    os.chdir(tmp_path)
+@pytest.fixture
+def h2_calc():
     from gpaw import GPAW
     h2 = Atoms('H2',
                [[0, 0, 0], [0, 0, 0.74]],
@@ -67,7 +65,15 @@ def test_emass_h2(tmp_path):
                    kpts=[20, 1, 1],
                    txt=None)
     h2.get_potential_energy()
-    eigcalc = GPAWEigenvalueCalculator(h2.calc)
+    return h2.calc
+
+
+@pytest.mark.integration_test
+@pytest.mark.integration_test_gpaw
+@pytest.mark.parametrize('angles', [(None, None), (0.0, 0.0)])
+def test_emass_h2(tmp_path, h2_calc, angles):
+    os.chdir(tmp_path)
+    eigcalc = GPAWEigenvalueCalculator(h2_calc, *angles)
 
     extrema = []
     for kind in ['vbm', 'cbm']:
