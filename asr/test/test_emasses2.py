@@ -7,37 +7,49 @@ import pytest
 from ase import Atoms
 from ase.units import Bohr, Ha
 
-from asr.emasses2 import (EMassesResult, connect,
-                          extract_soc_stuff_from_gpaw_calculation, find_mass,
+from asr.emasses2 import (EMassesResult, GPAWEigenvalueCalculator, _main,
                           fit_band, mass_plots, webpanel)
 
 
-def test_1d():
-    """Two crossing bands with degeneracy."""
+def test_1d_mass():
     a = 2.2
     m = 0.3
     k0 = 0.2
     k_i = np.linspace(-pi / a, pi / a, 7)
-    b1_i = (k_i - k0)**2 / (2 * m) * Ha * Bohr**2
-    b2_i = (k_i + k0)**2 / (2 * m) * Ha * Bohr**2
-    eig_ijkn = np.array([b1_i, b2_i]).T.reshape((7, 1, 1, 2))
-    fp_ijknx = np.zeros((7, 1, 1, 2, 2))
-    fp_ijknx[:, :, :, 0, 0] = 1
-    fp_ijknx[:, :, :, 1, 1] = 1
-    n_ijkn = eig_ijkn.argsort(axis=3)
-    eig_ijkn = np.take_along_axis(eig_ijkn, n_ijkn, axis=3)
-    fp_ijknx = np.take_along_axis(fp_ijknx, n_ijkn[:, :, :, :, np.newaxis],
-                                  axis=3)
-    eig_ijkn = connect(eig_ijkn, fp_ijknx)
-    for n in [0, 1]:
-        r = fit_band(k_i[:, np.newaxis],
-                     eig_ijkn[:, 0, 0, n])
-        k_v, emin, mass_w, evec_wv, error_i, fit = r
-        assert k_v[0] == pytest.approx(-k0)
-        assert emin == pytest.approx(0.0)
-        assert mass_w[0] == pytest.approx(m)
-        assert abs(error_i).max() == pytest.approx(0.0)
-        k0 *= -1
+    eig_i = (k_i - k0)**2 / (2 * m) * Ha * Bohr**2
+    k_v, emin, mass_w, evec_wv, error_i, fit = fit_band(k_i[:, np.newaxis],
+                                                        eig_i)
+    assert k_v[0] == pytest.approx(k0)
+    assert emin == pytest.approx(0.0)
+    assert mass_w[0] == pytest.approx(m)
+    assert abs(error_i).max() == pytest.approx(0.0)
+
+
+def e(k):
+    """Two crossing bands with degeneracy."""
+    m = 0.3
+    k0 = 0.2
+    return min((k - k0)**2, (k + k0)**2) / (2 * m) * Ha * Bohr**2
+
+
+class EigCalc:
+    cell_cv = np.diag([2.2, 10, 20])
+
+    def get_band(self, kind):
+        a = self.cell_cv[0, 0]
+        k_i = np.linspace(-pi / a, pi / a, 7, False)
+        k_ijkv = np.zeros((7, 1, 1, 3))
+        k_ijkv[:, 0, 0, 0] = k_i
+        return k_ijkv, np.array([e(k) for k in k_i]).reshape((7, 1, 1))
+
+    def get_new_band(self, kind, kpt_xv):
+        return np.array([e(k) for k in kpt_xv[:, 0]])
+
+
+def test_1d_mass2():
+    """Two crossing bands with degeneracy."""
+    eigcalc = EigCalc()
+    _main(eigcalc, 'cbm', 4)
 
 
 @pytest.mark.integration_test
@@ -55,11 +67,11 @@ def test_emass_h2(tmp_path):
                    kpts=[20, 1, 1],
                    txt=None)
     h2.get_potential_energy()
-    data = extract_soc_stuff_from_gpaw_calculation(h2.calc)
+    eigcalc = GPAWEigenvalueCalculator(h2.calc)
 
     extrema = []
     for kind in ['vbm', 'cbm']:
-        massdata = find_mass(**data[kind], kind=kind)
+        massdata = _main(eigcalc, kind)
         extrema.append(massdata)
 
     print(extrema)
@@ -68,8 +80,8 @@ def test_emass_h2(tmp_path):
     assert cbm['energy'] - vbm['energy'] == pytest.approx(10.8, abs=0.1)
     assert abs(vbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
     assert abs(cbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
-    assert abs(vbm['mass_w'][0]) == pytest.approx(0.39, abs=0.01)
-    assert abs(cbm['mass_w'][0]) == pytest.approx(0.31, abs=0.01)
+    assert abs(vbm['mass_w'][0]) == pytest.approx(0.48, abs=0.01)
+    assert abs(cbm['mass_w'][0]) == pytest.approx(0.32, abs=0.01)
 
     result = EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
     row = SimpleNamespace(data={'results-asr.emasses2.json': result})
