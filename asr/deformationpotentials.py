@@ -35,11 +35,11 @@ of two-dimensional materials. Physical Review B, 94(24), p.245411""",
 
 def get_relevant_kpts(atoms, vbm, cbm, ibz_kpoints):
     """Obtain the high-symmetry k-points.
+
     If the band edges of the unstrained material are found away
     from any of the special points, the corresponding
     k-points will be added to the list
     """
-
     ivbm = vbm[1]
     icbm = cbm[1]
     kvbm = ibz_kpoints[ivbm]
@@ -184,6 +184,7 @@ ijlabels = {
               'the irreducible Brillouin zone k-points.'))
 def main(strain: float = 1.0, all_ibz: bool = False) -> Result:
     """Calculate deformation potentials.
+
     Calculate the deformation potentials both with and without spin orbit
     coupling, for both the conduction band and the valence band, and return as
     a dictionary. The dictionary has the following structure:
@@ -212,6 +213,7 @@ def main(strain: float = 1.0, all_ibz: bool = False) -> Result:
         where the edge states are found (if they are not already
         at one of the special points).
     """
+
     from gpaw import GPAW
     from ase.io import read
     from asr.gs import vacuumlevels
