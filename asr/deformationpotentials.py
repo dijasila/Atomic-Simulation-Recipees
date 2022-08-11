@@ -12,17 +12,15 @@ The deformation potentials represent the energy shifts of the
 bottom of the conduction band (CB) and the top of the valence band
 (VB) at a given k-point, under an applied strain.
 
-This panel shows the VB and CB deformation potentials at the
+The panel shows the VB and CB deformation potentials at the
 high-symmetry k-points, subdivided into the different strain
-components. In case one or both the band extrema of the material
-are not found at any of the special points, the corresponding
-k-point(s) are added to the list as `VBM` and/or `CBM`
-(indirect-gap materials) or `VBM/CBM` (direct-gap materials).
+components. If the VBM and/or the CBM fall at any of the
+special points, an asterisk is added to the k-point name.
+If they are found at any other k-point, they are added to the list
+as 'k<sub>VBM</sub>' / 'k<sub>VBM</sub>' / 'k<sub>VBM/CBM</sub>'.
 
-Results are calculated both with and without spin-orbit coupling (SOC).
-If any significant difference (at least 10 meV) if found between
-the two sets of deformation potentials, two separate tables are shown.
-Otherwise, we report only the values calculated with SOC."""
+All the values are calculated with spin-orbit coupling.
+"""
 
 
 panel_description = make_panel_description(
@@ -35,96 +33,111 @@ of two-dimensional materials. Physical Review B, 94(24), p.245411""",
 )
 
 
-def is_in_list(element, lst, tol):
-    """Check if a list of floating-point numbers is contained in an array."""
-    for obj in lst:
-        if np.allclose(element, obj, rtol=tol, atol=1e-6):
-            return True
-    return False
-
-
-def get_relevant_kpts(atoms, calc):
+def get_relevant_kpts(atoms, vbm, cbm, ibz_kpoints):
     """Obtain the high-symmetry k-points.
 
     If the band edges of the unstrained material are found away
     from any of the special points, the corresponding
-    k-points will be added to the list as 'VBM' and 'CBM'
-    or 'VBM/CBM' (direct-gap materials)
+    k-points will be added to the list
     """
     from ase.dft.bandgap import bandgap
 
-    # XXX investigate issue with special points falling outside cell vectors
-    specpts = atoms.cell.bandpath(pbc=atoms.pbc, npoints=0).special_points
-
-    _, ivbm, icbm = bandgap(calc, output=None)
-    if ivbm[1] == icbm[1]:
-        kdict = {'VBM/CBM': ivbm}
+    ivbm = vbm[1]
+    icbm = cbm[1]
+    kvbm = ibz_kpoints[ivbm]
+    kcbm = ibz_kpoints[icbm]
+    if ivbm == icbm:
+        spec = {
+            'VBM CBM': kvbm
+        }
     else:
-        kdict = {'VBM': ivbm,
-                 'CBM': icbm}
+        spec = {
+            'VBM': kvbm,
+            'CBM': kcbm
+        }
 
-    ibz_kpoints = calc.get_ibz_k_points()
-    for label, i_kpt in kdict.items():
-        kpt = ibz_kpoints[i_kpt[1]]
-        if not is_in_list(kpt, specpts.values(), tol=0.01):
-            specpts[label] = kpt
+    icell = atoms.cell.reciprocal()
+    bp = atoms.cell.bandpath(pbc=atoms.pbc, npoints=0)
+    kpts = bp.special_points
 
-    return specpts
+    kpoints = spec.copy()
+    for lab1, kpt1 in kpts.items():
+        # Matching special points fractional coordinates
+        # between atoms.cell.bandpath and atoms.cell.reciprocal()
+        spec_bp = np.asarray(kpt1)
+        spec_abs = np.dot(spec_bp, bp.icell)
+        kpt_new = np.dot(spec_abs, np.linalg.inv(icell))
+
+        label = lab1
+        for lab2, kpt2 in spec.items():
+            if np.allclose(kpt_new, kpt2, rtol=0.1, atol=1e-8):
+                label += f' {lab2}'
+                kpoints.pop(lab2)
+        kpoints[label] = kpt_new
+
+    return kpoints
+
+
+def get_table_row(kpt, band, data):
+    row = []
+    for comp in ['xx', 'yy', 'xy']:
+        row.append(data[kpt][comp][band])
+    return np.asarray(row)
 
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import matrixtable, describe_entry, WebPanel
 
+    def get_basename(kpt):
+        chunks = kpt.split(' ')
+        if chunks[0] == 'G':
+            return 'Γ'
+        elif chunks[0] in ('VBM', 'CBM'):
+            try:
+                if chunks[1] in ('VBM', 'CBM'):
+                    return 'k<sub>VBM/CBM</sub>'
+            except IndexError:
+                return f'k<sub>{chunks[0]}</sub>'
+        else:
+            return chunks[0]
+
     description = describe_entry('Deformation potentials', panel_description)
-    columnlabels = [
-        'xx<sup>VB</sup>',
-        'xx<sup>CB</sup>',
-        'yy<sup>VB</sup>',
-        'yy<sup>CB</sup>',
-        'xy<sup>VB</sup>',
-        'xy<sup>CB</sup>'
-    ]
+    defpots = result['deformation_potentials_soc'].copy()
+    columnlabels = ['xx', 'yy', 'xy']
 
-    labeldct = {'deformation_potentials_soc': 'SOC',
-                'deformation_potentials_nosoc': 'NOSOC'}
+    dp_gap = defpots.pop('Band Gap')
+    dp_list = []
+    dp_labels = []
+    add_to_bottom = []
+    for kpt in defpots:
+        name = get_basename(kpt)
+        for band, edge in zip(['VB', 'CB'], ['VBM', 'CBM']):
+            row = get_table_row(kpt, band, defpots)
+            label = name + f' ({band})'
+            if 'k' in label:
+                add_to_bottom.append((label, row))
+                continue
+            if edge in kpt:
+                label += ' *'
+            dp_labels.append(label)
+            dp_list.append(row)
 
-    dp_arrays = []
-    dp_tables = []
-    for resultname, label in labeldct.items():
-        data = result[resultname]
-        dp_array = []
-        rowlabels = []
+    for label, row in add_to_bottom:
+        dp_labels.append(label)
+        dp_list.append(row)
+    dp_labels.append('Band Gap')
+    dp_list.append([dp_gap[comp] for comp in columnlabels])
 
-        for kpt in data:
-            if kpt == 'G':
-                rowlabels.append('Γ')
-            else:
-                rowlabels.append(kpt)
-
-            dp_array_row = []
-            for comp in data[kpt]:
-                for band in data[kpt][comp]:
-                    dp_array_row.append(data[kpt][comp][band])
-            dp_array.append(dp_array_row)
-        dp_arrays.append(np.asarray(dp_array))
-
-        dp_table = matrixtable(
-            dp_array,
-            digits=3,
-            title=f'D<sup>{label}</sup> (eV)',
-            columnlabels=columnlabels,
-            rowlabels=rowlabels
-        )
-        dp_tables.append(dp_table)
-
-    columns = [[dp_tables[0]]]
-    diff = abs(dp_arrays[0] - dp_arrays[1])
-    if np.any(diff > 0.05):
-        columns.append(dp_tables[1])
-
+    dp_table = matrixtable(
+        dp_list,
+        digits=2,
+        title=f'D (eV)',
+        columnlabels=columnlabels,
+        rowlabels=dp_labels
+    )
     panel = WebPanel(
         description,
-        columns=columns,
+        columns=[[dp_table]],
         sort=4
     )
     return [panel]
@@ -205,14 +218,22 @@ def main(strain: float = 1.0, all_ibz: bool = False) -> Result:
     from gpaw import GPAW
     from ase.io import read
     from asr.gs import vacuumlevels
+    from ase.dft.bandgap import bandgap
 
     atoms = read('structure.json')
     calc = GPAW('gs.gpw')
+    gap, vbm, cbm = bandgap(calc, output=None)
+    if gap == 0.0:
+        print("""\
+        Deformation potentials cannot be defined for metals! Terminating recipe...
+        """)
+        return None
 
+    ibz = calc.get_ibz_k_points()
     if all_ibz:
-        kpts = calc.get_ibz_k_points()
+        kpts = ibz
     else:
-        kpts = get_relevant_kpts(atoms, calc)
+        kpts = get_relevant_kpts(atoms, vbm, cbm, ibz)
 
     def gpaw_get_edges(folder, kpts, soc):
         """Obtain the edge states at the different k-points.
@@ -243,10 +264,27 @@ def main(strain: float = 1.0, all_ibz: bool = False) -> Result:
             edges[i, 1] = min(cb)
         return edges - vac.evacmean
 
-    return _main(atoms.pbc, kpts, gpaw_get_edges, strain)
+    results = _main(atoms.pbc, kpts, gpaw_get_edges, strain)
+
+    # Extract band gap deformation potentials
+    for key in ['deformation_potentials_soc', 'deformation_potentials_nosoc']:
+        edge_states = {}
+        result = results[key]
+        for kpt in result:
+            if 'VBM' in kpt:
+                edge_states['VBM'] = get_table_row(kpt, 'VB', result)
+            if 'CBM' in kpt:
+                edge_states['CBM'] = get_table_row(kpt, 'CB', result)
+        dp_gap = edge_states['CBM'] - edge_states['VBM']
+        results[key]['Band Gap'] = {
+            key: comp for key, comp in zip(['xx', 'yy', 'xy'], dp_gap)
+        }
+
+    return results
 
 
 def _main(pbc, kpts, get_edges, strain):
+    from collections import OrderedDict
     from asr.setup.strains import (get_relevant_strains,
                                    get_strained_folder_name)
     results = {
@@ -261,8 +299,9 @@ def _main(pbc, kpts, get_edges, strain):
 
     # Initialize strains and deformation potentials results
     strains = [-abs(strain), abs(strain)]
-    results.update({socstr: {kpt: {} for kpt in kptlabels}
-                    for socstr in soclabels})
+    results.update({
+        socstr: {kpt: OrderedDict() for kpt in kptlabels}
+            for socstr in soclabels})
 
     # Navigate the directories containing the ground states of
     # the strained structures and extract the band edges
