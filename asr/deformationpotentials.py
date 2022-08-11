@@ -213,7 +213,6 @@ def main(strain: float = 1.0, all_ibz: bool = False) -> Result:
         where the edge states are found (if they are not already
         at one of the special points).
     """
-
     from gpaw import GPAW
     from ase.io import read
     from asr.gs import vacuumlevels
@@ -299,8 +298,8 @@ def _main(pbc, kpts, get_edges, strain):
     # Initialize strains and deformation potentials results
     strains = [-abs(strain), abs(strain)]
     results.update({
-        socstr: {kpt: OrderedDict() for kpt in kptlabels}
-            for socstr in soclabels})
+        socstr: {kpt: OrderedDict() for kpt in kptlabels} for socstr in soclabels
+    })
 
     # Navigate the directories containing the ground states of
     # the strained structures and extract the band edges
