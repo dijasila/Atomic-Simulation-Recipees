@@ -9,15 +9,18 @@ from ase import Atoms
 from ase.io import read
 
 
+reference = """\
+S. Kaappa et al. Point group symmetry analysis of the electronic structure
+of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)"""
+
+
 panel_description = make_panel_description(
     """
 Analysis of defect states localized inside the pristine bandgap (energetics and
  symmetry).
 """,
     articles=[
-        href("""S. Kaappa et al. Point group symmetry analysis of the electronic structure
-of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)""",
-             'https://doi.org/10.1021/acs.jpca.8b07923'),
+        href(reference, 'https://doi.org/10.1021/acs.jpca.8b07923'),
     ],
 )
 
