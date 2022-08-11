@@ -40,7 +40,6 @@ def get_relevant_kpts(atoms, vbm, cbm, ibz_kpoints):
     from any of the special points, the corresponding
     k-points will be added to the list
     """
-    from ase.dft.bandgap import bandgap
 
     ivbm = vbm[1]
     icbm = cbm[1]
