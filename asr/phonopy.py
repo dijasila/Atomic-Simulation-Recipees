@@ -24,7 +24,10 @@ def lattice_vectors(N_c):
     return R_cN
 
 
-def distance_to_sc(nd, atoms, dist_max):
+def distance_to_sc(atoms, dist_max):
+    nd = sum(atoms.pbc)
+    assert all(atoms.pbc[:nd])
+
     if nd >= 1:
         for x in range(2, 20):
             atoms_x = atoms.repeat((x, 1, 1))
@@ -90,7 +93,7 @@ def sc_to_supercell(atoms, sc, dist_max):
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 def calculate(d: float = 0.05, fsname: str = 'phonons',
-              sc: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
+              sc: typing.Sequence[int] = (0, 0, 0), dist_max: float = 7.0,
               calculator: dict = {'name': 'gpaw',
                                   'mode': {'name': 'pw', 'ecut': 800},
                                   'xc': 'PBE',
