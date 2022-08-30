@@ -1,5 +1,6 @@
 from asr.core import command, argument, get_recipes, ASRResult
 from asr.dimensionality import get_dimtypes
+from asr.database.labels import label_explanation
 
 # Style: "KVP: Long description !short description! [unit]
 
@@ -210,10 +211,14 @@ key_descriptions = {
         'emass_cb_dir3':
         'KVP: Conduction band effective mass, direction 3 [`m_e`]',
     },
+    "database.labels": {
+        "label": f"KVP: {label_explanation}"
+    },
     "database.fromtree": {
         "folder": "KVP: Path to collection folder",
     }
 }
+
 
 # Dimensionality key descrioptions:
 for dimtype in get_dimtypes():
