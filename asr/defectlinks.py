@@ -61,8 +61,8 @@ class Result(ASRResult):
 
 
 @command(module='asr.defectlinks',
-         requires=['structure.json'],
-         dependencies=['asr.relax'],
+         # requires=['structure.json'],
+         # dependencies=['asr.relax'],
          resources='1:1h',
          returns=Result)
 def main() -> Result:
@@ -103,7 +103,7 @@ def main() -> Result:
         pristinelinks=pristinelinks)
 
 
-def get_list_of_links(path, charge):
+def get_list_of_links(path):
     links = []
     structurefile = path / 'structure.json'
     charge = get_charge_from_folder(path)
@@ -127,11 +127,12 @@ def get_uid_from_fingerprint(path):
 
 
 def get_defectstring_from_defectinfo(defectinfo, charge):
-    defecttype = defectinfo.defecttype
-    defectkind = defectinfo.defectkind
-    if defecttype == 'v':
-        defecttype = 'V'
-    defectstring = f"{defecttype}<sub>{defectkind}</sub> (charge {charge})"
+    defectstring = ''
+    for name in defectinfo.names:
+        def_type, def_kind = defectinfo.get_defect_type_and_kind_from_defectname(
+            name)
+        defectstring += f"{def_type}<sub>{def_kind}</sub>"
+    defectstring += f" (charge {charge})"
 
     return defectstring
 
