@@ -111,6 +111,10 @@ def vbm_or_cbm_row(title, quantity_name, reference_explanation, value):
 
 
 def webpanel(result, row, key_descriptions):
+    # for defect systems we don't want to show this panel
+    if row.get('defect_name') is not None:
+        return []
+
     parameter_description = _get_parameter_description(row)
 
     explained_keys = []
