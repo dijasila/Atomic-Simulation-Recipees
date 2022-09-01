@@ -9,6 +9,9 @@ from pathlib import Path
 from ase.io import read
 
 
+# TODO: make zrange an input
+# TODO: make shift an input
+
 reference = """\
 S. Kaappa et al. Point group symmetry analysis of the electronic structure
 of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)"""
