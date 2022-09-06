@@ -3,6 +3,11 @@ This is a dummy recipe which stores a "label" (text string).
 It's meant to be a specification of where the material came from.
 For example, the "lattice decoration" materials in C2DB are labelled
 as coming from "lattice decoration".
+
+The web panel hardcodes different labels, associating them with
+specific descriptions, links and so on.
+
+So the web panel is not general.
 """
 
 from asr.core import command, option, ASRResult, DictStr
@@ -17,8 +22,12 @@ def webpanel(result, row, key_descriptions):
     Ref.: <publication>
     """
 
+    # (The "potato" description serves as an example of how to define
+    #  information in web panels)
+    potato_link = href('potato', 'https://en.wikipedia.org/wiki/Potato')
     descriptions = {
-        'potato': f"hello world {href('link', 'https://example.com')}",
+        'potato': (f'The {potato_link} is a starchy tuber of the plant '
+                   'Solanum tuberosum'),
         'Lyngby22_CDVAE': lyngby22_description,
     }
 
@@ -28,13 +37,13 @@ def webpanel(result, row, key_descriptions):
     if label is None:
         return []  # No panels generated
 
-    hello = describe_entry('Material label', label_explanation)
+    entryname = describe_entry('Origin', label_explanation)
 
     panel = {
         'title': 'Summary',
         'columns': [[{
             'type': 'table',
-            'rows': [[hello, label]],
+            'rows': [[entryname, label]],
             'columnwidth': 4,
         }]],
     }
