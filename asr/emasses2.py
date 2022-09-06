@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, TypedDict
 import matplotlib.pyplot as plt
 import numpy as np
 from ase.units import Bohr, Ha
+from scipy.optimize import minimize
 
 from asr.core import ASRResult, command, prepare_result
 from asr.database.browser import (describe_entry, entry_parameter_description,
@@ -155,7 +156,7 @@ def find_mass(kpt_ijkv: np.ndarray,
 
 def fit_band(k_xv: np.ndarray,
              eig_x: np.ndarray,
-             order: int = 4,
+             order: int = 6,
              max_rel_error: float = 0.02) -> tuple[np.ndarray,
                                                    float,
                                                    np.ndarray,
@@ -170,7 +171,6 @@ def fit_band(k_xv: np.ndarray,
     kmin_v = k_xv[eig_x.argmin()].copy()
     dk_xv = k_xv - kmin_v
     f = YFit(dk_xv, eig_x, order)
-    from scipy.optimize import minimize
     result = minimize(
         f,
         x0=[0, 0, 0],
