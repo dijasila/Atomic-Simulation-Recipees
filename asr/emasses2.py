@@ -57,7 +57,7 @@ def main() -> ASRResult:
 
 def _main(eigcalc: EigCalc,
           kind: str,
-          maxlevels: int = 4) -> MassDict:
+          maxlevels: int = 9) -> MassDict:
     """Find effective masses."""
     kpt_ijkv, eig_ijk = eigcalc.get_band(kind)
     shape = eig_ijk.shape
@@ -103,11 +103,9 @@ def find_mass(kpt_ijkv: np.ndarray,
     print('K')
     print(kpt_ijkv.min((0, 1, 2)))
     print(kpt_ijkv.max((0, 1, 2)))
-    print(eig_ijk[3, 3], i, j, k, shape)
-    mask = basin(eig_ijk, i, j, k).ravel()
-    # print(mask.reshape((7, 7, 7)))
-    eig_x = eig_ijk.ravel()[mask]
-    kpt_xv = kpt_ijkv.reshape((-1, 3))[mask]
+    #mask = basin(eig_ijk, i, j, k).ravel()
+    eig_x = eig_ijk.ravel()#[mask]
+    kpt_xv = kpt_ijkv.reshape((-1, 3))#[mask]
     print(eig_x.shape)
     axes = [c for c, size in enumerate(eig_ijk.shape) if size > 1]
     kpt_xv = kpt_xv[:, axes]
@@ -137,6 +135,7 @@ def find_mass(kpt_ijkv: np.ndarray,
     kpt_xv = kpt_ijkv.reshape((-1, 3))
     knndist = ((kpt_xv[1:] - kpt_xv[0])**2).sum(1).min()**0.5
     kspan = 2.5 * knndist
+    kspan = 1*knndist
 
     # Create box of k-points centered on kpt0_v:
     kpt0_v = kpt_ijkv[i, j, k]
@@ -144,7 +143,7 @@ def find_mass(kpt_ijkv: np.ndarray,
               if npoints > 1
               else np.array([0.0])
               for kpt, npoints in zip(kpt0_v, shape)]
-    print(kspan, kpt0_v, kpt_vx)
+    print('KSPAN', kspan, kpt0_v)
     kpt_ijkv = np.empty(shape + (3,))
     kpt_ijkv[..., 0] = kpt_vx[0][:, np.newaxis, np.newaxis]
     kpt_ijkv[..., 1] = kpt_vx[1][:, np.newaxis]
@@ -170,11 +169,12 @@ def fit_band(k_xv: np.ndarray,
 
     kmin_v = k_xv[eig_x.argmin()].copy()
     dk_xv = k_xv - kmin_v
-    fit = PolyFit(dk_xv, eig_x, order=4)
+    fit = PolyFit(dk_xv, eig_x, order=order)
 
     error_x = np.array([fit.value(k_v) - e for k_v, e in zip(dk_xv, eig_x)])
     fit_error = abs(error_x).max()
     hessian_vv = fit.hessian(np.zeros_like(kmin_v))
+    print('Error', fit_error)
     eval_w = np.linalg.eigvalsh(hessian_vv)
     if eval_w.min() <= 0.0:
         raise BadFitError('Not a minimum')
@@ -186,10 +186,11 @@ def fit_band(k_xv: np.ndarray,
     if eval_w.min() <= 0.0:
         raise BadFitError('Not a minimum')
     mass_w = Bohr**2 * Ha / eval_w
-    print(dkmin_v + kmin_v, emin, mass_w, evec_vw.T)
+    print(dkmin_v + kmin_v, emin, mass_w)
 
     if fit_error > max_rel_error * eig_x.ptp():
-        raise BadFitError(f'Error too big: {fit_error} eV')
+        raise BadFitError(f'Error too big: {fit_error} eV', eig_x.ptp(),
+                          fit_error / eig_x.ptp())
 
     # Centered fit around minumum:
     fit = PolyFit(dk_xv - dkmin_v, eig_x, order=4)
@@ -387,7 +388,6 @@ class GPAWEigenvalueCalculator(EigCalc):
         from gpaw.spinorbit import soc_eigenstates
 
         kpt_xc = kpt_xv @ self.cell_cv.T / (2 * pi)
-        # print(kpt_xc)
         nsc_calc = self.calc.fixed_density(
             kpts=kpt_xc,
             symmetry='off',
