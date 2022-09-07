@@ -34,13 +34,14 @@ def e(k):
 
 class EigCalc:
     cell_cv = np.diag([2.2, 10, 20])
+    pbc_c = [1, 0, 0]
 
     def get_band(self, kind):
         a = self.cell_cv[0, 0]
         k_i = np.linspace(-pi / a, pi / a, 7, False)
-        k_ijkv = np.zeros((7, 1, 1, 3))
-        k_ijkv[:, 0, 0, 0] = k_i
-        return k_ijkv, np.array([e(k) for k in k_i]).reshape((7, 1, 1))
+        k_Kv = np.zeros((7, 3))
+        k_Kv[:, 0] = k_i
+        return k_Kv, np.array([e(k) for k in k_i])
 
     def get_new_band(self, kind, kpt_xv):
         return np.array([e(k) for k in kpt_xv[:, 0]])
@@ -86,8 +87,8 @@ def test_emass_h2(tmp_path, h2_calc, angles):
     assert cbm['energy'] - vbm['energy'] == pytest.approx(10.8, abs=0.1)
     assert abs(vbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
     assert abs(cbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
-    assert abs(vbm['mass_w'][0]) == pytest.approx(0.48, abs=0.01)
-    assert abs(cbm['mass_w'][0]) == pytest.approx(0.32, abs=0.01)
+    assert abs(vbm['mass_w'][0]) == pytest.approx(0.49, abs=0.01)
+    assert abs(cbm['mass_w'][0]) == pytest.approx(0.35, abs=0.01)
 
     result = EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
     row = SimpleNamespace(data={'results-asr.emasses2.json': result})

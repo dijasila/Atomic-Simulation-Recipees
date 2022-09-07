@@ -1,6 +1,9 @@
 """Effective masses - version 117-b."""
 from __future__ import annotations
 
+import sys
+import functools
+from io import StringIO
 from math import pi
 from typing import TYPE_CHECKING, TypedDict
 
@@ -25,7 +28,7 @@ class MassDict(TypedDict):
     direction_wv: list[list[float]]
     energy: float
     max_fit_error: float
-    fit_data_i: list[float]
+    coef_j: list[float]
 
 
 class EigCalc:
@@ -57,31 +60,22 @@ def main() -> ASRResult:
 
 def _main(eigcalc: EigCalc,
           kind: str,
-          maxlevels: int = 9) -> MassDict:
+          maxlevels: int = 5) -> MassDict:
     """Find effective masses."""
-    kpt_ijkv, eig_ijk = eigcalc.get_band(kind)
-    shape = eig_ijk.shape
+    kpt_xv, eig_x = eigcalc.get_band(kind)
     if kind == 'vbm':
-        i, j, k = np.unravel_index(eig_ijk.ravel().argmax(), shape)
+        x0 = eig_x.argmax()
     else:
-        i, j, k = np.unravel_index(eig_ijk.ravel().argmin(), shape)
-    kpt0_v = kpt_ijkv[i, j, k].copy()
+        x0 = eig_x.argmin()
+    kpt0_v = kpt_xv[x0].copy()
 
-    N = 3
-    I, J, K = [[0] if n == 1 else
-               [x % n for x in range(x0 - N, x0 + N + 1)]
-               for n, x0 in zip(shape, [i, j, k])]
-    print(I, J, K)
-    print(i, j, k, kind, eig_ijk[i, j, k])
-    eig_ijk = eig_ijk[I][:, J][:, :, K]
-    kpt_ijkv = kpt_ijkv[I][:, J][:, :, K]
-    kpt_ijkc = kpt_ijkv @ eigcalc.cell_cv.T / (2 * pi)
-    kpt0_c = kpt0_v @ eigcalc.cell_cv.T / (2 * pi)
-    kpt_ijkc += 0.5 - kpt0_c
-    kpt_ijkc %= 1
-    kpt_ijkc -= 0.5 - kpt0_c
-    kpt_ijkv = 2 * pi * kpt_ijkc @ np.linalg.inv(eigcalc.cell_cv).T
-    massdata = find_mass(kpt_ijkv, eig_ijk, kind, eigcalc, maxlevels)
+    kdist = ((kpt_xv[1:] - kpt_xv[0])**2).sum(1).min()**0.5
+    kspan = 1.5 * kdist
+
+    with open(f'{kind}.log', 'w') as fd:
+        massdata = find_mass(kpt0_v, kind, eigcalc, kspan,
+                             maxlevels=maxlevels,
+                             )#fd=fd)
     return massdata
 
 
@@ -89,82 +83,93 @@ class BadFitError(ValueError):
     """Bad fit to data."""
 
 
-def find_mass(kpt_ijkv: np.ndarray,
-              eig_ijk: np.ndarray,
-              kind: str = 'cbm',
-              eigcalc=None,
-              maxlevels: int = 1) -> MassDict:
-    if kind == 'vbm':
-        eig_ijk = -eig_ijk
-
-    shape = eig_ijk.shape
-    i, j, k = (int(x) for x in
-               np.unravel_index(eig_ijk.ravel().argmin(), shape))
-    print('K')
-    print(kpt_ijkv.min((0, 1, 2)))
-    print(kpt_ijkv.max((0, 1, 2)))
-    # mask = basin(eig_ijk, i, j, k).ravel()
-    eig_x = eig_ijk.ravel()  # [mask]
-    kpt_xv = kpt_ijkv.reshape((-1, 3))  # [mask]
-    print(eig_x.shape)
-    axes = [c for c, size in enumerate(eig_ijk.shape) if size > 1]
-    kpt_xv = kpt_xv[:, axes]
-    print(axes)
-
-    try:
-        kpt_v, energy, mass_w, direction_wv, error_x, coefs = fit_band(
-            kpt_xv, eig_x)
-    except BadFitError as xx:
-        print(xx)
-    else:
-        if kind == 'vbm':
-            energy *= -1
-            coefs *= -1
-        fit_error = abs(error_x).max()
-        return MassDict(kind=kind,
-                        k_v=kpt_v.tolist(),
-                        energy=energy,
-                        mass_w=mass_w.tolist(),
-                        direction_wv=direction_wv.tolist(),
-                        max_fit_error=fit_error,
-                        fit_data_i=coefs.tolist())
-
-    if maxlevels == 1:
-        raise ValueError
-
-    kpt_xv = kpt_ijkv.reshape((-1, 3))
-    knndist = ((kpt_xv[1:] - kpt_xv[0])**2).sum(1).min()**0.5
-    kspan = 2.5 * knndist
-    kspan = 1 * knndist
+def find_mass(kpt0_v: np.ndarray,
+              kind: str,
+              eigcalc: EigCalc,
+              kspan: float,
+              *,
+              maxlevels: int = 5,
+              npoints: int = 5,
+              max_rel_error: float = 0.02,
+              fd: StringIO = None) -> MassDict:
+    assert kind in {'vbm', 'cbm'}
+    log = functools.partial(print, file=fd or sys.stdout)
 
     # Create box of k-points centered on kpt0_v:
-    kpt0_v = kpt_ijkv[i, j, k]
-    kpt_vx = [np.linspace(kpt - kspan / 2, kpt + kspan / 2, npoints)
-              if npoints > 1
-              else np.array([0.0])
-              for kpt, npoints in zip(kpt0_v, shape)]
-    print('KSPAN', kspan, kpt0_v)
+    shape = tuple(npoints if pbc else 1 for pbc in eigcalc.pbc_c)
+    kpt_vx = [np.linspace(kpt - kspan / 2, kpt + kspan / 2, n)
+              for kpt, n in zip(kpt0_v, shape)]
     kpt_ijkv = np.empty(shape + (3,))
     kpt_ijkv[..., 0] = kpt_vx[0][:, np.newaxis, np.newaxis]
     kpt_ijkv[..., 1] = kpt_vx[1][:, np.newaxis]
     kpt_ijkv[..., 2] = kpt_vx[2]
+    kpt_xv = kpt_ijkv.reshape((-1, 3))
+    log(f'{kind}:')
+    log(f'kpts: {kpt_xv[0]} ...\n      {kpt_xv[-1]} [Ang^-1]')
 
-    eig_x = eigcalc.get_new_band(kind, kpt_ijkv.reshape((-1, 3)))
-    eig_ijk = eig_x.reshape(shape)
-    return find_mass(kpt_ijkv, eig_ijk, kind, eigcalc, maxlevels - 1)
+    eig_x = eigcalc.get_new_band(kind, kpt_xv)
+    log(f'eigs: {eig_x.min()} ... {eig_x.max()} [eV]')
+
+    if kind == 'vbm':
+        eig_x = -eig_x
+
+    axes = [c for c, size in enumerate(shape) if size > 1]
+
+    try:
+        kpt_v, energy, mass_w, direction_wv, error_x, coefs = fit_band(
+            kpt_xv[:, axes], eig_x)
+    except BadFitError as ex:
+        log(ex)
+        kspan *= 1.5 / (npoints - 1)
+    else:
+        if kind == 'vbm':
+            energy *= -1
+            coefs *= -1
+        log(f'extremum: {kpt_v} [Ang^-1], {energy} [eV]')
+        log(f'masses: {mass_w}')
+        if len(axes) == 3:
+            warp = (coefs[7:]**2).sum() / (coefs[1:7]**2).sum()
+            log(f'warp: {warp}')
+        fit_error = abs(error_x).max()
+        log(f'max fit-error: {fit_error} [eV]')
+        if fit_error < max_rel_error * eig_x.ptp():
+            return MassDict(kind=kind,
+                            k_v=kpt_v.tolist(),
+                            energy=energy,
+                            mass_w=mass_w.tolist(),
+                            direction_wv=direction_wv.tolist(),
+                            max_fit_error=fit_error,
+                            coef_j=coefs.tolist())
+        kspan *= 0.7 / (npoints - 1)
+        kpt0_v[axes] = kpt_v
+
+    log('Error too big')
+
+    if maxlevels == 1:
+        raise ValueError
+
+    return find_mass(kpt0_v, kind, eigcalc, kspan,
+                     maxlevels=maxlevels - 1,
+                     npoints=npoints,
+                     max_rel_error=max_rel_error,
+                     fd=fd)
 
 
 def fit_band(k_xv: np.ndarray,
              eig_x: np.ndarray,
-             order: int = 8,
-             max_rel_error: float = 0.02) -> tuple[np.ndarray,
-                                                   float,
-                                                   np.ndarray,
-                                                   np.ndarray,
-                                                   np.ndarray,
-                                                   np.ndarray]:
+             order: int = 8) -> tuple[np.ndarray,
+                                      float,
+                                      np.ndarray,
+                                      np.ndarray,
+                                      np.ndarray,
+                                      np.ndarray]:
     npoints, ndims = k_xv.shape
-    nterms = (order // 2 + 1) * (order + 1) + 4
+    if ndims == 1:
+        nterms = 3
+    elif ndims == 2:
+        1 / 0
+    else:
+        nterms = (order // 2 + 1) * (order + 1) + 4
     if npoints < 1.25 * nterms:
         raise BadFitError('Too few points!')
 
@@ -173,25 +178,19 @@ def fit_band(k_xv: np.ndarray,
     f = YFit(dk_xv, eig_x, order)
     result = minimize(
         f,
-        x0=[0, 0, 0],
+        x0=np.zeros(ndims),
         method='Nelder-Mead')  # seems more robust than the default
     assert result.success
     dkmin_v = result.x
     coefs, error_x = f.fit(dkmin_v)
-    fit_error = abs(error_x).max()
-    print('Error', fit_error)
-    hessian_vv = hessian(coefs)
+    hessian_vv = fit_hessian(coefs)
     eval_w, evec_vw = np.linalg.eigh(hessian_vv)
     if eval_w.min() <= 0.0:
         raise BadFitError('Not a minimum')
 
     emin = coefs[0]
     mass_w = Bohr**2 * Ha / eval_w
-    print(dkmin_v + kmin_v, emin, mass_w)
 
-    if fit_error > max_rel_error * eig_x.ptp():
-        raise BadFitError(f'Error too big: {fit_error} eV', eig_x.ptp(),
-                          fit_error / eig_x.ptp())
     return dkmin_v + kmin_v, emin, mass_w, evec_vw.T, error_x, coefs
 
 
@@ -301,11 +300,9 @@ def mass_plots(row, *filenames):
     for data in [cbm, vbm]:
         y_wp = []
         dir_wv = np.array(data['direction_wv'])
-        fit = PolyFit.from_coefs(coefs=data['fit_data_i'],
-                                 order=4,
-                                 ndims=len(dir_wv))
+        coef_j = data['coef_j']
         for dir_v in dir_wv:
-            y_p = [fit.value(x * dir_v) + offset for x in x_p]
+            y_p = fit_values(np.outer(x_p, dir_v), coef_j) + offset
             height = max(height, np.ptp(y_p))
             y_wp.append(y_p)
         y_bwp.append(y_wp)
@@ -344,7 +341,7 @@ class GPAWEigenvalueCalculator(EigCalc):
         Parameters
         ----------
         calc:
-            GPAW ground-state object
+            GPAW ground-state object.
         theta:
             Polar angle in degrees.
         phi:
@@ -370,16 +367,15 @@ class GPAWEigenvalueCalculator(EigCalc):
 
         self.nocc = (eig_Kn[0] < fermilevel).sum()
 
-        shape = tuple(calc.wfs.kd.N_c)
-        eig_ijkn = eig_Kn.reshape(shape + (-1,))
-        self.bands = {'vbm': eig_ijkn[..., self.nocc - 1].copy(),
-                      'cbm': eig_ijkn[..., self.nocc].copy()}
+        self.bands = {'vbm': eig_Kn[:, self.nocc - 1].copy(),
+                      'cbm': eig_Kn[:, self.nocc].copy()}
 
-        kpt_ijkc = calc.wfs.kd.bzk_kc.reshape(shape + (3,))
-        self.kpt_ijkv = 2 * pi * kpt_ijkc @ np.linalg.inv(self.cell_cv).T
+        kpt_Kc = calc.wfs.kd.bzk_kc
+        self.kpt_Kv = 2 * pi * kpt_Kc @ np.linalg.inv(self.cell_cv).T
+        self.pbc_c = calc.wfs.kd.N_c > 1
 
     def get_band(self, kind):
-        return self.kpt_ijkv, self.bands[kind]
+        return self.kpt_Kv, self.bands[kind]
 
     def get_new_band(self, kind, kpt_xv):
         from gpaw.spinorbit import soc_eigenstates
@@ -388,7 +384,6 @@ class GPAWEigenvalueCalculator(EigCalc):
         nsc_calc = self.calc.fixed_density(
             kpts=kpt_xc,
             symmetry='off',
-            convergence={'bands': 0 if kind == 'vbm' else -1},
             txt=f'{kind}.txt')
         if self.theta is None:
             nkpts = len(kpt_xv)
@@ -451,18 +446,23 @@ class YFit:
     def fit(self, k_v):
         k_iv = self.k_iv - k_v
         k2_i = (k_iv**2).sum(1)
-        eps = 1e-12
-        k2_i[k2_i < eps] = eps
-        khat_iv = k_iv / (k2_i**0.5)[:, np.newaxis]
-        J = (self.lmax // 2 + 1) * (self.lmax + 1) + 1
-        M_ji = np.empty((J, len(k2_i)))
-        M_ji[0] = 1.0
-        j = 1
-        for l in range(0, self.lmax + 1, 2):
-            for m in range(2 * l + 1):
-                x_i = Y(l, m, *khat_iv.T)
-                M_ji[j] = x_i * k2_i
-                j += 1
+        if len(k_v) == 1:
+            M_ji = np.array([k2_i**0, k2_i])
+        elif len(k_v) == 2:
+            1 / 0
+        else:
+            eps = 1e-12
+            k2_i[k2_i < eps] = eps
+            khat_iv = k_iv / (k2_i**0.5)[:, np.newaxis]
+            J = (self.lmax // 2 + 1) * (self.lmax + 1) + 1
+            M_ji = np.empty((J, len(k2_i)))
+            M_ji[0] = 1.0
+            j = 1
+            for l in range(0, self.lmax + 1, 2):
+                for m in range(2 * l + 1):
+                    x_i = Y(l, m, *khat_iv.T)
+                    M_ji[j] = x_i * k2_i
+                    j += 1
         c_j = np.linalg.lstsq(M_ji.T, self.eig_i, rcond=None)[0]
         error_i = c_j @ M_ji - self.eig_i
         return c_j, error_i
@@ -472,7 +472,21 @@ class YFit:
         return (error_i**2).sum()
 
 
-def hessian(coef_j):
+def fit_values(k_xv, coef_j):
+    if len(coef_j) == 2:
+        c0, c2 = coef_j
+        return c0 + c2 * k_xv[:, 0]**2
+    if len(coef_j) == 4:
+        1 / 0
+    1 / 0
+
+
+def fit_hessian(coef_j):
+    if len(coef_j) == 2:
+        c0, c2 = coef_j
+        return np.array([[2 * c2]])
+    if len(coef_j) == 4:
+        1 / 0
     c00, c20, c21, c22, c23, c24 = coef_j[1:7]
     hess_vv = np.eye(3) * c00 * 2 * 0.28209479177387814
     hess_vv[0, 1] = c20 * 1.0925484305920792
