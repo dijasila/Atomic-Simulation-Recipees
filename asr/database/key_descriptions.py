@@ -127,7 +127,7 @@ key_descriptions = {
         " !DOS at ef! [states/(eV * unit cell)]",
     },
     "phonons": {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [eV/Å²]",
         "dynamic_stability_phonons": "KVP: Phonon dynamic stability (low/high)",
     },
     "plasmafrequency": {

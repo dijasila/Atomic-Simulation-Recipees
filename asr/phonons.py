@@ -133,7 +133,7 @@ class Result(ASRResult):
     interp_freqs_kl: typing.List[typing.List[float]]
 
     key_descriptions = {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
+        "minhessianeig": "Minimum eigenvalue of Hessian [eV/Å²]",
         "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
         "q_qc": "List of momenta consistent with supercell.",
         "omega_kl": "Phonon frequencies.",
