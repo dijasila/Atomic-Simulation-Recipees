@@ -4,19 +4,21 @@ from __future__ import annotations
 import functools
 import sys
 from io import StringIO
+from math import pi
+from pathlib import Path
+from types import SimpleNamespace
 from typing import TypedDict
 
 import matplotlib.pyplot as plt
 import numpy as np
 from ase.units import Bohr, Ha
-from scipy.optimize import minimize
 
 from asr.core import ASRResult, command, prepare_result
 from asr.database.browser import (describe_entry, entry_parameter_description,
                                   fig, make_panel_description)
 from asr.magnetic_anisotropy import get_spin_axis
 from asr.utils.eigcalc import EigCalc, GPAWEigenvalueCalculator
-from asr.utils.mass_fit import YFit, fit_hessian, fit_values
+from asr.utils.mass_fit import YFit
 
 
 class MassDict(TypedDict):
@@ -65,8 +67,31 @@ def _main(eigcalc: EigCalc,
     return massdata
 
 
+def _simple(gpwfile: Path | str):
+    """For bypassing ASR stuff."""
+    from gpaw import GPAW
+    eigcalc = GPAWEigenvalueCalculator(GPAW(gpwfile))
+    vbm = _main(eigcalc, 'vbm')
+    cbm = _main(eigcalc, 'cbm')
+    result = EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
+    row = SimpleNamespace(data={'results-asr.emasses2.json': result})
+    mass_plots(row, 'cbm.png', 'vbm.png')
+
+
 class BadFitError(ValueError):
     """Bad fit to data."""
+
+
+def kpt2str(kpt_v, cell_cv: np.ndarray) -> str:
+    """Pretty-print k-point.
+
+    >>> a = 4.0
+    >>> kpt2str([pi / a, 0, 0], np.eye(3) * a)
+    '(0.785, 0.000, 0.000) Å^-1 = [0.500, 0.000, 0.000]'
+    """
+    a, b, c = cell_cv @ kpt_v / (2 * pi)
+    x, y, z = kpt_v
+    return f'({x:.3f}, {y:.3f}, {z:.3f}) Å^-1 = [{a:.3f}, {b:.3f}, {c:.3f}]'
 
 
 def find_mass(kpt0_v: np.ndarray,
@@ -80,6 +105,7 @@ def find_mass(kpt0_v: np.ndarray,
               fd: StringIO = None) -> MassDict:
     assert kind in {'vbm', 'cbm'}
     log = functools.partial(print, file=fd or sys.stdout)
+    K = functools.partial(kpt2str, cell_cv=eigcalc.cell_cv)
 
     # Create box of k-points centered on kpt0_v:
     shape = tuple(npoints if pbc else 1 for pbc in eigcalc.pbc_c)
@@ -90,11 +116,12 @@ def find_mass(kpt0_v: np.ndarray,
     kpt_ijkv[..., 1] = kpt_vx[1][:, np.newaxis]
     kpt_ijkv[..., 2] = kpt_vx[2]
     kpt_xv = kpt_ijkv.reshape((-1, 3))
-    log(f'{kind}:')
-    log(f'kpts: {kpt_xv[0]} ...\n      {kpt_xv[-1]} [Ang^-1]')
+    log(f'{kind.upper()}:')
+    log(f'kpts: {K(kpt_xv[0])} ...')
+    log(f'      {K(kpt_xv[-1])}')
 
     eig_x = eigcalc.get_new_band(kind, kpt_xv)
-    log(f'eigs: {eig_x.min()} ... {eig_x.max()} [eV]')
+    log(f'eigs: {eig_x.min():.6f} ... {eig_x.max():.6f} [eV]')
 
     if kind == 'vbm':
         eig_x = -eig_x
@@ -111,8 +138,8 @@ def find_mass(kpt0_v: np.ndarray,
         if kind == 'vbm':
             energy *= -1
             coefs *= -1
-        log(f'extremum: {kpt_v} [Ang^-1], {energy} [eV]')
-        log(f'masses: {mass_w}')
+        log(f'extremum: {K(kpt_v)}, {energy:.6f} [eV]')
+        log(f'masses: {mass_w} [a.u.]')
         if len(axes) == 3:
             warp = (coefs[7:]**2).sum() / (coefs[1:7]**2).sum()
             log(f'warp: {warp}')
@@ -126,10 +153,10 @@ def find_mass(kpt0_v: np.ndarray,
                             direction_wv=direction_wv.tolist(),
                             max_fit_error=fit_error,
                             coef_j=coefs.tolist())
+
+        log('Error too big')
         kspan *= 0.7 / (npoints - 1)
         kpt0_v[axes] = kpt_v
-
-    log('Error too big')
 
     if maxlevels == 1:
         raise ValueError
@@ -161,15 +188,10 @@ def fit_band(k_xv: np.ndarray,
 
     kmin_v = k_xv[eig_x.argmin()].copy()
     dk_xv = k_xv - kmin_v
-    f = YFit(dk_xv, eig_x, order)
-    result = minimize(
-        f,
-        x0=np.zeros(ndims),
-        method='Nelder-Mead')  # seems more robust than the default
-    assert result.success
-    dkmin_v = result.x
-    coefs, error_x = f.fit(dkmin_v)
-    hessian_vv = fit_hessian(coefs)
+    fit = YFit.from_data(dk_xv, eig_x, order)
+    dkmin_v = fit.kmin_v
+    max_error = fit.max_error
+    hessian_vv = fit.hessian()
     eval_w, evec_vw = np.linalg.eigh(hessian_vv)
     if eval_w.min() <= 0.0:
         raise BadFitError('Not a minimum')

@@ -1,77 +1,137 @@
 import numpy as np
+from scipy.optimize import minimize
 
 
 class YFit:
     def __init__(self,
-                 k_iv: np.ndarray,
-                 eig_i: np.ndarray,
-                 lmax: int = 2):
-        self.k_iv = k_iv
-        self.eig_i = eig_i
-        assert lmax % 2 == 0
+                 ndims: int,
+                 lmax: int = 2,
+                 coefs: np.ndarray = None):
         self.lmax = lmax
+        self.ndims = ndims
+        self.coef_j = coefs
 
-    def fit(self, k_v):
-        k_iv = self.k_iv - k_v
-        k2_i = (k_iv**2).sum(1)
-        if len(k_v) == 1:
-            M_ji = np.array([k2_i**0, k2_i])
-        elif len(k_v) == 2:
-            1 / 0
+        self.lm_j = [(-1, -1)]
+        if ndims == 1:
+            self.lm_j += [(0, 0), (1, 0)]
+        elif ndims == 2:
+            self.lm_j += [(0, 0)] + [(l, m)
+                                     for l in range(1, lmax + 1)
+                                     for m in [0, 1]]
         else:
-            eps = 1e-12
-            k2_i[k2_i < eps] = eps
-            khat_iv = k_iv / (k2_i**0.5)[:, np.newaxis]
-            J = (self.lmax // 2 + 1) * (self.lmax + 1) + 1
-            M_ji = np.empty((J, len(k2_i)))
-            M_ji[0] = 1.0
-            j = 1
-            for l in range(0, self.lmax + 1, 2):
-                for m in range(2 * l + 1):
-                    x_i = Y(l, m, *khat_iv.T)
-                    M_ji[j] = x_i * k2_i
-                    j += 1
-        c_j = np.linalg.lstsq(M_ji.T, self.eig_i, rcond=None)[0]
-        error_i = c_j @ M_ji - self.eig_i
-        return c_j, error_i
+            self.lm_j += [(l, m)
+                          for l in range(lmax + 1)
+                          for m in range(2 * l + 1)]
 
-    def __call__(self, k_v):
-        _, error_i = self.fit(k_v)
-        return (error_i**2).sum()
+        if self.coef_j is not None:
+            assert len(self.coef_j) == len(self.lm_j)
+
+    @classmethod
+    def from_data(cls,
+                  k_iv: np.ndarray,
+                  eig_i: np.ndarray,
+                  lmax: int = 4):
+        ndims = k_iv.shape[1]
+        fit = cls(ndims, lmax)
+
+        def f(k_v):
+            dk_iv = k_iv - k_v
+            M_ji = fit._calculate(dk_iv)
+            coef_j = np.linalg.lstsq(M_ji.T, eig_i, rcond=None)[0]
+            error_i = coef_j @ M_ji - eig_i
+            return (error_i**2).sum(), coef_j
+
+        result = minimize(
+            lambda k_v: f(k_v)[0],
+            x0=np.zeros(ndims),
+            method='Nelder-Mead')  # seems more robust than the default
+
+        if not result.success:
+            raise ValueError(result.message)
+
+        kmin_v = result.x
+        _, fit.coef_j = f(kmin_v)
+        return fit
+
+    def _calculate(self, k_xv):
+        k2_x = (k_xv**2).sum(1)
+
+        eps = 1e-12
+        k2_x[k2_x < eps] = eps
+        khat_xv = k_xv / (k2_x**0.5)[:, np.newaxis]
+
+        M_jx = np.empty((len(self.lm_j), len(k2_x)))
+        for j, (l, m) in enumerate(self.lm_j):
+            if j == 0:
+                M_jx[0] = 1.0
+            else:
+                f_x = Y(l, m, *khat_xv.T)
+                M_jx[j] = f_x * k2_x
+        return M_jx
+
+    def values(self, k_xv):
+        M_jx = self._calculate(k_xv)
+        return self.coef_j @ M_jx
+
+    def hessian(self):
+        if self.ndims == 1:
+            # 1, xx
+            _, c00 = self.coef_j[:2]
+            return np.array([[2 * c00]])
+
+        if self.ndims == 1:
+            # 1, xx+yy, xk, yk, xx-yy, 2xy
+            _, c00, _, _, c20, c21 = self.coef_j[:6]
+            return np.array([[2 * (c00 + c20), 2 * c21],
+                             [2 * c21, 2 * (c00 - c20)]])
+
+        _, c00, _, _, _, c20, c21, c22, c23, c24 = self.coef_j[:10]
+        hess_vv = np.eye(3) * c00 * 2 * 0.28209479177387814
+        hess_vv[0, 1] = c20 * 1.0925484305920792
+        hess_vv[1, 2] = c21 * 1.0925484305920792
+        hess_vv[2, 2] += c22 * 2 * 0.6307831305050401
+        hess_vv[1, 1] -= c22 * 2 * 0.31539156525252005
+        hess_vv[0, 0] -= c22 * 2 * 0.31539156525252005
+        hess_vv[0, 2] = c23 * 1.0925484305920792
+        hess_vv[0, 0] += c24 * 2 * 0.5462742152960396
+        hess_vv[1, 1] -= c24 * 2 * 0.5462742152960396
+        hess_vv[1, 0] = hess_vv[0, 1]
+        hess_vv[2, 0] = hess_vv[0, 1]
+        hess_vv[2, 1] = hess_vv[1, 2]
+        return hess_vv
+
+    def warping(self):
+        analytic = 0.0
+        non_analytic = 0.0
+        for (l, m), c in zip(self.lm_j, self.coef_j):
+            if l == -1:
+                continue
+            if l == 0 or l == 2:
+                analytic += c**2
+            else:
+                non_analytic += c**2
+        return non_analytic / analytic
 
 
-def fit_values(k_xv, coef_j):
-    if len(coef_j) == 2:
-        c0, c2 = coef_j
-        return c0 + c2 * k_xv[:, 0]**2
-    if len(coef_j) == 4:
-        1 / 0
-    1 / 0
+def Y(l: int,
+      m: int,
+      x: np.ndarray,
+      y: np.ndarray = None,
+      z: np.ndarray = None) -> np.ndarray:
+    if y is None:
+        if l == 0:
+            return np.ones_like(x)
+        return x
 
+    if z is None:
+        # cubic harmonics:
+        if l == 0:
+            return np.ones_like(x)
+        if m == 0:
+            return ((x + 1j * y)**l).real
+        assert m == 1
+        return ((x + 1j * y)**l).imag
 
-def fit_hessian(coef_j):
-    if len(coef_j) == 2:
-        c0, c2 = coef_j
-        return np.array([[2 * c2]])
-    if len(coef_j) == 4:
-        1 / 0
-    c00, c20, c21, c22, c23, c24 = coef_j[1:7]
-    hess_vv = np.eye(3) * c00 * 2 * 0.28209479177387814
-    hess_vv[0, 1] = c20 * 1.0925484305920792
-    hess_vv[1, 2] = c21 * 1.0925484305920792
-    hess_vv[2, 2] += c22 * 2 * 0.6307831305050401
-    hess_vv[1, 1] -= c22 * 2 * 0.31539156525252005
-    hess_vv[0, 0] -= c22 * 2 * 0.31539156525252005
-    hess_vv[0, 2] = c23 * 1.0925484305920792
-    hess_vv[0, 0] += c24 * 2 * 0.5462742152960396
-    hess_vv[1, 1] -= c24 * 2 * 0.5462742152960396
-    hess_vv[1, 0] = hess_vv[0, 1]
-    hess_vv[2, 0] = hess_vv[0, 1]
-    hess_vv[2, 1] = hess_vv[1, 2]
-    return hess_vv
-
-
-def Y(l, m, x, y, z):
     result = 0.0
     for c, (i, j, k) in Y_L[l**2 + m]:
         result += c * x**i * y**j * z**k
