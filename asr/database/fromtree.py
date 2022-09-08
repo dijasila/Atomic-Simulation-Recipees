@@ -365,12 +365,21 @@ def _collect_folders(folders: List[str],
                      patterns: List[str] = None,
                      exclude_patterns: List[str] = None,
                      children_patterns: List[str] = None,
+                     requirefile: str = None,
                      dbname: str = None,
                      jobid: int = None):
     """Collect `myfolders` to `mydbname`."""
     nfolders = len(folders)
     with connect(dbname, serial=True) as db:
         for ifol, folder in enumerate(folders):
+
+            path = Path(folder)
+            if requirefile is not None:
+                required = path / requirefile
+                if not required.exists():
+                    print(f'Skipping folder due to missing {required}')
+                    continue
+
             string = f'Collecting folder {folder} ({ifol + 1}/{nfolders})'
             if jobid is not None:
                 print(f'Subprocess #{jobid} {string}', flush=True)
@@ -378,7 +387,7 @@ def _collect_folders(folders: List[str],
                 print(string)
 
             atoms, key_value_pairs, data = collect_folder(
-                Path(folder),
+                path,
                 atomsname,
                 patterns,
                 exclude_patterns,
@@ -480,6 +489,8 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
         help='Recurse and collect subdirectories.')
 @option('--children-patterns', type=str)
 @option('--patterns', help='Only select files matching pattern.', type=str)
+@option('--requirefile', help='For each folder, include that folder only if this file exists '
+        'inside that folder.  May be useful for filtering complicated trees.')
 @option(
     '--exclude-patterns',
     help='Comma separated list of patterns to exclude.'
@@ -494,6 +505,7 @@ def main(folders: Union[str, None] = None,
          recursive: bool = False,
          children_patterns: str = '*',
          patterns: str = 'info.json,links.json,params.json,results-asr.*.json',
+         requirefile: str = None,
          exclude_patterns: str = '',
          dbname: str = 'database.db',
          njobs: int = 1) -> ASRResult:
@@ -538,6 +550,7 @@ def main(folders: Union[str, None] = None,
                          jobid=None,
                          dbname=dbname,
                          atomsname=atomsname,
+                         requirefile=requirefile,
                          patterns=patterns,
                          exclude_patterns=exclude_patterns,
                          children_patterns=children_patterns)
