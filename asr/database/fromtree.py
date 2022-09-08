@@ -119,6 +119,10 @@ def get_key_value_pairs(resultsdct: dict):
     return kvp
 
 
+class CollectionFailed(Exception):
+    pass
+
+
 def collect_file(filename: Path):
     """Collect a single file.
 
@@ -137,6 +141,14 @@ def collect_file(filename: Path):
         Dict with keys
 
     """
+
+    try:
+        return _collect_file(filename)
+    except Exception as err:
+        raise CollectionFailed(filename.resolve()) from err
+
+
+def _collect_file(filename):
     from asr.core import read_json
     data = {}
     results = read_json(filename)

@@ -24,8 +24,16 @@ def webpanel(result, row, key_descriptions):
 
 @prepare_result
 class Result(ASRResult):
+    kpts: np.ndarray
+    deformation_potentials_soc: object
+    deformation_potentials_nosoc: object
 
     formats = {"ase_webpanel": webpanel}
+
+    key_descriptions = dict(
+        kpts='K-points',
+        deformation_potentials_soc='Deformation potentials including SOC.',
+        deformation_potentials_nosoc='Deformation potentials without SOC.')
 
 
 @command(returns=Result)
