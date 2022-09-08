@@ -232,7 +232,7 @@ class Result(ASRResult):
 
     key_descriptions = {
         "omega_kl": "Phonon frequencies.",
-        "minhessianeig": "Minimum eigenvalue of Hessian [`eV/Å²`]",
+        "minhessianeig": "Minimum eigenvalue of Hessian [eV/Å²]",
         "eigs_kl": "Dynamical matrix eigenvalues.",
         "q_qc": "List of momenta consistent with supercell.",
         "phi_anv": "Force constants.",
