@@ -60,7 +60,7 @@ class LabelResult(ASRResult):
     formats = {'ase_webpanel': webpanel}
 
 
-@command(module='asr.utils.labels',
+@command(module='asr.c2db.labels',
          returns=LabelResult)
 @option('--label', help=label_explanation, type=str)
 def main(label):
