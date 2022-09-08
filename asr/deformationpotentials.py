@@ -35,6 +35,7 @@ class Result(ASRResult):
         deformation_potentials_soc='Deformation potentials including SOC.',
         deformation_potentials_nosoc='Deformation potentials without SOC.')
 
+
 @command(returns=Result)
 @option('--strains', help='Strain percentages', type=float)
 @option('--ktol',
