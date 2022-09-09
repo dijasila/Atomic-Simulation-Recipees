@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from ase import Atoms
+from ase.build import bulk
 from ase.units import Bohr, Ha
 
 from asr.emasses2 import EMassesResult, _main, fit_band, mass_plots, webpanel
@@ -83,6 +84,45 @@ def test_emass_h2(tmp_path, h2_calc, angles):
 
     print(extrema)
     vbm, cbm = extrema
+
+    assert cbm['energy'] - vbm['energy'] == pytest.approx(10.9, abs=0.1)
+    assert abs(vbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
+    assert abs(cbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
+    assert abs(vbm['mass_w'][0]) == pytest.approx(0.46, abs=0.01)
+    assert abs(cbm['mass_w'][0]) == pytest.approx(0.35, abs=0.01)
+
+    result = EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
+    row = SimpleNamespace(data={'results-asr.emasses2.json': result})
+
+    mass_plots(row, 'cbm.png', 'vbm.png')
+    print(webpanel(result, row, {}))
+
+
+@pytest.mark.integration_test
+@pytest.mark.integration_test_gpaw
+def test_si_emass(tmp_path):
+    from gpaw import GPAW
+    os.chdir(tmp_path)
+
+    si = bulk('Si')
+    si.calc = GPAW(mode={'name': 'pw',
+                         'ecut': 300},
+                   convergence={'bands': 6},
+                   kpts=[8, 8, 8],
+                   txt=None)
+    si.get_potential_energy()
+
+    eigcalc = GPAWEigenvalueCalculator(si.calc)
+
+    for kind, k_c in [('vbm', (0, 0, 0)), ('cbm', (0.4, 0, 0))]:
+        k_v = np.linalg.inv(si.cell) @ k_c * 2 * np.pi
+        dct = find_mass(k_v,
+                        kind,
+                        eigcalc,
+                        kspan=0.1,
+                        maxlevels=1
+                        npoints=3
+                        max_rel_error=0.01)
 
     assert cbm['energy'] - vbm['energy'] == pytest.approx(10.9, abs=0.1)
     assert abs(vbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)

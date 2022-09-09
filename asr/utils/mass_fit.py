@@ -29,14 +29,14 @@ class YFunctions:
 
     def fit_data(self,
                  k_iv: np.ndarray,
-                 eig_i: np.ndarray) -> YFit:
+                 eig_i: np.ndarray) -> tuple[YFit, float]:
         npoints, ndims = k_iv.shape
         assert ndims == self.ndims
 
         if npoints < 1.25 * len(self.lm_j):
             raise ValueError('Too few points!')
 
-        def f(k_v):
+        def f(k_v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
             dk_iv = k_iv - k_v
             M_ji = self._calculate(dk_iv)
             coef_j = np.linalg.lstsq(M_ji.T, eig_i, rcond=None)[0]
@@ -97,7 +97,7 @@ class YFit:
             _, c00 = self.coef_j
             return np.array([[2 * c00]])
 
-        if self.yfuncs.ndims == 1:
+        if self.yfuncs.ndims == 2:
             # 1, xx+yy, xx-yy, 2xy
             _, c00, c20, c21 = self.coef_j[:4]
             return np.array([[2 * (c00 + c20), 2 * c21],
