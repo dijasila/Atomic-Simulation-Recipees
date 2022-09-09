@@ -1,15 +1,14 @@
+from __future__ import annotations
 import numpy as np
 from scipy.optimize import minimize
 
 
-class YFit:
+class YFunctions:
     def __init__(self,
                  ndims: int,
-                 lmax: int = 2,
-                 coefs: np.ndarray = None):
+                 lmax: int = 4):
         self.lmax = lmax
         self.ndims = ndims
-        self.coef_j = coefs
 
         self.lm_j = [(-1, -1)]
         if ndims == 1:
@@ -23,37 +22,44 @@ class YFit:
                           for l in range(lmax + 1)
                           for m in range(2 * l + 1)]
 
-        if self.coef_j is not None:
-            assert len(self.coef_j) == len(self.lm_j)
+    def create_fit_from_coefs(self,
+                              coef_j: np.ndarray,
+                              kmin_v: np.ndarray) -> YFit:
+        return YFit(self, coef_j, kmin_v)
 
-    @classmethod
-    def from_data(cls,
-                  k_iv: np.ndarray,
-                  eig_i: np.ndarray,
-                  lmax: int = 4):
-        ndims = k_iv.shape[1]
-        fit = cls(ndims, lmax)
+    def fit_data(self,
+                 k_iv: np.ndarray,
+                 eig_i: np.ndarray) -> YFit:
+        npoints, ndims = k_iv.shape
+        assert ndims == self.ndims
+
+        if npoints < 1.25 * len(self.lm_j):
+            raise ValueError('Too few points!')
 
         def f(k_v):
             dk_iv = k_iv - k_v
-            M_ji = fit._calculate(dk_iv)
+            M_ji = self._calculate(dk_iv)
             coef_j = np.linalg.lstsq(M_ji.T, eig_i, rcond=None)[0]
             error_i = coef_j @ M_ji - eig_i
-            return (error_i**2).sum(), coef_j
+            return error_i, coef_j
+
+        k0_v = k_iv[eig_i.argmin()].copy()
 
         result = minimize(
-            lambda k_v: f(k_v)[0],
-            x0=np.zeros(ndims),
+            lambda k_v: (f(k_v)[0]**2).sum(),
+            x0=k0_v,
             method='Nelder-Mead')  # seems more robust than the default
 
         if not result.success:
             raise ValueError(result.message)
 
         kmin_v = result.x
-        _, fit.coef_j = f(kmin_v)
-        return fit
+        error_i, coef_j = f(kmin_v)
+        max_error = abs(error_i).max()
 
-    def _calculate(self, k_xv):
+        return YFit(self, coef_j, kmin_v), max_error
+
+    def _calculate(self, k_xv: np.ndarray) -> np.ndarray:
         k2_x = (k_xv**2).sum(1)
 
         eps = 1e-12
@@ -69,11 +75,23 @@ class YFit:
                 M_jx[j] = f_x * k2_x
         return M_jx
 
-    def values(self, k_xv):
-        M_jx = self._calculate(k_xv)
+
+class YFit:
+    def __init__(self,
+                 yfuncs,
+                 coef_j: np.ndarray,
+                 kmin_v: np.ndarray):
+        self.yfuncs = yfuncs
+        self.coef_j = coef_j
+        self.kmin_v = kmin_v
+        assert len(coef_j) == len(yfuncs.lm_j)
+        self.emin = coef_j[0]
+
+    def values(self, k_xv: np.ndarray) -> np.ndarray:
+        M_jx = self.yfuncs._calculate(k_xv - self.kmin_v)
         return self.coef_j @ M_jx
 
-    def hessian(self):
+    def hessian(self) -> np.ndarray:
         if self.ndims == 1:
             # 1, xx
             _, c00 = self.coef_j[:2]
@@ -100,10 +118,10 @@ class YFit:
         hess_vv[2, 1] = hess_vv[1, 2]
         return hess_vv
 
-    def warping(self):
+    def warping(self) -> float:
         analytic = 0.0
         non_analytic = 0.0
-        for (l, m), c in zip(self.lm_j, self.coef_j):
+        for (l, m), c in zip(self.yfuncs.lm_j, self.coef_j):
             if l == -1:
                 continue
             if l == 0 or l == 2:

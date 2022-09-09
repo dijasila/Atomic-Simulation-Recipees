@@ -18,7 +18,7 @@ from asr.database.browser import (describe_entry, entry_parameter_description,
                                   fig, make_panel_description)
 from asr.magnetic_anisotropy import get_spin_axis
 from asr.utils.eigcalc import EigCalc, GPAWEigenvalueCalculator
-from asr.utils.mass_fit import YFit
+from asr.utils.mass_fit import YFunctions
 
 
 class MassDict(TypedDict):
@@ -29,6 +29,7 @@ class MassDict(TypedDict):
     energy: float
     max_fit_error: float
     coef_j: list[float]
+    lmax: int
 
 
 @command('asr.emasses2',
@@ -102,6 +103,7 @@ def find_mass(kpt0_v: np.ndarray,
               maxlevels: int = 5,
               npoints: int = 5,
               max_rel_error: float = 0.02,
+              lmax: int = 8,
               fd: StringIO = None) -> MassDict:
     assert kind in {'vbm', 'cbm'}
     log = functools.partial(print, file=fd or sys.stdout)
@@ -129,8 +131,8 @@ def find_mass(kpt0_v: np.ndarray,
     axes = [c for c, size in enumerate(shape) if size > 1]
 
     try:
-        kpt_v, energy, mass_w, direction_wv, error_x, coefs = fit_band(
-            kpt_xv[:, axes], eig_x)
+        kpt_v, energy, mass_w, direction_wv, max_error, coefs = fit_band(
+            kpt_xv[:, axes], eig_x, lmax)
     except BadFitError as ex:
         log(ex)
         kspan *= 1.5 / (npoints - 1)
@@ -143,16 +145,16 @@ def find_mass(kpt0_v: np.ndarray,
         if len(axes) == 3:
             warp = (coefs[7:]**2).sum() / (coefs[1:7]**2).sum()
             log(f'warp: {warp}')
-        fit_error = abs(error_x).max()
-        log(f'max fit-error: {fit_error} [eV]')
-        if fit_error < max_rel_error * eig_x.ptp():
+        log(f'max fit-error: {max_error} [eV]')
+        if max_error < max_rel_error * eig_x.ptp():
             return MassDict(kind=kind,
                             k_v=kpt_v.tolist(),
                             energy=energy,
                             mass_w=mass_w.tolist(),
                             direction_wv=direction_wv.tolist(),
-                            max_fit_error=fit_error,
-                            coef_j=coefs.tolist())
+                            max_fit_error=max_error,
+                            coef_j=coefs.tolist(),
+                            lmax=lmax)
 
         log('Error too big')
         kspan *= 0.7 / (npoints - 1)
@@ -170,36 +172,24 @@ def find_mass(kpt0_v: np.ndarray,
 
 def fit_band(k_xv: np.ndarray,
              eig_x: np.ndarray,
-             order: int = 8) -> tuple[np.ndarray,
-                                      float,
-                                      np.ndarray,
-                                      np.ndarray,
-                                      np.ndarray,
-                                      np.ndarray]:
-    npoints, ndims = k_xv.shape
-    if ndims == 1:
-        nterms = 3
-    elif ndims == 2:
-        1 / 0
-    else:
-        nterms = (order // 2 + 1) * (order + 1) + 4
-    if npoints < 1.25 * nterms:
-        raise BadFitError('Too few points!')
-
-    kmin_v = k_xv[eig_x.argmin()].copy()
-    dk_xv = k_xv - kmin_v
-    fit = YFit.from_data(dk_xv, eig_x, order)
-    dkmin_v = fit.kmin_v
-    max_error = fit.max_error
+             lmax: int = 8) -> tuple[np.ndarray,
+                                     float,
+                                     np.ndarray,
+                                     np.ndarray,
+                                     float,
+                                     np.ndarray]:
+    _, ndims = k_xv.shape
+    fit, max_error = YFunctions(ndims, lmax).fit_data(k_xv, eig_x)
+    kmin_v = fit.kmin_v
     hessian_vv = fit.hessian()
     eval_w, evec_vw = np.linalg.eigh(hessian_vv)
     if eval_w.min() <= 0.0:
         raise BadFitError('Not a minimum')
 
-    emin = coefs[0]
+    emin = fit.emin
     mass_w = Bohr**2 * Ha / eval_w
 
-    return dkmin_v + kmin_v, emin, mass_w, evec_vw.T, error_x, coefs
+    return kmin_v, emin, mass_w, evec_vw.T, max_error, fit.coef_j
 
 
 panel_description = make_panel_description(
@@ -262,9 +252,12 @@ def mass_plots(row, *filenames):
     for data in [cbm, vbm]:
         y_wp = []
         dir_wv = np.array(data['direction_wv'])
-        coef_j = data['coef_j']
+        yfuncs = YFunctions(ndims=len(dir_wv), lmax=data['lmax'])
+        kmin_v = data['k_v']
+        fit = yfuncs.create_fit_from_coefs(data['coef_j'], kmin_v)
         for dir_v in dir_wv:
-            y_p = fit_values(np.outer(x_p, dir_v), coef_j) + offset
+            k_pv = np.outer(x_p, dir_v) + kmin_v
+            y_p = fit.values(k_pv) + offset
             height = max(height, np.ptp(y_p))
             y_wp.append(y_p)
         y_bwp.append(y_wp)
