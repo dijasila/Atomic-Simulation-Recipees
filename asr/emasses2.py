@@ -102,7 +102,7 @@ def find_mass(kpt0_v: np.ndarray,
               *,
               maxlevels: int = 5,
               npoints: int = 5,
-              max_rel_error: float = 0.02,
+              max_rel_error: float = 0.01,
               lmax: int = 8,
               fd: StringIO = None) -> MassDict:
     assert kind in {'vbm', 'cbm'}
@@ -124,6 +124,7 @@ def find_mass(kpt0_v: np.ndarray,
 
     eig_x = eigcalc.get_new_band(kind, kpt_xv)
     log(f'eigs: {eig_x.min():.6f} ... {eig_x.max():.6f} [eV]')
+    log(f'span: {eig_x.ptp()} [eV]')
 
     if kind == 'vbm':
         eig_x = -eig_x
@@ -131,22 +132,26 @@ def find_mass(kpt0_v: np.ndarray,
     axes = [c for c, size in enumerate(shape) if size > 1]
 
     try:
-        kpt_v, energy, mass_w, direction_wv, max_error, coefs = fit_band(
-            kpt_xv[:, axes], eig_x, lmax)
+        (kpt_v, energy, mass_w, direction_wv,
+         max_error, coefs, warping) = fit_band(kpt_xv[:, axes], eig_x, lmax)
     except BadFitError as ex:
         log(ex)
         kspan *= 1.5 / (npoints - 1)
     else:
         if kind == 'vbm':
+            extremum = 'maximum'
             energy *= -1
             coefs *= -1
-        log(f'extremum: {K(kpt_v)}, {energy:.6f} [eV]')
+        else:
+            extremum = 'minimum'
+        kpt0_v[axes] = kpt_v
+        log(f'{extremum}: {K(kpt0_v)}, {energy:.6f} [eV]')
         log(f'masses: {mass_w} [a.u.]')
-        if len(axes) == 3:
-            warp = (coefs[7:]**2).sum() / (coefs[1:7]**2).sum()
-            log(f'warp: {warp}')
-        log(f'max fit-error: {max_error} [eV]')
-        if max_error < max_rel_error * eig_x.ptp():
+        log(f'warp: {warping * 100} [%]')
+        rel_error = max_error / eig_x.ptp()
+        log(f'max fit-error: {max_error} [eV] ({rel_error * 100} %)')
+
+        if rel_error <= max_rel_error:
             return MassDict(kind=kind,
                             k_v=kpt_v.tolist(),
                             energy=energy,
@@ -158,7 +163,6 @@ def find_mass(kpt0_v: np.ndarray,
 
         log('Error too big')
         kspan *= 0.7 / (npoints - 1)
-        kpt0_v[axes] = kpt_v
 
     if maxlevels == 1:
         raise ValueError
@@ -189,7 +193,7 @@ def fit_band(k_xv: np.ndarray,
     emin = fit.emin
     mass_w = Bohr**2 * Ha / eval_w
 
-    return kmin_v, emin, mass_w, evec_vw.T, max_error, fit.coef_j
+    return kmin_v, emin, mass_w, evec_vw.T, max_error, fit.coef_j, fit.warping()
 
 
 panel_description = make_panel_description(

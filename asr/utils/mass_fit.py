@@ -12,14 +12,14 @@ class YFunctions:
 
         self.lm_j = [(-1, -1)]
         if ndims == 1:
-            self.lm_j += [(0, 0), (1, 0)]
+            self.lm_j += [(0, 0)]
         elif ndims == 2:
             self.lm_j += [(0, 0)] + [(l, m)
-                                     for l in range(1, lmax + 1)
+                                     for l in range(2, lmax + 1, 2)
                                      for m in [0, 1]]
         else:
             self.lm_j += [(l, m)
-                          for l in range(lmax + 1)
+                          for l in range(0, lmax + 1, 2)
                           for m in range(2 * l + 1)]
 
     def create_fit_from_coefs(self,
@@ -92,18 +92,18 @@ class YFit:
         return self.coef_j @ M_jx
 
     def hessian(self) -> np.ndarray:
-        if self.ndims == 1:
+        if self.yfuncs.ndims == 1:
             # 1, xx
-            _, c00 = self.coef_j[:2]
+            _, c00 = self.coef_j
             return np.array([[2 * c00]])
 
-        if self.ndims == 1:
-            # 1, xx+yy, xk, yk, xx-yy, 2xy
-            _, c00, _, _, c20, c21 = self.coef_j[:6]
+        if self.yfuncs.ndims == 1:
+            # 1, xx+yy, xx-yy, 2xy
+            _, c00, c20, c21 = self.coef_j[:4]
             return np.array([[2 * (c00 + c20), 2 * c21],
                              [2 * c21, 2 * (c00 - c20)]])
 
-        _, c00, _, _, _, c20, c21, c22, c23, c24 = self.coef_j[:10]
+        _, c00, c20, c21, c22, c23, c24 = self.coef_j[:7]
         hess_vv = np.eye(3) * c00 * 2 * 0.28209479177387814
         hess_vv[0, 1] = c20 * 1.0925484305920792
         hess_vv[1, 2] = c21 * 1.0925484305920792
@@ -146,9 +146,9 @@ def Y(l: int,
         if l == 0:
             return np.ones_like(x)
         if m == 0:
-            return ((x + 1j * y)**l).real
+            return 2**0.5 * ((x + 1j * y)**l).real
         assert m == 1
-        return ((x + 1j * y)**l).imag
+        return 2**0.5 * ((x + 1j * y)**l).imag
 
     result = 0.0
     for c, (i, j, k) in Y_L[l**2 + m]:

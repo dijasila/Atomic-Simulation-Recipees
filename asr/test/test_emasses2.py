@@ -17,12 +17,12 @@ def test_1d_mass():
     k0 = 0.2
     k_i = np.linspace(-pi / a, pi / a, 7)
     eig_i = (k_i - k0)**2 / (2 * m) * Ha * Bohr**2
-    k_v, emin, mass_w, evec_wv, error_i, fit = fit_band(k_i[:, np.newaxis],
-                                                        eig_i)
+    k_v, emin, mass_w, evec_wv, error, fit, warp = fit_band(
+        k_i[:, np.newaxis], eig_i)
     assert k_v[0] == pytest.approx(k0)
     assert emin == pytest.approx(0.0)
     assert mass_w[0] == pytest.approx(m)
-    assert abs(error_i).max() == pytest.approx(0.0)
+    assert error == pytest.approx(0.0)
 
 
 def e(k):
@@ -84,10 +84,10 @@ def test_emass_h2(tmp_path, h2_calc, angles):
     print(extrema)
     vbm, cbm = extrema
 
-    assert cbm['energy'] - vbm['energy'] == pytest.approx(10.8, abs=0.1)
+    assert cbm['energy'] - vbm['energy'] == pytest.approx(10.9, abs=0.1)
     assert abs(vbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
     assert abs(cbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
-    assert abs(vbm['mass_w'][0]) == pytest.approx(0.49, abs=0.01)
+    assert abs(vbm['mass_w'][0]) == pytest.approx(0.46, abs=0.01)
     assert abs(cbm['mass_w'][0]) == pytest.approx(0.35, abs=0.01)
 
     result = EMassesResult.fromdata(vbm_mass=vbm, cbm_mass=cbm)
