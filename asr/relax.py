@@ -52,6 +52,7 @@ from ase import Atoms
 from ase.io import Trajectory, write
 from ase.optimize.bfgs import BFGS
 from ase.utils import IOContext
+from ase.calculators.calculator import PropertyNotImplementedError
 
 from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
                       prepare_result)
@@ -476,6 +477,15 @@ def main(atoms: Atoms,
 
     with Trajectory(tmp_atoms_file, 'r') as trajectory:
         images = list(trajectory)
+
+    # If stress is provided by the calculator (e.g. PW mode) and we
+    # didn't use stress, then nevertheless we want to calculate it because
+    # the stiffness recipe wants it.  Also, all the existing results
+    # have stress.
+    try:
+        atoms.get_property('stress', allow_calculation=False)
+    except PropertyNotImplementedError:
+        pass
 
     return Result.fromdata(
         atoms=atoms.copy(),
