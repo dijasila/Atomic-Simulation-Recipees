@@ -8,7 +8,8 @@ from ase import Atoms
 from ase.build import bulk
 from ase.units import Bohr, Ha
 
-from asr.emasses2 import EMassesResult, _main, fit_band, mass_plots, webpanel
+from asr.emasses2 import (EMassesResult, _main, find_mass, fit_band,
+                          mass_plots, webpanel)
 from asr.utils.eigcalc import GPAWEigenvalueCalculator
 
 
@@ -114,16 +115,21 @@ def test_si_emass(tmp_path):
 
     eigcalc = GPAWEigenvalueCalculator(si.calc)
 
+    extrema = []
     for kind, k_c in [('vbm', (0, 0, 0)), ('cbm', (0.4, 0, 0))]:
         k_v = np.linalg.inv(si.cell) @ k_c * 2 * np.pi
         dct = find_mass(k_v,
                         kind,
                         eigcalc,
                         kspan=0.1,
-                        maxlevels=1
-                        npoints=3
+                        maxlevels=3,
+                        lmax=8,
+                        npoints=5,
                         max_rel_error=0.01)
+        extrema.append(dct)
 
+    print(extrema)
+    vbm, cbm = extrema
     assert cbm['energy'] - vbm['energy'] == pytest.approx(10.9, abs=0.1)
     assert abs(vbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
     assert abs(cbm['k_v'][0]) == pytest.approx(pi / 2, abs=0.005)
