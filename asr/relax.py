@@ -467,17 +467,6 @@ def main(atoms: Atoms,
             if hasattr(calc, '__del__'):
                 calc.__del__()
 
-    cellpar = atoms.cell.cellpar()
-
-    # XXX
-    # metadata = calc.get_metadata()
-
-    # Save atomic structure
-    write('structure.json', atoms)
-
-    with Trajectory(tmp_atoms_file, 'r') as trajectory:
-        images = list(trajectory)
-
     # If stress is provided by the calculator (e.g. PW mode) and we
     # didn't use stress, then nevertheless we want to calculate it because
     # the stiffness recipe wants it.  Also, all the existing results
@@ -486,6 +475,13 @@ def main(atoms: Atoms,
         atoms.calc.get_property('stress', atoms=atoms, allow_calculation=False)
     except PropertyNotImplementedError:
         pass
+
+    write('structure.json', atoms)
+
+    cellpar = atoms.cell.cellpar()
+
+    with Trajectory(tmp_atoms_file, 'r') as trajectory:
+        images = list(trajectory)
 
     return Result.fromdata(
         atoms=atoms.copy(),
