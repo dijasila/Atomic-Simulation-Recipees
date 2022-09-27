@@ -89,7 +89,7 @@ def webpanel(result, row, key_descriptions):
     if result.R_nn is not None:
         defecttable['rows'].extend(
             [[R_nn, f'{result.R_nn:.2f} Å']])
-    if show_conc:
+    if show_conc and defect_name != 'pristine':
         defecttable['rows'].extend(conc_row)
     if uid:
         basictable['rows'].extend(
