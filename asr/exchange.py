@@ -11,10 +11,14 @@ from asr.core import command, option, ASRResult, prepare_result
         type=str)
 def calculate(gs: str = 'gs.gpw') -> ASRResult:
     """Calculate two spin configurations."""
-    from gpaw import GPAW
+    from gpaw import GPAW, MixerSum
     from asr.utils import magnetic_atoms
 
-    calc = GPAW(gs, fixdensity=False, txt=None)
+    calc = GPAW(gs,
+                fixdensity=False,
+                txt=None,
+                mixer=MixerSum(),
+                convergence={'density': 1.0e-6})
     atoms = calc.atoms
     pbc = atoms.pbc.tolist()
 

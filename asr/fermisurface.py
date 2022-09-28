@@ -1,5 +1,5 @@
 """Fermi surfaces."""
-from asr.core import command, ASRResult, prepare_result
+from asr.core import command, ASRResult, prepare_result, option
 from asr.database.browser import fig, make_panel_description, describe_entry
 
 
@@ -122,7 +122,8 @@ class Result(ASRResult):
          returns=Result,
          requires=['gs.gpw', 'results-asr.structureinfo.json'],
          dependencies=['asr.gs', 'asr.structureinfo'])
-def main() -> Result:
+@option('--shift', help='Shift of Fermi level in eV.', type=float)
+def main(shift: float = 0.0) -> Result:
     import numpy as np
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs
@@ -136,6 +137,7 @@ def main() -> Result:
     eigs_km, ef, s_kvm = gpw2eigs('gs.gpw', return_spin=True,
                                   theta=theta, phi=phi,
                                   symmetry_tolerance=1e-2)
+    ef += shift
     eigs_mk = eigs_km.T
     eigs_mk = eigs_mk - ef
     calc = GPAW('gs.gpw', txt=None)

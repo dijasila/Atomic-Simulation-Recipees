@@ -13,6 +13,7 @@ from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
 from ase.parallel import paropen
 
+from asr.utils.symmetry import c2db_symmetry_eps
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
@@ -202,7 +203,8 @@ def main(mingo: bool = True) -> Result:
                'dynamic_stability_phonons': dynamic_stability}
 
     # Next calculate an approximate phonon band structure
-    path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)
+    path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc,
+                               eps=c2db_symmetry_eps)
     freqs_kl = p.band_structure(path.kpts, modes=False, born=False,
                                 verbose=False)
     results['interp_freqs_kl'] = freqs_kl

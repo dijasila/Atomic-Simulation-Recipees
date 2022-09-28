@@ -224,10 +224,13 @@ def _absorption(*, dim, magstate, gap_dir, gap_dir_nosoc,
     # TODO: Sometimes RPA pol doesn't exist, what to do?
     if pol_data:
         wrpa_w = pol_data['frequencies'] + delta_rpa
-        sigma_w = -1j * 4 * np.pi * pol_data[f'alpha{direction}_w']
+        wrpa_w = pol_data['frequencies'] + delta_rpa
         if dim == 2:
+            sigma_w = -1j * 4 * np.pi * pol_data[f'alpha{direction}_w']
             sigma_w *= wrpa_w * alpha / Ha / Bohr
-        absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+            absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
+        else:
+            absrpa_w = 4 * np.pi * np.imag(pol_data[f'alpha{direction}_w'])
         ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
         ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
                                    absrpa_w[wrpa_w < xmax]])) * 1.05
