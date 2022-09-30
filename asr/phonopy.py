@@ -8,6 +8,7 @@ from ase.parallel import world
 from ase.io import read
 from ase.dft.kpoints import BandPath
 
+from asr.utils.symmetry import c2db_symmetry_eps
 from asr.core import (command, option, DictStr, ASRResult,
                       read_json, write_json, prepare_result)
 
@@ -310,7 +311,8 @@ def main(rc: float = None) -> Result:
     phonon.symmetrize_force_constants()
 
     nqpts = 100
-    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
+    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc,
+                               eps=c2db_symmetry_eps)
 
     omega_kl = np.zeros((nqpts, 3 * len(atoms)))
 

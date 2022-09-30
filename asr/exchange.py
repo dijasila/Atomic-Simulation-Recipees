@@ -14,6 +14,7 @@ def calculate(gs: str = 'gs.gpw') -> ASRResult:
     from gpaw import GPAW, MixerSum
     from asr.utils import magnetic_atoms
 
+    # MixerSum is more stable towards finding the desired magnetic state
     calc = GPAW(gs,
                 fixdensity=False,
                 txt=None,
