@@ -481,7 +481,7 @@ def main(atoms: Atoms,
     # the stiffness recipe wants it.  Also, all the existing results
     # have stress.
     try:
-        atoms.calc.get_property('stress', atoms=atoms, allow_calculation=False)
+        atoms.get_stress()
     except PropertyNotImplementedError:
         pass
 
