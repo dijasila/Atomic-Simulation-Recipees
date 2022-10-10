@@ -465,6 +465,15 @@ def main(atoms: Atoms,
         edft = calc.get_potential_energy(atoms)
         etot = atoms.get_potential_energy()
 
+        # If stress is provided by the calculator (e.g. PW mode) and we
+        # didn't use stress, then nevertheless we want to calculate it because
+        # the stiffness recipe wants it.  Also, all the existing results
+        # have stress.
+        try:
+            atoms.get_stress()
+        except PropertyNotImplementedError:
+            pass
+
         if calculatorname == 'gpaw':
             # GPAW will have calc.close() soon.
             # Until then, we abuse __del__() which happens to
@@ -475,15 +484,6 @@ def main(atoms: Atoms,
             # (Also, when testing we do not always have __del__.)
             if hasattr(calc, '__del__'):
                 calc.__del__()
-
-    # If stress is provided by the calculator (e.g. PW mode) and we
-    # didn't use stress, then nevertheless we want to calculate it because
-    # the stiffness recipe wants it.  Also, all the existing results
-    # have stress.
-    try:
-        atoms.get_stress()
-    except PropertyNotImplementedError:
-        pass
 
     write('structure.json', atoms)
 
