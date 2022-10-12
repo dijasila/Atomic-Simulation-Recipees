@@ -10,41 +10,46 @@ import matplotlib.pyplot as plt
 import numpy as np
 from asr.core import write_json, command, option, ASRResult, read_json, prepare_result
 from asr.lineshape import Lineshape
-
+from pathlib import Path
 @prepare_result
 class PLResults(ASRResult):
     """Container for excited results."""
 
     zpl: float
     delta_Q: float
+    S: float
 
     key_descriptions = dict(
         zpl='Zero phonon line energy.',
-        delta_Q='Displacement from the ground state.')
+        delta_Q='Displacement from the ground state.',
+        S='Total HR factor.')
 
 @command('asr.PL')
 @option('--excitation', type=str)
 def main(excitation: str = 'alpha' or 'beta') -> PLResults:
-    ground = read(f'excited_{excitation}/structure.json')
-    excited = read(f'structure.json')
-    phonon = phonopy.load(f'phonopy_params.yaml')
-    ls = Lineshape(ground, excited, phonon, sigma=9e-3, gamma=9e-3, delta_t=0.1)
-    delta_Q, _ = ls.get_delta_Q()
-    print(delta_Q)
-    s, _ = ls.get_partial_hr()
-    s0 = s.sum()
-    ls.get_info()
-    print(s0)
-    fig, ax = plt.subplots()
-    S = ls.get_elph_function()
-    Excited = Trajectory(f'excited_{excitation}/excited.traj')[-1]
-    Ground = Trajectory(f'excited_{excitation}/ground.traj')[-1]
-    ZPL = Excited.get_potential_energy() - Ground.get_potential_energy()
-    ls.plot_spectral_function(ax=ax, ZPL=ZPL, filename=f'Emission_{excitation}')
+    if Path(f'excited_{excitation}/structure.json').is_file():
+        excited = read(f'excited_{excitation}/structure.json')
+        ground = read(f'structure.json')
+        phonon = phonopy.load(f'phonopy_params.yaml')
+        ls = Lineshape(ground, excited, phonon, sigma=9e-3, gamma=9e-3, delta_t=0.1)
+        #ls = Lineshape(ground, excited, phonon, sigma=5e-4, gamma=5e-4, delta_t=0.1)
+        delta_Q, _ = ls.get_delta_Q()
+        print(delta_Q)
+        s, _ = ls.get_partial_hr()
+        s0 = s.sum()
+        ls.get_info()
+        print(s0)
+        fig, ax = plt.subplots()
+        S = ls.get_elph_function()
+        Excited = Trajectory(f'excited_{excitation}/excited.traj')[-1]
+        Ground = Trajectory(f'excited_{excitation}/ground.traj')[-1]
+        ZPL = Excited.get_potential_energy() - Ground.get_potential_energy()
+        ls.plot_spectral_function(ax=ax, ZPL=ZPL, filename=f'Emission_{excitation}')
     # define the 1D coordinate
-    return PLResults.fromdata(
-        delta_Q=delta_Q,
-        zpl=ZPL)
+        return PLResults.fromdata(
+            delta_Q=delta_Q,
+            zpl=ZPL, 
+            S=s0.real)
 
 def webpanel(result, row, key_descriptions):
     from asr.browser import fig, table
