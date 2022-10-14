@@ -13,11 +13,11 @@ import os
 relax_calc_dict = {'name': 'gpaw',
                    'mode': {
                        'name': 'pw',
-                       'ecut': 500,
+                       'ecut': 800,
                        'dedecut': 'estimate'},
                    'xc': 'PBE',
                    'kpts': {
-                       'density': 1.0,
+                       'density': 6.0,
                        'gamma': True},
                    'basis': 'dzp',
                    'symmetry': {
@@ -30,10 +30,10 @@ relax_calc_dict = {'name': 'gpaw',
                        'width': 0.02},
                    'spinpol': True}
 gs_calc_dict = {'name': 'gpaw',
-                'mode': {'name': 'pw', 'ecut': 500},
+                'mode': {'name': 'pw', 'ecut': 800},
                 'xc': 'PBE',
                 'basis': 'dzp',
-                'kpts': {'density': 1.0, 'gamma': True},
+                'kpts': {'density': 12.0, 'gamma': True},
                 'occupations': {'name': 'fermi-dirac',
                                 'width': 0.02},
                 'convergence': {'bands': 'CBM+3.0'},
@@ -59,11 +59,16 @@ gs_calc_dict = {'name': 'gpaw',
         help='Specify which double defects you want to include. Choose from '
         '"NO", "all", "vac-vac", "vac-sub, sub-sub" as a comma-separated list. E.g. '
         'if you want all vac-vac and vac-sub defects use "vac-vac,vac-sub".')
-@option('--scaling_double', type=float,
+@option('--double-exclude', type=str,
+        help='Comma seperated string with double defects that will be excluded. '
+        'E.g. for --double_exclude = "Mg, Fe" all double defects of the types'
+        'Mg-Mg, Mg-Fe and Fe-Fe will be excluded from the defect setup. '
+        'The string can include both intrinsic and extrinsic elements.')
+@option('--scaling-double', type=float,
         help='Scaling factor for double defect creation. All possible double '
         'defects within the sum of covalent radii of the two included sites '
         'times the scaling factor will be generated.')
-@option('--uniform_vacuum', type=bool,
+@option('--uniform-vacuum', type=bool,
         help='If true, tries to set out of plane vacuum size '
         'according to the in plane supercell size. Only for 2D.')
 @option('--extrinsic', type=str,
@@ -73,15 +78,15 @@ gs_calc_dict = {'name': 'gpaw',
         'It has to be launched within the specific charge folders and needs '
         'both a structure.json file as well as a params.json in order to '
         'work properly')
-@option('--general_algorithm',
+@option('--general-algorithm',
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
 def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
-         vacancies: bool = True, double: str = 'NO', scaling_double: float = 1.7,
-         uniform_vacuum: bool = False,
+         vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
+         scaling_double: float = 1.7, uniform_vacuum: bool = False,
          halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
     """Set up defect structures for a given host.
 
@@ -132,6 +137,12 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
     # convert double defect types string to list
     double = double.split(',')
 
+    # convert double_exclude defect string
+    if double_exclude == 'NO':
+        double_exclude = frozenset()
+    else:
+        double_exclude = frozenset(double_exclude.split(','))
+
     # only run SJ setup if halfinteger is True
     if halfinteger:
         try:
@@ -163,7 +174,8 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
         structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
                                        charge_states=chargestates,
                                        vacancies=vacancies, extrinsic=extrinsic,
-                                       double=double, scaling_factor=scaling_double,
+                                       double=double, double_exclude=double_exclude,
+                                       scaling_factor=scaling_double,
                                        sc=supercell,
                                        max_lattice=maxsize, is_2D=is2d,
                                        vacuum=uniform_vacuum,
@@ -274,7 +286,7 @@ def create_vacancies(structure, pristine, eq_pos, charge_states, base_id):
             vacancy.pop(i)
             # rattle defect structure to not get stuck in a saddle point
             vacancy.rattle()
-            string = f'defects.{base_id}.v_{sitename}'
+            string = f'defects.{base_id}.v_{sitename}.{i}'
             charge_dict = get_charge_dict(charge_states, defect=vacancy)
             defect_dict[string] = charge_dict
         finished_list.append(eq_pos[i])
@@ -322,7 +334,6 @@ def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-2):
     """Check whether a new double defect exists already."""
     from math import isclose
 
-    new = True
     for double in double_defects:
         name = double[0]
         ref1 = name.split('.')[0]
@@ -332,21 +343,12 @@ def is_new_double_defect_2(el1, el2, double_defects, distance, rel_tol=1e-2):
         distance_ref = double[1]
         if (el1 != el2 and el1 in name.split('.') and el2 in name.split('.')
            and isclose(distance_ref, distance, rel_tol=rel_tol)):
-            new = False
+            return False
         elif (el1 == el2 and f'{el1}.{el2}' == def_name
               and isclose(distance_ref, distance, rel_tol=rel_tol)):
-            new = False
+            return False
 
-    return new
-
-
-def get_distance(atoms, i, j):
-    from ase.geometry import get_distances
-    pos1 = atoms.get_positions()[i]
-    pos2 = atoms.get_positions()[j]
-    cell = atoms.get_cell()
-
-    return get_distances(pos1, pos2, cell=cell, pbc=True)[1][0, 0]
+    return True
 
 
 def double_defect_index_generator(atoms):
@@ -356,11 +358,13 @@ def double_defect_index_generator(atoms):
                 yield (i, j)
 
 
-def double_defect_species_generator(element_list, defect_type='all'):
+def double_defect_species_generator(element_list, defect_type='all',
+                                    double_exclude=frozenset()):
     if defect_type == 'all' or defect_type == 'sub-sub':
         for el1 in element_list:
             for el2 in element_list:
-                yield (el1, el2)
+                if (not {el1, el2}.issubset(double_exclude)):
+                    yield (el1, el2)
     elif defect_type == 'vac-sub':
         for el2 in element_list:
             yield ('v', el2)
@@ -369,11 +373,9 @@ def double_defect_species_generator(element_list, defect_type='all'):
 
 
 def get_maximum_distance(atoms, i, j, scaling_factor):
-    from ase.data import atomic_numbers, covalent_radii
-    el1 = atoms.symbols[i]
-    el2 = atoms.symbols[j]
-    an1 = atomic_numbers[el1]
-    an2 = atomic_numbers[el2]
+    from ase.data import covalent_radii
+    an1 = atoms.numbers[i]
+    an2 = atoms.numbers[j]
 
     R_max = (covalent_radii[an1] + covalent_radii[an2]) * scaling_factor
 
@@ -382,7 +384,7 @@ def get_maximum_distance(atoms, i, j, scaling_factor):
 
 def create_double_new(structure, pristine, eq_pos, charge_states,
                       base_id, defect_list=None, scaling_factor=1.5,
-                      defect_type='all'):
+                      defect_type='all', double_exclude=frozenset()):
     """Create double defects based on distance criterion."""
     defect_dict = {}
     complex_list = []
@@ -394,16 +396,17 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
     defect_list = add_intrinsic_elements(structure, defect_list)
     if defect_type == 'all':
         defect_list.append('v')
-        max_iter_elements = len(defect_list) ** 2
+        max_iter_elements = len(defect_list) ** 2 - len(double_exclude) ** 2
     elif defect_type == 'sub-sub':
-        max_iter_elements = len(defect_list) ** 2
+        max_iter_elements = len(defect_list) ** 2 - len(double_exclude) ** 2
     elif defect_type == 'vac-vac':
         defect_list.append('v')
         max_iter_elements = 1
     elif defect_type == 'vac-sub':
         max_iter_elements = len(defect_list)
     double_elements = double_defect_species_generator(defect_list,
-                                                      defect_type)
+                                                      defect_type,
+                                                      double_exclude)
 
     # set up the defects
     max_iter_indices = len(pristine) ** 2 - len(pristine)
@@ -415,7 +418,7 @@ def create_double_new(structure, pristine, eq_pos, charge_states,
             defect = pristine.copy()
             site1 = f'{el1}_{defect.symbols[i]}'
             site2 = f'{el2}_{defect.symbols[j]}'
-            distance = get_distance(pristine, i, j)
+            distance = pristine.get_distance(i, j, mic=True)
             R_max = get_maximum_distance(pristine, i, j, scaling_factor)
             if (is_new_double_defect_2(site1, site2,
                                        complex_list, distance)
@@ -560,7 +563,7 @@ def create_substitutional(structure, pristine, eq_pos,
                     defect[i].symbol = element
                     # rattle defect structure to not get stuck in a saddle point
                     defect.rattle()
-                    string = f'defects.{base_id}.{element}_{sitename}'
+                    string = f'defects.{base_id}.{element}_{sitename}.{i}'
                     charge_dict = get_charge_dict(charge_states, defect=defect)
                     defect_dict[string] = charge_dict
             finished_list.append(eq_pos[i])
@@ -569,7 +572,8 @@ def create_substitutional(structure, pristine, eq_pos,
 
 
 def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, double,
-                  scaling_factor, sc, max_lattice, is_2D, vacuum, general_algorithm):
+                  double_exclude, scaling_factor, sc, max_lattice, is_2D, vacuum,
+                  general_algorithm):
     """
     Set up defects for a particular input structure.
 
@@ -684,7 +688,8 @@ def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, dou
                                             base_id,
                                             defect_list,
                                             scaling_factor,
-                                            double_type)
+                                            double_type,
+                                            double_exclude)
             defects_dict.update(defect_dict)
 
     # put together structure dict

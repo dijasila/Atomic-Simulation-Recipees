@@ -1,5 +1,6 @@
 from asr.core import command, argument, get_recipes, ASRResult
 from asr.dimensionality import get_dimtypes
+from asr.c2db.labels import label_explanation
 
 # Style: "KVP: Long description !short description! [unit]
 
@@ -21,6 +22,14 @@ key_descriptions = {
         "ehull": "KVP: Energy above convex hull [eV/atom]",
         "hform": "KVP: Heat of formation [eV/atom]",
         "thermodynamic_stability_level": "KVP: Thermodynamic stability level",
+    },
+    "defectinfo": {
+        "defect_name": "KVP: Defect name {type}_{position} !Defect name!",
+        "host_name": "KVP: Host formula",
+        "charge_state": "KVP: Charge state"
+    },
+    "defect_symmetry": {
+        "defect_pointgroup": "KVP: Defect point group !Point group!"
     },
     "magstate": {
         "magstate": "KVP: Magnetic state",
@@ -88,9 +97,9 @@ key_descriptions = {
     },
     "magnetic_anisotropy": {
         "spin_axis": "KVP: Magnetic easy axis",
-        "E_x": "KVP: Soc. total energy, x-direction [eV/unit cell]",
-        "E_y": "KVP: Soc. total energy, y-direction [eV/unit cell]",
-        "E_z": "KVP: Soc. total energy, z-direction [eV/unit cell]",
+        "E_x": "KVP: Soc. total energy, x-direction [meV/unit cell]",
+        "E_y": "KVP: Soc. total energy, y-direction [meV/unit cell]",
+        "E_z": "KVP: Soc. total energy, z-direction [meV/unit cell]",
         "theta": "Easy axis, polar coordinates, theta [radians]",
         "phi": "Easy axis, polar coordinates, phi [radians]",
         "dE_zx":
@@ -118,7 +127,7 @@ key_descriptions = {
         " !DOS at ef! [states/(eV * unit cell)]",
     },
     "phonons": {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
+        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [eV/Å²]",
         "dynamic_stability_phonons": "KVP: Phonon dynamic stability (low/high)",
     },
     "plasmafrequency": {
@@ -202,10 +211,14 @@ key_descriptions = {
         'emass_cb_dir3':
         'KVP: Conduction band effective mass, direction 3 [`m_e`]',
     },
+    "c2db.labels": {
+        "label": f"KVP: {label_explanation}"
+    },
     "database.fromtree": {
         "folder": "KVP: Path to collection folder",
     }
 }
+
 
 # Dimensionality key descrioptions:
 for dimtype in get_dimtypes():
@@ -233,6 +246,8 @@ extras = {}
 for recipe in get_recipes():
     key = 'has_' + recipe.name.replace('.', '_').replace('@', '_')
     extras[key] = f'{recipe.name} is calculated'
+# Additional key description for spin coherence times of QPOD
+extras['sct'] = 'Spin coherence time T2 [ms]'
 
 key_descriptions['extra'] = extras
 

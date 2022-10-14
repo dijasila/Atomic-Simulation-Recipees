@@ -31,19 +31,6 @@ def test_setup_defects(asr_tmpdir):
     main(supercell=(3, 3, 1))
     pristine = read('defects.pristine_sc.331/structure.json')
     assert compare_atoms(atoms, pristine) == []
-    # for i in range(len(atoms.get_scaled_positions())):
-    #     assert atoms.get_scaled_positions(
-    #     )[i][0] == pristine.get_scaled_positions()[i][0]
-    #     assert atoms.get_scaled_positions(
-    #     )[i][1] == pristine.get_scaled_positions()[i][1]
-    #     assert atoms.get_scaled_positions(
-    #     )[i][2] == pristine.get_scaled_positions()[i][2]
-    # for i in range(len(atoms.get_cell())):
-    #     assert atoms.get_cell()[i][0] == pristine.get_cell()[i][0]
-    #     assert atoms.get_cell()[i][1] == pristine.get_cell()[i][1]
-    #     assert atoms.get_cell()[i][2] == pristine.get_cell()[i][2]
-    # for i in range(len(atoms.numbers)):
-    #     assert atoms.numbers[i] == pristine.numbers[i]
 
     pathlist = list(Path('.').glob('defects.BN_331*/charge_*/'))
     for path in pathlist:
@@ -160,25 +147,74 @@ def test_extrinsic_single_defects(asr_tmpdir):
             assert len(pathlist) == lengths[i]
 
 
+@pytest.mark.parametrize('double_type', ['vac-vac',
+                                         'vac-sub',
+                                         'sub-sub'])
 @pytest.mark.ci
-def test_extrinsic_double_defects(asr_tmpdir):
+def test_extrinsic_double_defects(double_type, asr_tmpdir):
     from pathlib import Path
     from asr.core import chdir
     from asr.setup.defects import main
     from ase.io import write
     from .materials import std_test_materials
 
-    lengths = [15]
+    lengths = {'vac-vac': 8,
+               'vac-sub': 12,
+               'sub-sub': 13}
     std_test_materials = [std_test_materials[1]]
     for i, atoms in enumerate(std_test_materials):
         name = atoms.get_chemical_formula()
         Path(name).mkdir()
         write(f'{name}/unrelaxed.json', atoms)
         with chdir(name):
-            main(general_algorithm=16., extrinsic='Nb',
-                 double=True)
+            main(extrinsic='Nb',
+                 double=double_type, scaling_double=1.5)
             pathlist = list(Path('.').glob('defects.*/charge_0'))
-            assert len(pathlist) == lengths[i]
+            assert len(pathlist) == lengths[double_type]
+
+
+@pytest.mark.parametrize('double_type', ['vac-vac',
+                                         'vac-sub',
+                                         'sub-sub'])
+@pytest.mark.ci
+def test_exclude_double_defects(double_type, asr_tmpdir):
+    from pathlib import Path
+    from asr.core import chdir
+    from asr.setup.defects import main
+    from ase.io import write
+    from .materials import std_test_materials
+    lengths = {'vac-vac': 10,
+               'vac-sub': 17,
+               'sub-sub': 21}
+    std_test_materials = [std_test_materials[1]]
+    for i, atoms in enumerate(std_test_materials):
+        name = atoms.get_chemical_formula()
+        Path(name).mkdir()
+        write(f'{name}/unrelaxed.json', atoms)
+        with chdir(name):
+            main(extrinsic='Nb,Yb',
+                 double=double_type, double_exclude='Yb', scaling_double=1.5)
+            pathlist = list(Path('.').glob('defects.*/charge_0'))
+            assert len(pathlist) == lengths[double_type]
+
+
+@pytest.mark.parametrize('M', ['Mo', 'W'])
+@pytest.mark.parametrize('X', ['S', 'Se', 'Te'])
+@pytest.mark.parametrize('scaling', [0, 1, 1.5, 2])
+@pytest.mark.ci
+def test_get_maximum_distance(M, X, scaling):
+    from asr.setup.defects import get_maximum_distance
+    from ase.data import atomic_numbers, covalent_radii
+    from ase.build import mx2
+
+    atoms = mx2(f'{M}{X}2')
+    metal = atomic_numbers[M]
+    chalcogen = atomic_numbers[X]
+    reference = ((covalent_radii[metal] + covalent_radii[chalcogen])
+                 * scaling)
+
+    R = get_maximum_distance(atoms, 0, 1, scaling)
+    assert R == pytest.approx(reference)
 
 
 @pytest.mark.ci

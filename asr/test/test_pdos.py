@@ -50,8 +50,7 @@ def test_pdos_full(asr_tmpdir_w_params):
         calc1 = GPAW(xc=xc,
                      mode=PW(pw),
                      kpts=monkhorst_pack((kpts, kpts, kpts)),
-                     nbands=nb,
-                     idiotproof=False)
+                     nbands=nb)
 
         Li1.calc = calc1
         Li1.get_potential_energy()
@@ -68,8 +67,7 @@ def test_pdos_full(asr_tmpdir_w_params):
         calc2 = GPAW(xc=xc,
                      mode=PW(pw),
                      kpts=monkhorst_pack((kpts, kpts, kpts)),
-                     nbands=nb,
-                     idiotproof=False)
+                     nbands=nb)
 
         Li2.calc = calc2
         Li2.get_potential_energy()

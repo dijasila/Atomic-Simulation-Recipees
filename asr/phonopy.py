@@ -1,4 +1,8 @@
 """Phonopy phonon band structure."""
+# XXX F.N: NOTE! Based on old version of old-master.
+# I could not merge in latest old-master due to difference in keys
+# in results. This should be fixed at some point if we want to merge
+# this branch to old-master and htw-util.
 import typing
 from pathlib import Path
 

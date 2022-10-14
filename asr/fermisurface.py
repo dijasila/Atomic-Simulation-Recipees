@@ -1,5 +1,5 @@
 """Fermi surfaces."""
-from asr.core import command, ASRResult, prepare_result
+from asr.core import command, ASRResult, prepare_result, option
 from asr.database.browser import fig, make_panel_description, describe_entry
 
 
@@ -82,8 +82,9 @@ def webpanel(result, row, key_descriptions):
 def plot_fermi(row, fname, sfs=1, dpi=200):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
+    from asr.utils.symmetry import c2db_symmetry_eps
     cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc)
+    lat = cell.get_bravais_lattice(pbc=row.pbc, eps=c2db_symmetry_eps)
     plt.figure(figsize=(5, 4))
     ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
     add_fermi(row, ax=ax, s=sfs)
@@ -102,9 +103,10 @@ def add_fermi(row, ax, s=0.25):
                     s=s, cmap='viridis', marker=',',
                     norm=normalize, alpha=1, zorder=2)
 
+    sdir = row.get('spin_axis', 'z')
     cbar = plt.colorbar(im, ticks=[-1, -0.5, 0, 0.5, 1])
     cbar.ax.tick_params()
-    cbar.set_label('$\\langle S_z \\rangle$')
+    cbar.set_label(r'$\langle S_{} \rangle $'.format(sdir))
 
 
 @prepare_result
@@ -120,7 +122,8 @@ class Result(ASRResult):
          returns=Result,
          requires=['gs.gpw', 'results-asr.structureinfo.json'],
          dependencies=['asr.gs', 'asr.structureinfo'])
-def main() -> Result:
+@option('--shift', help='Shift of Fermi level in eV.', type=float)
+def main(shift: float = 0.0) -> Result:
     import numpy as np
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs
@@ -134,6 +137,7 @@ def main() -> Result:
     eigs_km, ef, s_kvm = gpw2eigs('gs.gpw', return_spin=True,
                                   theta=theta, phi=phi,
                                   symmetry_tolerance=1e-2)
+    ef += shift
     eigs_mk = eigs_km.T
     eigs_mk = eigs_mk - ef
     calc = GPAW('gs.gpw', txt=None)
@@ -149,9 +153,6 @@ def main() -> Result:
     selection = ~np.logical_or(eigs_mk.max(1) < 0, eigs_mk.min(1) > 0)
     eigs_mk = eigs_mk[selection, :]
     s_mk = s_mk[selection, :]
-    bz2ibz_k = calc.get_bz_to_ibz_map()
-    eigs_mk = eigs_mk[:, bz2ibz_k]
-    s_mk = s_mk[:, bz2ibz_k]
 
     n = 5
     N_xc = np.indices((n, n, 1)).reshape((3, n**2)).T - n // 2

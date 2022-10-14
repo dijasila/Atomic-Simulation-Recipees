@@ -1,5 +1,6 @@
 """Structural information."""
 from asr.core import command, ASRResult, prepare_result
+from asr.database.browser import code, br, div, bold, dl, describe_entry, href
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -43,13 +44,22 @@ def get_reduced_formula(formula, stoichiometry=False):
     return result
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table, describe_entry, code, bold,
-                                      br, href, dl, div)
+def get_spg_href(url):
+    return href('SpgLib', url)
 
-    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
+
+def describe_pointgroup_entry(spglib):
+    pointgroup = describe_entry(
+        'Point group',
+        f"Point group determined with {spglib}."
+    )
+
+    return pointgroup
+
+
+def describe_crystaltype_entry(spglib):
     crystal_type = describe_entry(
-        'crystal_type',
+        'Crystal type',
         "The crystal type is defined as "
         + br
         + div(bold('-'.join([code('stoi'),
@@ -66,6 +76,15 @@ def webpanel(result, row, key_descriptions):
             ]
         )
     )
+
+    return crystal_type
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (table, describe_entry, href)
+
+    spglib = get_spg_href('https://spglib.github.io/spglib/')
+    crystal_type = describe_crystaltype_entry(spglib)
 
     cls = describe_entry(
         'class',
@@ -87,10 +106,7 @@ def webpanel(result, row, key_descriptions):
         f"{spg_list_link} number determined with {spglib}."
     )
 
-    pointgroup = describe_entry(
-        'pointgroup',
-        f"Point group determined with {spglib}."
-    )
+    pointgroup = describe_pointgroup_entry(spglib)
 
     icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
                      'https://icsd.products.fiz-karlsruhe.de/')
@@ -198,6 +214,7 @@ def main() -> Result:
     """
     import numpy as np
     from ase.io import read
+    from asr.utils.symmetry import c2db_symmetry_eps, c2db_symmetry_angle
 
     atoms = read('structure.json')
     info = {}
@@ -209,9 +226,10 @@ def main() -> Result:
 
     # Get crystal symmetries
     from asr.utils.symmetry import atoms2symmetry
+
     symmetry = atoms2symmetry(atoms,
-                              tolerance=1e-3,
-                              angle_tolerance=0.1)
+                              tolerance=c2db_symmetry_eps,
+                              angle_tolerance=c2db_symmetry_angle)
     info['has_inversion_symmetry'] = symmetry.has_inversion
     dataset = symmetry.dataset
     info['spglib_dataset'] = dataset

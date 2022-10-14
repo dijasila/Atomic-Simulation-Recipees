@@ -441,6 +441,7 @@ def get_recipe_module_names():
     from pathlib import Path
     asrfolder = Path(__file__).parent.parent
     folders_with_recipes = [asrfolder / '.',
+                            asrfolder / 'c2db',
                             asrfolder / 'setup',
                             asrfolder / 'database']
     files = [filename for folder in folders_with_recipes
