@@ -20,20 +20,14 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     eref = atoms.get_potential_energy()
     ground_traj = Path('./ground.traj')
     magmoms = np.zeros(len(atoms))
-<<<<<<< HEAD
-=======
     #magmoms[0] = 2.0
     #magmoms[1] = 1.0
->>>>>>> b070f0e3c37efbdd54d8cb08ba4b918a39a9fc03
     magmoms[0:len(atoms)]=2/len(atoms)
     atoms.set_initial_magnetic_moments(magmoms=magmoms)
     if ground_traj.is_file() and ground_traj.stat().st_size:
         ground = Trajectory('ground.traj')[-1]
         eground = ground.get_potential_energy()    
-<<<<<<< HEAD
-=======
         #assert abs(eground - eref) < 2, 'DO-MOM converged to a wrong ground state!'
->>>>>>> b070f0e3c37efbdd54d8cb08ba4b918a39a9fc03
         atoms = ground
         atoms.set_initial_magnetic_moments(magmoms=magmoms)
 
@@ -48,27 +42,18 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
                 spinpol=True,
                 symmetry='off',
                 eigensolver=DirectMin(convergelumo=True),
-<<<<<<< HEAD
-=======
                 #eigensolver=DirectMin(exstopt=True, searchdir_algo={'name': 'l-bfgs-p', 'memory': 10},
                 #              linesearch_algo={'name': 'max-step'}),
->>>>>>> b070f0e3c37efbdd54d8cb08ba4b918a39a9fc03
                 mixer={'name': 'dummy'},
                 occupations={'name': 'fixed-uniform'},
                 charge=charge,
                 nbands='101%',
-<<<<<<< HEAD
-=======
                 #nbands='200%',
->>>>>>> b070f0e3c37efbdd54d8cb08ba4b918a39a9fc03
                 maxiter=5000,
                 txt='excited.txt'
                 )
 
-<<<<<<< HEAD
-    
     atoms.calc = calc
-=======
     #f_sn = []
     #ef=old_calc.get_fermi_level()
     #for spin in range(old_calc.get_number_of_spins()):
@@ -85,42 +70,30 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     #calc.set(eigensolver=DirectMin(exstopt=True, searchdir_algo={'name': 'LBFGS_P'}, linesearch_algo = {'name': 'UnitStep', 'method': 'LBFGS_P', 'maxstep': 0.25}))
     
     #calc.initialize(atoms)
->>>>>>> b070f0e3c37efbdd54d8cb08ba4b918a39a9fc03
-
     BFGS(atoms, trajectory='ground.traj', logfile='ground.log').run(fmax=0.01)
     
     write('ground.json', atoms)
     energy = atoms.get_potential_energy()
-<<<<<<< HEAD
-=======
     #assert abs(energy - eref) < 2, 'DO-MOM converged to a wrong ground state!'
->>>>>>> b070f0e3c37efbdd54d8cb08ba4b918a39a9fc03
-
     params = read_json('params.json')
     excitation=params['asr.excited@calculate']['excitation']
     if excitation == 'alpha':
         excite_and_sort(calc.wfs, 0, 0, (0, 0), 'fdpw')
     if excitation == 'beta':
         excite_and_sort(calc.wfs, 0, 0, (1, 1), 'fdpw')
-<<<<<<< HEAD
-=======
     #wfs = atoms.calc.wfs
     #for kpt in wfs.kpt_u:
     #    wfs.pt.integrate(kpt.psit_nG, kpt.P_ani, kpt.q)
     #calc.set(eigensolver=DirectMin(exstopt=True))
->>>>>>> b070f0e3c37efbdd54d8cb08ba4b918a39a9fc03
-    
     f_sn = []
     for spin in range(calc.get_number_of_spins()):
         f_n = calc.get_occupation_numbers(spin=spin)
         f_sn.append(f_n)
     
-<<<<<<< HEAD
     calc.set(eigensolver=DirectMin(exstopt=True))
     prepare_mom_calculation(calc, atoms, f_sn, use_projections=True, use_fixed_occupations=False)
     
     excited_traj = Path('./excited.traj')
-=======
     #excited_traj = Path('./excited.traj')
     #if excited_traj.is_file() and excited_traj.stat().st_size:
     #    atoms = Trajectory('excited.traj')[-1]
@@ -136,8 +109,6 @@ def calculate(excitation: str = 'alpha' or 'beta') -> ASRResult:
     excited_traj = Path('./excited.traj')
     #if excited_traj.is_file() and excited_traj.stat().st_size:
     #    atoms = Trajectory('excited.traj')[-1]
->>>>>>> b070f0e3c37efbdd54d8cb08ba4b918a39a9fc03
-
     BFGS(atoms, trajectory='excited.traj', logfile='excited.log').run(fmax=0.01)
 
     write('structure.json', atoms)
