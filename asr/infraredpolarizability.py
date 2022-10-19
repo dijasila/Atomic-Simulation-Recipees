@@ -14,7 +14,8 @@ transitions is added, but is essentially constant for frequencies much smaller
 than the direct band gap.
 """,
     articles=[
-        href("""M. N. Gjerding et al. Efficient Ab Initio Modeling of Dielectric Screening
+        href("""M. N. Gjerding et al. Efficient Ab Initio Modeling of 
+Dielectric Screening
         in 2D van der Waals Materials: Including Phonons, Substrates, and Doping,
         J. Phys. Chem. C 124 11609 (2020)""",
              'https://doi.org/10.1021/acs.jpcc.0c01635'),
