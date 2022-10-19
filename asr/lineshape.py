@@ -36,7 +36,8 @@ class Lineshape:
 
     def get_eigenvalues_and_eigenvectors(self):
         """
-        Get eigenvalues and eigenvectors  from a phonon object
+        Get eigenvalues and eigenvectors  from
+        a phonon object
         """
         atoms = self.ground
         omega_l, modes_ll = self.phonon.get_frequencies_with_eigenvectors([0, 0, 0])
