@@ -55,11 +55,12 @@ from ase.optimize.bfgs import BFGS
 
 from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
                       prepare_result)
+from gpaw import MixerDif
 
 
 class BrokenSymmetryError(Exception):
     pass
-from gpaw import MixerDif
+
 
 Uvalues = {}
 

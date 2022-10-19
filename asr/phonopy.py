@@ -90,7 +90,7 @@ def calculate(distance: float = 0.05, fsname: str = 'phonons', dftd3: bool = Fal
                                   'txt': 'phonons.txt',
                                   'charge': 0}) -> ASRResult:
     """Calculate atomic forces used for phonon spectrum."""
-    from asr.calculators import get_calculator
+    # from asr.calculators import get_calculator
     from ase.calculators.dftd3 import DFTD3
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
@@ -113,13 +113,13 @@ def calculate(distance: float = 0.05, fsname: str = 'phonons', dftd3: bool = Fal
     from asr.utils import is_magnetic
 
     if is_magnetic():
-        gsold = get_calculator()('gs.gpw', txt=None)
-        magmoms_m = gsold.get_magnetic_moments()
-        magmoms=np.zeros(len(atoms))
-        #magmoms[0:len(atoms)]=2/len(atoms)
-        magmoms[0:len(atoms)]=1
+        # gsold = get_calculator()('gs.gpw', txt=None)
+        # magmoms_m = gsold.get_magnetic_moments()
+        magmoms = np.zeros(len(atoms))
+        # magmoms[0:len(atoms)]=2/len(atoms)
+        magmoms[0:len(atoms)] = 1
         atoms.set_initial_magnetic_moments(magmoms=magmoms)
-        #atoms.set_initial_magnetic_moments(magmoms_m)
+        # atoms.set_initial_magnetic_moments(magmoms_m)
 
     nd = sum(atoms.get_pbc())
     sc = list(map(int, supercell))
@@ -137,8 +137,9 @@ def calculate(distance: float = 0.05, fsname: str = 'phonons', dftd3: bool = Fal
                                  cell=atoms.get_cell(),
                                  scaled_positions=atoms.get_scaled_positions())
     if is_magnetic():
-        #phonopy_atoms.magnetic_moments = atoms.get_initial_magnetic_moments()
-        phonopy_atoms.magnetic_moments = atoms.set_initial_magnetic_moments(magmoms=magmoms)
+        # phonopy_atoms.magnetic_moments = atoms.get_initial_magnetic_moments()
+        phonopy_atoms.magnetic_moments = atoms.set_initial_magnetic_moments(
+            magmoms=magmoms)
     phonon = Phonopy(phonopy_atoms, supercell)
 
     phonon.generate_displacements(distance=distance, is_plusminus=True)
@@ -152,7 +153,7 @@ def calculate(distance: float = 0.05, fsname: str = 'phonons', dftd3: bool = Fal
                     pbc=atoms.pbc)
 
     if is_magnetic():
-        #atoms_N.set_initial_magnetic_moments(scell.get_magnetic_moments())
+        # atoms_N.set_initial_magnetic_moments(scell.get_magnetic_moments())
         atoms_N.set_initial_magnetic_moments(magmoms)
     set_of_forces = []
 
@@ -197,7 +198,7 @@ def requires():
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (table, fig,
                                       entry_parameter_description,
-                                      describe_entry, WebPanel)
+                                      describe_entry)
 
     parameter_description = entry_parameter_description(
         row.data,
@@ -247,15 +248,15 @@ class Result(ASRResult):
     dynamic_stability_phonons: int
 
     key_descriptions = dict(
-        omega_kl= 'Phonon frequencies.',
-        minhessianeig= 'Minimum eigenvalue of Hessian [`eV/Ang^2`]',
-        eigs_kl= 'Dynamical matrix eigenvalues.',
-        q_qc= 'List of momenta consistent with supercell.',
-        phi_anv= 'Force constants.',
-        u_klav= 'Phonon modes.',
-        irr_l= 'Phonon irreducible representations.',
-        path= 'Phonon bandstructure path.',
-        dynamic_stability_phonons= 'Phonon dynamic stability (low/high)',
+        omega_kl='Phonon frequencies.',
+        minhessianeig='Minimum eigenvalue of Hessian [`eV/Ang^2`]',
+        eigs_kl='Dynamical matrix eigenvalues.',
+        q_qc='List of momenta consistent with supercell.',
+        phi_anv='Force constants.',
+        u_klav='Phonon modes.',
+        irr_l='Phonon irreducible representations.',
+        path='Phonon bandstructure path.',
+        dynamic_stability_phonons='Phonon dynamic stability (low/high)',
     )
 
     formats = {"ase_webpanel": webpanel}
@@ -263,10 +264,10 @@ class Result(ASRResult):
 
 @prepare_result
 class HessResult(ASRResult):
-    minhessianeig: float 
+    minhessianeig: float
 
     key_descriptions: typing.Dict[str, str] = dict(
-        minhessianeig= 'Minimum eigenvalue of Hessian [`eV/Ang^2`]'
+        minhessianeig='Minimum eigenvalue of Hessian [`eV/Ang^2`]'
     )
 
 
