@@ -221,7 +221,10 @@ def relax(atoms, tmp_atoms_file,
 
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
-    cellfilter = ExpCellFilter(atoms, mask=smask)
+    if fixcell:
+        cellfilter = atoms
+    else:
+        cellfilter = ExpCellFilter(atoms, mask=smask)
 
     with myBFGS(cellfilter,
                 logfile=logfile,
