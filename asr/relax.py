@@ -147,12 +147,17 @@ class SpgAtoms(Atoms):
 
 class myBFGS(BFGS):
     def log(self, forces=None, stress=None):
+        # We may have a cell filter; we want to get forces/stress
+        # but not with the filter.  So get the real atoms:
+        real_images = list(self.atoms.iterimages())
+        assert len(real_images) == 1
+        real_atoms = real_images[0]
+
         if forces is None:
-            forces = self.atoms.atoms.get_forces()
+            forces = real_atoms.get_forces()
         if stress is None:
-            atoms = self.atoms.atoms
-            stress = atoms.calc.get_property(
-                'stress', atoms, allow_calculation=False)
+            stress = real_atoms.calc.get_property(
+                'stress', real_atoms, allow_calculation=False)
             if stress is None:
                 # This is a lie, but we don't want to fix the
                 # subsequent code.
