@@ -123,7 +123,8 @@ class Result(ASRResult):
         "dE_zx":
         "Magnetic anisotropy energy between x and z axis [meV/unit cell]",
         "dE_zy":
-        "Magnetic anisotropy energy between y and z axis [meV/unit cell]"
+        "Magnetic anisotropy energy between y and z axis [meV/unit cell]",
+        "magmom": "Magnetic moment [μ<sub>B</sub>]"
     }
 
     formats = {"ase_webpanel": webpanel}
