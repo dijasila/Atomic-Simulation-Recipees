@@ -22,7 +22,7 @@ def arxiv(identifier):
 
 def doi(identifier):
     from asr.database.browser import href
-    return href('doi:{identifier}', 'https://doi.org/{identifier}')
+    return href(f'doi:{identifier}', f'https://doi.org/{identifier}')
 
 
 def webpanel(result, row, key_descriptions):
