@@ -88,7 +88,7 @@ Ref: {link}
         'Lyngby22_LDP': lyngby22_description_LDP,
         'Lyngby22_training': lyngby22_description_training,
         'original03-18': original03_18_description,
-        'pushed02-22': pushed02_22_description,
+        'Manti22_pushed': pushed02_22_description,
     }
 
     label = result.get('label')
