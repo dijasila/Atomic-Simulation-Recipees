@@ -13,6 +13,7 @@ from ase.phonons import Phonons
 from ase.dft.kpoints import BandPath
 from ase.parallel import paropen
 
+from asr.utils.symmetry import c2db_symmetry_eps
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
     table, fig, describe_entry, dl, make_panel_description)
@@ -72,14 +73,7 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
         params['txt'] = fd
         calc = get_calculator()(**params)
 
-        nd = sum(atoms.get_pbc())
-        if nd == 3:
-            supercell = (n, n, n)
-        elif nd == 2:
-            supercell = (n, n, 1)
-        elif nd == 1:
-            supercell = (n, 1, 1)
-
+        supercell = [n if periodic else 1 for periodic in atoms.pbc]
         p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
         if world.rank == 0:
             p.cache.strip_empties()
@@ -140,7 +134,7 @@ class Result(ASRResult):
     interp_freqs_kl: typing.List[typing.List[float]]
 
     key_descriptions = {
-        "minhessianeig": "KVP: Minimum eigenvalue of Hessian [`eV/Å²`]",
+        "minhessianeig": "Minimum eigenvalue of Hessian [eV/Å²]",
         "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
         "q_qc": "List of momenta consistent with supercell.",
         "omega_kl": "Phonon frequencies.",
@@ -162,13 +156,7 @@ def main(mingo: bool = True) -> Result:
     calculateresult = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
     n = calculateresult.metadata.params['n']
-    nd = sum(atoms.get_pbc())
-    if nd == 3:
-        supercell = (n, n, n)
-    elif nd == 2:
-        supercell = (n, n, 1)
-    elif nd == 1:
-        supercell = (n, 1, 1)
+    supercell = [n if periodic else 1 for periodic in atoms.pbc]
     p = Phonons(atoms=atoms, supercell=supercell)
     p.read(symmetrize=0)
 
@@ -215,7 +203,8 @@ def main(mingo: bool = True) -> Result:
                'dynamic_stability_phonons': dynamic_stability}
 
     # Next calculate an approximate phonon band structure
-    path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc)
+    path = atoms.cell.bandpath(npoints=100, pbc=atoms.pbc,
+                               eps=c2db_symmetry_eps)
     freqs_kl = p.band_structure(path.kpts, modes=False, born=False,
                                 verbose=False)
     results['interp_freqs_kl'] = freqs_kl

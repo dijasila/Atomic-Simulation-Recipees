@@ -143,6 +143,9 @@ def webpanel(result, row, key_descriptions):
 
 @prepare_result
 class Result(ASRResult):
+    kpts: np.ndarray
+    deformation_potentials_soc: object
+    deformation_potentials_nosoc: object
 
     deformation_potentials_nosoc: typing.Dict[str, float]
     deformation_potentials_soc: typing.Dict[str, float]
@@ -160,6 +163,11 @@ class Result(ASRResult):
     }
 
     formats = {"ase_webpanel": webpanel}
+
+    key_descriptions = dict(
+        kpts='K-points',
+        deformation_potentials_soc='Deformation potentials including SOC.',
+        deformation_potentials_nosoc='Deformation potentials without SOC.')
 
 
 soclabels = {'deformation_potentials_nosoc': False,

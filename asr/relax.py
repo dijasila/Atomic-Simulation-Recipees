@@ -52,6 +52,7 @@ from ase import Atoms
 from ase.io import Trajectory, write
 from ase.optimize.bfgs import BFGS
 from ase.utils import IOContext
+from ase.calculators.calculator import PropertyNotImplementedError
 
 from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
                       prepare_result)
@@ -77,7 +78,10 @@ for key, value in UTM.items():
 def is_relax_done(atoms, fmax=0.01, smax=0.002,
                   smask=np.array([1, 1, 1, 1, 1, 1])):
     f = atoms.get_forces()
-    s = atoms.get_stress() * smask
+    if any(smask):
+        s = atoms.get_stress() * smask
+    else:
+        s = np.zeros(6)
     done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
     return done
@@ -142,12 +146,23 @@ class SpgAtoms(Atoms):
 
 
 class myBFGS(BFGS):
-
     def log(self, forces=None, stress=None):
+        # We may have a cell filter; we want to get forces/stress
+        # but not with the filter.  So get the real atoms:
+        real_images = list(self.atoms.iterimages())
+        assert len(real_images) == 1
+        real_atoms = real_images[0]
+
         if forces is None:
-            forces = self.atoms.atoms.get_forces()
+            forces = real_atoms.get_forces()
         if stress is None:
-            stress = self.atoms.atoms.get_stress()
+            stress = real_atoms.calc.get_property(
+                'stress', real_atoms, allow_calculation=False)
+            if stress is None:
+                # This is a lie, but we don't want to fix the
+                # subsequent code.
+                stress = np.zeros(6)
+
         fmax = sqrt((forces**2).sum(axis=1).max())
         smax = abs(stress).max()
         e = self.atoms.get_potential_energy(
@@ -211,7 +226,10 @@ def relax(atoms, tmp_atoms_file,
 
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
-    cellfilter = ExpCellFilter(atoms, mask=smask)
+    if fixcell:
+        cellfilter = atoms
+    else:
+        cellfilter = ExpCellFilter(atoms, mask=smask)
 
     with myBFGS(cellfilter,
                 logfile=logfile,
@@ -455,6 +473,15 @@ def main(atoms: Atoms,
         edft = calc.get_potential_energy(atoms)
         etot = atoms.get_potential_energy()
 
+        # If stress is provided by the calculator (e.g. PW mode) and we
+        # didn't use stress, then nevertheless we want to calculate it because
+        # the stiffness recipe wants it.  Also, all the existing results
+        # have stress.
+        try:
+            atoms.get_stress()
+        except PropertyNotImplementedError:
+            pass
+
         if calculatorname == 'gpaw':
             # GPAW will have calc.close() soon.
             # Until then, we abuse __del__() which happens to
@@ -466,13 +493,9 @@ def main(atoms: Atoms,
             if hasattr(calc, '__del__'):
                 calc.__del__()
 
-    cellpar = atoms.cell.cellpar()
-
-    # XXX
-    # metadata = calc.get_metadata()
-
-    # Save atomic structure
     write('structure.json', atoms)
+
+    cellpar = atoms.cell.cellpar()
 
     with Trajectory(tmp_atoms_file, 'r') as trajectory:
         images = list(trajectory)

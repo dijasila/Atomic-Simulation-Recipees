@@ -11,15 +11,15 @@ def webpanel(result, row, key_description):
     baselink = 'https://cmrdb.fysik.dtu.dk/qpod/row/'
 
     # initialize table for charged and neutral systems
-    charged_table = table(row, 'Charged systems', [])
-    neutral_table = table(row, 'Within the same material', [])
+    charged_table = table(row, 'Other charge states', [])
+    neutral_table = table(row, 'Other defects', [])
     # fill in values for the two tables from the result object
     charged_table = extend_table(charged_table, result, 'charged', baselink)
     neutral_table = extend_table(neutral_table, result, 'neutral', baselink)
     neutral_table = extend_table(neutral_table, result, 'pristine', baselink)
 
     # define webpanel
-    panel = WebPanel('Related materials',
+    panel = WebPanel('Other defects',
                      columns=[[charged_table], [neutral_table]],
                      sort=45)
 
@@ -37,8 +37,12 @@ def extend_table(table, result, resulttype, baselink):
         raise RuntimeError('did not find {resulttype} results!')
 
     for element in tmpresult:
+        if element[1].startswith('V'):
+            linkstring = element[1].replace('V', 'v', 1)
+        else:
+            linkstring = element[1]
         table['rows'].extend(
-            [[f'{element[1]}',
+            [[f'{linkstring}',
               f'<a href="{baselink}{element[0]}">link</a>']])
 
     return table
@@ -61,8 +65,8 @@ class Result(ASRResult):
 
 
 @command(module='asr.defectlinks',
-         requires=['structure.json'],
-         dependencies=['asr.relax'],
+         # requires=['structure.json'],
+         # dependencies=['asr.relax'],
          resources='1:1h',
          returns=Result)
 def main() -> Result:
@@ -95,7 +99,7 @@ def main() -> Result:
     pristine = list(p.glob('./../../defects.pristine_sc*'))[0]
     if (Path(pristine / 'structure.json').is_file()):
         uid = get_uid_from_fingerprint(pristine)
-        pristinelinks.append((uid, f"pristine material"))
+        pristinelinks.append((uid, 'pristine material'))
 
     return Result.fromdata(
         chargedlinks=chargedlinks,
@@ -103,7 +107,7 @@ def main() -> Result:
         pristinelinks=pristinelinks)
 
 
-def get_list_of_links(path, charge):
+def get_list_of_links(path):
     links = []
     structurefile = path / 'structure.json'
     charge = get_charge_from_folder(path)
@@ -127,11 +131,12 @@ def get_uid_from_fingerprint(path):
 
 
 def get_defectstring_from_defectinfo(defectinfo, charge):
-    defecttype = defectinfo.defecttype
-    defectkind = defectinfo.defectkind
-    if defecttype == 'v':
-        defecttype = 'V'
-    defectstring = f"{defecttype}<sub>{defectkind}</sub> (charge {charge})"
+    defectstring = ''
+    for name in defectinfo.names:
+        def_type, def_kind = defectinfo.get_defect_type_and_kind_from_defectname(
+            name)
+        defectstring += f"{def_type}<sub>{def_kind}</sub>"
+    defectstring += f" (charge {charge})"
 
     return defectstring
 
