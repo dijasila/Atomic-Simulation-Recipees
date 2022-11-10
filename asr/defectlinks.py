@@ -41,8 +41,12 @@ def extend_table(table, result, resulttype, baselink):
         raise RuntimeError('did not find {resulttype} results!')
 
     for element in tmpresult:
+        if element[1].startswith('V'):
+            linkstring = element[1].replace('V', 'v', 1)
+        else:
+            linkstring = element[1]
         table['rows'].extend(
-            [[f'{element[1]}',
+            [[f'{linkstring}',
               f'<a href="{baselink}{element[0]}">link</a>']])
 
     return table

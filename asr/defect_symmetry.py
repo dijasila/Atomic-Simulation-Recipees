@@ -12,6 +12,10 @@ from ase.io import read
 # TODO: make zrange an input
 # TODO: make shift an input
 
+reference = """\
+S. Kaappa et al. Point group symmetry analysis of the electronic structure
+of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)"""
+
 
 panel_description = make_panel_description(
     """
@@ -19,9 +23,7 @@ Analysis of defect states localized inside the pristine bandgap (energetics and
  symmetry).
 """,
     articles=[
-        href("""S. Kaappa et al. Point group symmetry analysis of the electronic structure
-of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)""",
-             'https://doi.org/10.1021/acs.jpca.8b07923'),
+        href(reference, 'https://doi.org/10.1021/acs.jpca.8b07923'),
     ],
 )
 
@@ -204,7 +206,6 @@ def webpanel(result, row, key_descriptions):
 
     state_tables, transition_table = get_symmetry_tables(
         result.symmetries, vbm, cbm, row, style=style)
-    print(state_tables)
     panel = WebPanel(description,
                      columns=[[state_tables[0],
                                fig('ks_gap.png')],
@@ -421,7 +422,8 @@ def average_centers(centers):
 def get_defect_center_from_wf(wf, cell, Ngrid, shift, dim):
     """Extract defect center from individual wavefunction cubefile."""
     if dim == 2:
-        zrange = range(int(Ngrid[2] / 2. - 5), int(Ngrid[2] / 2. + 5))
+        midpoint = Ngrid[2] // 2
+        zrange = range(midpoint - 5, midpoint + 5)
         print(f'WARNING: {dim}-dimensional structure read in. For the correct '
               'extraction of the defect center, make sure that the structure '
               'is centered along the z-direction of the cell.')
@@ -429,8 +431,9 @@ def get_defect_center_from_wf(wf, cell, Ngrid, shift, dim):
         zrange = range(Ngrid[2])
     wf_array = get_gridpoints(cell=cell, Ngrid=Ngrid, shift=shift, zrange=zrange)
     density = np.square(wf)
-    center_shifted = get_center_of_mass(wf_array, density, zrange)
-    center = shift_positions(center_shifted, shift, cell, invert=True)
+    center = get_center_of_mass(wf_array, density, zrange)
+    center -= shift * cell.sum(axis=0)
+    # center = shift_positions(center_shifted, shift, cell, invert=True)
 
     return center
 
@@ -438,7 +441,6 @@ def get_defect_center_from_wf(wf, cell, Ngrid, shift, dim):
 def get_total_mass(m, zrange):
     """Calculate total mass of an array containing weights."""
     mflat = m[:, :, zrange].flatten()
-    # mflat = m[:, :, 60].flatten()
     return np.sum(mflat)
 
 
@@ -449,8 +451,6 @@ def get_center_of_mass(r, m, zrange):
     for i in range(3):
         rflat = r[:, :, zrange, i].flatten()
         mflat = m[:, :, zrange].flatten()
-        # rflat = r[:, :, 60, i].flatten()
-        # mflat = m[:, :, 60].flatten()
         smd = 0
         for j in range(len(mflat)):
             smd += mflat[j] * rflat[j]
@@ -482,10 +482,11 @@ def get_gridpoints(cell, Ngrid, shift, zrange):
     grid_indices = grid_generator(Ngrid, zrange)
     for _ in range(max_iter_grid):
         grid_tuple = next(grid_indices)
-        positions = [grid_tuple[0] * lengths[0][i]
-                     + grid_tuple[1] * lengths[1][i]
-                     + grid_tuple[2] * lengths[2][i] for i in range(3)]
-        shifts = shift_positions(positions, shift, cell)
+        shifts = [grid_tuple[0] * lengths[0][i]
+                  + grid_tuple[1] * lengths[1][i]
+                  + grid_tuple[2] * lengths[2][i] for i in range(3)]
+        shifts += shift * cell.sum(axis=0)
+        # shifts = shift_positions(positions, shift, cell)
         wrap = wrap_positions([shifts],
                               cell)
         if wrap[0][0] != shifts[0] or wrap[0][1] != shifts[1]:
@@ -496,17 +497,6 @@ def get_gridpoints(cell, Ngrid, shift, zrange):
             array[grid_tuple[0], grid_tuple[1], grid_tuple[2], i] = newpos[i]
 
     return array
-
-
-def shift_positions(pos, shift, cell, invert=False):
-    """Shift position vector by shift vector in termns of the cell."""
-    if invert:
-        sgn = -1
-    else:
-        sgn = 1
-    newpos = [pos[i] + sgn * shift[i] * np.sum(cell[:, i]) for i in range(3)]
-
-    return newpos
 
 
 def get_spin_and_band(wf_file):
@@ -583,6 +573,7 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
         structure, unrelaxed, primitive, pristine, translation, delta=0)
     for delta in [0.1, 0.3]:
+        # for cutoff in [0.01, 0.03, 0.1]:
         for cutoff in np.arange(0.1, 1.2, 0.5):
             rel_tmp = rel_struc.copy()
             ref_tmp = ref_struc.copy()
@@ -694,9 +685,13 @@ def apply_shift(atoms, delta=0):
     newatoms = atoms.copy()
     positions = newatoms.get_positions()
     cell = newatoms.cell
-    # positions += -2.0 * cell[0] - 1.0 * cell[1]
     positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
     newatoms.set_positions(positions)
+    # scaled_delta = delta / np.mean(atoms.cell.lengths()[:2])
+    # newatoms = atoms.copy()
+    # spos = newatoms.get_scaled_positions()
+    # spos[:2] += 0.5 + scaled_delta
+    # newatoms.set_scaled_positions(spos)
 
     return newatoms
 
@@ -767,7 +762,7 @@ class WFCubeFile:
 
 
 class DefectInfo:
-    """Class containing all information about a specific single defect."""
+    """Class containing all information about a specific defect."""
 
     def __init__(self,
                  defectpath=None,
@@ -798,7 +793,7 @@ class DefectInfo:
             defecttoken = dirname.split('.')[2:]
         elif defecttoken is not None:
             defecttoken = defecttoken.split('.')
-        if len(defecttoken) > 2:
+        if len(defecttoken) >= 2:
             defects = defecttoken[:-1]
             specs_str = defecttoken[-1].split('-')
             specs = [int(spec) for spec in specs_str]

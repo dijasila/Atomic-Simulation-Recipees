@@ -51,13 +51,10 @@ def test_get_supercell_shape(asr_tmpdir):
 @pytest.mark.ci
 def test_number_of_vacancies(tokens):
     tokenlist = tokens.split('.')
-    counter = 0
-    for token in tokenlist:
-        if token.startswith('v'):
-            counter += 1
+    nvacancies = sum(token.startswith('v') for token in tokenlist)
 
     defectinfo = DefectInfo(defecttoken=tokens)
-    assert counter == defectinfo.number_of_vacancies
+    assert nvacancies == defectinfo.number_of_vacancies
 
 
 @pytest.mark.parametrize('Nvac', range(5))
