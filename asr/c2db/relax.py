@@ -78,7 +78,10 @@ for key, value in UTM.items():
 def is_relax_done(atoms, fmax=0.01, smax=0.002,
                   smask=np.array([1, 1, 1, 1, 1, 1])):
     f = atoms.get_forces()
-    s = atoms.get_stress() * smask
+    if any(smask):
+        s = atoms.get_stress() * smask
+    else:
+        s = np.zeros(6)
     done = (f**2).sum(1).max() <= fmax**2 and abs(s).max() <= smax
 
     return done
@@ -143,12 +146,18 @@ class SpgAtoms(Atoms):
 
 
 class myBFGS(BFGS):
-
     def log(self, forces=None, stress=None):
         if forces is None:
             forces = self.atoms.atoms.get_forces()
         if stress is None:
-            stress = self.atoms.atoms.get_stress()
+            atoms = self.atoms.atoms
+            stress = atoms.calc.get_property(
+                'stress', atoms, allow_calculation=False)
+            if stress is None:
+                # This is a lie, but we don't want to fix the
+                # subsequent code.
+                stress = np.zeros(6)
+
         fmax = sqrt((forces**2).sum(axis=1).max())
         smax = abs(stress).max()
         e = self.atoms.get_potential_energy(

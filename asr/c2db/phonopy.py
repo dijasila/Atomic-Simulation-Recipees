@@ -71,6 +71,19 @@ def distance_to_sc(atoms, dist_max):
     return supercell
 
 
+def sc_to_supercell(atoms, sc, dist_max):
+    sc = np.array(sc)
+
+    if not sc.any():
+        sc = np.array(distance_to_sc(atoms, dist_max))
+
+    assert all(sc >= 1)
+    assert sc.dtype == int
+    assert all(sc[~atoms.pbc] == 1)
+
+    return np.diag(sc)
+
+
 @command(
     "asr.c2db.phonopy",
 )
@@ -120,16 +133,7 @@ def calculate(
             magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    sc = np.array(sc)
-
-    if not sc.any():
-        sc = np.array(distance_to_sc(atoms, dist_max))
-
-    assert all(sc >= 1)
-    assert sc.dtype == int
-    assert all(sc[~atoms.pbc] == 1)
-
-    supercell = np.diag(sc)
+    supercell = sc_to_supercell(atoms, sc, dist_max)
 
     phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
                                  cell=atoms.get_cell(),
@@ -290,17 +294,7 @@ def main(
     dist_max = params["dist_max"]
     fsname = params["fsname"]
 
-    nd = sum(atoms.get_pbc())
-
-    sc = list(map(int, sc))
-    if np.array(sc).any() == 0:
-        sc = distance_to_sc(nd, atoms, dist_max)
-    if nd == 3:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
-    elif nd == 2:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]]
-    elif nd == 1:
-        supercell = [[sc[0], 0, 0], [0, 1, 0], [0, 0, 1]]
+    supercell = sc_to_supercell(atoms, sc, dist_max)
 
     phonopy_atoms = PhonopyAtoms(
         symbols=atoms.symbols,
