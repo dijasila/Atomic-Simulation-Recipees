@@ -10,8 +10,8 @@ from asr.defect_symmetry import DefectInfo
 from pathlib import Path
 
 
-@pytest.mark.xfail(reason='TODO')
-@pytest.mark.parametrize('defect', ['v_S', 'v_Mo', 'S_Mo', 'Mo_S'])
+tokenlist = ['v_S', 'S_Mo', 'S_Mo.Mo_S.1-2', 'v_B.v_X.3-6']
+@pytest.mark.parametrize('defect', tokenlist)
 @pytest.mark.parametrize('charge', [-1, 0, 1])
 @pytest.mark.ci
 def test_get_list_of_links(asr_tmpdir, defect, charge):
@@ -28,13 +28,9 @@ def test_get_list_of_links(asr_tmpdir, defect, charge):
         write(refpath / 'structure.json', atoms)
     systempath = Path(defectpath / f'charge_{charge}')
     write(systempath / 'structure.json', atoms)
-    linklist = get_list_of_links(systempath, charge)
+    linklist = get_list_of_links(systempath)
     for link in linklist:
-        if defect.startswith('v'):
-            refstring = 'V'
-        else:
-            refstring = defect
-        assert link[1].startswith(refstring.split('_')[0])
+        assert link[1].startswith(defect.split('_')[0])
         assert f'charge {charge}' in link[1]
 
 
@@ -48,24 +44,19 @@ def test_get_uid_from_fingerprint(asr_tmpdir):
     assert uid.startswith(atoms.get_chemical_formula())
 
 
-@pytest.mark.parametrize('defect', ['v_S', 'v_Mo', 'S_Mo', 'Mo_S'])
+@pytest.mark.parametrize('defect', tokenlist)
 @pytest.mark.parametrize('charge', [-1, 0, 1])
 @pytest.mark.ci
 def test_get_defectstring_from_defectinfo(defect, charge):
-    defecttuple = defect.split('_')
-    defectinfo = DefectInfo(defecttype=defecttuple[0],
-                            defectkind=defecttuple[1])
+    defectinfo = DefectInfo(defecttoken=defect)
 
     defectstring = get_defectstring_from_defectinfo(defectinfo, charge)
-    if defectstring.startswith('v'):
-        refstring = 'V'
-    else:
-        refstring = defectstring
+    refstring = defectstring
     assert defectstring.startswith(refstring.split('_')[0])
     assert f'charge {charge}' in defectstring
 
 
-@pytest.mark.parametrize('defect', ['v_S', 'v_Mo', 'S_Mo', 'Mo_S'])
+@pytest.mark.parametrize('defect', tokenlist)
 @pytest.mark.ci
 def test_get_hostformula_from_defectpath(defect):
     basepath = Path('MoS2-XXX-X-X-X/')

@@ -9,6 +9,10 @@ from pathlib import Path
 from ase.io import read
 
 
+# TODO: make zrange an input
+# TODO: make shift an input
+
+
 panel_description = make_panel_description(
     """
 Analysis of defect states localized inside the pristine bandgap (energetics and
@@ -87,13 +91,13 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         if style == 'symmetry':
             delete = [2]
             columnlabels = ['Symmetry',
-                            'Spin',
+                            # 'Spin',
                             'Localization ratio',
                             'Energy']
         elif style == 'state':
             delete = [0, 2, 3]
-            columnlabels = ['Spin',
-                            'Energy']
+            columnlabels = [  # 'Spin',
+                'Energy']
 
         N_homo = 0
         N_lumo = 0
@@ -120,7 +124,8 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         E_hls.append(E_hl)
 
         state_array = np.delete(state_array, delete, 1)
-        headerlabels = ['Orbital', *columnlabels]
+        headerlabels = [f'Orbitals in spin channel {spin}',
+                        *columnlabels]
 
         rows = []
         state_table = {'type': 'table',
@@ -128,7 +133,7 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
         for i in range(len(state_array)):
             if style == 'symmetry':
                 rows.append((rowlabels[i],
-                             state_array[i, 0],
+                             # state_array[i, 0],
                              state_array[i, 1],
                              describe_entry(state_array[i, 2],
                                             'The localization ratio is defined as the '
@@ -138,7 +143,7 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
                              f'{state_array[i, 3]} eV'))
             elif style == 'state':
                 rows.append((rowlabels[i],
-                             state_array[i, 0],
+                             # state_array[i, 0],
                              f'{state_array[i, 1]} eV'))
 
         state_table['rows'] = rows
@@ -199,6 +204,7 @@ def webpanel(result, row, key_descriptions):
 
     state_tables, transition_table = get_symmetry_tables(
         result.symmetries, vbm, cbm, row, style=style)
+    print(state_tables)
     panel = WebPanel(description,
                      columns=[[state_tables[0],
                                fig('ks_gap.png')],
@@ -347,15 +353,11 @@ def main(primitivefile: str = 'primitive.json',
 
     # return point group of the defect structure
     point_group = get_spg_symmetry(mapped_structure)
-
-    # evaluate coordinates of defect in the supercell
-    defecttype, defectpos = defectinfo.get_defect_type_and_kind()
-    defectname = defectinfo.get_defect_name()
-    center = return_defect_coordinates(structure, primitive, pristine, defectinfo)
-    print(f'INFO: defect position: {center}, structural symmetry: {point_group}')
+    print(f'INFO: point group of the defect: {point_group}')
 
     # loop over cubefiles to save symmetry results
     symmetry_results = []
+    centers = []
     for cubefilepath in cubefilepaths:
         cubefilename = str(cubefilepath)
         wfcubefile = WFCubeFile.fromfilename(cubefilename)
@@ -366,8 +368,10 @@ def main(primitivefile: str = 'primitive.json',
         # evaluate defect center
         Ngrid = calc.get_number_of_grid_points()
         shift = [0.5, 0.5, 0]
+        dim = sum(atoms.pbc)
         center = get_defect_center_from_wf(wf=wf, cell=atoms.cell, Ngrid=Ngrid,
-                                           shift=shift)
+                                           shift=shift, dim=dim)
+        centers.append(center)
         # extract WF results and energies
         res_wf = find_wf_result(wf_result, wfcubefile.band, wfcubefile.spin)
         energy = res_wf['energy']
@@ -400,20 +404,32 @@ def main(primitivefile: str = 'primitive.json',
                                                   energy=energy)
         symmetry_results.append(symmetry_result)
 
+    defect_center = average_centers(centers)
+
     return Result.fromdata(
         defect_pointgroup=point_group,
-        defect_center=center,
-        defect_name=defectname,
+        defect_center=defect_center,
+        defect_name=defectinfo.defecttoken,
         symmetries=symmetry_results,
         pristine=pris_result)
 
 
-def get_defect_center_from_wf(wf, cell, Ngrid, shift):
+def average_centers(centers):
+    return np.average(centers, axis=0)
+
+
+def get_defect_center_from_wf(wf, cell, Ngrid, shift, dim):
     """Extract defect center from individual wavefunction cubefile."""
-    zrange = range(Ngrid[2])# range(int(Ngrid[2] / 2. - 2), int(Ngrid[2] / 2. + 2))
+    if dim == 2:
+        zrange = range(int(Ngrid[2] / 2. - 5), int(Ngrid[2] / 2. + 5))
+        print(f'WARNING: {dim}-dimensional structure read in. For the correct '
+              'extraction of the defect center, make sure that the structure '
+              'is centered along the z-direction of the cell.')
+    else:
+        zrange = range(Ngrid[2])
     wf_array = get_gridpoints(cell=cell, Ngrid=Ngrid, shift=shift, zrange=zrange)
-    center_shifted = get_center_of_mass(wf_array, wf, zrange)
-    print(center_shifted)
+    density = np.square(wf)
+    center_shifted = get_center_of_mass(wf_array, density, zrange)
     center = shift_positions(center_shifted, shift, cell, invert=True)
 
     return center
@@ -421,8 +437,8 @@ def get_defect_center_from_wf(wf, cell, Ngrid, shift):
 
 def get_total_mass(m, zrange):
     """Calculate total mass of an array containing weights."""
-    # mflat = m[:, :, zrange].flatten()
-    mflat = m[:, :, :].flatten()
+    mflat = m[:, :, zrange].flatten()
+    # mflat = m[:, :, 60].flatten()
     return np.sum(mflat)
 
 
@@ -431,10 +447,10 @@ def get_center_of_mass(r, m, zrange):
     M = get_total_mass(m, zrange)
     coords = [0, 0, 0]
     for i in range(3):
-        # rflat = r[:, :, zrange, i].flatten()
-        # mflat = m[:, :, zrange].flatten()
-        rflat = r[:, :, :, i].flatten()
-        mflat = m[:, :, :].flatten()
+        rflat = r[:, :, zrange, i].flatten()
+        mflat = m[:, :, zrange].flatten()
+        # rflat = r[:, :, 60, i].flatten()
+        # mflat = m[:, :, 60].flatten()
         smd = 0
         for j in range(len(mflat)):
             smd += mflat[j] * rflat[j]
@@ -447,9 +463,7 @@ def grid_generator(Ngrid, zrange):
     """Yield generator looping over x-, y-, and z-grid."""
     for x in range(Ngrid[0]):
         for y in range(Ngrid[1]):
-            # for z in zrange:
-            for z in range(Ngrid[2]):
-            # for z in [60]:
+            for z in zrange:
                 yield (x, y, z)
 
 
@@ -464,13 +478,10 @@ def get_gridpoints(cell, Ngrid, shift, zrange):
     array = np.zeros(fullgrid)
 
     lengths = [cell[i] / Ngrid[i] for i in range(3)]
-    # max_iter_grid = np.prod(Ngrid[:2])
-    max_iter_grid = np.prod(Ngrid)
+    max_iter_grid = np.prod(Ngrid[:2]) * len(zrange)
     grid_indices = grid_generator(Ngrid, zrange)
-    # max_iter_grid = np.prod(Ngrid[:2]) * len(zrange)
     for _ in range(max_iter_grid):
         grid_tuple = next(grid_indices)
-        print(grid_tuple)
         positions = [grid_tuple[0] * lengths[0][i]
                      + grid_tuple[1] * lengths[1][i]
                      + grid_tuple[2] * lengths[2][i] for i in range(3)]
@@ -567,8 +578,8 @@ def find_wf_result(wf_result, state, spin):
 
 def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     """Return centered and mapped structure."""
-    vac = defectinfo.is_vacancy
-    translation = return_defect_coordinates(structure, primitive, pristine, defectinfo)
+    Nvac = defectinfo.number_of_vacancies
+    translation = return_defect_coordinates(pristine, defectinfo)
     rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
         structure, unrelaxed, primitive, pristine, translation, delta=0)
     for delta in [0.1, 0.3]:
@@ -586,7 +597,7 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
                 indexlist = indexlist_cut_atoms(ref_tmp, threshold)
                 del ref_tmp[indexlist]
                 del rel_tmp[indexlist]
-                if conserved_atoms(ref_tmp, primitive, N, vac):
+                if conserved_atoms(ref_tmp, primitive, N, Nvac):
                     print(f'Parameters: delta {delta}, '
                           f'cutoff {cutoff}, threshold {threshold}')
                     return rel_tmp
@@ -601,14 +612,9 @@ def get_spg_symmetry(structure, symprec=0.1):
     return spg_sym.split('^')[0]
 
 
-def conserved_atoms(ref_struc, primitive, N, is_vacancy):
+def conserved_atoms(ref_struc, primitive, N, Nvac):
     """Return whether number of atoms is correct after the mapping or not."""
-    if is_vacancy:
-        removed = 1
-    else:
-        removed = 0
-
-    if len(ref_struc) == (N * N * len(primitive) - removed):
+    if len(ref_struc) == (N * N * len(primitive) - Nvac):
         print('INFO: number of atoms correct after mapping.')
         return True
     else:
@@ -765,57 +771,66 @@ class DefectInfo:
 
     def __init__(self,
                  defectpath=None,
-                 defecttype=None,
-                 defectkind=None,
-                 defectname=None):
-        if defectpath is None:
-            if defectname is None:
-                assert (defecttype is not None and defectkind is not None), (
-                    'DefectInfo class either needs a defect path (from asr.setup.'
-                    'defects) or a defecttype and defectposition passed to it!')
-                self.defecttype = defecttype
-                self.defectkind = defectkind
-            else:
-                assert len(defectname.split('_')) == 2, (
-                    'Defect name has to be of the following structure: '
-                    '"<defecttype>_<defectkind>"')
-                self.defecttype = defectname.split('_')[0]
-                self.defectkind = defectname.split('_')[1]
-        else:
-            self.defecttype, self.defectkind = self._get_defect_type_and_kind_from_path(
-                defectpath)
-        self.defectpath = defectpath
-        self.defectname = f'{self.defecttype}_{self.defectkind}'
+                 defecttoken=None):
+        assert not (defectpath is None and defecttoken is None), (
+            'either defectpath or defecttoken has to be given as input to the '
+            'DefectBuilder class!')
+        assert not (defectpath is not None and defecttoken is not None), (
+            'please give either defectpath or defecttoken as an input, not both!')
+        if defectpath is not None:
+            self.names, self.specs = self._defects_from_path_or_token(
+                defectpath=defectpath)
+            self.defecttoken = self._defect_token_from_path(defectpath)
+        elif defecttoken is not None:
+            self.names, self.specs = self._defects_from_path_or_token(
+                defecttoken=defecttoken)
 
-    def _get_defect_type_and_kind_from_path(self, defectpath):
-        """Return defecttype, and kind."""
+    def _defect_token_from_path(self, defectpath):
         complete_defectpath = Path(defectpath.absolute())
         dirname = complete_defectpath.parent.name
-        defect_tokens = dirname.split('_')
-        defecttype = defect_tokens[-2].split('.')[-1]
-        defectkind = defect_tokens[-1]
+        return ".".join(dirname.split('.')[2:])
 
-        return defecttype, defectkind
+    def _defects_from_path_or_token(self, defectpath=None, defecttoken=None):
+        """Return defecttype, and kind."""
+        if defectpath is not None:
+            complete_defectpath = Path(defectpath.absolute())
+            dirname = complete_defectpath.parent.name
+            defecttoken = dirname.split('.')[2:]
+        elif defecttoken is not None:
+            defecttoken = defecttoken.split('.')
+        if len(defecttoken) > 2:
+            defects = defecttoken[:-1]
+            specs_str = defecttoken[-1].split('-')
+            specs = [int(spec) for spec in specs_str]
+        else:
+            defects = defecttoken
+            specs = [0]
 
-    def get_defect_type_and_kind(self):
-        deftype = self.defecttype
-        defkind = self.defectkind
+        return defects, specs
 
-        return deftype, defkind
+    def get_defect_type_and_kind_from_defectname(self, defectname):
+        tokens = defectname.split('_')
+        return tokens[0], tokens[1]
 
-    def get_defect_name(self):
-        return self.defectname
+    def is_vacancy(self, defectname):
+        return defectname.split('_')[0] == 'v'
+
+    def is_interstitial(self, defectname):
+        return defectname.split('_')[0] == 'i'
 
     @property
-    def is_vacancy(self):
-        return self.defecttype == 'v'
+    def number_of_vacancies(self):
+        Nvac = 0
+        for name in self.names:
+            if self.is_vacancy(name):
+                Nvac += 1
+
+        return Nvac
 
 
-def return_defect_coordinates(structure, primitive, pristine, defectinfo):
+def return_defect_coordinates(pristine, defectinfo):
     """Return the coordinates of the present defect."""
-    from asr.get_wfs import return_defect_index
-
-    defect_index, _ = return_defect_index(defectinfo, primitive, structure)
+    defect_index = defectinfo.specs[0]
     pos = pristine.get_positions()[defect_index]
 
     return pos
