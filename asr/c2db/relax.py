@@ -49,6 +49,7 @@ from ase.io import Trajectory
 from ase import Atoms
 from ase.optimize.bfgs import BFGS
 from ase.utils import IOContext
+from ase.calculators.calculator import PropertyNotImplementedError
 
 import asr
 from asr.core import (
@@ -147,12 +148,17 @@ class SpgAtoms(Atoms):
 
 class myBFGS(BFGS):
     def log(self, forces=None, stress=None):
+        # We may have a cell filter; we want to get forces/stress
+        # but not with the filter.  So get the real atoms:
+        real_images = list(self.atoms.iterimages())
+        assert len(real_images) == 1
+        real_atoms = real_images[0]
+
         if forces is None:
-            forces = self.atoms.atoms.get_forces()
+            forces = real_atoms.get_forces()
         if stress is None:
-            atoms = self.atoms.atoms
-            stress = atoms.calc.get_property(
-                'stress', atoms, allow_calculation=False)
+            stress = real_atoms.calc.get_property(
+                'stress', real_atoms, allow_calculation=False)
             if stress is None:
                 # This is a lie, but we don't want to fix the
                 # subsequent code.
@@ -221,7 +227,10 @@ def relax(atoms, tmp_atoms_file,
 
     # We are fixing atom=0 to reduce computational effort
     from ase.constraints import ExpCellFilter
-    cellfilter = ExpCellFilter(atoms, mask=smask)
+    if fixcell:
+        cellfilter = atoms
+    else:
+        cellfilter = ExpCellFilter(atoms, mask=smask)
 
     with myBFGS(cellfilter,
                 logfile=logfile,
@@ -470,6 +479,15 @@ def main(atoms: Atoms,
         etot = atoms.get_potential_energy()
         forces = atoms.get_forces()
         stress = atoms.get_stress()
+
+        # If stress is provided by the calculator (e.g. PW mode) and we
+        # didn't use stress, then nevertheless we want to calculate it because
+        # the stiffness recipe wants it.  Also, all the existing results
+        # have stress.
+        try:
+            atoms.get_stress()
+        except PropertyNotImplementedError:
+            pass
 
         if calculatorname == 'gpaw':
             # GPAW will have calc.close() soon.

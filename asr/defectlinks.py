@@ -105,7 +105,7 @@ def main() -> Result:
     if pristinefile.is_file():
         atoms = read(pristinefile)
         uid = fingerprint(atoms)['uid']
-        pristinelinks.append((uid, "pristine material"))
+        pristinelinks.append((uid, 'pristine material'))
 
     return Result.fromdata(
         chargedlinks=chargedlinks,

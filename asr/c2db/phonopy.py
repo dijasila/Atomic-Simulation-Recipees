@@ -14,6 +14,7 @@ from asr.core import (command, option, DictStr, ASRResult, prepare_result,
                       atomsopt)
 from asr.calculators import construct_calculator
 from asr.c2db.magstate import main as magstate
+from asr.utils.symmetry import c2db_symmetry_eps
 
 
 def lattice_vectors(N_c):
@@ -335,7 +336,8 @@ def main(
     phonon.symmetrize_force_constants()
 
     nqpts = 100
-    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc)
+    path = atoms.cell.bandpath(npoints=nqpts, pbc=atoms.pbc,
+                               eps=c2db_symmetry_eps)
 
     omega_kl = np.zeros((nqpts, 3 * len(atoms)))
 
