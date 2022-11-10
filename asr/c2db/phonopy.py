@@ -28,7 +28,10 @@ def lattice_vectors(N_c):
     return R_cN
 
 
-def distance_to_sc(nd, atoms, dist_max):
+def distance_to_sc(atoms, dist_max):
+    nd = sum(atoms.pbc)
+    assert all(atoms.pbc[:nd])
+
     if nd >= 1:
         for x in range(2, 20):
             atoms_x = atoms.repeat((x, 1, 1))
@@ -83,7 +86,7 @@ def distance_to_sc(nd, atoms, dist_max):
 def calculate(
         atoms: Atoms,
         d: float = 0.05, fsname: str = 'phonons',
-        sc: typing.List[int] = [0, 0, 0], dist_max: float = 7.0,
+        sc: typing.Sequence[int] = (0, 0, 0), dist_max: float = 7.0,
         calculator: dict = {'name': 'gpaw',
                             'mode': {'name': 'pw', 'ecut': 800},
                             'xc': 'PBE',
@@ -117,17 +120,16 @@ def calculate(
             magmoms_m = np.linalg.norm(magmoms_m, axis=1)
         atoms.set_initial_magnetic_moments(magmoms_m)
 
-    nd = sum(atoms.get_pbc())
-    sc = list(map(int, sc))
-    if np.array(sc).any() == 0:
-        sc = distance_to_sc(nd, atoms, dist_max)
+    sc = np.array(sc)
 
-    if nd == 3:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, sc[2]]]
-    elif nd == 2:
-        supercell = [[sc[0], 0, 0], [0, sc[1], 0], [0, 0, 1]]
-    elif nd == 1:
-        supercell = [[sc[0], 0, 0], [0, 1, 0], [0, 0, 1]]
+    if not sc.any():
+        sc = np.array(distance_to_sc(atoms, dist_max))
+
+    assert all(sc >= 1)
+    assert sc.dtype == int
+    assert all(sc[~atoms.pbc] == 1)
+
+    supercell = np.diag(sc)
 
     phonopy_atoms = PhonopyAtoms(symbols=atoms.symbols,
                                  cell=atoms.get_cell(),
