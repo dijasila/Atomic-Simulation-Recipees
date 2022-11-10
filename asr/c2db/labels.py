@@ -73,7 +73,7 @@ class LabelResult(ASRResult):
 
 @command(module='asr.c2db.labels')
 @option('--label', help=label_explanation, type=str)
-def main(label):
+def main(label: str) -> LabelResult:
     return LabelResult.fromdata(label=label)
 
 
