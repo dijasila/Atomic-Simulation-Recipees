@@ -1,7 +1,11 @@
 from ase.formula import Formula
+from ase.io import read
+
 from asr.core import (ASRResult, prepare_result, chdir, read_json)
 from asr.database.browser import WebPanel, table
-from asr.database.material_fingerprint import main as material_fingerprint
+from asr.database.material_fingerprint import fingerprint
+# Hack: For flexibility/error reasons, we need to circumvent the fact
+# that material_fingerprint is a recipe.  Therefore we import _main.
 from asr.defect_symmetry import DefectInfo
 from pathlib import Path
 import typing
@@ -93,8 +97,10 @@ def main() -> Result:
     # Third, the pristine material
     pristinelinks = []
     pristine = list(p.glob('./../../defects.pristine_sc*'))[0]
-    if (Path(pristine / 'structure.json').is_file()):
-        uid = get_uid_from_fingerprint(pristine)
+    pristinefile = pristine / 'structure.json'
+    if pristinefile.is_file():
+        atoms = read(pristinefile)
+        uid = fingerprint(atoms)['uid']
         pristinelinks.append((uid, "pristine material"))
 
     return Result.fromdata(
@@ -106,24 +112,16 @@ def main() -> Result:
 def get_list_of_links(path):
     links = []
     structurefile = path / 'structure.json'
+    atoms = read(structurefile)
     charge = get_charge_from_folder(path)
     if structurefile.is_file() and charge != 0:
         defectinfo = DefectInfo(defectpath=path)
-        uid = get_uid_from_fingerprint(path)
+        uid = fingerprint(atoms)['uid']
         hostformula = get_hostformula_from_defectpath(path)
         defectstring = get_defectstring_from_defectinfo(defectinfo, charge)
         links.append((uid, f"{defectstring} in {hostformula:html}"))
 
     return links
-
-
-def get_uid_from_fingerprint(path):
-    with chdir(path):
-        material_fingerprint()
-        res = read_json('results-asr.database.material_fingerprint.json')
-        uid = res['uid']
-
-    return uid
 
 
 def get_defectstring_from_defectinfo(defectinfo, charge):

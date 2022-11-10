@@ -2,7 +2,6 @@ import pytest
 from ase.build import mx2
 from ase.io import write
 from asr.defectlinks import (get_list_of_links,
-                             get_uid_from_fingerprint,
                              get_defectstring_from_defectinfo,
                              get_hostformula_from_defectpath,
                              get_charge_from_folder)
@@ -32,16 +31,6 @@ def test_get_list_of_links(asr_tmpdir, defect, charge):
     for link in linklist:
         assert link[1].startswith(defect.split('_')[0])
         assert f'charge {charge}' in link[1]
-
-
-@pytest.mark.xfail(reason='TODO')
-@pytest.mark.ci
-def test_get_uid_from_fingerprint(asr_tmpdir):
-    atoms = mx2('MoS2')
-    path = Path('.')
-    write('structure.json', atoms)
-    uid = get_uid_from_fingerprint(path)
-    assert uid.startswith(atoms.get_chemical_formula())
 
 
 @pytest.mark.parametrize('defect', tokenlist)
