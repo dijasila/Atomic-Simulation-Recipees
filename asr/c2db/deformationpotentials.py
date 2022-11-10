@@ -183,7 +183,7 @@ ijlabels = {
 }
 
 
-@command('asr.deformationpotentials')
+@command('asr.c2db.deformationpotentials')
 @option('-s', '--strain', type=float,
         help='percent strain applied to the material along all components')
 @option('--all-ibz', is_flag=True, type=bool,
