@@ -10,6 +10,8 @@ from pathlib import Path
 
 
 tokenlist = ['v_S', 'S_Mo', 'S_Mo.Mo_S.1-2', 'v_B.v_X.3-6']
+
+
 @pytest.mark.parametrize('defect', tokenlist)
 @pytest.mark.parametrize('charge', [-1, 0, 1])
 @pytest.mark.ci

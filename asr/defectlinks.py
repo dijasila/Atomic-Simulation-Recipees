@@ -1,7 +1,7 @@
 from ase.formula import Formula
 from ase.io import read
 
-from asr.core import (ASRResult, prepare_result, chdir, read_json)
+from asr.core import ASRResult, prepare_result
 from asr.database.browser import WebPanel, table
 from asr.database.material_fingerprint import fingerprint
 # Hack: For flexibility/error reasons, we need to circumvent the fact
