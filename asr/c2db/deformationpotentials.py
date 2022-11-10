@@ -129,7 +129,7 @@ def webpanel(result, row, key_descriptions):
     dp_table = matrixtable(
         dp_list,
         digits=2,
-        title=f'D (eV)',
+        title='D (eV)',
         columnlabels=columnlabels,
         rowlabels=dp_labels
     )
