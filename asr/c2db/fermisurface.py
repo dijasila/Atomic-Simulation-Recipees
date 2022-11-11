@@ -118,9 +118,7 @@ class Result(ASRResult):
 
 
 @command('asr.c2db.fermisurface')
-def main(
-        gsresult, mag_ani,
-) -> Result:
+def main(gsresult, mag_ani, shift: float = 0.0) -> Result:
     from asr.utils.gpw2eigs import calc2eigs
     from gpaw.kpt_descriptor import to1bz
 
@@ -138,6 +136,7 @@ def main(
         theta=theta, phi=phi,
         symmetry_tolerance=1e-2,
     )
+    ef += shift
     eigs_mk = eigs_km.T
     eigs_mk = eigs_mk - ef
     calc = res.calculation.load()

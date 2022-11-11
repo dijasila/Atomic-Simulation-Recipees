@@ -268,6 +268,11 @@ def postprocess(calculateresult) -> Result:
 class ExchangeWorkflow:
     gsresult = asr.var()
 
+    # Note: For converting the ground state in this case, it's said that
+    # MixerSum is more stable towards finding the desired magnetic state:
+    # calculator: dict = {**gscalculate.defaults.calculator,
+    #                     'mixer': {'method': 'sum'}}
+
     @asr.task
     def calculate(self):
         return asr.node('asr.c2db.exchange.calculate',

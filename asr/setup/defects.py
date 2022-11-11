@@ -1,12 +1,53 @@
 """Generate defective atomic structures."""
 import numpy as np
 from typing import Sequence
-from asr.core import ASRResult
+from pathlib import Path
+from asr.core import option, ASRResult
+import click
+import os
 
-"""
-@command('asr.setup.defects')
+
+# Define calculators that are needed for the params.json file
+# of each individual defect and charge folder.
+# Note, that the only real change to the default relax and gs
+# parameters is 'spinpol' here. Should be changed in 'master'.
+relax_calc_dict = {'name': 'gpaw',
+                   'mode': {
+                       'name': 'pw',
+                       'ecut': 800,
+                       'dedecut': 'estimate'},
+                   'xc': 'PBE',
+                   'kpts': {
+                       'density': 6.0,
+                       'gamma': True},
+                   'basis': 'dzp',
+                   'symmetry': {
+                       'symmorphic': False},
+                   'convergence': {
+                       'forces': 1e-4},
+                   'txt': 'relax.txt',
+                   'occupations': {
+                       'name': 'fermi-dirac',
+                       'width': 0.02},
+                   'spinpol': True}
+gs_calc_dict = {'name': 'gpaw',
+                'mode': {'name': 'pw', 'ecut': 800},
+                'xc': 'PBE',
+                'basis': 'dzp',
+                'kpts': {'density': 12.0, 'gamma': True},
+                'occupations': {'name': 'fermi-dirac',
+                                'width': 0.02},
+                'convergence': {'bands': 'CBM+3.0'},
+                'nbands': '200%',
+                'txt': 'gs.txt',
+                'spinpol': True}
+
+
+# @command('asr.setup.defects')
 @option('-a', '--atomfile', type=str,
         help='Atomic structure.')
+@option('-q', '--chargestates', type=int,
+        help='Charge states included (-q, ..., +q).')
 @option('--supercell', nargs=3, type=click.Tuple([int, int, int]),
         help='List of repetitions in lat. vector directions [N_x, N_y, N_z]')
 @option('--maxsize', type=float,
@@ -33,75 +74,63 @@ from asr.core import ASRResult
         'according to the in plane supercell size. Only for 2D.')
 @option('--extrinsic', type=str,
         help='Comma separated string of extrinsic point defect elements.')
+@option('--halfinteger', type=bool,
+        help='Sets up half integer folders within one full integer folder. '
+        'It has to be launched within the specific charge folders and needs '
+        'both a structure.json file as well as a params.json in order to '
+        'work properly')
 @option('--general-algorithm',
         help='Sets up general supercells that break the initial symmetry '
         'of the bravais lattice, as well as choosing the most uniform '
         'configuration with least atoms in the supercell.', type=float)
-"""
-
-
-def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
+def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
+         supercell: Sequence[int] = (3, 3, 3),
          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
          scaling_double: float = 1.7, uniform_vacuum: bool = False,
-         general_algorithm: float = None) -> ASRResult:
+         halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
     """Set up defect structures for a given host.
+
     Recipe setting up all possible defects within a reasonable supercell as well as the
     respective pristine system for a given input structure. Defects include: vacancies,
     intrinsic substitutional defects. For a given primitive input structure this recipe
-    will create a directory tree in the following way (for the example of BN):
+    will create a directory tree in the following way (for the example of MoS2):
 
     - There has to be a 'unrelaxed.json' file with the primitive structure
       of the desired system in the folder you run setup.defects. The tree
       structure will then look like this:
 
-    MoS2/
-    ├── defects.MoS2_331.Mo_S
-    │   └── asr.setup.defects.defect-irxvl8uy
-    │       ├── atoms.json
-    │       ├── input.json
-    │       └── output.json
-    ├── defects.MoS2_331.S_Mo
-    │   └── asr.setup.defects.defect-cd9l_90u
-    │       ├── atoms.json
-    │       ├── input.json
-    │       └── output.json
-    ├── defects.MoS2_331.v_Mo
-    │   └── asr.setup.defects.defect-jl1ivb5g
-    │       ├── atoms.json
-    │       ├── input.json
-    │       └── output.json
-    ├── defects.MoS2_331.v_S
-    │   └── asr.setup.defects.defect-3pmt0aic
-    │       ├── atoms.json
-    │       ├── input.json
-    │       └── output.json
-    ├── defects.pristine_sc.331
-    │   └── asr.setup.defects.defect-xms9yiy1
-    │       ├── atoms.json
-    │       ├── input.json
-    │       └── output.json
-    └── define-h7y1gtln
-        ├── input.json
-        └── output.json
+    .                                                                                  '
+    ├── general_parameters.json                                                        '
+    ├── MoS2_331.v_S                                                                   '
+    │   ├── charge_0                                                                   '
+    │   │   ├── params.json                                                            '
+    │   │   └── unrelaxed.json                                                         '
+    │   ├── charge_1                                                                   '
+    │   │   ├── params.json                                                            '
+    │   │   └── unrelaxed.json -> ./../charge_0/structure.json                         '
+    │   .                                                                              '
+    │                                                                                  '
+    ├── MoS2_231.Mo_S                                                                  '
+    │   ├── charge_0                                                                   '
+    .   .                                                                              '
+    .                                                                                  '
+    ├── pristine_sc                                                                    '
+    │   ├── params.json                                                                '
+    │   └── structure.json                                                             '
+    ├── results_setup.defects.json                                                     '
+    └── unrelaxed.json                                                                 '
 
     - Here, the notation for the defects is the following:
       'formula_supercellsize.defect_sustitutionposition' where 'v' denotes a vacancy
     - When the general algorithm is used to set up symmetry broken supercells, the
       foldernames will contain '000' instead of the supersize.
-    - In the resulting folders you can find the unrelaxed structures.
+    - In the resulting folders you can find the unrelaxed structures, as well as a
+      'params.json' file which contains specific parameters as well as the charge states
+      of the different defect structures.
     """
-
-    if hasattr(atoms, 'future'):
-        if not atoms.future.has_output():
-            return
-        atoms = atoms.future.value().output
-        # Ugly quick fix, at the moment atoms.future.value().output is dict
-        if(isinstance(atoms, dict)):
-            if('structure' in atoms):
-                atoms = atoms['structure']
-            else:
-                raise ValueError("Input dict atoms need structure key")
+    from ase.io import read
+    from asr.core import read_json
 
     # convert extrinsic defect string
     extrinsic = extrinsic.split(',')
@@ -115,51 +144,52 @@ def main(rn, atoms, supercell: Sequence[int] = (3, 3, 3),
     else:
         double_exclude = frozenset(double_exclude.split(','))
 
-    # first, read input atomic structure and store it in ase's atoms object
-    structure = atoms
+    # only run SJ setup if halfinteger is True
+    if halfinteger:
+        try:
+            charge = int(str(Path('.').absolute()).split('/')[-1].split('_')[-1])
+        except ValueError:
+            charge = 0
+            print('WARNING: no charge for the current folder has been read out '
+                  'by the recipe! Set it to one and create both positive and '
+                  'negative half integer folders, structures and params.')
+        paramsfile = read_json('params.json')
+        setup_halfinteger(charge, paramsfile)
+    # otherwise, run complete setup of defect structures
+    elif not halfinteger:
+        # first, read input atomic structure and store it in ase's atoms object
+        structure = read(atomfile)
+        print('INFO: starting recipe for setting up defect systems of '
+              '{} host system.'.format(structure.symbols))
+        # check dimensionality of initial parent structure
+        nd = sum(structure.pbc)
+        if nd == 3:
+            is2d = False
+        elif nd == 2:
+            is2d = True
+        elif nd == 1:
+            raise NotImplementedError('Setup defects not implemented for 1D '
+                                      'structures')
+        # set up the different defect systems and store their properties
+        # in a dictionary
+        structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
+                                       charge_states=chargestates,
+                                       vacancies=vacancies, extrinsic=extrinsic,
+                                       double=double, double_exclude=double_exclude,
+                                       scaling_factor=scaling_double,
+                                       sc=supercell,
+                                       max_lattice=maxsize, is_2D=is2d,
+                                       vacuum=uniform_vacuum,
+                                       general_algorithm=general_algorithm)
 
-    print('INFO: starting recipe for setting up defect systems of '
-          '{} host system.'.format(structure.symbols))
-    # check dimensionality of initial parent structure
-    nd = sum(structure.pbc)
-    if nd == 3:
-        is2d = False
-    elif nd == 2:
-        is2d = True
-    elif nd == 1:
-        raise NotImplementedError('Setup defects not implemented for 1D '
-                                  'structures')
-    # set up the different defect systems and store their properties
-    # in a dictionary
-    structure_dict = setup_defects(structure=structure, intrinsic=intrinsic,
-                                   vacancies=vacancies, extrinsic=extrinsic,
-                                   double=double, double_exclude=double_exclude,
-                                   scaling_factor=scaling_double,
-                                   sc=supercell,
-                                   max_lattice=maxsize, is_2D=is2d,
-                                   vacuum=uniform_vacuum,
-                                   general_algorithm=general_algorithm)
+        # based on this dictionary, create a folder structure for all defects
+        # and respective charge states
+        create_folder_structure(structure, structure_dict, chargestates,
+                                intrinsic=intrinsic, vacancies=vacancies,
+                                extrinsic=extrinsic,
+                                sc=supercell, max_lattice=maxsize, is_2D=is2d)
 
-    # based on this dictionary, create a folder structure for all defects
-    structures = {}
-
-    for element, atoms in structure_dict.items():
-        rn2 = rn.with_subdirectory(element)
-        structures[element] = rn2.task('asr.setup.defects.defect',
-                                       element=element, atoms=atoms)
-    return structures
-
-
-def defect(element, atoms):
-    from ase.io import write
-    write('unrelaxed.json', atoms)
-    return Defect(element, atoms)
-
-
-class Defect:
-    def __init__(self, element, atoms):
-        self.info = element
-        self.atoms = atoms
+    return ASRResult()
 
 
 def setup_supercell(structure, max_lattice, is_2D):
@@ -244,7 +274,7 @@ def apply_vacuum(atoms):
     return atoms_vac
 
 
-def create_vacancies(structure, pristine, eq_pos, base_id):
+def create_vacancies(structure, pristine, eq_pos, charge_states, base_id):
     """Create vacancy defects, return dictionary of structures and params."""
     defect_dict = {}
     finished_list = []
@@ -255,11 +285,38 @@ def create_vacancies(structure, pristine, eq_pos, base_id):
             vacancy.pop(i)
             # rattle defect structure to not get stuck in a saddle point
             vacancy.rattle()
-            string = f'defects.{base_id}.v_{sitename}'
-            defect_dict[string] = vacancy
+            string = f'defects.{base_id}.v_{sitename}.{i}'
+            charge_dict = get_charge_dict(charge_states, defect=vacancy)
+            defect_dict[string] = charge_dict
         finished_list.append(eq_pos[i])
 
     return defect_dict
+
+
+def get_charge_dict(charge_states, defect):
+    """Set up and return dict for a specific charge of a defect."""
+    charge_dict = {}
+    for q in range((-1) * charge_states, charge_states + 1):
+        parameters = get_default_parameters(q)
+        charge_string = 'charge_{}'.format(q)
+        charge_dict[charge_string] = {
+            'structure': defect, 'parameters': parameters}
+
+    return charge_dict
+
+
+def get_default_parameters(q):
+    """Return dict of default relax and gs parameters with charge q."""
+    parameters = {}
+    calculator_relax = relax_calc_dict.copy()
+    calculator_gs = gs_calc_dict.copy()
+    parameters['asr.gs@calculate'] = {
+        'calculator': calculator_gs}
+    parameters['asr.gs@calculate']['calculator']['charge'] = q
+    parameters['asr.relax'] = {'calculator': calculator_relax}
+    parameters['asr.relax']['calculator']['charge'] = q
+
+    return parameters
 
 
 def is_new_double_defect(el1, el2, double_defects):
@@ -324,7 +381,7 @@ def get_maximum_distance(atoms, i, j, scaling_factor):
     return R_max
 
 
-def create_double_new(structure, pristine, eq_pos,
+def create_double_new(structure, pristine, eq_pos, charge_states,
                       base_id, defect_list=None, scaling_factor=1.5,
                       defect_type='all', double_exclude=frozenset()):
     """Create double defects based on distance criterion."""
@@ -386,12 +443,13 @@ def create_double_new(structure, pristine, eq_pos,
                     defect.symbols[j] = el2
                 defect.rattle()
                 string = f'defects.{base_id}.{defect_string}'
-                defect_dict[string] = defect
+                charge_dict = get_charge_dict(charge_states, defect=defect)
+                defect_dict[string] = charge_dict
 
     return defect_dict
 
 
-def create_double(structure, pristine, eq_pos,
+def create_double(structure, pristine, eq_pos, charge_states,
                   base_id, defect_list=None):
     """Create double defects."""
     defect_dict = {}
@@ -420,7 +478,8 @@ def create_double(structure, pristine, eq_pos,
                     # rattle defect structure to not get stuck in a saddle point
                     vacancy.rattle()
                     string = f'defects.{base_id}.{site1}.{site2}'
-                    defect_dict[string] = vacancy
+                    charge_dict = get_charge_dict(charge_states, defect=vacancy)
+                    defect_dict[string] = charge_dict
                 finished_list.append(eq_pos[i])
 
     print('INFO: create substitutional-substitutional pairs.')
@@ -445,7 +504,8 @@ def create_double(structure, pristine, eq_pos,
                             # rattle defect structure to not get stuck in a saddle point
                             defect.rattle()
                             string = f'defects.{base_id}.{site1}.{site2}'
-                            defect_dict[string] = defect
+                            charge_dict = get_charge_dict(charge_states, defect=defect)
+                            defect_dict[string] = charge_dict
                         finished_list.append(eq_pos[i])
 
     print('INFO: create vacancy-substitutional pairs.')
@@ -466,7 +526,8 @@ def create_double(structure, pristine, eq_pos,
                         # rattle defect structure to not get stuck in a saddle point
                         defect.rattle()
                         string = f'defects.{base_id}.{site1}.{site2}'
-                        defect_dict[string] = defect
+                        charge_dict = get_charge_dict(charge_states, defect=defect)
+                        defect_dict[string] = charge_dict
                     finished_list.append(eq_pos[i])
 
     return defect_dict
@@ -483,7 +544,7 @@ def add_intrinsic_elements(atoms, elements):
 
 
 def create_substitutional(structure, pristine, eq_pos,
-                          base_id, defect_list=None):
+                          charge_states, base_id, defect_list=None):
     """Create substitutional defects."""
     finished_list = []
     defect_dict = {}
@@ -501,14 +562,15 @@ def create_substitutional(structure, pristine, eq_pos,
                     defect[i].symbol = element
                     # rattle defect structure to not get stuck in a saddle point
                     defect.rattle()
-                    string = f'defects.{base_id}.{element}_{sitename}'
-                    defect_dict[string] = defect
+                    string = f'defects.{base_id}.{element}_{sitename}.{i}'
+                    charge_dict = get_charge_dict(charge_states, defect=defect)
+                    defect_dict[string] = charge_dict
             finished_list.append(eq_pos[i])
 
     return defect_dict
 
 
-def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
+def setup_defects(structure, intrinsic, charge_states, vacancies, extrinsic, double,
                   double_exclude, scaling_factor, sc, max_lattice, is_2D, vacuum,
                   general_algorithm):
     """
@@ -530,7 +592,8 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
     -------
     structure_dict : dict
         dictionary of all possible defect configurations
-        of the given structure. The dictionary is built up in the
+        of the given structure with different charge
+        states. The dictionary is built up in the
         following way: see folder structure in 'main()'.
     """
     import spglib
@@ -569,33 +632,35 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
 
     parameters = {}
     string = 'defects.pristine_sc.{}{}{}'.format(N_x, N_y, N_z)
-    calculator_relax = {}  # relax_calc_dict.copy()
-    calculator_gs = {}  # gs_calc_dict.copy()
+    calculator_relax = relax_calc_dict.copy()
+    calculator_gs = gs_calc_dict.copy()
     parameters['asr.gs@calculate'] = {
         'calculator': calculator_gs}
     parameters['asr.relax'] = {'calculator': calculator_relax}
-    structure_dict[string] = pristine
+    structure_dict[string] = {'structure': pristine, 'parameters': parameters}
 
     # incorporate the possible vacancies
     dataset = spglib.get_symmetry_dataset(cell)
     eq_pos = dataset.get('equivalent_atoms')
     base_id = f'{formula}_{N_x}{N_y}{N_z}'
 
-    # defects_dict = {}
+    defects_dict = {}
     if vacancies:
         defect_dict = create_vacancies(structure,
                                        pristine,
                                        eq_pos,
+                                       charge_states,
                                        base_id)
-        structure_dict.update(defect_dict)
+        defects_dict.update(defect_dict)
 
     # incorporate substitutional defects
     if intrinsic:
         defect_dict = create_substitutional(structure,
                                             pristine,
                                             eq_pos,
+                                            charge_states,
                                             base_id)
-        structure_dict.update(defect_dict)
+        defects_dict.update(defect_dict)
 
     # incorporate extrinsic defects
     if extrinsic != ['NO']:
@@ -603,9 +668,10 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
         defect_dict = create_substitutional(structure,
                                             pristine,
                                             eq_pos,
+                                            charge_states,
                                             base_id,
                                             defect_list)
-        structure_dict.update(defect_dict)
+        defects_dict.update(defect_dict)
 
     # create double defects
     if double != ['NO']:
@@ -617,24 +683,169 @@ def setup_defects(structure, intrinsic, vacancies, extrinsic, double,
             defect_dict = create_double_new(structure,
                                             pristine,
                                             eq_pos,
+                                            charge_states,
                                             base_id,
                                             defect_list,
                                             scaling_factor,
                                             double_type,
                                             double_exclude)
-            structure_dict.update(defect_dict)
+            defects_dict.update(defect_dict)
 
     # put together structure dict
-    # structure_dict['defects'] = defects_dict
+    structure_dict['defects'] = defects_dict
 
     print('INFO: rattled atoms to make sure defect systems do not get stuck at'
           ' a saddle point.')
 
-    print('INFO: setting up {0} different defect supercell systems '
-          ' as well as the pristine supercell '
-          'system.'.format(len(structure_dict) - 1))
+    print('INFO: setting up {0} different defect supercell systems in '
+          'charge states -{1}, ..., +{1}, as well as the pristine supercell '
+          'system.'.format(len(structure_dict['defects']), charge_states))
 
     return structure_dict
+
+
+def create_folder_structure(structure, structure_dict, chargestates,
+                            intrinsic, vacancies, extrinsic,
+                            sc, max_lattice, is_2D):
+    """Create folder for all configurations.
+
+    Creates a folder for every configuration of the defect supercell in
+    the following way:
+
+    - see example directory tree in 'main()'
+    - these each contain two files: 'unrelaxed.json' (the defect
+      supercell structure), 'params.json' (the non-general parameters
+      of each system)
+    - the content of those folders can then be used to do further
+      processing (e.g. relax the defect structure)
+    """
+    from ase.io import write
+    from asr.core import write_json
+
+    # create a seperate folder for each possible defect
+    # configuration of this parent folder, as well as the pristine
+    # supercell system
+
+    # create undelying folder structure, write params.json and
+    # unrelaxed.json for the neutral defect
+    for element in structure_dict:
+        folder_name = element
+        try:
+            if not folder_name == 'defects':
+                Path(folder_name).mkdir()
+        except FileExistsError:
+            print('WARNING: folder ("{0}") already exists in this '
+                  'directory. Skip creating it.'.format(folder_name))
+        if structure_dict[element].get('structure') is not None:
+            struc = structure_dict[element].get('structure')
+            params = structure_dict[element].get('parameters')
+            try:
+                write(folder_name + '/structure.json', struc)
+                write_json(folder_name + '/params.json', params)
+            except FileExistsError:
+                print('WARNING: files already exist inside this folder.')
+        else:
+            sub_dict = structure_dict[element]
+            j = 0
+            for sub_element in sub_dict:
+                defect_name = list(sub_dict)
+                defect_folder_name = defect_name[j]
+                j = j + 1
+                try:
+                    Path(defect_folder_name).mkdir()
+                except FileExistsError:
+                    print(
+                        'WARNING: folder ("{0}") already exists in this '
+                        'directory. Skip creating '
+                        'it.'.format(defect_folder_name))
+                for i in range((-1) * chargestates, chargestates + 1):
+                    charge_name = 'charge_{}'.format(i)
+                    charge_folder_name = defect_folder_name + '/' + charge_name
+                    try:
+                        Path(charge_folder_name).mkdir()
+                    except FileExistsError:
+                        print(
+                            'WARNING: folder ("{0}") already exists in this '
+                            'directory. Skip creating '
+                            'it.'.format(charge_folder_name))
+                    struc = sub_dict[sub_element].get(
+                        charge_name).get('structure')
+                    params = sub_dict[sub_element].get(
+                        charge_name).get('parameters')
+                    write_json(charge_folder_name + '/params.json', params)
+                    if i == 0:
+                        write(charge_folder_name + '/unrelaxed.json', struc)
+
+    # create symbolic links for higher charge states
+    for element in structure_dict:
+        folder_name = element
+        if folder_name == 'defects':
+            sub_dict = structure_dict[element]
+            j = 0
+            for sub_element in sub_dict:
+                defect_name = [key for key in sub_dict.keys()]
+                defect_folder_name = defect_name[j]
+                j = j + 1
+                for i in range((-1) * chargestates, chargestates + 1):
+                    charge_name = 'charge_{}'.format(i)
+                    if i < 0:
+                        folderno = i + 1
+                    elif i > 0:
+                        folderno = i - 1
+                    dstpath = f'{defect_folder_name}/charge_{i}/unrelaxed.json'
+                    srcpath = f'{defect_folder_name}/charge_{folderno}/structure.json'
+                    if i != 0:
+                        try:
+                            os.symlink(srcpath, dstpath)
+                        except FileExistsError:
+                            print(
+                                f'WARNING: Link between {srcpath} and {dstpath}'
+                                f'already exists in this '
+                                f'directory. Skip creating it.')
+
+    return None
+
+
+def setup_halfinteger(charge, paramsfile):
+    """
+    Set up folders for SJ calculations.
+
+    Sets up halfinteger folder which copies params.json and changes the q
+    keyword as well as copying the relaxed structure into those folders.
+    """
+    folderpath = Path('.')
+    foldername = str(folderpath)
+    print('INFO: set up half integer folders and parameter sets for '
+          'a subsequent Slater-Janach calculation.')
+    if charge < 0:
+        print(f'INFO: charge = {charge} -> set up negative half integer folder.')
+        write_halfinteger_files(deltacharge=-0.5, identifier='-0.5', params=paramsfile,
+                                charge=charge, foldername=foldername)
+    elif charge > 0:
+        print(f'INFO: charge = {charge} -> set up positive half integer folder.')
+        write_halfinteger_files(deltacharge=0.5, identifier='+0.5', params=paramsfile,
+                                charge=charge, foldername=foldername)
+    elif charge == 0:
+        print(f'INFO: charge = {charge} -> set up positive and negative half '
+              'integer folder.')
+        write_halfinteger_files(deltacharge=0.5, identifier='+0.5', params=paramsfile,
+                                charge=charge, foldername=foldername)
+        write_halfinteger_files(deltacharge=-0.5, identifier='-0.5', params=paramsfile,
+                                charge=charge, foldername=foldername)
+
+
+def write_halfinteger_files(deltacharge, identifier, params, charge, foldername):
+    """Write params.json, structure.json and folder for halfinteger calculation."""
+    import shutil
+    from asr.core import write_json
+
+    Path(f'sj_{identifier}').mkdir()
+    paramsfile = params.copy()
+    paramsfile['asr.gs@calculate']['calculator']['charge'] = charge + deltacharge
+    paramsfile['asr.relax']['calculator']['charge'] = charge + deltacharge
+    write_json(f'sj_{identifier}/params.json', paramsfile)
+    shutil.copyfile(foldername + '/structure.json',
+                    foldername + f'/sj_{identifier}/structure.json')
 
 
 def create_general_supercell(structure, size=12.5):
@@ -726,3 +937,7 @@ def return_distances_cell(cell):
             sign * cell[0][2] + cell[1][2])**2))
 
     return distances
+
+
+if __name__ == '__main__':
+    main.cli()
