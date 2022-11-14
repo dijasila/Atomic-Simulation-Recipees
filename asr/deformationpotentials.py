@@ -12,11 +12,11 @@ The deformation potentials represent the energy shifts of the
 bottom of the conduction band (CB) and the top of the valence band
 (VB) at a given k-point, under an applied strain.
 
-The two tables at the top show the deformation potentials for the 
+The two tables at the top show the deformation potentials for the
 valence band (D<sub>VB</sub>) and conduction band (D<sub>CB</sub>)
 at the high-symmetry k-points, subdivided into the different strain
 components. If the VBM and/or the CBM are found at any other k-point,
-they are added to the list as 
+they are added to the list as
 'k<sub>VBM</sub>' / 'k<sub>VBM</sub>' / 'k<sub>VBM/CBM</sub>'.
 The table on the right shows the band gap deformation potentials.
 
@@ -116,7 +116,7 @@ def webpanel(result, row, key_descriptions):
         dp_labels = []
         label = get_basename(kpt)
         for band, table, bottom, lab in zip(
-                ['VB', 'CB'], 
+                ['VB', 'CB'],
                 [dp_list_vb, dp_list_cb],
                 [add_to_bottom_vb, add_to_bottom_cb],
                 [dp_labels_vb, dp_labels_cb]):
