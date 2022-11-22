@@ -129,8 +129,10 @@ def webpanel(result, row, key_descriptions):
 
     for label, row in add_to_bottom_vb:
         dp_list_vb.append(row)
+        dp_labels_vb.append(label)
     for label, row in add_to_bottom_cb:
         dp_list_cb.append(row)
+        dp_labels_cb.append(label)
 
     dp_labels.append('Band Gap')
     dp_list_gap = [[dp_gap[comp] for comp in ['xx', 'yy', 'xy']]]
