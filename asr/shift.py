@@ -64,7 +64,7 @@ class Result(ASRResult):
     symm: typing.Dict[str, str]
 
     key_descriptions = {
-        "freqs": "Pump photon energy [eV]",
+        "freqs": "Photon energy [eV]",
         "sigma": "Non-zero shift conductivity tensor elements in SI units",
         "symm": "Symmetry relation of shift conductivity tensor",
     }
@@ -81,14 +81,14 @@ class Result(ASRResult):
 @option('--bandfactor', type=int,
         help='Number of unoccupied bands = (#occ. bands) * bandfactor)')
 @option('--eta', help='Broadening [eV]', type=float)
-@option('--maxomega', help='Max pump frequency [eV]', type=float)
-@option('--nromega', help='Number of pump frequencies', type=int)
-@option('--energytol', help='Energy tolernce [eV]', type=float)
+@option('--maxomega', help='Max frequency [eV]', type=float)
+@option('--nromega', help='Number of frequencies', type=int)
+@option('--energytol', help='Energy tolerance [eV]', type=float)
 @option('--removefiles', help='Remove created files', type=bool)
 def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
-         bandfactor: int = 4, eta: float = 0.05, energytol: float = 1e-6,
+         bandfactor: int = 4, eta: float = 0.05, energytol: float = 1e-2,
          maxomega: float = 10.0, nromega: int = 1000,
-         removefiles: bool = False) -> Result:
+         removefiles: bool = True) -> Result:
     """Calculate the shift current spectrum, only independent tensor elements.
 
     The recipe computes the shift current. The tensor in general have 18 independent
@@ -107,11 +107,11 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
     eta : float
         Broadening used for finding the spectrum.
     energytol : float
-        Energy tolernce to remove degeneracies.
+        Energy tolerance to remove degeneracies.
     maxomega : float
-        Max pump frequency.
+        Max frequency.
     nromega : int
-        Number of pump frequencies.
+        Number of frequencies.
     removefiles : bool
         Remove intermediate files that are created.
     """
@@ -134,17 +134,16 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
 
     w_ls = np.linspace(0, maxomega, nromega)
     try:
-        # fnames = ['es.gpw', 'mml.npz']
         fnames = []
         mml_name = 'mml.npz'
         if not Path(mml_name).is_file():
-            if not Path('es.gpw').is_file():
+            if not Path('gs_shift.gpw').is_file():
                 calc_old = GPAW(gs, txt=None)
                 nval = calc_old.wfs.nvalence
 
                 calc = GPAW(
                     gs,
-                    txt='es.txt',
+                    txt='gs_shift.txt',
                     symmetry={'point_group': False, 'time_reversal': True},
                     fixdensity=True,
                     nbands=(bandfactor + 1) * nval,
@@ -152,11 +151,11 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
                     occupations={'name': 'fermi-dirac', 'width': 1e-4},
                     kpts=kpts)
                 calc.get_potential_energy()
-                calc.write('es.gpw', mode='all')
-                fnames.append('es.gpw')
+                calc.write('gs_shift.gpw', mode='all')
+                fnames.append('gs_shift.gpw')
 
             # Calculate momentum matrix:
-            make_nlodata(gs_name='es.gpw', out_name=mml_name)
+            make_nlodata(gs_name='gs_shift.gpw', out_name=mml_name)
             fnames.append(mml_name)
 
         # Do the calculation
@@ -201,13 +200,14 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
 
 def plot_shift(row, *filename):
     import matplotlib.pyplot as plt
+    from matplotlib import ticker
     import os
     from pathlib import Path
     from textwrap import wrap
 
     # Read the data from the disk
     data = row.data.get('results-asr.shift.json')
-    gap = row.get('gap')
+    gap = row.get('gap_dir_nosoc')
     atoms = row.toatoms()
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
@@ -233,37 +233,30 @@ def plot_shift(row, *filename):
 
     for pol in sorted(sigma.keys()):
         # Make the axis and add y=0 axis
-        shift = sigma[pol]
+        shift_l = sigma[pol]
         ax = plt.figure().add_subplot(111)
         ax.axhline(y=0, color='k')
 
         # Add the bandgap
-        bg = gap
-        if bg is not None:
-            ax.axvline(x=bg, color='k', ls='--')
-            ax.axvline(x=bg / 2, color='k', ls='--')
-            maxw = min(np.ceil(2.0 * bg), 7)
-        else:
-            maxw = 7
+        if gap is not None:
+            ax.axvline(x=gap, color='k', ls='--')
 
         # Plot the data
-        amp_l = shift
-        amp_l = amp_l[w_l < maxw]
-        ax.plot(w_l[w_l < maxw], np.real(amp_l), '-', c='C0', label='Re')
+        ax.plot(w_l, np.real(shift_l), '-', c='C0',)
 
         # Set the axis limit
-        ax.set_xlim(0, maxw)
+        ax.set_xlim(0, np.max(w_l))
         relation = sym_chi.get(pol)
         if not (relation is None):
             figtitle = '$' + '$\n$'.join(wrap(relation, 40)) + '$'
             ax.set_title(figtitle)
-        ax.set_xlabel(r'Pump photon energy $\hbar\omega$ [eV]')
+        ax.set_xlabel(r'Energy [eV]')
         polstr = f'{pol}'
         if nd == 2:
             ax.set_ylabel(r'$\sigma^{(2)}_{' + polstr + r'}$ [nm$\mu$A/V$^2$]')
         else:
             ax.set_ylabel(r'$\sigma^{(2)}_{' + polstr + r'} [$\mu$A/V$^2$]')
-        ax.ticklabel_format(axis='both', style='sci', scilimits=(-2, 2))
+        ax.ticklabel_format(axis='both', style='plain', scilimits=(-2, 2))
 
         # Remove the extra space and save the figure
         plt.tight_layout()
