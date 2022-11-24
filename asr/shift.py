@@ -200,7 +200,6 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
 
 def plot_shift(row, *filename):
     import matplotlib.pyplot as plt
-    from matplotlib import ticker
     import os
     from pathlib import Path
     from textwrap import wrap
