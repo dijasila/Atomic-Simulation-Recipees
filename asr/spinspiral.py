@@ -1,4 +1,5 @@
 from asr.core import command, option, DictStr, argument, ASRResult, prepare_result
+from asr.utils.symmetry import c2db_symmetry_eps
 from typing import List, Union
 import numpy as np
 from os import path
@@ -9,13 +10,15 @@ from os import path
 @argument('q_c', type=List[float])
 @option('--n', type=int)
 @option('--params', help='Calculator parameter dictionary', type=dict)
+@option('--smooth', help='Rotate initial magmoms by q dot a', type=bool)
 def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0, 
               params: dict = dict(mode={'name': 'pw', 'ecut': 400},
-                                  kpts={'density': 4.0, 'gamma': True})) -> ASRResult:
+                                  kpts={'density': 4.0, 'gamma': True}),
+              smooth: bool = True) -> ASRResult:
     """Calculate the groundstate of a given spin spiral vector q_c"""
 
     from ase.io import read
-    from gpaw import GPAW
+    from gpaw.new.ase_interface import GPAW
     atoms = read('structure.json')
     restart = path.isfile(f'gsq{n}.gpw')
 
@@ -28,7 +31,10 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
         raise Exception("SFC finished but didn't converge")
     
     try:
-        magmoms = params["experimental"]["magmoms"]
+        try:
+            magmoms = params["magmoms"]
+        except:
+            magmoms = params["experimental"]["magmoms"]
     except KeyError:
         if atoms.has('initial_magmoms'):
             magmomx = atoms.get_initial_magnetic_moments()
@@ -38,7 +44,7 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
         magmoms = np.zeros((len(atoms), 3))
         magmoms[:, 0] = magmomx
         
-        if True: # Smooth spiral
+        if smooth: # Smooth spiral
             def rotate_magmoms(magmoms, q):
                 import numpy as np
                 from ase.io import read
@@ -74,7 +80,8 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
         # Mandatory spin spiral parameters
         params["mode"]["qspiral"] = q_c
         params["xc"] = 'LDA'
-        params["experimental"] = {'magmoms': magmoms, 'soc': False}
+        params["magmoms"] = magmoms
+        params["soc"] = False
         params["symmetry"] = 'off'
         params["parallel"] = {'domain': 1, 'band': 1}
         params["txt"] = f'gsq{n}.txt'
@@ -82,7 +89,7 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
     calc = GPAW(**params)
     atoms.calc = calc
     energy=atoms.get_potential_energy()
-    totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
+    totmom_v, magmom_av = calc.density.state.density.calculate_magnetic_moments()
 
     if not restart:
         atoms.calc.write(f'gsq{n}.gpw')
@@ -123,16 +130,18 @@ class Result(ASRResult):
 @option('--q_path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
 @option('--n', type=int)
 @option('--params', help='Calculator parameter dictionary', type=dict)
+@option('--smooth', help='Rotate initial magmoms by q dot a', type=bool)
 @option('--eps', help='Bandpath symmetry threshold', type=float)
 def main(q_path: Union[str, None] = None, n: int = 11,
          params: dict = dict(mode={'name': 'pw', 'ecut': 600},
                              kpts={'density': 6.0, 'gamma': True}),
-         eps: float = 0.0002) -> Result:
+         smooth: bool = True, eps: float = None) -> Result:
     from ase.io import read
     atoms = read('structure.json')
     cell = atoms.cell
     from ase.dft.kpoints import BandPath
-    c2db_eps = 0.1; ase_eps = 0.0002
+    if eps is None:
+        eps = c2db_symmetry_eps
     
     if q_path is None:
         # Input --q_path None
@@ -177,7 +186,7 @@ def main(q_path: Union[str, None] = None, n: int = 11,
     
     for i, q_c in enumerate(Q):
         try:
-            result = calculate(q_c=q_c, n=i, params=params)
+            result = calculate(q_c=q_c, n=i, params=params, smooth=smooth)
             energies.append(result['en'])
             lmagmom_av.append(result['ml'])
             Tmagmom_v.append(result['mT'])
