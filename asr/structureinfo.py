@@ -217,7 +217,7 @@ class Result(ASRResult):
 
 
 def get_layer_group(atoms):
-    import spglib
+    # import spglib
     # lg_dct = spglib.get_layergroup(
     #    (atoms.get_cell(), atoms.get_scaled_positions(),
     #     atoms.get_atomic_numbers()),
@@ -268,7 +268,7 @@ def main() -> Result:
     w = ''.join(sorted(set(dataset['wyckoffs'])))
     crystal_type = f'{stoi}-{number}-{w}'
 
-    ndims = sum(atoms.pbc)
+    # ndims = sum(atoms.pbc)
     # if ndims == 2:
     # TODO get layer group here.
     info['layergroup'] = None
