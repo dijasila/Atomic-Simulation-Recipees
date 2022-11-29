@@ -217,7 +217,13 @@ class Result(ASRResult):
 
 
 def get_layer_group(atoms):
-    # TODO: Call spglib
+    import spglib
+    # lg_dct = spglib.get_layergroup(
+    #    (atoms.get_cell(), atoms.get_scaled_positions(),
+    #     atoms.get_atomic_numbers()),
+    #    symprec=symprec, aperiodic_dir=2)
+    # layergroup = lg_dct['number']
+    # layergroupname = lg_dct['international']
     return None
 
 
