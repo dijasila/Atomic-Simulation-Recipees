@@ -1,6 +1,8 @@
 """Structural information."""
-from asr.core import command, ASRResult, prepare_result
-from asr.database.browser import code, br, div, bold, dl, describe_entry, href
+import numpy as np
+
+from asr.core import ASRResult, command, prepare_result
+from asr.database.browser import bold, br, code, describe_entry, div, dl, href
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -22,10 +24,10 @@ def get_reduced_formula(formula, stoichiometry=False):
     -------
         A string containing the reduced formula.
     """
+    import re
+    import string
     from functools import reduce
     from math import gcd
-    import string
-    import re
     split = re.findall('[A-Z][^A-Z]*', formula)
     matches = [re.match('([^0-9]*)([0-9]+)', x)
                for x in split]
@@ -81,7 +83,7 @@ def describe_crystaltype_entry(spglib):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table, describe_entry, href)
+    from asr.database.browser import describe_entry, href, table
 
     spglib = get_spg_href('https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)
@@ -216,15 +218,26 @@ class Result(ASRResult):
     formats = {"ase_webpanel": webpanel}
 
 
-def get_layer_group(atoms):
-    # import spglib
-    # lg_dct = spglib.get_layergroup(
-    #    (atoms.get_cell(), atoms.get_scaled_positions(),
-    #     atoms.get_atomic_numbers()),
-    #    symprec=symprec, aperiodic_dir=2)
-    # layergroup = lg_dct['number']
-    # layergroupname = lg_dct['international']
-    return None
+def get_layer_group(atoms, symprec):
+    import spglib
+
+    if not hasattr(spglib, 'get_symmetry_layerdataset'):
+        return None, None
+
+    assert atoms.pbs.sum() == 2
+    aperiodic_dir = np.where(~atoms.pbc)[0][0]
+
+    lg_dct = spglib.get_symmetry_layerdataset(
+        (atoms.get_cell(),
+         atoms.get_scaled_positions(),
+         atoms.get_atomic_numbers()),
+        symprec=symprec,
+        aperiodic_dir=aperiodic_dir)
+
+    layergroup = lg_dct['number']
+    layergroupname = lg_dct['international']
+
+    return layergroupname, layergroup
 
 
 @command('asr.structureinfo',
@@ -240,7 +253,8 @@ def main() -> Result:
     """
     import numpy as np
     from ase.io import read
-    from asr.utils.symmetry import c2db_symmetry_eps, c2db_symmetry_angle
+
+    from asr.utils.symmetry import c2db_symmetry_angle, c2db_symmetry_eps
 
     atoms = read('structure.json')
     info = {}
@@ -268,16 +282,18 @@ def main() -> Result:
     w = ''.join(sorted(set(dataset['wyckoffs'])))
     crystal_type = f'{stoi}-{number}-{w}'
 
-    # ndims = sum(atoms.pbc)
-    # if ndims == 2:
-    # TODO get layer group here.
     info['layergroup'] = None
     info['lgnum'] = None
+    ndims = sum(atoms.pbc)
+    if ndims == 2:
+        info['layergroup'], info['lgnum'] = get_layer_group(
+            atoms,
+            symprec=c2db_symmetry_eps)
 
     info['crystal_type'] = crystal_type
     info['spacegroup'] = sg
     info['spgnum'] = number
-    from ase.db.core import str_represents, convert_str_to_int_float_or_str
+    from ase.db.core import convert_str_to_int_float_or_str, str_represents
     if str_represents(pg):
         info['pointgroup'] = convert_str_to_int_float_or_str(pg)
     else:
