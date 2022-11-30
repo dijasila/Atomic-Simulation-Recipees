@@ -86,13 +86,6 @@ def webpanel(result, row, key_descriptions):
     spglib = get_spg_href('https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)
 
-    cls = describe_entry(
-        'class',
-        "The material class is a manually attributed name that is given to "
-        "a material for historical reasons and is therefore not well-defined "
-        "but can be useful classifying materials."
-    )
-
     spg_list_link = href(
         'Space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
     )
@@ -127,7 +120,7 @@ def webpanel(result, row, key_descriptions):
     )
 
     basictable = table(row, 'Structure info', [
-        crystal_type, cls, spacegroup, spgnum, pointgroup,
+        crystal_type, spacegroup, spgnum, pointgroup,
         icsd_id, cod_id
     ], key_descriptions, 2)
     basictable['columnwidth'] = 4
