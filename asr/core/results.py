@@ -744,7 +744,7 @@ class ASRResult(object):
         msg_ukwn = f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
         msg_miss = f'{self.get_obj_id()}: Missing data keys={missing_keys}'
         if strict:
-            assert not missing_keys, msg_miss
+            # assert not missing_keys, msg_miss
             assert not unknown_keys, msg_ukwn
 
     def get_missing_keys(self):
