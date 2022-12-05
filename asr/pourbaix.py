@@ -12,8 +12,8 @@ from asr.core import command, option, ASRResult, prepare_result
 
 
 PREDEF_ENERGIES = {
-    'O': -4.57,
-    'H': -3.73,
+    'O': -4.57,     # http://dx.doi.org/10.1103/PhysRevB.85.235438
+    'H': -3.73,     # http://dx.doi.org/10.1103/PhysRevB.85.235438
     'H+': 0.0,
     'H2O': -2.4583,
     'OH-': -2.54    # https://doi.org/10.1021/jp063552y
@@ -109,7 +109,7 @@ class RedOx:
                 N = 1
             else:
                 for elem in reactant.elements:
-                    if elem in prod.count and prod.count[elem] == 1:
+                    if elem in prod.count:
                         N = reactant.count[elem]
             for elem, n in prod.count.items():
                 total[elem] += N * n
@@ -152,13 +152,13 @@ class RedOx:
         # Storing relevant constants for later use in
         # free energy evaluation
         K = gibbs0 + 14.0 * n_OH * alpha
-        C = n_OH - n_H
+        C = n_H - n_OH
 
         if counter:
             C += n_e
             K += get_counter_correction(env, n_e, alpha)
 
-        self._vector = [K, -n_e, alpha * C]
+        self._vector = [K, -n_e, -alpha * C]
 
     def equation(self):
         if self.species[self.reactant] == 1:
@@ -226,7 +226,6 @@ class Pourbaix:
             where = (pour == num)
             x = np.dot(where.sum(1), U) / where.sum()
             y = np.dot(where.sum(0), pH) / where.sum()
-            #label = phase.get_label()
             text.append((x, y, phase.products))
         return pour, meta, text
 
@@ -235,6 +234,7 @@ class Pourbaix:
              cap=1.0,
              normalize=True,
              savefig='pourbaix.png',
+             figsize=[12, 6],
              show=True):
 
         pour, meta, text = self.get_diagrams(U, pH)
@@ -243,7 +243,7 @@ class Pourbaix:
         if cap:
             np.clip(meta, a_min=-cap, a_max=0.0, out=meta)
 
-        ax = draw_axes(pour, meta, text, pH, U, 0.75, cmap)
+        ax = draw_axes(pour, meta, text, pH, U, 0.75, figsize, cmap)
         add_text(ax, text, offset=0.05)
 
         if savefig:
@@ -320,7 +320,7 @@ def add_edges(axes, diagram, pH, U, **kwargs):
             **kwargs
         )
     return 0
-        
+
 
 def add_redox_lines(axes, pH, color='k'):
     # Add water redox potentials
@@ -337,7 +337,7 @@ def add_numbers(ax, text):
             fontsize=20,
             horizontalalignment='center'
         )
-        txt.set_path_effects([pfx.withStroke(linewidth=2.0, foreground='w')])
+        txt.set_path_effects([pfx.withStroke(linewidth=3.0, foreground='w')])
     return
         
     
@@ -350,8 +350,9 @@ def add_text(ax, text, offset=0):
         label = ' + '.join(i for i in prod)
         label = re.sub(r'(\S)([+-]+)', r'\1$^{\2}$', label)
         label = re.sub(r'(\d+)', r'$_{\1}$', label)
+        label = label.replace('--', '2-').replace('++', '2+')
         textlines.append(
-                textwrap.fill(f'({i+1})  {label}', 
+                textwrap.fill(f'({i})  {label}', 
                               width=40,
                               subsequent_indent='      ')
         )
@@ -360,14 +361,14 @@ def add_text(ax, text, offset=0):
     plt.gcf().text(
             0.74 + offset, 0.5,
             text,
-            fontsize=12,
+            fontsize=18,
             va='center',
             ha='left')
     return 0
 
 
-def draw_axes(phases, diagram, text, pH, U, right, cmap='RdYlGn'):
-    ax = plt.figure().add_subplot(111)
+def draw_axes(phases, diagram, text, pH, U, right, figsize=None, cmap='RdYlGn'):
+    ax = plt.figure(figsize=figsize).add_subplot(111)
     plt.subplots_adjust(
         left=0.1, right=right,
         top=0.97, bottom=0.14
@@ -406,7 +407,7 @@ def draw_axes(phases, diagram, text, pH, U, right, cmap='RdYlGn'):
     cbar.ax.set_ylabel(r'$\mathrm{\Delta E}$ / atom [eV]', fontsize=20)
 
     add_numbers(ax, text)
-    add_edges(ax, phases, pH, U, lw=2.0, color='k')
+    add_edges(ax, phases, pH, U, ms=0.5, color='k')
     add_redox_lines(ax, pH, 'w')
 
     return ax
@@ -434,15 +435,14 @@ def generate_figures(row, filename):
     for point, energy in zip(points, energies):
         ax.scatter(
             *point,
-            c=-energy / natoms,
-            s=60,
+            c='w',
+            s=80,
             marker='o',
             edgecolors='k',
             linewidths=1.5,
             zorder=3,
             vmax=0.0,
             vmin=-1,
-            cmap='RdYlGn'
         )
 
     #plt.tight_layout()
@@ -535,8 +535,8 @@ def get_phases(material, refs, T, conc, counter):
             phase = RedOx(material, combo, T, conc, env, counter)
             # Avoid including electrode reduction 
             # if the counter electrode isn't taken into account
-            if not counter and phase.species['e-'] < 0:
-                continue
+            #if not counter and phase.species['e-'] < 0:
+            #    continue
             # Avoid duplicates
             if env == 'alkaline' and phase.species['OH-'] == 0:
                 continue
@@ -549,6 +549,7 @@ def get_phases(material, refs, T, conc, counter):
 def get_pourbaix_diagram(
         material,
         energy=None,
+        pop=[],
         T=298.15, conc=1e-6,
         counter=False,
         database='/home/niflheim/steame/utils/oqmd123.db'):
@@ -557,15 +558,20 @@ def get_pourbaix_diagram(
         material = Species(material)
 
     refs = get_references(material, database, computed_energy=energy)
+
+    for popped in pop:
+        refs.pop(popped)
+
     pourbaix = Pourbaix(material, refs, T, conc, counter)
 
-    return pourbaix
+    return pourbaix, refs
 
 
 #---ASR-stuff---#
 
-def make_results(pourbaix, points, U, pH):
+def make_results(pourbaix, refs, points, U, pH):
     phases, diagram, text = pourbaix.get_diagrams(U, pH)
+    natoms = pourbaix.material.natoms
     results = {
         'phases': phases,
         'diagram': diagram,
@@ -574,15 +580,19 @@ def make_results(pourbaix, points, U, pH):
         'pH': pH,
         'U': U,
         'evaluation_points': [],
-        'material_energy': []
+        'material_energy': [],
+        'references': []
     }
-    natoms = pourbaix.material.natoms
+
     for point in points:
         energy, phase = pourbaix.decompose(
             point[1], point[0], verbose=False
         )
         results['evaluation_points'].append(point)
         results['material_energy'].append(-energy/natoms)
+
+    for ref in refs.values():
+        results['references'].append([ref.name, ref.mu])
 
     return results
 
@@ -605,8 +615,8 @@ def webpanel(result, row, key_descriptions):
     (white dashed lines). The phases and their IDs are listed
     in the table on the right.
     
-    The bottom table shows the ΔE values at technologically 
-    relevant pH and U conditions. The corresponding (pH, U) points are
+    The bottom table shows the ΔE values at selected 
+    pH and applied potentials. The corresponding (pH, U) points are
     highlighted in the diagram.
     """
     panel_description = make_panel_description(description)
@@ -630,6 +640,7 @@ def webpanel(result, row, key_descriptions):
         label = ' + '.join(i for i in prod)
         label = re.sub(r'(\S)([+-]+)', r'\1<sup>\2</sup>', label)
         label = re.sub(r'(\d+)', r'<sub>\1</sub>', label)
+        label = label.replace('--', '2-').replace('++', '2+')
         rows2.append([i, label])
 
     table2 = {
@@ -642,10 +653,10 @@ def webpanel(result, row, key_descriptions):
         title=describe_entry(
             'Pourbaix diagram',
              description=panel_description),
-        columns=[[fig('pourbaix6.png'), table1], [table2]],
+        columns=[[fig('pourbaix12.png'), table1], [table2]],
         plot_descriptions=[{
             'function': generate_figures,
-            'filenames':['pourbaix6.png']
+            'filenames':['pourbaix12.png']
         }]
     )
 
@@ -663,6 +674,7 @@ class Result(ASRResult):
     names: List[List]
     evaluation_points: List[List[float]]
     material_energy: List[float]
+    references: List[List]
 
     key_descriptions = {
             'phases': 'Pourbaix diagram showing the most stable phases',
@@ -678,7 +690,10 @@ class Result(ASRResult):
                 'at which the material stability was evaluated'),
             'material_energy': (
                 'Energy (per atom per unit formula) of the material, '
-                'relative to the most stable phase, at each evaluation point')
+                'relative to the most stable phase, at each evaluation point'),
+            'references': (
+                'Formula and chemical potential of the solid and aqueous references '
+                'used for generating the diagram')
     }
 
     formats = {"ase_webpanel": webpanel}
@@ -700,8 +715,8 @@ def main(
         gpw='gs.gpw',
         temp=298.15,
         conc=1e-6,
-        phrange=[-1, 15],
-        urange=[-3, 3],
+        phrange=[-3, 3],
+        urange=[-1, 15],
         npoints=600,
         counter=False,
         database='/home/niflheim/steame/utils/oqmd123.db',
@@ -720,7 +735,7 @@ def main(
     material = Species(calc.atoms.get_chemical_formula())
     computed_energy = calc.get_potential_energy()
 
-    pourbaix = get_pourbaix_diagram(
+    pourbaix, refs = get_pourbaix_diagram(
         material, computed_energy,
         temp, conc, counter,
         database
@@ -730,7 +745,8 @@ def main(
     pH = np.linspace(*phrange, num=npoints)
     U = np.linspace(*urange, num=int(npoints * ratio))
 
-    results = make_results(pourbaix, eval_points, U, pH)
+    pourbaix.plot(pH, U)
+    results = make_results(pourbaix, refs, eval_points, U, pH)
 
     return results
 
