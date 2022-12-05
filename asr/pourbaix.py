@@ -102,37 +102,51 @@ class RedOx:
         gibbs0 = -reactant.mu
         total = Counter()
 
+        # Updating element count with reactant
+        total.subtract(reactant.count)
+
         # Updating element, energy and charge count with products
         prod_charge = 0
         for prod in products:
             if prod == reactant:
                 N = 1
             else:
-                for elem in reactant.elements:
-                    if elem in prod.count:
-                        N = reactant.count[elem]
+                n_elem = []
+                for elem, n in prod.count.items():
+                    if elem in reactant.elements:
+                        n_elem.append(reactant.count[elem] / n)
+                N = max(n_elem)
             for elem, n in prod.count.items():
                 total[elem] += N * n
-            prod_charge += N * prod.charge
+
             self.species[prod.name] = N
             gibbs0 += N * (prod.mu + prod.aq * const * np.log(conc))
+            prod_charge += N * prod.charge
 
-        # Updating element count with reactant
-        total.subtract(reactant.count)
+        # Completing count by adding elemental phases, if necessary
+        # e.g. GeSe + Se --> GeSe2
+        for elem in reactant.elements:
+            if total[elem] != 0:
+                if elem in self.species:
+                    self.species[elem] -= total[elem]
+                else:
+                    self.species[elem] = -total[elem]
+                total.pop(elem)
 
         # Balancing O atoms with water
         n_H2O = - total['O']
-        total.update({
-            'H': 2 * n_H2O,
-            'O': n_H2O
-        })
+        total['H'] += 2 * n_H2O
+        total['O'] += n_H2O
 
         # Balancing H atoms with H+
-        n_H = - total['H']
+        n_H = - total.pop('H')
         if n_H > 0:
             prod_charge += n_H
         else:
             reac_charge -= n_H
+
+        assert(np.allclose(list(total.values()), 0.0, rtol=0.0, atol=1e-6)), \
+            f"Reaction for {', '.join(self.products)} incorrectly balanced..."
 
         # Balancing residual charge with electrons
         n_e = prod_charge - reac_charge
@@ -195,6 +209,7 @@ class Pourbaix:
         self._const = phase_matrix[:, 0]
         self._var = phase_matrix[:, 1:]
         self.alpha = units.kB * T * np.log(10)
+        print(len(self.phases))
 
     def _decompose(self, U, pH):
         energies = self._const + np.dot(self._var, [U, pH])
@@ -529,14 +544,22 @@ def get_phases(material, refs, T, conc, counter):
     phase_matrix = [no_reaction._vector]
 
     for combo in product(*array):
-        # Add alkaline environment once chemical potentials are figured out
+        # Sometimes product can give combinations with equal elements.
+        # We don't want that
+        if len(np.unique(combo)) < len(combo):
+            continue
+
+        #TODO Add alkaline environment once chemical potentials are figured out
         #for env in ['acidic', 'alkaline']:
         for env in ['acidic']:
             phase = RedOx(material, combo, T, conc, env, counter)
-            # Avoid including electrode reduction 
+            print(phase.equation())
+
+            #TODO Avoid including electrode reduction 
             # if the counter electrode isn't taken into account
             #if not counter and phase.species['e-'] < 0:
             #    continue
+
             # Avoid duplicates
             if env == 'alkaline' and phase.species['OH-'] == 0:
                 continue
