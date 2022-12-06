@@ -85,7 +85,7 @@ def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
 
     calc = GPAW(**params)
     atoms.calc = calc
-    energy=atoms.get_potential_energy()
+    energy = atoms.get_potential_energy()
     totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
 
     if not restart:
