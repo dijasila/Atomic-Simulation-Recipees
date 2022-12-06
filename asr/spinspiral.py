@@ -18,7 +18,7 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
     """Calculate the groundstate of a given spin spiral vector q_c"""
 
     from ase.io import read
-    from gpaw.new.ase_interface import GPAW
+    from gpaw import GPAW
     atoms = read('structure.json')
     restart = path.isfile(f'gsq{n}.gpw')
 
@@ -31,10 +31,7 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
         raise Exception("SFC finished but didn't converge")
     
     try:
-        try:
-            magmoms = params["magmoms"]
-        except:
-            magmoms = params["experimental"]["magmoms"]
+        magmoms = params["experimental"]["magmoms"]
     except KeyError:
         if atoms.has('initial_magmoms'):
             magmomx = atoms.get_initial_magnetic_moments()
@@ -43,7 +40,6 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
         
         magmoms = np.zeros((len(atoms), 3))
         magmoms[:, 0] = magmomx
-        
         if smooth: # Smooth spiral
             def rotate_magmoms(magmoms, q):
                 import numpy as np
@@ -89,7 +85,7 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
     calc = GPAW(**params)
     atoms.calc = calc
     energy=atoms.get_potential_energy()
-    totmom_v, magmom_av = calc.density.state.density.calculate_magnetic_moments()
+    totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
 
     if not restart:
         atoms.calc.write(f'gsq{n}.gpw')
