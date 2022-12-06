@@ -1,4 +1,4 @@
-from asr.core import command, option, DictStr, argument, ASRResult, prepare_result
+from asr.core import command, option, argument, ASRResult, prepare_result
 from asr.utils.symmetry import c2db_symmetry_eps
 from typing import List, Union
 import numpy as np
@@ -11,7 +11,7 @@ from os import path
 @option('--n', type=int)
 @option('--params', help='Calculator parameter dictionary', type=dict)
 @option('--smooth', help='Rotate initial magmoms by q dot a', type=bool)
-def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0, 
+def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
               params: dict = dict(mode={'name': 'pw', 'ecut': 400},
                                   kpts={'density': 4.0, 'gamma': True}),
               smooth: bool = True) -> ASRResult:
@@ -29,26 +29,30 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
     if path.isfile(f'gsq{n}.txt') and not path.isfile(f'gsq{n}.gpw') and \
        not (path.isfile(f'gsq{n}.txt') and not path.isfile(f'gsq{n+1}.txt')):
         raise Exception("SFC finished but didn't converge")
-    
+
     try:
-        magmoms = params["experimental"]["magmoms"]
+        try:
+            magmoms = params["magmoms"]
+        except KeyError:
+            magmoms = params["experimental"]["magmoms"]
     except KeyError:
         if atoms.has('initial_magmoms'):
             magmomx = atoms.get_initial_magnetic_moments()
         else:
             magmomx = np.ones(len(atoms), float)
-        
         magmoms = np.zeros((len(atoms), 3))
         magmoms[:, 0] = magmomx
-        if smooth: # Smooth spiral
+
+        if smooth:  # Smooth spiral
             def rotate_magmoms(magmoms, q):
                 import numpy as np
                 from ase.io import read
                 from ase.dft.kpoints import kpoint_convert
+
                 def rotation_matrix(axis, theta):
                     """
-                    Return the rotation matrix associated with counterclockwise rotation about
-                    the given axis by theta radians.
+                    Return the rotation matrix associated with counterclockwise rotation
+                    about the given axis by theta radians.
                     https://stackoverflow.com/questions/6802577/rotation-of-3d-vector
                     """
                     axis = np.asarray(axis)
@@ -67,11 +71,11 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
                 R = [rotation_matrix([0, 0, 1], theta[i]) for i in range(len(atoms))]
                 magmoms = [R[i] @ magmoms[i] for i in range(len(atoms))]
                 return np.asarray(magmoms)
-            
+
             magmoms = rotate_magmoms(magmoms, q_c)
-            
+
     if restart:
-        params=dict(restart=f'gsq{n}.gpw')
+        params = dict(restart=f'gsq{n}.gpw')
     else:
         # Mandatory spin spiral parameters
         params["mode"]["qspiral"] = q_c
@@ -84,12 +88,13 @@ def calculate(q_c: List[float] = [1/3, 1/3, 0], n: int = 0,
 
     calc = GPAW(**params)
     atoms.calc = calc
-    energy=atoms.get_potential_energy()
-    totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
+    energy = atoms.get_potential_energy()
+    totmom_v, magmom_av = calc.density.state.density.calculate_magnetic_moments()
 
     if not restart:
         atoms.calc.write(f'gsq{n}.gpw')
     return ASRResult.fromdata(en=energy, q=q_c, ml=magmom_av, mT=totmom_v)
+
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, fig
@@ -102,6 +107,7 @@ def webpanel(result, row, key_descriptions):
              'sort': 3}
     return [panel]
 
+
 @prepare_result
 class Result(ASRResult):
     path: np.ndarray
@@ -110,18 +116,17 @@ class Result(ASRResult):
     total_magmoms: np.ndarray
     bandwidth: float
     minimum: np.ndarray
-    key_descriptions={"path":"List of Spin spiral vectors",
-                      "energies":"Potential energy [eV]",
-                      "local_magmoms" : "List of estimated local moments [mu_B]",
-                      "total_magmoms" : "Estimated total moment [mu_B]",
-                      "bandwidth":"Energy difference [meV]",
-                      "minimum":"Q-vector at energy minimum"}
+    key_descriptions = {"path": "List of Spin spiral vectors",
+                        "energies": "Potential energy [eV]",
+                        "local_magmoms": "List of estimated local moments [mu_B]",
+                        "total_magmoms": "Estimated total moment [mu_B]",
+                        "bandwidth": "Energy difference [meV]",
+                        "minimum": "Q-vector at energy minimum"}
     formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.spinspiral',
          requires=['structure.json'],
-         #dependencies=['asr.spinspiral@calculate'],
          returns=Result)
 @option('--q_path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
 @option('--n', type=int)
@@ -135,31 +140,29 @@ def main(q_path: Union[str, None] = None, n: int = 11,
     from ase.io import read
     atoms = read('structure.json')
     cell = atoms.cell
-    from ase.dft.kpoints import BandPath
     if eps is None:
         eps = c2db_symmetry_eps
-    
+
     if q_path is None:
         # Input --q_path None
         # eps = 0.1 is current c2db threshold
-        #q_path = atoms.cell.get_bravais_lattice(pbc=atoms.pbc, eps=eps).special_path
         path = atoms.cell.bandpath(npoints=n, pbc=atoms.pbc, eps=eps)
         Q = np.round(path.kpts, 16)
-    elif q_path =='ibz':
+    elif q_path == 'ibz':
         # Input: --q_path 'ibz'
         from gpaw.symmetry import atoms2symmetry
         from gpaw.kpt_descriptor import kpts2sizeandoffsets
         from ase.dft.kpoints import monkhorst_pack, kpoint_convert
-        # Create (n,n,1) for 2D, (n,n,n) for 3D 
-        sizeInput = atoms.get_pbc()*(n-1) + 1
+        # Create (n,n,1) for 2D, (n,n,n) for 3D
+        sizeInput = atoms.get_pbc() * (n - 1) + 1
         size, offset = kpts2sizeandoffsets(sizeInput, gamma=True, atoms=atoms)
         bzk_kc = monkhorst_pack(size) + offset
-        symmetry = atoms2symmetry(atoms, tolerance=tolerance)
+        symmetry = atoms2symmetry(atoms, tolerance=eps)
         ibzinfo = symmetry.reduce(bzk_kc)
         Q = ibzinfo[0]
         bz2ibz_k, ibz2bz_k = ibzinfo[4:6]
         bzk_kv = kpoint_convert(cell, skpts_kc=bzk_kc) / (2 * np.pi)
-        path = [bzk_kv, bz2ibz_k, ibz2bz_k] 
+        path = [bzk_kv, bz2ibz_k, ibz2bz_k]
     elif q_path.isalpha():
         # Input: --q_path 'GKMG'
         path = atoms.cell.bandpath(q_path, npoints=n, pbc=atoms.pbc, eps=eps)
@@ -176,10 +179,9 @@ def main(q_path: Union[str, None] = None, n: int = 11,
         Qv = kpoint_convert(atoms.get_cell(), skpts_kc=Q) / (2 * np.pi)
         path = [Q, Qv]
 
-    energies=[]
+    energies = []
     lmagmom_av = []
     Tmagmom_v = []
-    
     for i, q_c in enumerate(Q):
         try:
             result = calculate(q_c=q_c, n=i, params=params, smooth=smooth)
@@ -196,15 +198,15 @@ def main(q_path: Union[str, None] = None, n: int = 11,
     lmagmom_av = np.asarray(lmagmom_av)
     Tmagmom_v = np.asarray(Tmagmom_v)
 
-    bandwidth = (np.max(energies)-np.min(energies))*1000
+    bandwidth = (np.max(energies) - np.min(energies)) * 1000
     qmin = Q[np.argmin(energies)]
-    return Result.fromdata(path=path, energies=energies, 
+    return Result.fromdata(path=path, energies=energies,
                            local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
                            bandwidth=bandwidth, minimum=qmin)
 
+
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
-    from ase.spectrum.band_structure import BandStructure
     data = row.data.get('results-asr.spinspiral.json')
     path = data['path']
     energies = data['energies']
@@ -264,7 +266,6 @@ def plot_bandstructure(row, fname):
     # fig.suptitle('')
     plt.tight_layout()
     plt.savefig(fname)
-
 
     # energies = energies - energies[0]
     # energies = (energies)*1000
