@@ -77,8 +77,7 @@ def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
         # Mandatory spin spiral parameters
         params["mode"]["qspiral"] = q_c
         params["xc"] = 'LDA'
-        params["magmoms"] = magmoms
-        params["soc"] = False
+        params["experimental"] = {'magmoms': magmoms, 'soc': False}
         params["symmetry"] = 'off'
         params["parallel"] = {'domain': 1, 'band': 1}
         params["txt"] = f'gsq{n}.txt'
