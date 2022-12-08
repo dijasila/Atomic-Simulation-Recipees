@@ -138,7 +138,7 @@ class Result(ASRResult):
 def main(q_path: Union[str, None] = None, n: int = 11,
          params: dict = dict(mode={'name': 'pw', 'ecut': 800},
                              kpts={'density': 6.0, 'gamma': True}),
-         smooth: bool = True, clean_up=False, eps: float = None) -> Result:
+         smooth: bool = True, clean_up: bool = False, eps: float = None) -> Result:
     from ase.io import read
     atoms = read('structure.json')
     cell = atoms.cell
