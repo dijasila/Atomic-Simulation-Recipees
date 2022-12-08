@@ -16,8 +16,8 @@ def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
                                   kpts={'density': 4.0, 'gamma': True}),
               smooth: bool = True) -> ASRResult:
     """Calculate the groundstate of a given spin spiral vector q_c"""
-
     from ase.io import read
+    from ase.dft.bandgap import bandgap
     from gpaw import GPAW
     atoms = read('structure.json')
     restart = path.isfile(f'gsq{n}.gpw')
@@ -86,10 +86,11 @@ def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
     atoms.calc = calc
     energy = atoms.get_potential_energy()
     totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
+    gap, k1, k2 = bandgap(calc)
 
     if not restart:
         atoms.calc.write(f'gsq{n}.gpw')
-    return ASRResult.fromdata(en=energy, q=q_c, ml=magmom_av, mT=totmom_v)
+    return ASRResult.fromdata(en=energy, q=q_c, ml=magmom_av, mT=totmom_v, gap=gap)
 
 
 def webpanel(result, row, key_descriptions):
@@ -112,12 +113,16 @@ class Result(ASRResult):
     total_magmoms: np.ndarray
     bandwidth: float
     minimum: np.ndarray
+    gaps: np.ndarray
+    gapmin: float
     key_descriptions = {"path": "List of Spin spiral vectors",
                         "energies": "Potential energy [eV]",
                         "local_magmoms": "List of estimated local moments [mu_B]",
                         "total_magmoms": "Estimated total moment [mu_B]",
                         "bandwidth": "Energy difference [meV]",
-                        "minimum": "Q-vector at energy minimum"}
+                        "minimum": "Q-vector at energy minimum",
+                        "gaps": "List of bandgaps",
+                        "gapmin": "Bandgap at minimum energy"}
     formats = {"ase_webpanel": webpanel}
 
 
@@ -128,11 +133,12 @@ class Result(ASRResult):
 @option('--n', type=int)
 @option('--params', help='Calculator parameter dictionary', type=dict)
 @option('--smooth', help='Rotate initial magmoms by q dot a', type=bool)
+@option('--clean_up', help='Remove gpw files after execution', type=bool)
 @option('--eps', help='Bandpath symmetry threshold', type=float)
 def main(q_path: Union[str, None] = None, n: int = 11,
-         params: dict = dict(mode={'name': 'pw', 'ecut': 600},
+         params: dict = dict(mode={'name': 'pw', 'ecut': 800},
                              kpts={'density': 6.0, 'gamma': True}),
-         smooth: bool = True, eps: float = None) -> Result:
+         smooth: bool = True, clean_up=False, eps: float = None) -> Result:
     from ase.io import read
     atoms = read('structure.json')
     cell = atoms.cell
@@ -178,27 +184,41 @@ def main(q_path: Union[str, None] = None, n: int = 11,
     energies = []
     lmagmom_av = []
     Tmagmom_v = []
+    gaps = []
     for i, q_c in enumerate(Q):
         try:
             result = calculate(q_c=q_c, n=i, params=params, smooth=smooth)
             energies.append(result['en'])
             lmagmom_av.append(result['ml'])
             Tmagmom_v.append(result['mT'])
+            gaps.append(result['gap'])
         except Exception as e:
             print('Exception caught: ', e)
             energies.append(0)
             lmagmom_av.append(np.zeros((len(atoms), 3)))
             Tmagmom_v.append(np.zeros(3))
+            gaps.append(0)
 
     energies = np.asarray(energies)
     lmagmom_av = np.asarray(lmagmom_av)
     Tmagmom_v = np.asarray(Tmagmom_v)
+    gaps = np.asarray(gaps)
 
     bandwidth = (np.max(energies) - np.min(energies)) * 1000
-    qmin = Q[np.argmin(energies)]
-    return Result.fromdata(path=path, energies=energies,
+    emin_idx = np.argmin(energies)
+    qmin = Q[emin_idx]
+    gapmin = gaps[emin_idx]
+    if clean_up:
+        import os
+        from glob import glob
+        gpw_list = glob('*.gpw')
+        for gpw in gpw_list:
+            if int(gpw[3:-4]) != emin_idx:
+                os.remove(gpw)
+
+    return Result.fromdata(path=path, energies=energies, minimum=qmin,
                            local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
-                           bandwidth=bandwidth, minimum=qmin)
+                           bandwidth=bandwidth, gaps=gaps, gapmin=gapmin)
 
 
 def plot_bandstructure(row, fname):
