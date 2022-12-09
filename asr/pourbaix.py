@@ -199,7 +199,7 @@ class RedOx:
         return energy
 
     def __eq__(self, other):
-        return all(self.products == other.products)
+        return all(prod in other.products for prod in self.products)
 
 
 class Pourbaix:
@@ -209,10 +209,12 @@ class Pourbaix:
         self._const = phase_matrix[:, 0]
         self._var = phase_matrix[:, 1:]
         self.alpha = units.kB * T * np.log(10)
-        print(len(self.phases))
+
+    def _evaluate(self, U, pH):
+        return self._const + np.dot(self._var, [U, pH])
 
     def _decompose(self, U, pH):
-        energies = self._const + np.dot(self._var, [U, pH])
+        energies = self._evaluate(U, pH)
         i_min = np.argmin(energies)
         return energies[i_min], i_min
 
@@ -244,6 +246,42 @@ class Pourbaix:
             text.append((x, y, phase.products))
         return pour, meta, text
 
+    def get_pH_slice(self, pH_value, U, show=True, savefig=None):
+        '''Obtain a energy-vs-potential slice of the Pourbaix diagram at a given pH'''
+
+        energies = np.zeros((len(U), len(self.phases)))
+        for i, u in enumerate(U):
+            energies[i] = self._evaluate(u, pH_value)
+
+        ax = draw_slice_axes(energies, U, self.phases, show, savefig, ptype='pH')
+        ax.set_title(f'pH = {pH_value}')
+        ax.set_xlabel('U (V)')
+
+        if show:
+            plt.show()
+        if savefig is not None:
+            plt.savefig(savefig)
+
+        return energies
+
+    def get_U_slice(self, U_value, pH, show=True, savefig=None):
+        '''Obtain a energy-vs-pH slice of the Pourbaix diagram at a given potential'''
+
+        energies = np.zeros((len(pH), len(self.phases)))
+        for i, p in enumerate(pH):
+            energies[i] = self._evaluate(U_value, p)
+
+        ax = draw_slice_axes(energies, pH, self.phases, show, savefig, ptype='U')
+        ax.set_title(f'U = {U_value}')
+        ax.set_xlabel('pH')
+
+        if show:
+            plt.show()
+        if savefig is not None:
+            plt.savefig(savefig)
+
+        return energies
+
     def plot(self, U, pH, 
              cmap="RdYlGn",
              cap=1.0,
@@ -258,7 +296,7 @@ class Pourbaix:
         if cap:
             np.clip(meta, a_min=-cap, a_max=0.0, out=meta)
 
-        ax = draw_axes(pour, meta, text, pH, U, 0.75, figsize, cmap)
+        ax = draw_diagram_axes(pour, meta, text, pH, U, 0.75, figsize, cmap)
         add_text(ax, text, offset=0.05)
 
         if savefig:
@@ -267,7 +305,6 @@ class Pourbaix:
             plt.show()
 
         return ax
-
 
 
 #---Plotting-functions---#
@@ -284,7 +321,7 @@ def get_counter_correction(env, n_e, alpha):
            -1: 0.401,     # 4OH- --> O2 + 2H2O + 4e-
             0: 0.0
         }
-    }
+    } 
     sign = np.sign(n_e)
     E0 = std_potentials[env][sign]
 
@@ -382,7 +419,7 @@ def add_text(ax, text, offset=0):
     return 0
 
 
-def draw_axes(phases, diagram, text, pH, U, right, figsize=None, cmap='RdYlGn'):
+def draw_diagram_axes(phases, diagram, text, pH, U, right, figsize=None, cmap='RdYlGn'):
     ax = plt.figure(figsize=figsize).add_subplot(111)
     plt.subplots_adjust(
         left=0.1, right=right,
@@ -428,8 +465,38 @@ def draw_axes(phases, diagram, text, pH, U, right, figsize=None, cmap='RdYlGn'):
     return ax
 
 
+def draw_slice_axes(energies, X, phases, show, savefig, ptype):
+    from matplotlib.patches import Rectangle
+    ax = plt.figure().add_subplot(111)
+    ax.add_patch(Rectangle(
+        (X.min(), 0),
+        np.ptp(X),
+        energies.max(),
+        color='#fbcdc8'
+    ))
+
+    ax.plot(X, energies[:, 0], 'k--', zorder=len(phases)+1)
+    for i in range(1, energies.shape[1]):
+        phase = phases[i]
+        label = ', '.join(phase.products)
+        if ptype == 'pH':
+            label += f", {phase.species['e-']:.1f} e-"
+        else:
+            label += f", {phase.species['H+']:.1f} H+"
+        ax.plot(X, energies[:, i], label=label)
+
+    ax.set_xlim(X.min(), X.max())
+    ax.set_ylim(energies.min(), energies.max())
+    ax.set_ylabel(r'$\Delta G$ (eV)')
+    plt.legend(bbox_to_anchor=(1,1), loc='upper left', fontsize=10)
+    plt.subplots_adjust(
+        left=0.15, right=0.75,
+        top=0.9, bottom=0.14
+    )
+    return ax
+
+
 def generate_figures(row, filename):
-    import matplotlib.pyplot as plt
     '''Plot diagram for webpanel'''
 
     data = row.data.get('results-asr.pourbaix.json')
@@ -445,7 +512,7 @@ def generate_figures(row, filename):
 
     diagram /= natoms
     np.clip(diagram, a_min=-1, a_max=0.0, out=diagram)
-    ax = draw_axes(phases, diagram, text, pH, U, 1.0)
+    ax = draw_diagram_axes(phases, diagram, text, pH, U, 1.0)
 
     for point, energy in zip(points, energies):
         ax.scatter(
@@ -460,7 +527,6 @@ def generate_figures(row, filename):
             vmin=-1,
         )
 
-    #plt.tight_layout()
     plt.savefig(filename)
     
     return ax
@@ -553,7 +619,6 @@ def get_phases(material, refs, T, conc, counter):
         #for env in ['acidic', 'alkaline']:
         for env in ['acidic']:
             phase = RedOx(material, combo, T, conc, env, counter)
-            print(phase.equation())
 
             #TODO Avoid including electrode reduction 
             # if the counter electrode isn't taken into account
