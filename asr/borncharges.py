@@ -88,7 +88,8 @@ class Result(ASRResult):
 @option('--tmp_gpw_folder',
         help='Folder where the temporary gpw file for each displacement is saved',
         type=str)
-def main(displacement: float = 0.01, tmp_gpw_folder: str = 'in_displacement_folder') -> Result:
+def main(displacement: float = 0.01,
+         tmp_gpw_folder: str = 'in_displacement_folder') -> Result:
     """Calculate Born charges."""
     from gpaw import GPAW
 
