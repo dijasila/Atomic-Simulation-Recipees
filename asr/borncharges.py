@@ -85,7 +85,10 @@ class Result(ASRResult):
          requires=['gs.gpw'],
          returns=Result)
 @option('--displacement', help='Atomic displacement (Å)', type=float)
-def main(displacement: float = 0.01) -> Result:
+@option('--tmp_gpw_folder',
+        help='Folder where the temporary gpw file for each displacement is saved',
+        type=str)
+def main(displacement: float = 0.01, tmp_gpw_folder: str = 'in_displacement_folder') -> Result:
     """Calculate Born charges."""
     from gpaw import GPAW
 
@@ -113,7 +116,11 @@ def main(displacement: float = 0.01) -> Result:
 
         with chdir(folder):
             if not formalpolarization.done:
-                formalpolarization()
+                if tmp_gpw_folder == 'in_displacement_folder':
+                    formalpolarization()
+                else:
+                    formalpolarization(gpwname=tmp_gpw_folder
+                                       + folder.name + '_formalpol.gpw')
 
         polresults = read_json(folder / 'results-asr.formalpolarization.json')
         phase_c = polresults['phase_c']
