@@ -57,19 +57,20 @@ def _get_webcontent(name='database.db'):
     mf()
     fromtree(recursive=True)
     content = ""
-    from asr.database import app as appmodule
+    from asr.database.app import WebApp#  import app as appmodule
     from pathlib import Path
     if world.rank == 0:
-        from asr.database.app import app, initialize_project, projects
+        #from asr.database.app import app, initialize_project, projects
+        from asr.database.app import setup_app
 
-        tmpdir = Path("tmp/")
-        tmpdir.mkdir()
-        appmodule.tmpdir = tmpdir
-        initialize_project(name)
+        webapp = setup_app()
+        webapp.initialize_project(name)
+
+        app = webapp.app
 
         app.testing = True
         with app.test_client() as c:
-            project = projects["database.db"]
+            project = webapp.projects["database.db"]
             db = project["database"]
             uid_key = project["uid_key"]
             row = db.get(id=1)
