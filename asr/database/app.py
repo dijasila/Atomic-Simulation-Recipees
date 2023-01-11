@@ -174,13 +174,17 @@ def setup_app():
         path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
 
-    setup_data_endpoints(app)
-    return WebApp(app, projects, tmpdir)
+    webapp = WebApp(app, projects, tmpdir)
+    setup_data_endpoints(webapp)
+    return webapp
 
 
-def setup_data_endpoints(app):
+def setup_data_endpoints(webapp):
     """Set endpoints for downloading data."""
     from ase.io.jsonio import MyEncoder
+
+    projects = webapp.projects
+    app = webapp.app
     app.json_encoder = MyEncoder
 
     @app.route('/<project_name>/row/<uid>/all_data')
@@ -238,7 +242,6 @@ def setup_data_endpoints(app):
                                       .format(uid_key=uid_key, uid=uid))
         return jsonify(row.data.get(filename))
 
-
     @app.template_filter()
     def asr_sort_key_descriptions(value):
         """Sort column drop down menu."""
@@ -286,11 +289,11 @@ def main(databases: List[str], host: str = "0.0.0.0",
 
 def _main(databases, host, test, extra_kvp_descriptions, pool):
     webapp = setup_app()
+    projects = webapp.projects
+    app = webapp.app
 
     for database in databases:
         webapp.initialize_project(database, extra_kvp_descriptions, pool)
-
-    # setup_app()
 
     if test:
         import traceback
