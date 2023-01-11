@@ -150,7 +150,7 @@ class WebApp:
         self.projects[name] = project
 
 
-def setup_app():
+def setup_app(route_slash=True):
     # used to cache png-files:
     tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))
 
@@ -159,14 +159,15 @@ def setup_app():
     app = new_app(projects)
     app.jinja_loader.searchpath.append(str(path))
 
-    @app.route("/")
-    def index():
-        return render_template(
-            "asr/database/templates/projects.html",
-            projects=sorted([
-                (name, proj["title"], proj["database"].count())
-                for name, proj in projects.items()
-            ]))
+    if route_slash:
+        @app.route("/")
+        def index():
+            return render_template(
+                "asr/database/templates/projects.html",
+                projects=sorted([
+                    (name, proj["title"], proj["database"].count())
+                    for name, proj in projects.items()
+                ]))
 
     @app.route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
