@@ -25,7 +25,7 @@ def doi(identifier):
     return href(f'doi:{identifier}', f'https://doi.org/{identifier}')
 
 
-def get_label_webinfo(label):
+def get_label_tablerow(label):
     from asr.database.browser import describe_entry
 
     lyngby22_link = arxiv('2206.12159')
@@ -108,7 +108,6 @@ def webpanel(result, row, key_descriptions):
         'columns': [[{
             'type': 'table',
             'rows': [tablerow],
-            'columnwidth': 4,
         }]],
     }
     return [panel]
@@ -132,7 +131,7 @@ class LabelResult(ASRResult):
     # formats = {'ase_webpanel': webpanel}
 
     def as_formatted_tablerow(self):
-        return get_label_webinfo(self['label'])
+        return get_label_tablerow(self['label'])
 
 
 @command(module='asr.c2db.labels',
