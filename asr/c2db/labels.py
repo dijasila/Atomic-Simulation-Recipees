@@ -97,7 +97,7 @@ Ref: {link}
     if label is None:
         return []  # No panels generated
 
-    entryname = describe_entry('Origin', label_explanation)
+    entryname = describe_entry('Structure origin', label_explanation)
 
     panel = {
         'title': 'Summary',
