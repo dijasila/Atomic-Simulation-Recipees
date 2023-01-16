@@ -224,7 +224,7 @@ def get_layer_group(atoms, symprec):
     if not hasattr(spglib, 'get_symmetry_layerdataset'):
         return None, None
 
-    assert atoms.pbs.sum() == 2
+    assert atoms.pbc.sum() == 2
     aperiodic_dir = np.where(~atoms.pbc)[0][0]
 
     lg_dct = spglib.get_symmetry_layerdataset(
