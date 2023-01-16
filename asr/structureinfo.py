@@ -219,15 +219,15 @@ class Result(ASRResult):
 
 
 def get_layer_group(atoms, symprec):
-    import spglib
-
-    if not hasattr(spglib, 'get_symmetry_layerdataset'):
+    try:
+        from spglib.spglib import get_symmetry_layerdataset
+    except ImportError:
         return None, None
 
     assert atoms.pbc.sum() == 2
     aperiodic_dir = np.where(~atoms.pbc)[0][0]
 
-    lg_dct = spglib.get_symmetry_layerdataset(
+    lg_dct = get_symmetry_layerdataset(
         (atoms.get_cell(),
          atoms.get_scaled_positions(),
          atoms.get_atomic_numbers()),
