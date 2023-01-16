@@ -150,7 +150,6 @@ def webpanel(result, row, key_descriptions):
     # I can't get it to work when appending another row
     # to the tablerows list.  Therefore we append rows afterwards.  WTF.
     basictable = table(row, 'Structure info', tablerows, key_descriptions, 2)
-    basictable['columnwidth'] = 4
     rows = basictable['rows']
 
     labelresult = row.data.get('results-asr.c2db.labels.json')
@@ -182,8 +181,7 @@ def webpanel(result, row, key_descriptions):
     panel = {'title': 'Summary',
              'columns': [[basictable,
                           {'type': 'table', 'header': ['Stability', ''],
-                           'rows': [],
-                           'columnwidth': 4}],
+                           'rows': []}],
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]

@@ -187,7 +187,6 @@ def webpanel(result, row, key_descriptions):
             'type': 'table',
             'header': ['Electronic properties', ''],
             'rows': [gap_row],
-            'columnwidth': 3,
         }]],
         plot_descriptions=[{'function': bz_with_band_extremums,
                             'filenames': ['bz-with-gaps.png']}],
