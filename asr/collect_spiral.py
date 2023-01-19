@@ -48,7 +48,7 @@ def main(q_path: Union[str, None] = None, n: int = 11,
     from glob import glob
     atoms = read('structure.json')
     c2db_eps = 0.1
-    path = atoms.cell.bandpath(npoints=0, pbc=atoms.pbc, eps=c2db_eps)
+    path = atoms.cell.bandpath(npoints=n, pbc=atoms.pbc, eps=c2db_eps)
     Q = path.kpts
 
     data = []
@@ -72,11 +72,18 @@ def main(q_path: Union[str, None] = None, n: int = 11,
 
     res = {}
     for order in orders:
-        n = results[order]['n']
+        n_i = results[order]['n']
+        for i in range(n):
+            if i not in n_i:
+                n_i.append(i)
+                results[order]['e'].append(0)
+                results[order]['m_v'].append([0, 0, 0])
+                results[order]['m_av'].append([[0, 0, 0]] * len(atoms))
+
         for key in keys:
             # sort data based on the counter "n"
             res_i = results[order][key]
-            _, res_i = zip(*sorted(zip(n, res_i)))
+            _, res_i = zip(*sorted(zip(n_i, res_i)))
 
             # restructure output
             if key in res.keys():
