@@ -40,7 +40,8 @@ class Species:
             reduced, self.n_fu = formula_obj.reduce()
             self.count = reduced.count()
             self.name = str(reduced)
-        self.elements = [elem for elem in self.count if elem not in ['H', 'O']]
+        self._elements = [elem for elem in self.count]
+        self.elements = [elem for elem in self._elements if elem not in ['H', 'O']]
         self.natoms = sum(self.count.values())
         self.energy = None
         self.mu = None
@@ -68,7 +69,7 @@ class Species:
     def set_chemical_potential(self, energy, refs=None):
         self.energy = energy
         if refs is None:
-            self.mu = energy
+            self.mu = energy / self.n_fu
         else:
             self.mu = self.get_formation_energy(energy, refs)
 
@@ -307,8 +308,6 @@ class Pourbaix:
         return ax
 
 
-#---Plotting-functions---#
-
 def get_counter_correction(env, n_e, alpha):
     std_potentials = {
         'acidic': {
@@ -322,13 +321,14 @@ def get_counter_correction(env, n_e, alpha):
             0: 0.0
         }
     } 
-    sign = np.sign(n_e)
-    E0 = std_potentials[env][sign]
-
+    E0 = std_potentials[env][np.sign(n_e)]
     if env == 'alkaline':
         return -n_e * (E0 + 14.0 * alpha)
+
     return -n_e * E0
 
+
+#---Plotting-functions---#
 
 def edge_detection(array):
     edges = {}
@@ -343,7 +343,7 @@ def edge_detection(array):
                     else:
                         edges.update({
                             pair: [[i+1, j]]
-                            })
+                        })
     for key, value in edges.items():
         edges.update({key: np.asarray(value)})
     return edges
@@ -402,7 +402,12 @@ def add_text(ax, text, offset=0):
         label = ' + '.join(i for i in prod)
         label = re.sub(r'(\S)([+-]+)', r'\1$^{\2}$', label)
         label = re.sub(r'(\d+)', r'$_{\1}$', label)
-        label = label.replace('--', '2-').replace('++', '2+')
+        for symbol in ['+', '-']:
+            count = label.count('+')
+            if count > 1:
+                label = label.replace(count*symbol, f'{count}{symbol}')
+            if count == 1:
+                label = label.replace(count*symbol, symbol)
         textlines.append(
                 textwrap.fill(f'({i})  {label}', 
                               width=40,
@@ -541,32 +546,31 @@ def get_references(material, db_name, computed_energy=None, include_aq=True):
     reference_energies = {}
     refs = {}
 
-    with connect(db_name) as db:
-        for subsys in material.get_chemsys():
-            nspecies = len(subsys)
-            query_str = ",".join(subsys) + f',nspecies={nspecies}'
+    db = connect(db_name)
+    for subsys in material.get_chemsys():
+        nspecies = len(subsys)
+        query_str = ",".join(subsys) + f',nspecies={nspecies}'
 
-            for row in db.select(query_str):
-                energy = row.energy
-                ref = Species(row.formula)
-                name = ref.name
+        for row in db.select(query_str):
+            energy = row.energy
+            ref = Species(row.formula)
+            name = ref.name
 
-                if nspecies == 1:
-                    energy_elem = PREDEF_ENERGIES.get(
-                        name,
-                        energy / row.natoms
-                    )
-                    reference_energies[name] = energy_elem
+            if nspecies == 1:
+                energy_elem = PREDEF_ENERGIES.get(
+                    name,
+                    energy / row.natoms
+                )
+                reference_energies[name] = energy_elem
 
-                OH_content = ref.get_fractional_composition(['O', 'H'])
-                if OH_content > 0.85 or 1e-4 < OH_content < 0.095:
-                    continue
+            OH_content = ref.get_fractional_composition(['O', 'H'])
+            if OH_content > 0.85 or 1e-4 < OH_content < 0.095:
+                continue
 
-                ref.set_chemical_potential(energy, reference_energies)
-                refs[name] = ref
+            ref.set_chemical_potential(energy, reference_energies)
+            refs[name] = ref
 
     mat = refs.get(material.name, None)
-
     if not computed_energy:
         if not mat:
             raise ValueError(\
@@ -583,7 +587,6 @@ def get_references(material, db_name, computed_energy=None, include_aq=True):
         solv_refs = solvated(material.name)
         for name, energy in solv_refs:
             ref = Species(name)
-            #energy += PREDEF_ENERGIES['H+']
             ref.set_chemical_potential(energy, None)
             refs[name] = ref
 
@@ -609,9 +612,13 @@ def get_phases(material, refs, T, conc, counter):
     phases = [no_reaction]
     phase_matrix = [no_reaction._vector]
 
+    #TODO add solid-state decomposition if the material is not on the hull
+    # this can be done by adding both the adjacent phases on the hull
+    # as an additional product combo
+
     for combo in product(*array):
-        # Sometimes product can give combinations with equal elements.
-        # We don't want that
+        # Sometimes product can give combinations 
+        # with equal elements. We don't want that
         if len(np.unique(combo)) < len(combo):
             continue
 
@@ -619,12 +626,6 @@ def get_phases(material, refs, T, conc, counter):
         #for env in ['acidic', 'alkaline']:
         for env in ['acidic']:
             phase = RedOx(material, combo, T, conc, env, counter)
-
-            #TODO Avoid including electrode reduction 
-            # if the counter electrode isn't taken into account
-            #if not counter and phase.species['e-'] < 0:
-            #    continue
-
             # Avoid duplicates
             if env == 'alkaline' and phase.species['OH-'] == 0:
                 continue
