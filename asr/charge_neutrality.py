@@ -546,7 +546,7 @@ def get_hof_from_sj_results():
     from pathlib import Path
 
     p = Path('.')
-    pathlist = list(p.glob('../defects.*/charge_0/results-asr.sj_analyze.json'))
+    pathlist = list(p.glob('../../defects.*/charge_0/full_params/results-asr.sj_analyze.json'))
     sj_res = read_json(pathlist[0])
     hof = sj_res['hof']
 
@@ -735,7 +735,7 @@ def get_defect_dict_from_files():
     from pathlib import Path
 
     p = Path('.')
-    charged_folders = list(p.glob('./../defects.*/charge_0/'))
+    charged_folders = list(p.glob('./../../defects.*/charge_0/full_params'))
     sjflag = False
 
     defect_dict = {}
