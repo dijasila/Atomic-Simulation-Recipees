@@ -239,6 +239,7 @@ def main(index: int = None) -> Result:
     This recipe uses SJ theory to calculate charge transition levels for defect systems.
     At least, asr.setup.sj had to be run in the charge_0 folder of a defect system and
     the half integer calculations have to be finished within the newly created folders.
+    XXX NOTE Has been modified to work for folder structure in doubledefects project
     """
     from ase.db import connect
     from ase.io import read
@@ -369,12 +370,12 @@ def calculate_transitions(index, N_homo_q, defectinfo):
             transition_list.append(transition_results)
 
     for q in [-3, -2, -1, 1, 2, 3]:
-        if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
+        if q > 0 and Path('./../../charge_{}/full_params/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
             transition_results = get_transition_level(
                 transition, q, index, N_homo_q, defectinfo)
             transition_list.append(transition_results)
-        if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
+        if q < 0 and Path('./../../charge_{}/full_params/sj_-0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q - 1]
             transition_results = get_transition_level(
                 transition, q, index, N_homo_q, defectinfo)
@@ -490,7 +491,7 @@ def get_half_integer_calc_and_index(charge, transition):
     elif transition[1] > transition[0]:
         identifier = '+0.5'
         delta_index = 0
-    parentpath = f'../charge_{charge}/sj_{identifier}'
+    parentpath = f'../../charge_{charge}/full_params/sj_{identifier}'
     try:
         calc = GPAW(f'{parentpath}/gs.gpw', txt=None)
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
