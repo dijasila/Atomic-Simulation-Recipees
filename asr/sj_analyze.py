@@ -1,3 +1,4 @@
+#XXX ToDo Add possibility to have subfolder (full_params) after charge_X folders
 from asr.core import command, ASRResult, prepare_result, option
 from asr.database.browser import make_panel_description, href
 from pathlib import Path
