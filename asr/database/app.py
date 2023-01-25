@@ -19,6 +19,23 @@ import asr
 from asr.core import (command, option, argument, ASRResult,
                       decode_object, UnknownDataFormat)
 
+from collections.abc import Mapping
+class MyKeyDescriptions(Mapping):
+    def __init__(self, dct):
+        self._dct = dct
+
+    def __len__(self):
+        return len(self._dct)
+
+    def __iter__(self):
+        return iter(self._dct)
+
+    def __getitem__(self, item):
+        try:
+            return self._dct[item]
+        except KeyError:
+            return ('missing_desc', 'missing_longdesc', 'missing_unit')
+
 
 def create_key_descriptions(db=None, extra_kvp_descriptions=None):
     from asr.database.key_descriptions import key_descriptions
@@ -64,37 +81,48 @@ class Summary:
         self.row = row
 
         atoms = Atoms(cell=row.cell, pbc=row.pbc)
-        self.size = kptdensity2monkhorstpack(atoms,
-                                             kptdensity=1.8,
-                                             even=False)
+        #self.size = kptdensity2monkhorstpack(atoms,
+        #                                     kptdensity=1.8,
+        #                                     even=False)
+
+        # Number of repeats offered when viewing the cell:
+        self.size = (1, 1, 1)
 
         self.cell = [['{:.3f}'.format(a) for a in axis] for axis in row.cell]
         par = ['{:.3f}'.format(x) for x in cell_to_cellpar(row.cell)]
         self.lengths = par[:3]
         self.angles = par[3:]
 
-        self.stress = row.get('stress')
-        if self.stress is not None:
-            self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
+        #self.stress = row.get('stress')
+        #if self.stress is not None:
+        #    self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
         self.formula = Formula(
             Formula(row.formula).format('metal')).format('html')
 
         kd = key_descriptions
-        self.layout = create_layout(row, kd, prefix)
+        # self.layout = create_layout(row, kd, prefix)
 
-        self.dipole = row.get('dipole')
-        if self.dipole is not None:
-            self.dipole = ', '.join('{0:.3f}'.format(d) for d in self.dipole)
+        col = [{'type': 'table',
+                'rows': [['garbage', 'tons'], ['bin'], [42]]}]
 
-        self.data = row.get('data')
-        if self.data:
-            self.data = ', '.join(self.data.keys())
+        self.layout = [
+            ('MY TITLE', [col]),
+        ]
 
-        self.constraints = row.get('constraints')
-        if self.constraints:
-            self.constraints = ', '.join(c.__class__.__name__
-                                         for c in self.constraints)
+        #self.dipole = row.get('dipole')
+        #if self.dipole is not None:
+        #    self.dipole = ', '.join('{0:.3f}'.format(d) for d in self.dipole)
+
+        #self.data = row.get('data')
+        #if self.data:
+        #    self.data = ', '.join(self.data.keys())
+
+
+        # self.constraints = row.get('constraints')
+        # if self.constraints:
+        #     self.constraints = ', '.join(c.__class__.__name__
+        #                                  for c in self.constraints)
 
 
 class WebApp:
@@ -124,8 +152,8 @@ class WebApp:
         project = {
             "name": name,
             "title": metadata.get("title", name),
-            "key_descriptions": create_key_descriptions(db,
-                                                        extra_kvp_descriptions),
+            "key_descriptions": MyKeyDescriptions(create_key_descriptions(
+                db, extra_kvp_descriptions)),
             "uid_key": metadata.get("uid", "uid"),
             "database": db,
             "handle_query_function": handle_query,
