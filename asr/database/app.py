@@ -273,7 +273,7 @@ class ASRProject(DatabaseProject):
     def row_to_dict(self, row):
         from asr.database.browser import layout
         # XXX same as in CMR
-        return asr_row_to_dict(
+        return row_to_dict(
             row=row, project=self,
             layout_function=layout,
             tmpdir=self.tempdir)
