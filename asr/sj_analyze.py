@@ -227,7 +227,7 @@ class Result(ASRResult):
 
 @command(module='asr.sj_analyze',
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
-                   '../../unrelaxed.json', 'gs.gpw'],
+                   '../../../unrelaxed.json', 'gs.gpw'],
          resources='24:2h',
          returns=Result)
 @option('--index', help='Specify index of the atom in the pristine supercell '
@@ -252,7 +252,7 @@ def main(index: int = None) -> Result:
 
     # get heat of formation
     c2db = connect('/home/niflheim/fafb/db/c2db_july20.db')
-    primitive = read('../../unrelaxed.json')
+    primitive = read('../../../unrelaxed.json')
     hof = get_heat_of_formation(c2db, primitive)
 
     # Obtain a list of all transitions with the respective ASRResults object
@@ -267,7 +267,7 @@ def main(index: int = None) -> Result:
 
     # get neutral formation energy without chemical potentials applied
     p = Path('.')
-    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
+    pris = list(p.glob('./../../../defects.pristine_sc*'))[0]
     results_def = read_json('./results-asr.gs.json')
     results_pris = read_json(pris / 'results-asr.gs.json')
     etot_def = results_def['etot']
@@ -409,7 +409,7 @@ def get_pristine_band_edges(index, defectinfo) -> PristineResults:
 
     print('INFO: extract pristine band edges.')
     p = Path('.')
-    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
+    pris = list(p.glob('./../../defects.pristine_sc*/full_params'))[0]
     if Path(pris / 'results-asr.gs.json').is_file():
         results_pris = read_json(pris / 'results-asr.gs.json')
         vbm = results_pris['vbm'] - pot_pris
@@ -464,7 +464,7 @@ def get_strucs_and_calcs(path):
     from gpaw import restart
 
     try:
-        pristinelist = list(path.glob(f'./../../defects.pristine_sc*/'))
+        pristinelist = list(path.glob(f'./../../defects.pristine_sc*/full_params'))
         pris_folder = pristinelist[0]
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         struc_def, calc_def = restart(path / 'gs.gpw', txt=None)
@@ -548,10 +548,10 @@ def get_transition_level(transition,
                                                   ref_index, is_vacancy)
 
     # if possible, calculate correction due to relaxation in the charge state
-    if Path('../charge_{}/results-asr.relax.json'.format(
+    if Path('../../charge_{}/full_params/results-asr.relax.json'.format(
             int(transition[1]))).is_file():
         print('INFO: calculate relaxation contribution to transition level.')
-        traj = Trajectory('../charge_{}/relax.traj'.format(str(int(transition[1]))))
+        traj = Trajectory('../../charge_{}/full_params/relax.traj'.format(str(int(transition[1]))))
         e_cor = traj[0].get_potential_energy() - traj[-1].get_potential_energy()
     else:
         print('INFO: no relaxation for the charged state present. Do not calculate '
