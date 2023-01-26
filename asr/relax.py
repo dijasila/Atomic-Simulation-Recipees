@@ -325,7 +325,7 @@ def main(atoms: Atoms,
                              'kpts': {'density': 6.0, 'gamma': True},
                              'basis': 'dzp',
                              'symmetry': {'symmorphic': False},
-                             'convergence': {'forces': 1e-4},
+                             'convergence': {'forces': 1e-4, 'maximum iterations': 200},
                              'txt': 'relax.txt',
                              'occupations': {'name': 'fermi-dirac',
                                              'width': 0.05},
@@ -392,7 +392,7 @@ def main(atoms: Atoms,
                  'a 2D material!')
             calculator['poissonsolver'] = {'dipolelayer': 'xy'}
 
-    calc = Calculator(**calculator, mixer=MixerDif(), maxiter=-350)
+    calc = Calculator(**calculator, mixer=MixerDif())
     # Relax the structure
 
     def do_relax():
