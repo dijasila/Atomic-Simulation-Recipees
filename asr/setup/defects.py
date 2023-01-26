@@ -23,7 +23,8 @@ relax_calc_dict = {'name': 'gpaw',
                    'symmetry': {
                        'symmorphic': False},
                    'convergence': {
-                       'forces': 1e-4},
+                       'forces': 1e-4,
+                       'maximum iterations': 200},
                    'txt': 'relax.txt',
                    'occupations': {
                        'name': 'fermi-dirac',
