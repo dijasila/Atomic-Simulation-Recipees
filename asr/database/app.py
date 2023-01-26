@@ -14,6 +14,7 @@ from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
 from ase.db.app import new_app
+from ase.db.app import DatabaseProject
 
 import asr
 from asr.core import (command, option, argument, ASRResult,
@@ -121,32 +122,39 @@ class WebApp:
 
         metadata = db.metadata
 
-        project = {
-            "name": name,
-            "title": metadata.get("title", name),
-            "key_descriptions": create_key_descriptions(db,
-                                                        extra_kvp_descriptions),
-            "uid_key": metadata.get("uid", "uid"),
-            "database": db,
-            "handle_query_function": handle_query,
-            "row_to_dict_function": partial(
-                row_to_dict, layout_function=layout, tmpdir=tmpdir,
-            ),
-            "default_columns": metadata.get("default_columns", ["formula", "uid"]),
-            "table_template": str(
-                metadata.get(
-                    "table_template", "asr/database/templates/table.html",
-                )
-            ),
-            "search_template": str(
-                metadata.get(
-                    "search_template", "asr/database/templates/search.html"
-                )
-            ),
-            "row_template": str(
-                metadata.get("row_template", "asr/database/templates/row.html")
-            ),
-        }
+        # much duplication of initialization
+        project = ASRProject(
+            name=name,
+            title=metadata.get("title", name),
+            key_descriptions=create_key_descriptions(
+                db, extra_kvp_descriptions),
+            database=db,
+            tempdir=tmpdir,
+            uid_key=metadata.get("uid", "uid"),
+            default_columns=metadata.get("default_columns",
+                                         ["formula", "uid"]))
+
+        # project_xxxxxxxxxxxxxxxxxxx = {
+            #"database": db,
+            # "handle_query_function": handle_query,
+            # "row_to_dict_function": partial(
+            #     row_to_dict, layout_function=layout, tmpdir=tmpdir,
+            # ),
+            # "default_columns": metadata.get("default_columns", ["formula", "uid"]),
+            # "table_template": str(
+            #     metadata.get(
+            #         "table_template", "asr/database/templates/table.html",
+            #     )
+            # ),
+            # "search_template": str(
+            #     metadata.get(
+            #         "search_template", "asr/database/templates/search.html"
+            #     )
+            # ),
+            # "row_template": str(
+            #     metadata.get("row_template", "asr/database/templates/row.html")
+            # ),
+            # }
 
         self.projects[name] = project
 
@@ -248,13 +256,37 @@ def setup_data_endpoints(webapp):
     def asr_sort_key_descriptions(value):
         """Sort column drop down menu."""
         def sort_func(item):
-            return item[1][1]
+            # These items are ('id', <KeyDescription>)
+            # We (evidently) sort by longdesc.
+            return item[1].longdesc
 
         return sorted(value.items(), key=sort_func)
 
 
-def handle_query(args):
-    return args["query"]
+class ASRProject(DatabaseProject):
+    _asr_templates = Path('asr/database/templates/')
+
+    def __init__(self, *, uid_key, tempdir, **kwargs):
+        self.tempdir = tempdir
+        super().__init__(**kwargs)
+
+    def row_to_dict(self, row):
+        from asr.database.browser import layout
+        # XXX same as in CMR
+        return asr_row_to_dict(
+            row=row, project=self,
+            layout_function=layout,
+            tmpdir=self.tempdir)
+
+    # XXX copypasty
+    def get_table_template(self):
+        return self._asr_templates / 'table.html'
+
+    def get_search_template(self):
+        return self._asr_templates / 'search.html'
+
+    def get_row_template(self):
+        return self._asr_templates / 'row.html'
 
 
 def row_to_dict(row, project, layout_function, tmpdir):

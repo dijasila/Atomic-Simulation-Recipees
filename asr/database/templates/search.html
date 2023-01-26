@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded',
       </small><br/>
       <div id="collapse1" class="collapse">
         <table class="table table-striped">
-        {% for key, (short, long, unit) in p.key_descriptions|dictsort %}
-          <tr><td>{{ key }}</td><td>{{ long }}</td><td>{{ unit|safe }}</td></tr>
+        {% for key, desc in p.key_descriptions|dictsort %}
+          <tr><td>{{ key }}</td><td>{{ desc.longdesc }}</td><td>{{ desc.unit|safe }}</td></tr>
         {% endfor %}
         </table>
       </div>
