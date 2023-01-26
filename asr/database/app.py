@@ -269,6 +269,7 @@ class ASRProject(DatabaseProject):
     def __init__(self, *, uid_key, tempdir, **kwargs):
         self.tempdir = tempdir
         super().__init__(**kwargs)
+        self.uid_key = uid_key
 
     def row_to_dict(self, row):
         from asr.database.browser import layout
