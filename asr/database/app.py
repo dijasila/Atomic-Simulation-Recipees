@@ -174,8 +174,8 @@ def setup_app(route_slash=True):
             return render_template(
                 "asr/database/templates/projects.html",
                 projects=sorted([
-                    (name, proj["title"], proj["database"].count())
-                    for name, proj in projects.items()
+                    (name, project.title, project.database.count())
+                    for name, project in projects.items()
                 ]))
 
     @app.route("/<project>/file/<uid>/<name>")
