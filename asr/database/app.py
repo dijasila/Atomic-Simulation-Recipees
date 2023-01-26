@@ -193,9 +193,9 @@ def setup_data_endpoints(webapp):
     def get_all_data(project_name: str, uid: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
+        uid_key = project.uid_key
+        row = project.database.get('{uid_key}={uid}'
+                                   .format(uid_key=uid_key, uid=uid))
         content = flask.json.dumps(row.data)
         return Response(
             content,
@@ -207,9 +207,9 @@ def setup_data_endpoints(webapp):
     def show_row_data(project_name: str, uid: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
+        uid_key = project.uid_key
+        row = project.database.get('{uid_key}={uid}'
+                                   .format(uid_key=uid_key, uid=uid))
         sorted_data = {key: value for key, value
                        in sorted(row.data.items(), key=lambda x: x[0])}
         return render_template(
@@ -220,9 +220,9 @@ def setup_data_endpoints(webapp):
     def get_row_data_file(project_name: str, uid: str, filename: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
+        uid_key = project.uid_key
+        row = project.database.get('{uid_key}={uid}'
+                                   .format(uid_key=uid_key, uid=uid))
         try:
             result = decode_object(row.data[filename])
             return render_template(
@@ -239,9 +239,9 @@ def setup_data_endpoints(webapp):
     def get_row_data_file_json(project_name: str, uid: str, filename: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
+        uid_key = project.uid_key
+        row = project.database.get('{uid_key}={uid}'
+                                   .format(uid_key=uid_key, uid=uid))
         return jsonify(row.data.get(filename))
 
     @app.template_filter()
@@ -258,11 +258,11 @@ def handle_query(args):
 
 
 def row_to_dict(row, project, layout_function, tmpdir):
-    project_name = project['name']
-    uid = row.get(project['uid_key'])
+    project_name = project.name
+    uid = row.get(project.uid_key)
     s = Summary(row,
                 create_layout=layout_function,
-                key_descriptions=project['key_descriptions'],
+                key_descriptions=project.key_descriptions,
                 prefix=str(tmpdir / f'{project_name}/{uid}-'))
     return s
 
@@ -305,8 +305,8 @@ def _main(databases, host, test, extra_kvp_descriptions, pool):
                 print(f'Testing {name}')
                 c.get(f'/{name}/').data.decode()
                 project = projects[name]
-                db = project['database']
-                uid_key = project['uid_key']
+                db = project.database
+                uid_key = project.uid_key
                 n = len(db)
                 uids = []
                 for row in db.select(include_data=False):
