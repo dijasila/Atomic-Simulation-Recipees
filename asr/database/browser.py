@@ -21,8 +21,6 @@ plotlyjs = (
     '<script src="https://cdn.plot.ly/plotly-latest.min.js">' + '</script>')
 external_libraries = [plotlyjs]
 
-unique_key = 'uid'
-
 
 def create_table(row,  # AtomsRow
                  header,  # List[str]
