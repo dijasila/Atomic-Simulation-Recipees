@@ -138,7 +138,7 @@ class LabelResult(ASRResult):
          returns=LabelResult)
 @option('--label', help=label_explanation, type=str)
 def main(label: str) -> LabelResult:
-    return LabelResult.fromdata(label=label)
+    return LabelResult.fromdata(origin=label)
 
 
 if __name__ == '__main__':
