@@ -78,8 +78,7 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        self.formula = Formula(
-            Formula(row.formula).format('metal')).format('html')
+        self.formula = Formula(row.formula).convert('metal').format('html')
 
         kd = key_descriptions
         self.layout = create_layout(row, kd, prefix)
