@@ -3,7 +3,6 @@ from typing import List
 import multiprocessing
 import tempfile
 from pathlib import Path
-import warnings
 
 from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json
@@ -23,8 +22,7 @@ from asr.core import (command, option, argument, ASRResult,
 
 def create_key_descriptions(db=None, extra_kvp_descriptions=None):
     from asr.database.key_descriptions import key_descriptions
-    from ase.db.core import (get_key_descriptions as get_ase_keydescs,
-                             KeyDescription)
+    from ase.db.core import get_key_descriptions as get_ase_keydescs
 
     all_keydescs_flat = dict(get_ase_keydescs())
 

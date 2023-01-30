@@ -50,7 +50,6 @@ def test_database_totree_files_and_hard_links(make_test_db):
     from asr.core import read_json
     from asr.database.totree import main
     from pathlib import Path
-    import os
 
     dbname = 'database.db'
     main(database=dbname, run=True, copy=True, atomsfile='structure.json',

@@ -11,10 +11,9 @@ def make_folder_tree(*, folders, chunks,
                      atomsfile,
                      update_tree):
     """Write folder tree to disk."""
-    from os import makedirs, link
+    from os import makedirs
     from ase.io import write
     from asr.core import write_json
-    import importlib
     from fnmatch import fnmatch
 
     nfolders = len(folders)
