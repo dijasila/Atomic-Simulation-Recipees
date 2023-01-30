@@ -55,9 +55,13 @@ def make_folder_tree(*, folders, chunks,
             # We treat json differently
             if filename.endswith('.json'):
                 write_json(folder / filename, results)
+            elif filename == '__children__':
+                # Some silly mechanism to have subfolders like in stiffness
+                pass
             else:
                 raise RuntimeError('Non-JSON file handling removed after '
-                                   '34f9c5016d15e9a965f867eada7f756f4f0fbc34')
+                                   '34f9c5016d15e9a965f867eada7f756f4f0fbc34:'
+                                   f'{filename}')
 
 
 def make_folder_dict(rows, tree_structure):
