@@ -89,35 +89,8 @@ def _collect_file(filename):
     else:
         dct = results
 
+    # This line is what makes someone else define "has_asr_thing_recipe" keys:
     data[str(filename)] = dct
-
-    # Find and try to collect related files for this resultsfile
-    files = results.get('__files__', {})
-    extra_files = results.get('__requires__', {}).copy()
-    extra_files.update(results.get('__creates__', {}))
-
-    for extrafile, checksum in extra_files.items():
-        assert extrafile not in data, f'{extrafile} already collected!'
-
-        if extrafile in files:
-            continue
-        file = Path(extrafile)
-
-        if not file.is_file():
-            print(f'Warning: Required file {file.absolute()}'
-                  ' doesn\'t exist.')
-            continue
-
-        if file.suffix == '.json':
-            extra = read_json(extrafile)
-            if isinstance(extra, ASRResult):
-                dct = extra.format_as('dict')
-            else:
-                dct = extra
-        else:
-            dct = {'pointer': str(file.absolute())}
-
-        data[extrafile] = dct
 
     kvp = get_key_value_pairs(results)
     return kvp, data
