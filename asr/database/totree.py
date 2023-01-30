@@ -55,18 +55,6 @@ def make_folder_tree(*, folders, chunks,
             # We treat json differently
             if filename.endswith('.json'):
                 write_json(folder / filename, results)
-
-                # Unpack any extra files
-                files = results.get('__files__', {})
-                for extrafile, content in files.items():
-
-                    if '__tofile__' in content:
-                        # TODO: This should _really_ be handled differently.
-                        tofile = content.pop('__tofile__')
-                        mod, func = tofile.split('@')
-                        write_func = getattr(importlib.import_module(mod),
-                                             func)
-                        write_func(folder / extrafile, content)
             elif filename in {'__links__', '__children__'}:
                 pass
             else:
