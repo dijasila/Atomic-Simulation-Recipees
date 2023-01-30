@@ -23,41 +23,17 @@ from asr.core import (command, option, argument, ASRResult,
 
 def create_key_descriptions(db=None, extra_kvp_descriptions=None):
     from asr.database.key_descriptions import key_descriptions
-    from asr.database.fromtree import parse_key_descriptions
-    from asr.core import read_json
-    from ase.db.web import create_key_descriptions
+    from ase.db.core import (get_key_descriptions as get_ase_keydescs,
+                             KeyDescription)
 
-    flatten = {key: value
-               for recipe, dct in key_descriptions.items()
-               for key, value in dct.items()}
+    all_keydescs_flat = dict(get_ase_keydescs())
 
-    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
-        extras = read_json(extra_kvp_descriptions)
-        flatten.update(extras)
+    # We should check for clashes here.
+    for recipe, dct in key_descriptions.items():
+        all_keydescs_flat.update(dct)
 
-    if db is not None:
-        metadata = db.metadata
-        if 'keys' not in metadata:
-            warnings.warn(
-                'Missing list of keys for database. '
-                'To fix this either: run database.fromtree again. '
-                'or python -m asr.database.set_metadata DATABASEFILE.')
-        keys = metadata.get('keys', [])
-    else:
-        keys = list(flatten.keys())
-
-    kd = {}
-    for key in keys:
-        description = flatten.get(key)
-        if description is None:
-            warnings.warn(f'Missing key description for {key}')
-            continue
-        kd[key] = description
-
-    kd = {key: (desc['shortdesc'], desc['longdesc'], desc['units']) for
-          key, desc in parse_key_descriptions(kd).items()}
-
-    return create_key_descriptions(kd)
+    # Should warn if descriptions are None or empty string
+    return all_keydescs_flat
 
 
 class Summary:

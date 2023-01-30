@@ -5,7 +5,6 @@ from ase import Atoms
 from ase.io import read
 from ase.db import connect
 from asr.core import command, option, argument, chdir, read_json, ASRResult
-from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
 from asr.database.material_fingerprint import get_uid_of_atoms, \
     get_hash_of_atoms
@@ -22,7 +21,7 @@ class MissingUIDS(Exception):
     pass
 
 
-def parse_key_descriptions(key_descriptions):
+def xxxxxxxxxxxxxxxxxxx_parse_key_descriptions(key_descriptions):
     """Parse key descriptions.
 
     This function parses a dictionary of key descriptions. A valid key
@@ -88,10 +87,10 @@ def parse_key_descriptions(key_descriptions):
     return tmpkd
 
 
-tmpkd = parse_key_descriptions(
-    {key: value
-     for dct in asr_kd.values()
-     for key, value in dct.items()})
+#tmpkd = parse_key_descriptions(
+#    {key: value
+#     for dct in asr_kd.values()
+#     for key, value in dct.items()})
 
 
 def get_key_value_pairs(resultsdct: dict):
@@ -110,10 +109,18 @@ def get_key_value_pairs(resultsdct: dict):
     kvp: dict
         key-value-pairs.
     """
+    from asr.database.key_descriptions import key_descriptions as asr_kd
+
+    all_kds = {}
+    for section, dct in asr_kd.items():
+        all_kds.update(section)
+
+    #asr_kd.values()
+    #asr_kd
+
     kvp = {}
-    for key, desc in tmpkd.items():
-        if (key in resultsdct and desc['iskvp']
-           and resultsdct[key] is not None):
+    for key, desc in all_kds.items():
+        if (key in resultsdct and desc.iskvp and resultsdct[key] is not None):
             kvp[key] = resultsdct[key]
 
     return kvp

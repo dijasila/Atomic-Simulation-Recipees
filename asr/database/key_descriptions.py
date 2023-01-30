@@ -10,7 +10,7 @@ class ASRKeyDescription(ASEKeyDescription):
         self.iskvp = iskvp
 
 
-def kd(key, long=None, short=None, unit=None, iskvp=False):
+def kd(key, long=None, short=None, unit='', iskvp=False):
     if short is None:
         short = long
     return ASRKeyDescription(key, shortdesc=short, longdesc=long,
@@ -23,15 +23,8 @@ def kvp(*args, **kwargs):
 # Style: "KVP: Long description !short description! [unit]
 
 
-def as_keydescdict(dct):
-    all_keydescs = {}
-    for recipename, keydescs in dct.items():
-        all_keydescs[recipename] = {key: value for value in keydescs}
-    return all_keydescs
-
-
-key_descriptions = as_keydescdict({
-    'berry': {
+def all_the_keydescs():
+    yield 'berry', [
         kvp('Topology', 'Band topology', 'Topology'),
         kd('phi0_km', 'Berry phase spectrum localized in k0'),
         kd('s0_km', 'Spin of berry phases localized in k0'),
@@ -41,30 +34,30 @@ key_descriptions = as_keydescdict({
         kd('s2_km', 'Spin of berry phases localized in k3'),
         kd('phi0_pi_km', 'Berry phase spectrum at k2=pi localized in k0'),
         kd('s0_pi_km', 'Spin of berry at phases at k2=pi localized in k0'),
-    },
-    'bse': {
+    ]
+    yield 'bse', [
         kvp('E_B', 'Exciton binding energy from BSE ',
             'Exc. bind. energy', unit='eV'),
-    },
-    'convex_hull': {
+    ]
+    yield 'convex_hull', [
         kvp('ehull', 'Energy above convex hull', unit='eV/atom'),
         kvp('hform', 'Heat of formation', unit='eV/atom'),
         kvp('thermodynamic_stability_level', 'Thermodynamic stability level'),
-    },
-    'defectinfo': {
+    ]
+    yield 'defectinfo', [
         kvp('defect_name', 'Defect name {type}_{position}', 'Defect name'),
         kvp('host_name', 'Host formula'),
         kvp('charge_state', 'Charge state'),
-    },
-    'defect_symmetry': {
+    ]
+    yield 'defect_symmetry', [
         kvp('defect_pointgroup', 'Defect point group', 'Point group'),
-    },
-    'magstate': {
+    ]
+    yield 'magstate', [
         kvp('magstate', 'Magnetic state'),
         kvp('is_magnetic', 'Material is magnetic', 'Magnetic'),
         kvp('nspins', 'Number of spins in calculator', 'n-spins'),
-    },
-    'gs': {
+    ]
+    yield 'gs', [
         kd('forces', 'Forces on atoms', unit='eV/Å'),
         kd('stresses', 'Stress on unit cell', unit='`eV/Å^{dim-1}`'),
         kvp('etot', 'Total energy', 'Tot. En.', unit='eV'),
@@ -82,8 +75,8 @@ key_descriptions = as_keydescdict({
         kvp('gap_nosoc', 'Gap w/o soc.', 'Gap wo. soc.', 'eV]'),
         kvp('workfunction', 'Work function (avg. if finite dipole)',
             unit='eV'),
-    },
-    'gw': {
+    ],
+    yield 'gw', [
         kd('vbm_gw_nosoc', 'Valence band maximum w/o soc. (G₀W₀)', unit='eV'),
         kd('cbm_gw_nosoc', 'Conduction band minimum w/o soc. (G₀W₀)',
            unit='eV'),
@@ -99,8 +92,8 @@ key_descriptions = as_keydescdict({
         kd('kcbm', 'k-point of G₀W₀ conduction band minimum'),
         kd('efermi_gw_nosoc', 'Fermi level w/o soc. (G₀W₀)', unit='eV'),
         kd('efermi_gw_soc', 'Fermi level (G₀W₀)', unit='eV'),
-    },
-    'hse': {
+    ]
+    yield 'hse', [
         kd('vbm_hse_nosoc', 'Valence band maximum w/o soc. (HSE06)', unit='eV'),
         kd('cbm_hse_nosoc', 'Conduction band minimum w/o soc. (HSE06)',
            unit='eV'),
@@ -116,16 +109,16 @@ key_descriptions = as_keydescdict({
         kd('kcbm', 'k-point of HSE06 conduction band minimum'),
         kd('efermi_hse_nosoc', 'Fermi level w/o soc. (HSE06)', unit='eV'),
         kd('efermi_hse_soc', 'Fermi level (HSE06) [eV]'),
-    },
-    'infraredpolarizability': {
+    ]
+    yield 'infraredpolarizability', [
         kvp('alphax_lat', 'Static lattice polarizability (x)', unit='Å'),
         kvp('alphay_lat', 'Static lattice polarizability (y)', unit='Å'),
         kvp('alphaz_lat', 'Static lattice polarizability (z)', unit='Å'),
         kvp('alphax', 'Static total polarizability (x)', unit='Å'),
         kvp('alphay', 'Static total polarizability (y)', unit='Å'),
         kvp('alphaz', 'Static total polarizability (z)', unit='Å'),
-    },
-    'magnetic_anisotropy': {
+    ]
+    yield 'magnetic_anisotropy', [
         kvp('spin_axis', 'Magnetic easy axis'),
         kvp('E_x', 'Soc. total energy, x-direction', unit='meV/unit cell'),
         kvp('E_y', 'Soc. total energy, y-direction', unit='meV/unit cell'),
@@ -136,15 +129,15 @@ key_descriptions = as_keydescdict({
             unit='meV/unit cell'),
         kvp('dE_zy', 'Magnetic anisotropy (E<sub>z</sub> - E<sub>y</sub>)',
             unit='meV/unit cell]'),
-    },
-    'exchange': {
+    ]
+    yield 'exchange', [
         kvp('J', 'Nearest neighbor exchange coupling', unit='meV'),
         kvp('A', 'Single-ion anisotropy (out-of-plane)', unit='meV'),
         kvp('lam', 'Anisotropic exchange (out-of-plane)', unit='meV'),
         kvp('spin', 'Maximum value of S_z at magnetic sites'),
         kvp('N_nn', 'Number of nearest neighbors'),
-    },
-    'pdos': {
+    ]
+    yield 'pdos', [
         kd('pdos_nosoc', 'Projected density of states w/o soc.',
            'PDOS no soc'),
         kd('pdos_soc', 'Projected density of states', 'PDOS'),
@@ -152,23 +145,23 @@ key_descriptions = as_keydescdict({
             'DOS at ef no soc.', unit='states/(eV · unit cell)'),
         kvp('dos_at_ef_soc', 'Density of states at the Fermi level',
             'DOS at ef', unit='states/(eV · unit cell)'),
-    },
-    'phonons': {
+    ]
+    yield 'phonons', [
         kvp('minhessianeig', 'Minimum eigenvalue of Hessian', unit='eV/Å²'),
         kvp('dynamic_stability_phonons',
             'Phonon dynamic stability (low/high)'),
-    },
-    'plasmafrequency': {
+    ]
+    yield 'plasmafrequency', [
         kd('plasmafreq_vv', 'Plasma frequency tensor', unit='Hartree'),
         kvp('plasmafrequency_x', '2D plasma frequency (x)', unit='`eV/Å^0.5`'),
         kvp('plasmafrequency_y', '2D plasma frequency (y)', unit='`eV/Å^0.5`'),
-    },
-    'polarizability': {
+    ]
+    yield 'polarizability', [
         kvp('alphax_el', 'Static interband polarizability (x)', unit='Å'),
         kvp('alphay_el', 'Static interband polarizability (y)', unit='Å'),
         kvp('alphaz_el', 'Static interband polarizability (z)', unit='Å'),
-    },
-    'relax': {
+    ]
+    yield 'relax', [
         kd('edft', 'DFT total enrgy', unit='eV'),
         kd('spos', 'Array: Scaled positions'),
         kd('symbols', 'Array: Chemical symbols'),
@@ -178,15 +171,24 @@ key_descriptions = as_keydescdict({
         kd('alpha', 'Cell parameter alpha', unit='deg'),
         kd('beta', 'Cell parameter beta', unit='deg'),
         kd('gamma', 'Cell parameter gamma', unit='deg'),
-    },
-    'stiffness': {
+    ]
+
+    stiffness_kvps = [
         kvp('speed_of_sound_x', 'Speed of sound (x)', unit='m/s'),
         kvp('speed_of_sound_y', 'Speed of sound (y)', unit='m/s'),
         kd('stiffness_tensor', 'Stiffness tensor', unit='`N/m^{dim-1}`'),
         kvp('dynamic_stability_stiffness',
             'Stiffness dynamic stability (low/high)'),
-    },
-    'structureinfo': {
+    ]
+    for i in range(6):
+        for j in range(6):
+            stiffness_kvps.append(kvp(
+                f'c_{i}{j}', f'Stiffness tensor, {i}{j}-component',
+                unit='`N/m^{dim-1}`'))
+
+    yield 'stiffness', stiffness_kvps
+
+    yield 'structureinfo', [
         kvp('cell_area', 'Area of unit-cell [`Å²`]'),
         kvp('has_inversion_symmetry', 'Material has inversion symmetry'),
         kvp('stoichiometry', 'Stoichiometry'),
@@ -196,12 +198,12 @@ key_descriptions = as_keydescdict({
         kvp('lgnum', 'Layer group number'),
         kvp('pointgroup', 'Point group'),
         kvp('crystal_type', 'Crystal type'),
-    },
-    'database.material_fingerprint': {
+    ]
+    yield 'database.material_fingerprint', [
         kvp('asr_id', 'Material unique ID'),
         kvp('uid', 'Unique identifier'),
-    },
-    'dimensionality': {
+    ]
+    dimensionality_kvps = [
         kvp('dim_primary', 'Dim. with max. scoring parameter'),
         kvp('dim_primary_score',
             'Dimensionality scoring parameter of primary dimensionality.'),
@@ -213,19 +215,27 @@ key_descriptions = as_keydescdict({
         kvp('dim_threshold_1D', '1D dimensionality threshold.'),
         kvp('dim_threshold_2D', '2D dimensionality threshold.'),
         kvp('dim_threshold_3D', '3D dimensionality threshold.'),
-    },
-    'setinfo': {
+    ]
+
+    dimensionality_kvps += [
+        kvp(f'dim_score_{dimtype}',
+            f'Dimensionality score of dimtype={dimtype}')
+        for dimtype in get_dimtypes()]
+
+    yield 'dimensionality', dimensionality_kvps
+
+    yield 'setinfo', [
         kvp('first_class_material',
             'A first class material marks a physical material.',
             'First class material', unit='bool'),
-    },
-    'info.json': {
+    ]
+    yield 'info.json', [
         kvp('class', 'Material class'),
         kvp('doi', 'Monolayer reported DOI'),
         kvp('icsd_id', 'ICSD id of parent bulk structure'),
         kvp('cod_id', 'COD id of parent bulk structure'),
-    },
-    'emasses': {
+    ]
+    yield 'emasses', [
         kvp('emass_vb_dir1', 'Valence band effective mass, direction 1',
             unit='`m_e`'),
         kvp('emass_vb_dir2', 'Valence band effective mass, direction 2',
@@ -238,46 +248,45 @@ key_descriptions = as_keydescdict({
             unit='`m_e`'),
         kvp('emass_cb_dir3', 'Conduction band effective mass, direction 3',
             unit='`m_e`'),
-    },
-    'c2db.labels': {
+    ]
+    yield 'c2db.labels', [
         kvp('origin', label_explanation),
-    },
-    'database.fromtree': {
+    ]
+    yield 'database.fromtree', [
         kvp('folder', 'Path to collection folder'),
-    }
-})
+    ]
+
+    piezo_kvps = []
+    for i in range(1, 4):
+        for j in range(1, 7):
+            key = 'e_{}{}'.format(i, j)
+            name = 'Piezoelectric tensor'
+            description = f'Piezoelectric tensor {i}{j}-component'
+            unit = '`\\text{Å}^{-1}`'
+            piezo_kvps.append(kvp(key, name, description, unit=unit))
+
+    yield 'piezoelectrictensor', piezo_kvps
+
+    # Key descriptions like has_asr_gs_calculate
+    extras = []
+    for recipe in get_recipes():
+        key = 'has_' + recipe.name.replace('.', '_').replace('@', '_')
+        extras.append(kd(key, f'{recipe.name} is calculated'))
+
+    # Additional key description for spin coherence times of QPOD
+    extras.append(kd('sct', 'Spin coherence time T2', unit='ms'))
+    yield 'extra', extras
 
 
-# Dimensionality key descrioptions:
-for dimtype in get_dimtypes():
-    key_descriptions['dimensionality'][f'dim_score_{dimtype}'] = \
-        f'KVP: Dimensionality score of dimtype={dimtype}'
+def get_all_keydescs_as_dict():
+    all_keydescs = {}
+    for section, keydescs in all_the_keydescs():
+        assert section not in all_keydescs
+        all_keydescs[section] = {keydesc.key: keydesc for keydesc in keydescs}
+    return all_keydescs
 
-for i in range(6):
-    for j in range(6):
-        key_descriptions['stiffness'][f'c_{i}{j}'] = \
-            f'KVP: Stiffness tensor, {i}{j}-component [`N/m^' + '{dim-1}`]'
 
-# Piezoelectrictensor key_descriptions
-piezokd = {}
-for i in range(1, 4):
-    for j in range(1, 7):
-        key = 'e_{}{}'.format(i, j)
-        name = 'Piezoelectric tensor'
-        description = f'Piezoelectric tensor {i}{j}-component' + '[`\\text{Å}^{-1}`]'
-        piezokd[key] = description
-
-key_descriptions['piezoelectrictensor'] = piezokd
-
-# Key descriptions like has_asr_gs_calculate
-extras = {}
-for recipe in get_recipes():
-    key = 'has_' + recipe.name.replace('.', '_').replace('@', '_')
-    extras[key] = f'{recipe.name} is calculated'
-# Additional key description for spin coherence times of QPOD
-extras['sct'] = 'Spin coherence time T2 [ms]'
-
-key_descriptions['extra'] = extras
+key_descriptions = get_all_keydescs_as_dict()
 
 
 @command()
