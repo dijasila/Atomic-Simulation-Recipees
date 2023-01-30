@@ -136,6 +136,16 @@ def setup_app(route_slash=True):
         path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
 
+    @app.template_filter()
+    def sort_key_descriptions(value):
+        """Sort column drop down menu."""
+        def sort_func(item):
+            # These items are ('id', <KeyDescription>)
+            # We (evidently) sort by longdesc.
+            return item[1].longdesc
+
+        return sorted(value.items(), key=sort_func)
+
     webapp = WebApp(app, projects, tmpdir)
     setup_data_endpoints(webapp)
     return webapp
@@ -195,16 +205,6 @@ def setup_data_endpoints(webapp):
         project = projects[project_name]
         row = project.uid_to_row(uid)
         return jsonify(row.data.get(filename))
-
-    @app.template_filter()
-    def asr_sort_key_descriptions(value):
-        """Sort column drop down menu."""
-        def sort_func(item):
-            # These items are ('id', <KeyDescription>)
-            # We (evidently) sort by longdesc.
-            return item[1].longdesc
-
-        return sorted(value.items(), key=sort_func)
 
 
 class ASRProject(DatabaseProject):

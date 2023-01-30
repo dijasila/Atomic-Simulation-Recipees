@@ -23,11 +23,11 @@
             Add Column <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-            {% for key, value in project.key_descriptions|asr_sort_key_descriptions if key in table.addcolumns %}
+            {% for key, keydesc in project.key_descriptions|sort_key_descriptions if key in table.addcolumns %}
               <li><a href="javascript:update_table({{ session.id }},
                                                    'toggle',
                                                    '{{ key }}')">
-              {{ value[1] }} ({{ key }})</a></li>
+              {{ keydesc.longdesc }} ({{ key }})</a></li>
             {% endfor %}
             </ul>
           </div>
