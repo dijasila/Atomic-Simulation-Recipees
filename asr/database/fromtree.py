@@ -41,10 +41,7 @@ def get_key_value_pairs(resultsdct: dict):
 
     all_kds = {}
     for section, dct in asr_kd.items():
-        all_kds.update(section)
-
-    #asr_kd.values()
-    #asr_kd
+        all_kds.update(dct)
 
     kvp = {}
     for key, desc in all_kds.items():
