@@ -494,6 +494,7 @@ def parse_row_data(data: dict):
 
 
 def runplot_clean(plotfunction, *args):
+    return
     plt.close('all')
     value = plotfunction(*args)
     plt.close('all')

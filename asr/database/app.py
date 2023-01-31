@@ -20,7 +20,7 @@ from asr.core import (command, option, argument, ASRResult,
                       decode_object, UnknownDataFormat)
 
 
-def create_key_descriptions(db=None, extra_kvp_descriptions=None):
+def create_key_descriptions():
     from asr.database.key_descriptions import key_descriptions
     from ase.db.core import get_key_descriptions as get_ase_keydescs
 
@@ -77,8 +77,7 @@ class WebApp:
         self.tmpdir = tmpdir
         self.projects = projects
 
-    def initialize_project(self, database, extra_kvp_descriptions=None,
-                           pool=None):
+    def initialize_project(self, database, pool=None):
         from asr.database import browser
 
         db = connect(database, serial=True)
@@ -98,8 +97,7 @@ class WebApp:
         project = ASRProject(
             name=name,
             title=metadata.get("title", name),
-            key_descriptions=create_key_descriptions(
-                db, extra_kvp_descriptions),
+            key_descriptions=create_key_descriptions(),
             database=db,
             tempdir=tmpdir,
             uid_key=metadata.get("uid", "uid"),
@@ -246,11 +244,8 @@ def row_to_dict(row, project, layout_function, tmpdir):
 @argument("databases", nargs=-1, type=str)
 @option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-@option("--extra_kvp_descriptions", type=str,
-        help='File containing extra kvp descriptions for info.json')
 def main(databases: List[str], host: str = "0.0.0.0",
-         test: bool = False,
-         extra_kvp_descriptions: str = 'key_descriptions.json') -> ASRResult:
+         test: bool = False) -> ASRResult:
 
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
@@ -258,19 +253,19 @@ def main(databases: List[str], host: str = "0.0.0.0",
     # correctly on KeyboardInterrupt.
     pool = multiprocessing.Pool(1)
     try:
-        _main(databases, host, test, extra_kvp_descriptions, pool)
+        _main(databases, host, test, pool)
     finally:
         pool.close()
         pool.join()
 
 
-def _main(databases, host, test, extra_kvp_descriptions, pool):
+def _main(databases, host, test, pool):
     webapp = setup_app()
     projects = webapp.projects
     app = webapp.app
 
     for database in databases:
-        webapp.initialize_project(database, extra_kvp_descriptions, pool)
+        webapp.initialize_project(database, pool)
 
     if test:
         app.testing = True
