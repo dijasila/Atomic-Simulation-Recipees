@@ -83,6 +83,7 @@ def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
         params["txt"] = f'gsq{n}.txt'
 
     calc = GPAW(**params)
+    atoms.center(vacuum=4.0, axis=2)
     atoms.calc = calc
     energy = atoms.get_potential_energy()
     totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
@@ -209,12 +210,14 @@ def main(q_path: Union[str, None] = None, n: int = 11,
     qmin = Q[emin_idx]
     gapmin = gaps[emin_idx]
     if clean_up:
+        from gpaw import mpi
         import os
         from glob import glob
         gpw_list = glob('*.gpw')
         for gpw in gpw_list:
             if int(gpw[3:-4]) != emin_idx:
-                os.remove(gpw)
+                if mpi.world.rank == 0:
+                    os.remove(gpw)
 
     return Result.fromdata(path=path, energies=energies, minimum=qmin,
                            local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
