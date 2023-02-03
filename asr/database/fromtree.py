@@ -5,7 +5,6 @@ from ase import Atoms
 from ase.io import read
 from ase.db import connect
 from asr.core import command, option, argument, chdir, read_json, ASRResult
-from asr.database.key_descriptions import key_descriptions as asr_kd
 from asr.database.material_fingerprint import main as mf
 from asr.database.material_fingerprint import get_uid_of_atoms, \
     get_hash_of_atoms
@@ -20,78 +19,6 @@ import traceback
 
 class MissingUIDS(Exception):
     pass
-
-
-def parse_key_descriptions(key_descriptions):
-    """Parse key descriptions.
-
-    This function parses a dictionary of key descriptions. A valid key
-    description looks like::
-
-        `KVP: Long description !short description! [unit]`
-
-    - KVP: marks a key as a key-value-pair.
-    - !short description!: gives a short description of the key.
-    - [unit]: Marks the unit of the key.
-    - The rest of the text will be interpreted as the long description
-      of the key.
-
-    """
-    import re
-
-    tmpkd = {}
-
-    for key, desc in key_descriptions.items():
-        descdict = {'type': None,
-                    'iskvp': False,
-                    'shortdesc': '',
-                    'longdesc': '',
-                    'units': ''}
-        if isinstance(desc, dict):
-            descdict.update(desc)
-            tmpkd[key] = desc
-            continue
-
-        assert isinstance(desc, str), \
-            f'Key description has to be dict or str. ({desc})'
-        # Get key type
-        desc, *keytype = desc.split('->')
-        if keytype:
-            descdict['type'] = keytype
-
-        # Is this a kvp?
-        iskvp = desc.startswith('KVP:')
-        descdict['iskvp'] = iskvp
-        desc = desc.replace('KVP:', '').strip()
-
-        # Find units
-        m = re.search(r"\[(.*)\]", desc)
-        unit = m.group(1) if m else ''
-        if unit:
-            descdict['units'] = unit
-        desc = desc.replace(f'[{unit}]', '').strip()
-
-        # Find short description
-        m = re.search(r"\!(.*)\!", desc)
-        shortdesc = m.group(1) if m else ''
-        if shortdesc:
-            descdict['shortdesc'] = shortdesc
-
-        # Everything remaining is the long description
-        longdesc = desc.replace(f'!{shortdesc}!', '').strip()
-        if longdesc:
-            descdict['longdesc'] = longdesc
-            if not shortdesc:
-                descdict['shortdesc'] = descdict['longdesc']
-        tmpkd[key] = descdict
-
-    return tmpkd
-
-
-tmpkd = parse_key_descriptions(
-    {key: value
-     for dct in asr_kd.values()
-     for key, value in dct.items()})
 
 
 def get_key_value_pairs(resultsdct: dict):
@@ -110,10 +37,15 @@ def get_key_value_pairs(resultsdct: dict):
     kvp: dict
         key-value-pairs.
     """
+    from asr.database.key_descriptions import key_descriptions as asr_kd
+
+    all_kds = {}
+    for section, dct in asr_kd.items():
+        all_kds.update(dct)
+
     kvp = {}
-    for key, desc in tmpkd.items():
-        if (key in resultsdct and desc['iskvp']
-           and resultsdct[key] is not None):
+    for key, desc in all_kds.items():
+        if (key in resultsdct and desc.iskvp and resultsdct[key] is not None):
             kvp[key] = resultsdct[key]
 
     return kvp
@@ -157,35 +89,8 @@ def _collect_file(filename):
     else:
         dct = results
 
+    # This line is what makes someone else define "has_asr_thing_recipe" keys:
     data[str(filename)] = dct
-
-    # Find and try to collect related files for this resultsfile
-    files = results.get('__files__', {})
-    extra_files = results.get('__requires__', {}).copy()
-    extra_files.update(results.get('__creates__', {}))
-
-    for extrafile, checksum in extra_files.items():
-        assert extrafile not in data, f'{extrafile} already collected!'
-
-        if extrafile in files:
-            continue
-        file = Path(extrafile)
-
-        if not file.is_file():
-            print(f'Warning: Required file {file.absolute()}'
-                  ' doesn\'t exist.')
-            continue
-
-        if file.suffix == '.json':
-            extra = read_json(extrafile)
-            if isinstance(extra, ASRResult):
-                dct = extra.format_as('dict')
-            else:
-                dct = extra
-        else:
-            dct = {'pointer': str(file.absolute())}
-
-        data[extrafile] = dct
 
     kvp = get_key_value_pairs(results)
     return kvp, data

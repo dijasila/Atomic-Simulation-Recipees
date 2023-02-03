@@ -69,8 +69,8 @@ def _get_webcontent(name='database.db'):
         app.testing = True
         with app.test_client() as c:
             project = webapp.projects["database.db"]
-            db = project["database"]
-            uid_key = project["uid_key"]
+            db = project.database
+            uid_key = project.uid_key
             row = db.get(id=1)
             uid = row.get(uid_key)
             url = f"/database.db/row/{uid}"

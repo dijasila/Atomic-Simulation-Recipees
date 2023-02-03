@@ -21,8 +21,6 @@ plotlyjs = (
     '<script src="https://cdn.plot.ly/plotly-latest.min.js">' + '</script>')
 external_libraries = [plotlyjs]
 
-unique_key = 'uid'
-
 
 def create_table(row,  # AtomsRow
                  header,  # List[str]
@@ -47,12 +45,20 @@ def create_table(row,  # AtomsRow
             elif not isinstance(value, str):
                 value = str(value)
 
-            longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
+            from ase.db.project import KeyDescription
+            nokeydesc = KeyDescription(key, key, '', '')  # XXX
+            keydesc = key_descriptions.get(key, nokeydesc)
+            unit = keydesc.unit
+            desc = keydesc.shortdesc  # XXX shortdesc or longdesc?
+            # This code has the tuple interchanged!!
+
+            # longdesc, desc, unit = key_descriptions.get(key, ['', key, ''])
             if hasattr(key, '__explanation__'):
                 desc = describe_entry(desc, key.__explanation__)
             if unit:
                 value += ' ' + unit
             table.append([desc, value])
+
     return {'type': 'table',
             'header': header,
             'rows': table}
