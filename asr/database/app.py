@@ -13,7 +13,7 @@ from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
 from ase.db.app import new_app
-from ase.db.app import DatabaseProject
+from ase.db.project import DatabaseProject
 
 import asr
 from asr.core import (command, option, argument, ASRResult,
