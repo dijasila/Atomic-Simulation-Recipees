@@ -1,6 +1,74 @@
+from dataclasses import dataclass
 from asr.core import command, option, ASRResult, prepare_result
-from typing import Union
+from typing import List
 import numpy as np
+import json
+
+
+@dataclass
+class SpinSpiralCalculation:
+    index: List[int]         # list of [band, qpt] of this calculation
+    energy: float            # total energy of this calculation
+    m_v: List[float]         # total magnetic moments in Cartesian directions
+    m_av: List[List[float]]  # magmoms resolved by atom and direction
+    gap: float               # Bandgap of this calculation
+
+    def save(self, filename):
+        with open(filename, 'w') as fd:
+            json.dump(dict(index=self.index, energy=self.energy,
+                           m_v=self.m_v, m_av=self.m_av, gap=self.gap), fd)
+
+    @classmethod
+    def load(self, filename):
+        with open(filename, 'r') as fd:
+            data = json.load(fd)
+        return SpinSpiralCalculation(**data)
+
+
+class SpinSpiralPathCalculation:
+    def __init__(self):
+        self.sscalculations: List[SpinSpiralCalculation] = []
+        self.indices = []
+
+    def __iter__(self):
+        return iter(self.sscalculations)
+
+    def __repr__(self):
+        return self.sscalculations
+
+    def __getitem__(self, item):
+        return self.sscalculations[item]
+
+    def append(self, sscalc: SpinSpiralCalculation):
+        self.sscalculations.append(sscalc)
+        self.indices.append(sscalc.index)
+
+    def sort_path(self):
+        self.sscalculations, self.indices = zip(
+            *sorted(zip(self.sscalculations, self.indices),
+                    key=lambda x: (x[1][0], x[1][1])))
+        self.indices = list(self.indices)
+
+    def get_idx(self, index):
+        return [sscalc for sscalc in self.sscalculations if sscalc.index == index]
+
+    def failed_calculations(self, nkpts: int):
+        assert len(self.indices) > 0
+        natoms = len(self.sscalculations[0].m_av)
+        bands = [i[0] for i in self.indices]
+        for iband in bands:
+            for ikpt in range(nkpts):
+                # Yield zero calculation if index combination [band, qpt] isn't found
+                if len(self.get_idx([iband, ikpt])) == 0:
+                    zerospiral = SpinSpiralCalculation([iband, ikpt], 0.0, [0, 0, 0],
+                                                       [[0, 0, 0]] * natoms, 0)
+                    yield zerospiral
+
+    def get_array(self, attr: str = 'energy'):
+        Nbands, Nqpts = max(self.indices)
+        array = np.asarray([[getattr(self.get_idx([ib, iq])[0], attr)
+                             for iq in range(Nqpts + 1)] for ib in range(Nbands + 1)])
+        return array
 
 
 def webpanel(result, row, key_descriptions):
@@ -18,91 +86,68 @@ def webpanel(result, row, key_descriptions):
 class Result(ASRResult):
     path: np.ndarray
     energies: np.ndarray
+    gaps: np.ndarray
     local_magmoms: np.ndarray
     total_magmoms: np.ndarray
     bandwidth: float
-    minimum: np.ndarray
+    minimum: list
+    Qmin: np.ndarray
     key_descriptions = {"path": "List of Spin spiral vectors",
-                        "energies": "Potential energy [eV]",
-                        "local_magmoms": "List of estimated local moments [mu_B]",
+                        "energies": "Total energy of spin spiral calculations [eV]",
+                        "gaps": "Bandgaps of spin spiral calculations [eV]",
+                        "local_magmoms": "Estimated local moments [mu_B]",
                         "total_magmoms": "Estimated total moment [mu_B]",
-                        "bandwidth": "Energy difference [meV]",
-                        "minimum": "Q-vector at energy minimum"}
+                        "bandwidth": "Energy bandwidth [meV]",
+                        "minimum": "Band and qpt index of energy minimum",
+                        "Qmin": "Q-vector of energy minimum in fractional coordinates"}
     formats = {"ase_webpanel": webpanel}
 
 
-@command(module='asr.spinspiral',
+@command(module='asr.collect_spiral',
          requires=['structure.json'],
-         # dependencies=['asr.spinspiral@calculate'],
          returns=Result)
-@option('--q_path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
-@option('--n', type=int)
-@option('--params', help='Calculator parameter dictionary', type=dict)
-@option('--eps', help='Bandpath symmetry threshold', type=float)
-def main(q_path: Union[str, None] = None, n: int = 11,
-         params: dict = dict(mode={'name': 'pw', 'ecut': 600},
-                             kpts={'density': 6.0, 'gamma': True}),
-         eps: float = 0.0002) -> Result:
+@option('--qdens', type=int)
+def main(qdens: int = 22) -> Result:
     from ase.io import read
-    import json
     from glob import glob
     atoms = read('structure.json')
-    c2db_eps = 0.1
-    path = atoms.cell.bandpath(npoints=n, pbc=atoms.pbc, eps=c2db_eps)
-    Q = path.kpts
-
-    data = []
     jsons = glob('dat*.json')
+
+    sscalcs = SpinSpiralPathCalculation()
     for js in jsons:
-        print(f'Collecting {js}')
-        with open(js, 'r') as fd:
-            data_s = json.load(fd)
-            data.append(data_s)
+        sscalc = SpinSpiralCalculation.load(js)
+        sscalcs.append(sscalc)
 
-    # Extract strings from different orders calculated basede on output jsons
-    orders = list(set([list(i.keys())[0] for i in data]))
-    keys = ['n', 'e', 'm_v', 'm_av']
+    return _main(atoms, sscalcs, qdens)
 
-    # append data to results dictionary
-    results = {order: {k: [] for k in keys} for order in orders}
-    for this_data in data:
-        for order in this_data.keys():
-            for key in this_data[order].keys():
-                results[order][key].append(this_data[order][key])
 
-    res = {}
-    for order in orders:
-        n_i = results[order]['n']
-        for i in range(n):
-            if i not in n_i:
-                n_i.append(i)
-                results[order]['e'].append(0)
-                results[order]['m_v'].append([0, 0, 0])
-                results[order]['m_av'].append([[0, 0, 0]] * len(atoms))
+def _main(atoms, sscalculations, qdens):
+    c2db_eps = 0.1
+    path = atoms.cell.bandpath(density=qdens, pbc=atoms.pbc, eps=c2db_eps)
+    Q = path.kpts
+    nqpts = len(Q)
 
-        for key in keys:
-            # sort data based on the counter "n"
-            res_i = results[order][key]
-            _, res_i = zip(*sorted(zip(n_i, res_i)))
+    energies = [sscalc.energy for sscalc in sscalculations]
+    minarg = np.argmin(energies)
+    min_sscalc = sscalculations[minarg]
+    minimum = min_sscalc.index
+    Qmin = Q[minimum[1]]
 
-            # restructure output
-            if key in res.keys():
-                res[key] = np.append(res[key], np.asarray([res_i]), axis=0)
-            else:
-                res[key] = np.array([np.asarray(res_i)])
+    bandwidth = (np.max(energies) - np.min(energies)) * 1000
 
-        if 'order' in res.keys():
-            res['order'] = np.append(res['order'], np.asarray([order]), axis=0)
-        else:
-            res['order'] = np.asarray([order])
+    for zerospiral in sscalculations.failed_calculations(nqpts):
+        sscalculations.append(zerospiral)
 
-    bandwidth = (np.max(res['e']) - np.min(res['e'])) * 1000
-    minarg = np.unravel_index(np.argmin(res['e'], axis=None), res['e'].shape)
-    omin = orders[minarg[0]]
-    qmin = Q[minarg[1]]
-    return Result.fromdata(path=path, energies=res['e'],
-                           local_magmoms=res['m_av'], total_magmoms=res['m_v'],
-                           bandwidth=bandwidth, minimum=(qmin, omin))
+    sscalculations.sort_path()
+    energies = sscalculations.get_array('energy')
+    m_v = sscalculations.get_array('m_v')
+    m_av = sscalculations.get_array('m_av')
+    gaps = sscalculations.get_array('gap')
+
+    return Result.fromdata(path=path, energies=energies, gaps=gaps,
+                           local_magmoms=m_av, total_magmoms=m_v,
+                           bandwidth=bandwidth, minimum=minimum,
+                           Qmin=Qmin)
 
 
 def plot_bandstructure(row, fname):
