@@ -78,7 +78,7 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
                 p.cache.strip_empties()
             world.barrier()
             p.run()
-            
+
 
 def requires():
     return ['results-asr.phonons@calculate.json']
