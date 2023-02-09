@@ -418,7 +418,7 @@ class ASRCalculator(Calculator):
 
     def fixed_density(self, **kwargs):
         return self
-        
+
     def __enter__(self):
         return self
 
