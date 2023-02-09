@@ -72,12 +72,12 @@ def calculate(n: int = 2, ecut: float = 800, kptdensity: float = 6.0,
     with paropen('phonons.txt', mode='a') as fd:
         params['txt'] = fd
         with get_calculator()(**params) as calc:
-                supercell = [n if periodic else 1 for periodic in atoms.pbc]
-                p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
-                if world.rank == 0:
-                    p.cache.strip_empties()
-                world.barrier()
-                p.run()
+            supercell = [n if periodic else 1 for periodic in atoms.pbc]
+            p = Phonons(atoms=atoms, calc=calc, supercell=supercell)
+            if world.rank == 0:
+                p.cache.strip_empties()
+            world.barrier()
+            p.run()
 
 def requires():
     return ['results-asr.phonons@calculate.json']
