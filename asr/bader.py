@@ -73,17 +73,16 @@ def main(grid_spacing: float = 0.05) -> Result:
     import subprocess
     from ase.io import write
     from ase.units import Bohr
-    from gpaw import GPAW
+    from gpaw.new.ase_interface import GPAW
     from gpaw.mpi import world
-    from gpaw.utilities.ps2ae import PS2AE
     from gpaw.utilities.bader import read_bader_charges
 
     assert world.size == 1, 'Do not run in parallel!'
 
     gs = GPAW('gs.gpw')
-    converter = PS2AE(gs, grid_spacing=grid_spacing)  # grid-spacing in Å
-    density = converter.get_pseudo_density()
-    write('density.cube', gs.atoms, data=density * Bohr**3)
+    dens = gs.calculation.densities()
+    n_sR = dens.all_electron_densities(grid_spacing=grid_spacing)
+    write('density.cube', gs.atoms, data=n_sR.data.sum(axis=0) * Bohr**3)
 
     cmd = 'bader density.cube'
     out = Path('bader.out').open('w')
@@ -95,10 +94,7 @@ def main(grid_spacing: float = 0.05) -> Result:
     err.close()
 
     charges = -read_bader_charges('ACF.dat')
-
-    # Subtract valence electrons:
-    for a, setup in enumerate(gs.setups):
-        charges[a] += setup.Nv
+    charges += gs.atoms.get_atomic_numbers()
     assert abs(charges.sum()) < 0.01
 
     sym_a = gs.atoms.get_chemical_symbols()
