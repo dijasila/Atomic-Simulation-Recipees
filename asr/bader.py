@@ -1,14 +1,15 @@
 """Bader charge analysis."""
-import numpy as np
-
+import subprocess
+from pathlib import Path
 from typing import List
 
-from asr.core import command, option, ASRResult, prepare_result
+import numpy as np
+from ase.io import write
+from ase.units import Bohr
 
-from asr.database.browser import (
-    describe_entry,
-    entry_parameter_description,
-    make_panel_description, href)
+from asr.core import ASRResult, command, option, prepare_result
+from asr.database.browser import (describe_entry, entry_parameter_description,
+                                  href, make_panel_description)
 
 panel_description = make_panel_description(
     """The Bader charge analysis ascribes a net charge to an atom
@@ -24,7 +25,7 @@ def webpanel(result, row, key_descriptions):
             for a, (symbol, charge)
             in enumerate(zip(result.sym_a, result.bader_charges))]
     table = {'type': 'table',
-             'header': ['Atom index', 'Atom type', 'Charge (e)'],
+             'header': ['Atom index', 'Atom type', 'Charge (|e|)'],
              'rows': rows}
 
     parameter_description = entry_parameter_description(
@@ -69,12 +70,8 @@ def main(grid_spacing: float = 0.05) -> Result:
         $ tar -xf bader_lnx_64.tar.gz
         $ echo 'export PATH=~/baderext:$PATH' >> ~/.bashrc
     """
-    from pathlib import Path
-    import subprocess
-    from ase.io import write
-    from ase.units import Bohr
-    from gpaw.new.ase_interface import GPAW
     from gpaw.mpi import world
+    from gpaw.new.ase_interface import GPAW
     from gpaw.utilities.bader import read_bader_charges
 
     assert world.size == 1, 'Do not run in parallel!'
@@ -93,6 +90,9 @@ def main(grid_spacing: float = 0.05) -> Result:
     out.close()
     err.close()
 
+    n = count_number_of_bader_maxima(Path('bader.out'))
+    if n != len(gs.atoms):
+        raise ValueError(f'Wrong number of Bader volumes: {n}')
     charges = -read_bader_charges('ACF.dat')
     charges += gs.atoms.get_atomic_numbers()
     assert abs(charges.sum()) < 0.01
@@ -101,6 +101,14 @@ def main(grid_spacing: float = 0.05) -> Result:
 
     return Result(data=dict(bader_charges=charges,
                             sym_a=sym_a))
+
+
+def count_number_of_bader_maxima(path: Path) -> int:
+    """Read number of maxima from output file."""
+    for line in path.read_text().splitlines():
+        if line.strip().startswith('SIGNIFICANT MAXIMA FOUND:'):
+            return int(line.split()[-1])
+    assert False
 
 
 if __name__ == '__main__':
