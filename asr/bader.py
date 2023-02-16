@@ -1,9 +1,11 @@
 """Bader charge analysis."""
+from __future__ import annotations
 import subprocess
 from pathlib import Path
 from typing import List
 
 import numpy as np
+from ase import Atoms
 from ase.io import write
 from ase.units import Bohr
 
@@ -78,7 +80,7 @@ def main(grid_spacing: float = 0.05) -> Result:
 
 
 def bader(gpw_file_name: str = 'gs.gpw',
-          grid_spacing: float = 0.05) -> tuple[Atoms, np.ndarray]
+          grid_spacing: float = 0.05) -> tuple[Atoms, np.ndarray]:
     from gpaw.mpi import world
     from gpaw.new.ase_interface import GPAW
     from gpaw.utilities.bader import read_bader_charges
