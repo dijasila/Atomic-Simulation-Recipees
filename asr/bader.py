@@ -70,13 +70,22 @@ def main(grid_spacing: float = 0.05) -> Result:
         $ tar -xf bader_lnx_64.tar.gz
         $ echo 'export PATH=~/baderext:$PATH' >> ~/.bashrc
     """
+
+    atoms, charges = bader('gs.gpw', grid_spacing)
+    sym_a = atoms.get_chemical_symbols()
+    return Result(data=dict(bader_charges=charges,
+                            sym_a=sym_a))
+
+
+def bader(gpw_file_name: str = 'gs.gpw',
+          grid_spacing: float = 0.05) -> tuple[Atoms, np.ndarray]
     from gpaw.mpi import world
     from gpaw.new.ase_interface import GPAW
     from gpaw.utilities.bader import read_bader_charges
 
     assert world.size == 1, 'Do not run in parallel!'
 
-    gs = GPAW('gs.gpw')
+    gs = GPAW(gpw_file_name)
     dens = gs.calculation.densities()
     n_sR = dens.all_electron_densities(grid_spacing=grid_spacing)
     write('density.cube', gs.atoms, data=n_sR.data.sum(axis=0) * Bohr**3)
@@ -93,14 +102,12 @@ def main(grid_spacing: float = 0.05) -> Result:
     n = count_number_of_bader_maxima(Path('bader.out'))
     if n != len(gs.atoms):
         raise ValueError(f'Wrong number of Bader volumes: {n}')
+
     charges = -read_bader_charges('ACF.dat')
     charges += gs.atoms.get_atomic_numbers()
     assert abs(charges.sum()) < 0.01
 
-    sym_a = gs.atoms.get_chemical_symbols()
-
-    return Result(data=dict(bader_charges=charges,
-                            sym_a=sym_a))
+    return gs.atoms, charges
 
 
 def count_number_of_bader_maxima(path: Path) -> int:
