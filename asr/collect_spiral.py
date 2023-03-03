@@ -153,7 +153,7 @@ def _main(atoms, sscalculations, qdens, eps):
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
     path, energies_bq, lm_bqa = extract_data(row)
-    
+
     # Process path
     q, x, X = path.get_linear_kpoint_axis()
     nwavepoints = 5
@@ -161,12 +161,12 @@ def plot_bandstructure(row, fname):
     wavepointsfreq = round(len(q_v) / nwavepoints)
 
     # Process magmoms
-    magmom_bq = np.linalg.norm(lm_bqa, axis=3)
+    lm_bq = np.linalg.norm(lm_bqa, axis=3)
     mommin = np.min(lm_bq * 0.9)
     mommax = np.max(lm_bq * 1.05)
 
     # Process energies
-    energies_bq = ((energies - energies_bq[0][0]) * 1000)
+    energies_bq = ((energies_bq - energies_bq[0][0]) * 1000)
     emin = np.min(energies_bq * 1.1)
     emax = np.max(energies_bq * 1.15)
     nbands, nqpts = np.shape(energies_bq)
@@ -181,15 +181,15 @@ def plot_bandstructure(row, fname):
     ax1 = fig.add_subplot(111)
     for bidx in range(nbands):
         energies_q = energies_bq[bidx]
-        magmom_q = magmom_bq[bidx]
+        magmom_q = lm_bq[bidx]
 
         # Setup main energy plot
-        hnd = plot_energies(ax1, q, energies_q, emin, emax)
+        hnd = plot_energies(ax1, q, energies_q, emin, emax, x, X)
 
         # Non-cumulative length of q-vectors to find wavelength
         ax2 = ax1.twiny()
-        add_wavelength_axis(ax2, ax1.get_xlim(), Q, wavepointsfreq)
-        
+        add_wavelength_axis(ax2, ax1.get_xlim(), q, q_v, wavepointsfreq)
+
         # Add the magnetic moment plot
         ax3 = ax1.twinx()
         plot_magmoms(ax3, q, magmom_q, mommin, mommax, symbols)
@@ -217,7 +217,7 @@ def plot_bandstructure(row, fname):
 def extract_data(row):
     data = row.data.get('results-asr.spinspiral.json')
     path = data['path']
-    
+
     energies_bq = data['energies']
     if len(energies_bq.shape) == 1:
         energies_bq = np.array([energies_bq])
@@ -227,7 +227,7 @@ def extract_data(row):
     return path, energies_bq, lm_bqa
 
 
-def plot_energies(ax, q, energies, emin, emax):
+def plot_energies(ax, q, energies, emin, emax, x, X):
     hnd = ax.plot(q, energies, c='C0', marker='.', label='Energy')
     ax.set_ylim([emin, emax])
     ax.set_xticks(x)
@@ -239,24 +239,25 @@ def plot_energies(ax, q, energies, emin, emax):
     return hnd
 
 
-def add_wavelength_axis(ax, xlim, Q, wavepointsfreq):
-        # Add spin wavelength axis
-        def tick_function(X):
-            lmda = 2 * np.pi / X
-            return [f"{z:.1f}" for z in lmda]
+def add_wavelength_axis(ax, xlim, q, q_v, wavepointsfreq):
+    # Add spin wavelength axis
+    def tick_function(X):
+        lmda = 2 * np.pi / X
+        return [f"{z:.1f}" for z in lmda]
 
-        ax.set_xticks(q[::wavepointsfreq])
-        ax.set_xticklabels(tick_function(q_v[::wavepointsfreq]))
+    ax.set_xticks(q[::wavepointsfreq])
+    ax.set_xticklabels(tick_function(q_v[::wavepointsfreq]))
 
 
-def plot_magmoms(ax, q, magmoms_qa, mommin, mommax, symbols):
+def plot_magmoms(ax, q, magmom_qa, mommin, mommax, symbols):
     unique = list(set(symbols))
     colors = [f'C{i}' for i in range(1, len(unique) + 1)]
     mag_c = {unique[i]: colors[i] for i in range(len(unique))}
 
     for a in range(magmom_qa.shape[-1]):
         magmom_q = magmom_qa[:, a]
-        ax.plot(q, magmom_q, c=mag_c[symbols[a]], marker='.', label=f'{symbols[a]} magmom')
+        ax.plot(q, magmom_q, c=mag_c[symbols[a]], marker='.',
+                label=f'{symbols[a]} magmom')
 
     ax.set_ylim([mommin, mommax])
 
