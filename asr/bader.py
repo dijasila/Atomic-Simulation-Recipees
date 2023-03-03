@@ -73,21 +73,20 @@ def main(grid_spacing: float = 0.05) -> Result:
         $ echo 'export PATH=~/baderext:$PATH' >> ~/.bashrc
     """
 
-    atoms, charges = bader('gs.gpw', grid_spacing)
+    from gpaw.mpi import world
+    from gpaw.new.ase_interface import GPAW
+
+    assert world.size == 1, 'Do not run in parallel!'
+
+    gs = GPAW('gs.gpw')
+    atoms, charges = bader(gs, grid_spacing)
     sym_a = atoms.get_chemical_symbols()
     return Result(data=dict(bader_charges=charges,
                             sym_a=sym_a))
 
 
-def bader(gpw_file_name: str = 'gs.gpw',
+def bader(gs,
           grid_spacing: float = 0.05) -> tuple[Atoms, np.ndarray]:
-    from gpaw.mpi import world
-    from gpaw.new.ase_interface import GPAW
-    from gpaw.utilities.bader import read_bader_charges
-
-    assert world.size == 1, 'Do not run in parallel!'
-
-    gs = GPAW(gpw_file_name)
     dens = gs.calculation.densities()
     n_sR = dens.all_electron_densities(grid_spacing=grid_spacing)
     write('density.cube', gs.atoms, data=n_sR.data.sum(axis=0) * Bohr**3)
@@ -110,6 +109,17 @@ def bader(gpw_file_name: str = 'gs.gpw',
     assert abs(charges.sum()) < 0.01
 
     return gs.atoms, charges
+
+
+def read_bader_charges(filename: str | Path = 'ACF.dat') -> np.ndarray:
+    path = Path(filename)
+    charges = []
+    with path.open() as fd:
+        for line in fd:
+            words = line.split()
+            if len(words) == 7:
+                charges.append(float(words[4]))
+    return np.array(charges)
 
 
 def count_number_of_bader_maxima(path: Path) -> int:
