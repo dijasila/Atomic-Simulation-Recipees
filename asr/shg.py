@@ -9,13 +9,20 @@ class CentroSymmetric(Exception):
     pass
 
 
-def get_chi_symmetry(atoms, sym_th=1e-3):
+def get_chi_symmetry(atoms, sym_th=None):
 
     # Get the symmetry of the structure and operations
     import spglib
+    from asr.utils.symmetry import c2db_symmetry_eps, c2db_symmetry_angle
+
+    if sym_th is None:
+        sym_th = c2db_symmetry_eps
+
     sg = spglib.get_symmetry((atoms.cell,
                               atoms.get_scaled_positions(),
-                              atoms.get_atomic_numbers()), symprec=sym_th)
+                              atoms.get_atomic_numbers()),
+                             symprec=sym_th,
+                             angle_tolerance=c2db_symmetry_angle)
     op_scc = sg['rotations']
 
     # Make a random symmetrized matrix
@@ -297,7 +304,7 @@ def plot_shg(row, *filename):
 
     # Read the data from the disk
     data = row.data.get('results-asr.shg.json')
-    gap = row.get('gap')
+    gap = row.get('gap_dir')
     atoms = row.toatoms()
     pbc = atoms.pbc.tolist()
     nd = np.sum(pbc)
