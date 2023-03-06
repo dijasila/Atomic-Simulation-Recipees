@@ -212,13 +212,14 @@ class Result(ASRResult):
 
 
 def get_layer_group(atoms, symprec):
-    import spglib
+    import spglib.spglib as spglib
+    # (This will certainly change in future spglib)
 
     if not hasattr(spglib, 'get_symmetry_layerdataset'):
         return None, None
 
-    assert atoms.pbs.sum() == 2
-    aperiodic_dir = np.where(~atoms.pbc)[0][0]
+    assert atoms.pbc.sum() == 2
+    aperiodic_dir = np.argmin(atoms.pbc)
 
     lg_dct = spglib.get_symmetry_layerdataset(
         (atoms.get_cell(),
