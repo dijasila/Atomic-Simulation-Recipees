@@ -18,7 +18,10 @@ docs:
     - sphinx-build --keep-going -E -W -c docs -b html docs docs/build
 
 
-parallel:
+# GPAW stuff fails as of 2023-02-03 when using shared runners on
+# our test docker.  Disable parallel stuff for now.
+# Also when this is fixed, re-enable the xfailed test i test_relax.py.
+.parallel:
   image: registry.gitlab.com/asr-dev/asr:main
   stage: test
   script:

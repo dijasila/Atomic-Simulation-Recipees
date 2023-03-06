@@ -1,6 +1,8 @@
 """Structural information."""
-from asr.core import command, ASRResult, prepare_result
-from asr.database.browser import code, br, div, bold, dl, describe_entry, href
+import numpy as np
+
+from asr.core import ASRResult, command, prepare_result
+from asr.database.browser import bold, br, code, describe_entry, div, dl, href
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -22,10 +24,10 @@ def get_reduced_formula(formula, stoichiometry=False):
     -------
         A string containing the reduced formula.
     """
+    import re
+    import string
     from functools import reduce
     from math import gcd
-    import string
-    import re
     split = re.findall('[A-Z][^A-Z]*', formula)
     matches = [re.match('([^0-9]*)([0-9]+)', x)
                for x in split]
@@ -81,7 +83,7 @@ def describe_crystaltype_entry(spglib):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table, describe_entry, href)
+    from asr.database.browser import describe_entry, href, table
 
     spglib = get_spg_href('https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)
@@ -89,6 +91,10 @@ def webpanel(result, row, key_descriptions):
     spg_list_link = href(
         'Space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
     )
+
+    layergroup_link = href(
+        'Layer group', 'https://en.wikipedia.org/wiki/Layer_group')
+
     spacegroup = describe_entry(
         'spacegroup',
         f"{spg_list_link} determined with {spglib}."
@@ -98,6 +104,13 @@ def webpanel(result, row, key_descriptions):
         'spgnum',
         f"{spg_list_link} number determined with {spglib}."
     )
+
+    layergroup = describe_entry(
+        'layergroup',
+        f'{layergroup_link} determined with {spglib}')
+    lgnum = describe_entry(
+        'lgnum',
+        f'{layergroup_link} number determined with {spglib}')
 
     pointgroup = describe_pointgroup_entry(spglib)
 
@@ -119,12 +132,24 @@ def webpanel(result, row, key_descriptions):
         f"ID of a closely related material in the {cod_link}."
     )
 
-    basictable = table(row, 'Structure info', [
-        crystal_type, spacegroup, spgnum, pointgroup,
-        icsd_id, cod_id
-    ], key_descriptions, 2)
-    basictable['columnwidth'] = 4
+    # Here we are hacking the "label" out of a row without knowing
+    # whether there is a label, or that the "label" recipe exists.
+
+    tablerows = [
+        crystal_type, layergroup, lgnum, spacegroup, spgnum, pointgroup,
+        icsd_id, cod_id]
+
+    # The table() function is EXTREMELY illogical.
+    # I can't get it to work when appending another row
+    # to the tablerows list.  Therefore we append rows afterwards.  WTF.
+    basictable = table(row, 'Structure info', tablerows, key_descriptions, 2)
     rows = basictable['rows']
+
+    labelresult = row.data.get('results-asr.c2db.labels.json')
+    if labelresult is not None:
+        tablerow = labelresult.as_formatted_tablerow()
+        rows.append(tablerow)
+
     codid = row.get('cod_id')
     if codid:
         # Monkey patch to make a link
@@ -149,8 +174,7 @@ def webpanel(result, row, key_descriptions):
     panel = {'title': 'Summary',
              'columns': [[basictable,
                           {'type': 'table', 'header': ['Stability', ''],
-                           'rows': [],
-                           'columnwidth': 4}],
+                           'rows': []}],
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]
@@ -174,6 +198,8 @@ class Result(ASRResult):
     stoichiometry: str
     spacegroup: str
     spgnum: int
+    layergroup: str
+    lgnum: int
     pointgroup: str
     crystal_type: str
     spglib_dataset: dict
@@ -183,8 +209,10 @@ class Result(ASRResult):
         "cell_area": "Area of unit-cell [`Å²`]",
         "has_inversion_symmetry": "Material has inversion symmetry",
         "stoichiometry": "Stoichiometry",
-        "spacegroup": "Space group",
-        "spgnum": "Space group number",
+        "spacegroup": "Space group (AA stacking)",
+        "spgnum": "Space group number (AA stacking)",
+        "layergroup": "Layer group",
+        "lgnum": "Layer group number",
         "pointgroup": "Point group",
         "crystal_type": "Crystal type",
         "spglib_dataset": "SPGLib symmetry dataset.",
@@ -192,6 +220,28 @@ class Result(ASRResult):
     }
 
     formats = {"ase_webpanel": webpanel}
+
+
+def get_layer_group(atoms, symprec):
+    try:
+        from spglib.spglib import get_symmetry_layerdataset
+    except ImportError:
+        return None, None
+
+    assert atoms.pbc.sum() == 2
+    aperiodic_dir = np.where(~atoms.pbc)[0][0]
+
+    lg_dct = get_symmetry_layerdataset(
+        (atoms.get_cell(),
+         atoms.get_scaled_positions(),
+         atoms.get_atomic_numbers()),
+        symprec=symprec,
+        aperiodic_dir=aperiodic_dir)
+
+    layergroup = lg_dct['number']
+    layergroupname = lg_dct['international']
+
+    return layergroupname, layergroup
 
 
 @command('asr.structureinfo',
@@ -207,7 +257,8 @@ def main() -> Result:
     """
     import numpy as np
     from ase.io import read
-    from asr.utils.symmetry import c2db_symmetry_eps, c2db_symmetry_angle
+
+    from asr.utils.symmetry import c2db_symmetry_angle, c2db_symmetry_eps
 
     atoms = read('structure.json')
     info = {}
@@ -234,10 +285,19 @@ def main() -> Result:
     pg = dataset['pointgroup']
     w = ''.join(sorted(set(dataset['wyckoffs'])))
     crystal_type = f'{stoi}-{number}-{w}'
+
+    info['layergroup'] = None
+    info['lgnum'] = None
+    ndims = sum(atoms.pbc)
+    if ndims == 2:
+        info['layergroup'], info['lgnum'] = get_layer_group(
+            atoms,
+            symprec=c2db_symmetry_eps)
+
     info['crystal_type'] = crystal_type
     info['spacegroup'] = sg
     info['spgnum'] = number
-    from ase.db.core import str_represents, convert_str_to_int_float_or_str
+    from ase.db.core import convert_str_to_int_float_or_str, str_represents
     if str_represents(pg):
         info['pointgroup'] = convert_str_to_int_float_or_str(pg)
     else:

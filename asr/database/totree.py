@@ -11,10 +11,9 @@ def make_folder_tree(*, folders, chunks,
                      atomsfile,
                      update_tree):
     """Write folder tree to disk."""
-    from os import makedirs, link
+    from os import makedirs
     from ase.io import write
     from asr.core import write_json
-    import importlib
     from fnmatch import fnmatch
 
     nfolders = len(folders)
@@ -55,36 +54,13 @@ def make_folder_tree(*, folders, chunks,
             # We treat json differently
             if filename.endswith('.json'):
                 write_json(folder / filename, results)
-
-                # Unpack any extra files
-                files = results.get('__files__', {})
-                for extrafile, content in files.items():
-
-                    if '__tofile__' in content:
-                        # TODO: This should _really_ be handled differently.
-                        tofile = content.pop('__tofile__')
-                        mod, func = tofile.split('@')
-                        write_func = getattr(importlib.import_module(mod),
-                                             func)
-                        write_func(folder / extrafile, content)
-            elif filename in {'__links__', '__children__'}:
+            elif filename == '__children__':
+                # Some silly mechanism to have subfolders like in stiffness
                 pass
             else:
-                path = results.get('pointer')
-                srcfile = Path(path).resolve()
-                if not srcfile.is_file():
-                    print(f'Cannot locate source file: {path}')
-                    continue
-                destfile = folder / Path(filename)
-                if destfile.is_file():
-                    continue
-                if copy:
-                    try:
-                        link(str(srcfile), str(destfile))
-                    except OSError:
-                        destfile.write_bytes(srcfile.read_bytes())
-                else:
-                    destfile.symlink_to(srcfile)
+                raise RuntimeError('Non-JSON file handling removed after '
+                                   '34f9c5016d15e9a965f867eada7f756f4f0fbc34:'
+                                   f'{filename}')
 
 
 def make_folder_dict(rows, tree_structure):

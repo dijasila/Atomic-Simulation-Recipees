@@ -3,7 +3,6 @@ from typing import List
 import multiprocessing
 import tempfile
 from pathlib import Path
-import warnings
 
 from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json
@@ -13,70 +12,26 @@ from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
+from ase.db.app import new_app
+from ase.db.project import DatabaseProject
 
 import asr
 from asr.core import (command, option, argument, ASRResult,
                       decode_object, UnknownDataFormat)
 
 
-def import_dbapp_from_ase():
-    # Compatibility fix since ASE is moving away from global variables.
-    try:
-        from ase.db.app import DBApp
-    except ImportError:
-        from ase.db.app import app, projects
-        return app, projects
-
-    dbapp = DBApp()
-    return dbapp.flask, dbapp.projects
-
-
-# XXX Should not be using global variables!
-app, projects = import_dbapp_from_ase()
-
-
-tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))  # used to cache png-files
-
-path = Path(asr.__file__).parent.parent
-app.jinja_loader.searchpath.append(str(path))
-
-
-def create_key_descriptions(db=None, extra_kvp_descriptions=None):
+def create_key_descriptions():
     from asr.database.key_descriptions import key_descriptions
-    from asr.database.fromtree import parse_key_descriptions
-    from asr.core import read_json
-    from ase.db.web import create_key_descriptions
+    from ase.db.core import get_key_descriptions as get_ase_keydescs
 
-    flatten = {key: value
-               for recipe, dct in key_descriptions.items()
-               for key, value in dct.items()}
+    all_keydescs_flat = dict(get_ase_keydescs())
 
-    if extra_kvp_descriptions is not None and Path(extra_kvp_descriptions).is_file():
-        extras = read_json(extra_kvp_descriptions)
-        flatten.update(extras)
+    # We should check for clashes here.
+    for recipe, dct in key_descriptions.items():
+        all_keydescs_flat.update(dct)
 
-    if db is not None:
-        metadata = db.metadata
-        if 'keys' not in metadata:
-            raise KeyError('Missing list of keys for database. '
-                           'To fix this either: run database.fromtree again. '
-                           'or python -m asr.database.set_metadata DATABASEFILE.')
-        keys = metadata.get('keys')
-    else:
-        keys = list(flatten.keys())
-
-    kd = {}
-    for key in keys:
-        description = flatten.get(key)
-        if description is None:
-            warnings.warn(f'Missing key description for {key}')
-            continue
-        kd[key] = description
-
-    kd = {key: (desc['shortdesc'], desc['longdesc'], desc['units']) for
-          key, desc in parse_key_descriptions(kd).items()}
-
-    return create_key_descriptions(kd)
+    # Should warn if descriptions are None or empty string
+    return all_keydescs_flat
 
 
 class Summary:
@@ -97,8 +52,7 @@ class Summary:
         if self.stress is not None:
             self.stress = ', '.join('{0:.3f}'.format(s) for s in self.stress)
 
-        self.formula = Formula(
-            Formula(row.formula).format('metal')).format('html')
+        self.formula = Formula(row.formula).convert('metal').format('html')
 
         kd = key_descriptions
         self.layout = create_layout(row, kd, prefix)
@@ -117,19 +71,60 @@ class Summary:
                                          for c in self.constraints)
 
 
-def setup_app():
+class WebApp:
+    def __init__(self, app, projects, tmpdir):
+        self.app = app
+        self.tmpdir = tmpdir
+        self.projects = projects
 
-    @app.route("/")
-    def index():
-        return render_template(
-            "asr/database/templates/projects.html",
-            projects=sorted(
-                [
-                    (name, proj["title"], proj["database"].count())
-                    for name, proj in projects.items()
-                ]
-            ),
-        )
+    def initialize_project(self, database, pool=None):
+        from asr.database import browser
+
+        db = connect(database, serial=True)
+        metadata = db.metadata
+        name = metadata.get("name", Path(database).name)
+
+        tmpdir = self.tmpdir
+        # Make temporary directory
+        (tmpdir / name).mkdir()
+
+        def layout(*args, **kwargs):
+            return browser.layout(*args, pool=pool, **kwargs)
+
+        metadata = db.metadata
+
+        # much duplication of initialization
+        project = ASRProject(
+            name=name,
+            title=metadata.get("title", name),
+            key_descriptions=create_key_descriptions(),
+            database=db,
+            tempdir=tmpdir,
+            uid_key=metadata.get("uid", "uid"),
+            default_columns=metadata.get("default_columns",
+                                         ["formula", "uid"]))
+
+        self.projects[name] = project
+
+
+def setup_app(route_slash=True):
+    # used to cache png-files:
+    tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))
+
+    path = Path(asr.__file__).parent.parent
+    projects = {}
+    app = new_app(projects)
+    app.jinja_loader.searchpath.append(str(path))
+
+    if route_slash:
+        @app.route("/")
+        def index():
+            return render_template(
+                "asr/database/templates/projects.html",
+                projects=sorted([
+                    (name, project.title, project.database.count())
+                    for name, project in projects.items()
+                ]))
 
     @app.route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
@@ -137,21 +132,34 @@ def setup_app():
         path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
 
-    setup_data_endpoints()
+    @app.template_filter()
+    def sort_key_descriptions(value):
+        """Sort column drop down menu."""
+        def sort_func(item):
+            # These items are ('id', <KeyDescription>)
+            # We (evidently) sort by longdesc.
+            return item[1].longdesc
+
+        return sorted(value.items(), key=sort_func)
+
+    webapp = WebApp(app, projects, tmpdir)
+    setup_data_endpoints(webapp)
+    return webapp
 
 
-def setup_data_endpoints():
+def setup_data_endpoints(webapp):
     """Set endpoints for downloading data."""
     from ase.io.jsonio import MyEncoder
-    app.json_encoder = MyEncoder
+
+    projects = webapp.projects
+    app = webapp.app
+    app.json_provider_class = MyEncoder
 
     @app.route('/<project_name>/row/<uid>/all_data')
     def get_all_data(project_name: str, uid: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
+        row = project.uid_to_row(uid)
         content = flask.json.dumps(row.data)
         return Response(
             content,
@@ -163,21 +171,18 @@ def setup_data_endpoints():
     def show_row_data(project_name: str, uid: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
+        row = project.uid_to_row(uid)
         sorted_data = {key: value for key, value
                        in sorted(row.data.items(), key=lambda x: x[0])}
-        return render_template('asr/database/templates/data.html',
-                               data=sorted_data, uid=uid, project_name=project_name)
+        return render_template(
+            'asr/database/templates/data.html',
+            data=sorted_data, uid=uid, project_name=project_name)
 
     @app.route('/<project_name>/row/<uid>/data/<filename>')
     def get_row_data_file(project_name: str, uid: str, filename: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
+        row = project.uid_to_row(uid)
         try:
             result = decode_object(row.data[filename])
             return render_template(
@@ -194,87 +199,53 @@ def setup_data_endpoints():
     def get_row_data_file_json(project_name: str, uid: str, filename: str):
         """Show details for one database row."""
         project = projects[project_name]
-        uid_key = project['uid_key']
-        row = project['database'].get('{uid_key}={uid}'
-                                      .format(uid_key=uid_key, uid=uid))
+        row = project.uid_to_row(uid)
         return jsonify(row.data.get(filename))
 
 
-@app.template_filter()
-def asr_sort_key_descriptions(value):
-    """Sort column drop down menu."""
-    def sort_func(item):
-        return item[1][1]
+class ASRProject(DatabaseProject):
+    _asr_templates = Path('asr/database/templates/')
 
-    return sorted(value.items(), key=sort_func)
+    def __init__(self, *, uid_key, tempdir, **kwargs):
+        self.tempdir = tempdir
+        super().__init__(**kwargs)
+        self.uid_key = uid_key
 
+    def row_to_dict(self, row):
+        from asr.database.browser import layout
+        # XXX same as in CMR
+        return row_to_dict(
+            row=row, project=self,
+            layout_function=layout,
+            tmpdir=self.tempdir)
 
-def handle_query(args):
-    return args["query"]
+    # XXX copypasty
+    def get_table_template(self):
+        return self._asr_templates / 'table.html'
+
+    def get_search_template(self):
+        return self._asr_templates / 'search.html'
+
+    def get_row_template(self):
+        return self._asr_templates / 'row.html'
 
 
 def row_to_dict(row, project, layout_function, tmpdir):
-    project_name = project['name']
-    uid = row.get(project['uid_key'])
+    project_name = project.name
+    uid = row.get(project.uid_key)
     s = Summary(row,
                 create_layout=layout_function,
-                key_descriptions=project['key_descriptions'],
+                key_descriptions=project.key_descriptions,
                 prefix=str(tmpdir / f'{project_name}/{uid}-'))
     return s
-
-
-def initialize_project(database, extra_kvp_descriptions=None, pool=None):
-    from asr.database import browser
-    from functools import partial
-
-    db = connect(database, serial=True)
-    metadata = db.metadata
-    name = metadata.get("name", Path(database).name)
-
-    # Make temporary directory
-    (tmpdir / name).mkdir()
-
-    def layout(*args, **kwargs):
-        return browser.layout(*args, pool=pool, **kwargs)
-
-    metadata = db.metadata
-    projects[name] = {
-        "name": name,
-        "title": metadata.get("title", name),
-        "key_descriptions": create_key_descriptions(db,
-                                                    extra_kvp_descriptions),
-        "uid_key": metadata.get("uid", "uid"),
-        "database": db,
-        "handle_query_function": handle_query,
-        "row_to_dict_function": partial(
-            row_to_dict, layout_function=layout, tmpdir=tmpdir,
-        ),
-        "default_columns": metadata.get("default_columns", ["formula", "uid"]),
-        "table_template": str(
-            metadata.get(
-                "table_template", "asr/database/templates/table.html",
-            )
-        ),
-        "search_template": str(
-            metadata.get(
-                "search_template", "asr/database/templates/search.html"
-            )
-        ),
-        "row_template": str(
-            metadata.get("row_template", "asr/database/templates/row.html")
-        ),
-    }
 
 
 @command()
 @argument("databases", nargs=-1, type=str)
 @option("--host", help="Host address.", type=str)
 @option("--test", is_flag=True, help="Test the app.")
-@option("--extra_kvp_descriptions", type=str,
-        help='File containing extra kvp descriptions for info.json')
 def main(databases: List[str], host: str = "0.0.0.0",
-         test: bool = False,
-         extra_kvp_descriptions: str = 'key_descriptions.json') -> ASRResult:
+         test: bool = False) -> ASRResult:
 
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
@@ -282,57 +253,26 @@ def main(databases: List[str], host: str = "0.0.0.0",
     # correctly on KeyboardInterrupt.
     pool = multiprocessing.Pool(1)
     try:
-        _main(databases, host, test, extra_kvp_descriptions, pool)
+        _main(databases, host, test, pool)
     finally:
         pool.close()
         pool.join()
 
 
-def _main(databases, host, test, extra_kvp_descriptions, pool):
-    for database in databases:
-        initialize_project(database, extra_kvp_descriptions, pool)
+def _main(databases, host, test, pool):
+    webapp = setup_app()
+    projects = webapp.projects
+    app = webapp.app
 
-    setup_app()
+    for database in databases:
+        webapp.initialize_project(database, pool)
 
     if test:
-        import traceback
         app.testing = True
-        with app.test_client() as c:
-            for name in projects:
-                print(f'Testing {name}')
-                c.get(f'/{name}/').data.decode()
-                project = projects[name]
-                db = project['database']
-                uid_key = project['uid_key']
-                n = len(db)
-                uids = []
-                for row in db.select(include_data=False):
-                    uids.append(row.get(uid_key))
-                    if len(uids) == n:
-                        break
-                print(len(uids))
-
-                for i, uid in enumerate(uids):
-                    url = f'/{name}/row/{uid}'
-                    print(f'\rRows: {i + 1}/{len(uids)} {url}',
-                          end='', flush=True)
-                    try:
-                        c.get(url).data.decode()
-                    except KeyboardInterrupt:
-                        raise
-                    except Exception:
-                        print()
-                        row = db.get(uid=uid)
-                        exc = traceback.format_exc()
-                        exc += (f'Problem with {uid}: '
-                                f'Formula={row.formula} '
-                                f'Crystal type={row.crystal_type}\n'
-                                + '-' * 20 + '\n')
-                        with Path('errors.txt').open(mode='a') as fid:
-                            fid.write(exc)
-                            print(exc)
+        from asr.database.app_testing import run_testing
+        run_testing(app, projects)
     else:
-        app.run(host=host, debug=True)
+        webapp.app.run(host=host, debug=True)
 
 
 if __name__ == "__main__":
