@@ -13,7 +13,7 @@ def test_cod_id(asr_tmpdir):
 
 def test_layergroup():
     try:
-        from spglib.spglib import get_symmetry_layerdataset
+        from spglib.spglib import get_symmetry_layerdataset  # noqa
     except ImportError:
         pytest.skip('spglib does not have get_symmetry_layerdataset')
 
