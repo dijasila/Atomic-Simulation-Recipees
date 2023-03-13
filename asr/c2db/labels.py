@@ -100,7 +100,7 @@ Ref: {link}
 
 
 def webpanel(result, row, key_descriptions):
-    label = result.get('label')
+    label = result.get('origin')
     tablerow = get_label_tablerow(label)
 
     panel = {
@@ -131,7 +131,7 @@ class LabelResult(ASRResult):
     # formats = {'ase_webpanel': webpanel}
 
     def as_formatted_tablerow(self):
-        return get_label_tablerow(self['label'])
+        return get_label_tablerow(self['origin'])
 
 
 @command(module='asr.c2db.labels',
