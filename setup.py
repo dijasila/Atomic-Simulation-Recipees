@@ -17,7 +17,8 @@ requirements = [
     'Click>=8.0.3',
     'ase', 'matplotlib',
     'simplejson',
-    'spglib', 'plotly', 'flask', 'pymatgen',
+    'spglib', # 'plotly',
+    'flask', # 'pymatgen',
     'phonopy',
 ]
 
