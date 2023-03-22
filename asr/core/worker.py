@@ -1,6 +1,6 @@
+from gpaw.mpi import world
 from htwutil.worker import main
 from asr.core.repository import ASRRepository
-from gpaw.mpi import world
 
 
 class HTWCommunicatorWrapper:
