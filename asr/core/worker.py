@@ -13,6 +13,22 @@ class HTWCommunicatorWrapper:
         from ase.parallel import broadcast
         return broadcast(obj, root=0, comm=self._comm)
 
+    def split(self, newsize):
+        import numpy as np
+        assert self.size % newsize == 0
+
+        mygroup = self.rank // newsize
+
+        startrank = mygroup * newsize
+        endrank = startrank + newsize
+        ranks = np.arange(startrank, endrank)
+        _comm = self._comm.new_communicator(ranks)
+        assert _comm is not None
+        return HTWCommunicatorWrapper(_comm)
+
+    def mpicomm(self):
+        return self._comm
+
 
 if __name__ == '__main__':
     repo = ASRRepository.find()
