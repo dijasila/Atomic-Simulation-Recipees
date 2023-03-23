@@ -26,15 +26,19 @@ class SpinSpiralCalculation:
 
 
 class SpinSpiralPathCalculation:
-    def __init__(self):
+    def __init__(self, Q):
         self.sscalculations: List[SpinSpiralCalculation] = []
         self.indices = []
+        self.Q = Q
 
     def __iter__(self):
         return iter(self.sscalculations)
 
     def __repr__(self):
         return self.sscalculations
+
+    def __str__(self):
+        return str(self.sscalculations)
 
     def __getitem__(self, item):
         return self.sscalculations[item]
@@ -52,6 +56,14 @@ class SpinSpiralPathCalculation:
     def get_idx(self, index):
         return [sscalc for sscalc in self.sscalculations if sscalc.index == index]
 
+    def minimum(self):
+        energies = [sscalc.energy for sscalc in self.sscalculations]
+        return self.sscalculations[np.argmin(energies)].index
+
+    def qmin(self):
+        minimum = self.minimum()
+        return self.Q[minimum[1]]
+        
     def failed_calculations(self, nkpts: int):
         assert len(self.indices) > 0
         natoms = len(self.sscalculations[0].m_av)
@@ -107,23 +119,34 @@ class Result(ASRResult):
          requires=['structure.json'],
          returns=Result)
 @option('--qdens', help='Density of q-points used in calculations', type=float)
-def main(qdens: float = 22.0) -> Result:
+@option('--qpts', help='Number of q-points used in calculations', type=int)
+@option('--eps', help='Precesion in determining ase bandpath', type=float)
+def main(qdens: float = None, qpts: int = None, eps: float = None) -> Result:
     from ase.io import read
     from glob import glob
     atoms = read('structure.json')
     jsons = glob('dat*.json')
     c2db_eps = 0.1
+    eps = eps or c2db_eps
+
+    if qdens is None and qpts is None:
+        raise ValueError("At least one q-input must be provided")
+    elif qdens is not None and qpts is not None:
+        raise ValueError("Both q-density and q-points are provided")
+    elif qpts is None:
+        path = atoms.cell.bandpath(density=qdens, pbc=atoms.pbc, eps=eps)
+    else:
+        path = atoms.cell.bandpath(npoints=qpts, pbc=atoms.pbc, eps=eps)
 
     sscalcs = SpinSpiralPathCalculation()
     for js in jsons:
         sscalc = SpinSpiralCalculation.load(js)
         sscalcs.append(sscalc)
 
-    return _main(atoms, sscalcs, qdens, c2db_eps)
+    return _main(path, sscalcs)
 
 
-def _main(atoms, sscalculations, qdens, eps):
-    path = atoms.cell.bandpath(density=qdens, pbc=atoms.pbc, eps=eps)
+def _main(path, sscalculations):
     Q = path.kpts
     nqpts = len(Q)
 
