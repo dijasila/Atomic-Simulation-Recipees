@@ -1,6 +1,4 @@
-from gpaw.mpi import world
 from htwutil.worker import main
-from asr.core.repository import ASRRepository
 
 
 class HTWCommunicatorWrapper:
@@ -31,5 +29,12 @@ class HTWCommunicatorWrapper:
 
 
 if __name__ == '__main__':
+    from asr.core.repository import ASRRepository
     repo = ASRRepository.find()
-    main(repo, comm=HTWCommunicatorWrapper(world))
+    try:
+        from gpaw.mpi import world
+    except ModuleNotFoundError:
+        comm = None
+    else:
+        comm = HTWCommunicatorWrapper(world)
+    main(repo, comm=comm)
