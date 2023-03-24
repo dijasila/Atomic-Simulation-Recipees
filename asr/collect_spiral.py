@@ -138,7 +138,7 @@ def main(qdens: float = None, qpts: int = None, eps: float = None) -> Result:
     else:
         path = atoms.cell.bandpath(npoints=qpts, pbc=atoms.pbc, eps=eps)
 
-    sscalcs = SpinSpiralPathCalculation()
+    sscalcs = SpinSpiralPathCalculation(path.kpts)
     for js in jsons:
         sscalc = SpinSpiralCalculation.load(js)
         sscalcs.append(sscalc)

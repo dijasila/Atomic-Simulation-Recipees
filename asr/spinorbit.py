@@ -90,7 +90,6 @@ def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
         theta_q = 0
 
     thetas, phis = sphere_points(d=socdensity)
-
     soc_i = np.array([])
     for i, (theta, phi) in enumerate(zip(thetas, phis)):
         theta += theta_q
@@ -109,25 +108,62 @@ def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
                            angle_min=angle_min, angle_q=angle_q)
 
 
-def plot_bandstructure(row, fname):
+def plot_stereographic_energies(row, fname):
+    from matplotlib.colors import Normalize
     from matplotlib import pyplot as plt
-    socdata = row.data.get('results-asr.soctheta.json')
-    soc = socdata['soc'] * 1000
-    _, phi = socdata['theta'], socdata['phi']
-    i = np.arange(len(phi))
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
+    from scipy.interpolate import griddata
+    from asr.core import read_json
 
-    ax.plot(i, soc, 'k-')
-    ax.set_ylabel(r'$E_{soc}$ [meV]')
-    ax.set_xlabel('theta, phi')
-    ax.set_xticks([0, 90, 180, 270])
-    ax.set_xticklabels([r'IP$\parallel$', 'Screw', 'OoP', r'IP$\perp$'])
-    ax.set_xlim([min(i), max(i)])
-    ax.axvline(90, c='grey', ls='--')
-    ax.axvline(180, c='grey', ls='--')
-    ax.axhline(soc[0], c='k', ls='--')
-    plt.tight_layout()
+    def stereo_project_point(inpoint, axis=0, r=1, max_norm=1):
+        point = np.divide(inpoint * r, inpoint[axis] + r)
+        point[axis] = 0
+        norm = np.linalg.norm(point)
+        if norm >= max_norm:
+            point = np.divide(inpoint * r, -inpoint[axis] + r)
+            point[axis] = 0
+            return ([None, None, None], point + [2, 0, 0])
+        return (point, [None, None, None])
+
+    socdata = row.data.get('results-asr.soctheta.json')
+    soc = (socdata['soc'] - min(socdata['soc'])) * 10**6
+    theta, phi = socdata['theta'], socdata['phi']
+    theta = theta * np.pi / 180
+    phi = phi * np.pi / 180
+    x = np.sin(theta) * np.cos(phi)
+    y = np.sin(theta) * np.sin(phi)
+    z = np.cos(theta)
+    upper_points = []
+    lower_points = []
+    for i in range(len(x)):
+        p = [x[i], y[i], z[i]]
+        pupper, plower = stereo_project_point(p, axis=2)
+        upper_points.append(pupper)
+        lower_points.append(plower)
+
+    fig, ax = plt.subplots(1, 1, figsize=(2.2*fig_height_in, fig_height_in))
+    norm = Normalize(vmin=min(soc), vmax=max(soc))
+    for points in [upper_points, lower_points]:
+        X, Y, Z = np.array(points).T
+        mask = X != None
+        if sum(mask) == 0:
+            continue
+        X = X[mask]
+        Y = Y[mask]
+        soci = soc[mask]
+        xi = np.linspace(min(X), max(X), 100)
+        yi = np.linspace(min(Y), max(Y), 100)
+        zi = griddata((X, Y), soci, (xi[None, :], yi[:, None]))
+        CS = ax.contour(xi, yi, zi, 15, linewidths=0.5, colors='k', norm=norm)
+        CS = ax.contourf(xi, yi, zi, 15, cmap=plt.cm.jet, norm=norm)
+        #ax.scatter(X, Y, marker='o', c='k', s=5)
+
+    ax.axis('equal')
+    ax.set_xlim(-1,3)
+    ax.set_ylim(-1,1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='jet'), ax=ax) # draw colorbar
+    cbar.ax.set_ylabel(r'$E_{soc} [\mu eV]$')
     plt.savefig(fname)
 
 
