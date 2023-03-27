@@ -30,13 +30,14 @@ def sphere_points(N=None, d=None):
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, fig
-    spiraltable = table(row, 'Property', ['angle_min'], key_descriptions)
+    spiraltable = table(row=result, title='Property', keys=['angle_min'],
+                        kd=key_descriptions)
 
     panel = {'title': 'Spin spirals',
-             'columns': [[fig('soc_spiral_rot.png')], [spiraltable]],
-             'plot_descriptions': [{'function': plot_bandstructure,
-                                    'filenames': ['soc_spiral_rot.png']}],
-             'sort': 3}
+             'columns': [[fig('spinorbit.png')], [spiraltable]],
+             'plot_descriptions': [{'function': plot_stereographic_energies,
+                                    'filenames': ['spinorbit.png']}],
+             'sort': 1}
     return [panel]
 
 
@@ -124,7 +125,7 @@ def plot_stereographic_energies(row, fname):
             return ([None, None, None], point + [2, 0, 0])
         return (point, [None, None, None])
 
-    socdata = row.data.get('results-asr.soctheta.json')
+    socdata = row.data.get('results-asr.spinorbit.json')
     soc = (socdata['soc'] - min(socdata['soc'])) * 10**6
     theta, phi = socdata['theta'], socdata['phi']
     theta = theta * np.pi / 180
@@ -140,7 +141,7 @@ def plot_stereographic_energies(row, fname):
         upper_points.append(pupper)
         lower_points.append(plower)
 
-    fig, ax = plt.subplots(1, 1, figsize=(2.2*fig_height_in, fig_height_in))
+    fig, ax = plt.subplots(1, 1, figsize=(2.2*5, 5))
     norm = Normalize(vmin=min(soc), vmax=max(soc))
     for points in [upper_points, lower_points]:
         X, Y, Z = np.array(points).T

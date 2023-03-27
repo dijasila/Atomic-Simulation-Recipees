@@ -85,12 +85,17 @@ class SpinSpiralPathCalculation:
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, fig
-    spiraltable = table(row, 'Property', ['bandwidth', 'minimum'], key_descriptions)
+    bmin, qmin = result.minimum
+    gap = result.gaps[bmin][qmin]
+    
+    spiraltable = table(row=result, title='Property', keys=['bandwidth', 'Qmin'],
+                        kd=key_descriptions)
+    
     panel = {'title': 'Spin spirals',
              'columns': [[fig('spin_spiral_bs.png')], [spiraltable]],
              'plot_descriptions': [{'function': plot_bandstructure,
                                     'filenames': ['spin_spiral_bs.png']}],
-             'sort': 3}
+             'sort': 0}
     return [panel]
 
 
@@ -176,22 +181,22 @@ def _main(path, sscalculations):
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
     path, energies_bq, lm_bqa = extract_data(row)
-    
+
     # Process path
-    q, x, X = path.get_linear_kpoint_axis()
+    Q, x, X = path.get_linear_kpoint_axis()
     nwavepoints = 5
     q_v = np.linalg.norm(2 * np.pi * path.cartesian_kpts(), axis=-1)
     wavepointsfreq = round(len(q_v) / nwavepoints)
 
     # Process magmoms
     magmom_bq = np.linalg.norm(lm_bqa, axis=3)
-    mommin = np.min(lm_bq * 0.9)
-    mommax = np.max(lm_bq * 1.05)
+    mommin = np.min(magmom_bq * 0.9)
+    mommax = np.max(magmom_bq * 1.05)
 
     # Process energies
-    energies_bq = ((energies - energies_bq[0][0]) * 1000)
-    emin = np.min(energies_bq * 1.1)
-    emax = np.max(energies_bq * 1.15)
+    e0 = energies_bq[0][0]
+    emin = np.min((energies_bq[energies_bq != 0] - e0) * 1000 * 1.1)
+    emax = np.max((energies_bq[energies_bq != 0] - e0) * 1000 *1.15)
     nbands, nqpts = np.shape(energies_bq)
 
     try:
@@ -200,32 +205,42 @@ def plot_bandstructure(row, fname):
     except AttributeError:
         symbols = row.symbols
 
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
+    fig, ax1 = plt.subplots(1, 1, figsize=((1 + np.sqrt(5)) / 2 * 5, 5))
     for bidx in range(nbands):
-        energies_q = energies_bq[bidx]
-        magmom_q = magmom_bq[bidx]
-
-        # Setup main energy plot
-        hnd = plot_energies(ax1, q, energies_q, emin, emax)
-
-        # Non-cumulative length of q-vectors to find wavelength
-        ax2 = ax1.twiny()
-        add_wavelength_axis(ax2, ax1.get_xlim(), Q, wavepointsfreq)
+        e_q = energies_bq[bidx]
+        m_q = magmom_bq[bidx]
+        splitarg = np.argwhere(energies_bq == 0)[:1]
+        energies_sq = np.split(e_q, splitarg)
+        magmom_sq = np.split(m_q, splitarg, axis=0)
         
-        # Add the magnetic moment plot
-        ax3 = ax1.twinx()
-        plot_magmoms(ax3, q, magmom_q, mommin, mommax, symbols)
+        q_s = np.split(Q, splitarg)
+        for q, energies_q, magmom_q in zip(q_s, energies_sq, magmom_sq):
+            if len(q) == 0:
+                continue
+            magmom_q = magmom_q[energies_q != 0]
+            q = q[energies_q != 0]
+            energies_q = energies_q[energies_q != 0]
 
-        # Ensure unique legend entries
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        updict = {'Energy': hnd[0]}
-        updict.update(by_label)
-        fig.legend(updict.values(), updict.keys(), loc="upper right",
-                   bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
+            # Setup main energy plot
+            hnd = plot_energies(ax1, q, (energies_q - e0)*1000, emin, emax, x, X)
 
-    ax1.set_title(str(row.formula), fontsize=14)
+            # Non-cumulative length of q-vectors to find wavelength
+            ax2 = ax1.twiny()
+            add_wavelength_axis(ax2, Q, q_v, wavepointsfreq)
+        
+            # Add the magnetic moment plot
+            ax3 = ax1.twinx()
+            plot_magmoms(ax3, q, magmom_q, mommin, mommax, symbols)
+
+            # Ensure unique legend entries
+            handles, labels = plt.gca().get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            updict = {'Energy': hnd[0]}
+            updict.update(by_label)
+            fig.legend(updict.values(), updict.keys(), loc="upper right",
+                       bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
+
+    #ax1.set_title(str(row.formula), fontsize=14)
     ax1.set_ylabel('Spin spiral energy [meV]')
     ax1.set_xlabel('q vector [Å$^{-1}$]')
 
@@ -238,9 +253,8 @@ def plot_bandstructure(row, fname):
 
 
 def extract_data(row):
-    data = row.data.get('results-asr.spinspiral.json')
+    data = row.data.get('results-asr.collect_spiral.json')
     path = data['path']
-    
     energies_bq = data['energies']
     if len(energies_bq.shape) == 1:
         energies_bq = np.array([energies_bq])
@@ -250,7 +264,7 @@ def extract_data(row):
     return path, energies_bq, lm_bqa
 
 
-def plot_energies(ax, q, energies, emin, emax):
+def plot_energies(ax, q, energies, emin, emax, x, X):
     hnd = ax.plot(q, energies, c='C0', marker='.', label='Energy')
     ax.set_ylim([emin, emax])
     ax.set_xticks(x)
@@ -262,7 +276,7 @@ def plot_energies(ax, q, energies, emin, emax):
     return hnd
 
 
-def add_wavelength_axis(ax, xlim, Q, wavepointsfreq):
+def add_wavelength_axis(ax, q, q_v, wavepointsfreq):
         # Add spin wavelength axis
         def tick_function(X):
             lmda = 2 * np.pi / X
@@ -277,8 +291,8 @@ def plot_magmoms(ax, q, magmoms_qa, mommin, mommax, symbols):
     colors = [f'C{i}' for i in range(1, len(unique) + 1)]
     mag_c = {unique[i]: colors[i] for i in range(len(unique))}
 
-    for a in range(magmom_qa.shape[-1]):
-        magmom_q = magmom_qa[:, a]
+    for a in range(magmoms_qa.shape[-1]):
+        magmom_q = magmoms_qa[:, a]
         ax.plot(q, magmom_q, c=mag_c[symbols[a]], marker='.', label=f'{symbols[a]} magmom')
 
     ax.set_ylim([mommin, mommax])

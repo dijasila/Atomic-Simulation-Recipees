@@ -94,16 +94,16 @@ def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
     return ASRResult.fromdata(en=energy, q=q_c, ml=magmom_av, mT=totmom_v, gap=gap)
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
-    spiraltable = table(row, 'Property', ['bandwidth', 'minimum'], key_descriptions)
+# def webpanel(result, row, key_descriptions):
+#     from asr.database.browser import table, fig
+#     spiraltable = table(row, 'Property', ['bandwidth', 'minimum'], key_descriptions)
 
-    panel = {'title': 'Spin spirals',
-             'columns': [[fig('spin_spiral_bs.png')], [spiraltable]],
-             'plot_descriptions': [{'function': plot_bandstructure,
-                                    'filenames': ['spin_spiral_bs.png']}],
-             'sort': 3}
-    return [panel]
+#     panel = {'title': 'Spin spirals',
+#              'columns': [[fig('spin_spiral_bs.png')], [spiraltable]],
+#              'plot_descriptions': [{'function': plot_bandstructure,
+#                                     'filenames': ['spin_spiral_bs.png']}],
+#              'sort': 3}
+#     return [panel]
 
 
 @prepare_result
@@ -124,7 +124,7 @@ class Result(ASRResult):
                         "minimum": "Q-vector at energy minimum",
                         "gaps": "List of bandgaps",
                         "gapmin": "Bandgap at minimum energy"}
-    formats = {"ase_webpanel": webpanel}
+    #formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.spinspiral',
@@ -224,76 +224,76 @@ def main(q_path: Union[str, None] = None, n: int = 11,
                            bandwidth=bandwidth, gaps=gaps, gapmin=gapmin)
 
 
-def plot_bandstructure(row, fname):
-    from matplotlib import pyplot as plt
-    data = row.data.get('results-asr.spinspiral.json')
-    path = data['path']
-    energies = data['energies']
+# def plot_bandstructure(row, fname):
+#     from matplotlib import pyplot as plt
+#     data = row.data.get('results-asr.spinspiral.json')
+#     path = data['path']
+#     energies = data['energies']
 
-    energies = ((energies - energies[0]) * 1000)  # / nmagatoms
-    q, x, X = path.get_linear_kpoint_axis()
+#     energies = ((energies - energies[0]) * 1000)  # / nmagatoms
+#     q, x, X = path.get_linear_kpoint_axis()
 
-    total_magmoms = data['total_magmoms']
+#     total_magmoms = data['total_magmoms']
 
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
+#     fig = plt.figure()
+#     ax1 = fig.add_subplot(111)
 
-    # Setup main energy plot
-    ax1.plot(q, energies, c='C1', marker='.', label='Energy')
-    ax1.set_ylim([np.min(energies * 1.1), np.max(energies * 1.15)])
-    ax1.set_ylabel('Spin spiral energy [meV]')
+#     # Setup main energy plot
+#     ax1.plot(q, energies, c='C1', marker='.', label='Energy')
+#     ax1.set_ylim([np.min(energies * 1.1), np.max(energies * 1.15)])
+#     ax1.set_ylabel('Spin spiral energy [meV]')
 
-    ax1.set_xlabel('q vector [Å$^{-1}$]')
-    ax1.set_xticks(x)
-    ax1.set_xticklabels([i.replace('G', r"$\Gamma$") for i in X])
-    for xc in x:
-        if xc != min(q) and xc != max(q):
-            ax1.axvline(xc, c='gray', linestyle='--')
-    ax1.margins(x=0)
+#     ax1.set_xlabel('q vector [Å$^{-1}$]')
+#     ax1.set_xticks(x)
+#     ax1.set_xticklabels([i.replace('G', r"$\Gamma$") for i in X])
+#     for xc in x:
+#         if xc != min(q) and xc != max(q):
+#             ax1.axvline(xc, c='gray', linestyle='--')
+#     ax1.margins(x=0)
 
-    # Add spin wavelength axis
-    def tick_function(X):
-        lmda = 2 * np.pi / X
-        return [f"{z:.1f}" for z in lmda]
+#     # Add spin wavelength axis
+#     def tick_function(X):
+#         lmda = 2 * np.pi / X
+#         return [f"{z:.1f}" for z in lmda]
 
-    # Non-cumulative length of q-vectors to find wavelength
-    Q = np.linalg.norm(2 * np.pi * path.cartesian_kpts(), axis=-1)
-    ax2 = ax1.twiny()
-    ax2.set_xlim(ax1.get_xlim())
-    idx = round(len(Q) / 5)
+#     # Non-cumulative length of q-vectors to find wavelength
+#     Q = np.linalg.norm(2 * np.pi * path.cartesian_kpts(), axis=-1)
+#     ax2 = ax1.twiny()
+#     ax2.set_xlim(ax1.get_xlim())
+#     idx = round(len(Q) / 5)
 
-    ax2.set_xticks(q[::idx])
-    ax2.set_xticklabels(tick_function(Q[::idx]))
-    ax2.set_xlabel(r"Wave length $\lambda$ [Å]")
+#     ax2.set_xticks(q[::idx])
+#     ax2.set_xticklabels(tick_function(Q[::idx]))
+#     ax2.set_xlabel(r"Wave length $\lambda$ [Å]")
 
-    # Add the magnetic moment plot
-    ax3 = ax1.twinx()
-    mT = abs(total_magmoms[:, 0])
-    # mT = np.linalg.norm(total_magmoms, axis=-1)#mT[:, 1]#
-    mT2 = abs(total_magmoms[:, 1])
-    mT3 = abs(total_magmoms[:, 2])
-    ax3.plot(q, mT, c='r', marker='.', label='$m_x$')
-    ax3.plot(q, mT2, c='g', marker='.', label='$m_y$')
-    ax3.plot(q, mT3, c='b', marker='.', label='$m_z$')
+#     # Add the magnetic moment plot
+#     ax3 = ax1.twinx()
+#     mT = abs(total_magmoms[:, 0])
+#     # mT = np.linalg.norm(total_magmoms, axis=-1)#mT[:, 1]#
+#     mT2 = abs(total_magmoms[:, 1])
+#     mT3 = abs(total_magmoms[:, 2])
+#     ax3.plot(q, mT, c='r', marker='.', label='$m_x$')
+#     ax3.plot(q, mT2, c='g', marker='.', label='$m_y$')
+#     ax3.plot(q, mT3, c='b', marker='.', label='$m_z$')
 
-    ax3.set_ylabel(r"Total norm magnetic moment ($\mu_B$)")
-    mommin = np.min(mT * 0.9)
-    mommax = np.max(mT * 1.15)
-    ax3.set_ylim([mommin, mommax])
+#     ax3.set_ylabel(r"Total norm magnetic moment ($\mu_B$)")
+#     mommin = np.min(mT * 0.9)
+#     mommax = np.max(mT * 1.15)
+#     ax3.set_ylim([mommin, mommax])
 
-    fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
-    # fig.suptitle('')
-    plt.tight_layout()
-    plt.savefig(fname)
+#     fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
+#     # fig.suptitle('')
+#     plt.tight_layout()
+#     plt.savefig(fname)
 
-    # energies = energies - energies[0]
-    # energies = (energies)*1000
-    # bs = BandStructure(path=path, energies=energies[None, :, None])
-    # bs.plot(ax=plt.gca(), ls='-', marker='.', colors=['C1'],
-    #         emin=np.min(energies * 1.1), emax=np.max([np.max(energies * 1.15)]),
-    #         ylabel='Spin spiral energy [meV]')
-    # plt.tight_layout()
-    # plt.savefig(fname)
+#     # energies = energies - energies[0]
+#     # energies = (energies)*1000
+#     # bs = BandStructure(path=path, energies=energies[None, :, None])
+#     # bs.plot(ax=plt.gca(), ls='-', marker='.', colors=['C1'],
+#     #         emin=np.min(energies * 1.1), emax=np.max([np.max(energies * 1.15)]),
+#     #         ylabel='Spin spiral energy [meV]')
+#     # plt.tight_layout()
+#     # plt.savefig(fname)
 
 
 if __name__ == '__main__':
