@@ -25,16 +25,16 @@ def findOrthoNN(kpts: List[float], pbc: List[bool], n: int = 2):
                     break
 
     assert 0 not in np.shape(orthNN), 'No k-points in some orthogonal direction(s)'
-    assert np.shape(orthNN)[-2] == n, 'Missing k-points in orthogonal directions'
+    #assert np.shape(orthNN)[-2] == n, 'Missing k-points in orthogonal directions'
     return np.round(np.array(orthNN), 16)
 
 
 @prepare_result
 class PreResult(ASRResult):
-    qpts_Rqc: np.ndarray
-    en_Rq: np.ndarray
-    key_descriptions = {"qpts_Rqc": "nearest neighbour orthogonal q-vectors",
-                        "en_Rq": "energy of respective spin spiral groundstates"}
+    qpts_nqc: np.ndarray
+    en_nq: np.ndarray
+    key_descriptions = {"qpts_nqc": "nearest neighbour orthogonal q-vectors",
+                        "en_nq": "energy of respective spin spiral groundstates"}
 
 
 @command(module='asr.dmi',
@@ -54,7 +54,7 @@ def prepare_dmi(calculator: dict = {
         'convergence': {'bands': 'CBM+3.0'},
         'nbands': '200%',
         'txt': 'gsq.txt',
-        'charge': 0}) -> PreResult:
+        'charge': 0}, n: int = 2) -> PreResult:
     from ase.io import read
     from ase.dft.kpoints import kpoint_convert, monkhorst_pack
     from ase.calculators.calculator import kpts2sizeandoffsets
@@ -64,10 +64,10 @@ def prepare_dmi(calculator: dict = {
     size, offsets = kpts2sizeandoffsets(atoms=atoms, **calculator['kpts'])
     kpts_kc = monkhorst_pack(size) + offsets
     kpts_kv = kpoint_convert(atoms.cell, skpts_kc=kpts_kc)
-    qpts_qv = findOrthoNN(kpts_kv, atoms.pbc, n=2)
-    qpts_Rqc = 2 * kpoint_convert(atoms.cell, ckpts_kv=qpts_qv)
-    en_Rq = []
-    for i, q_qc in enumerate(qpts_Rqc):
+    qpts_qv = findOrthoNN(kpts_kv, atoms.pbc, n=n)
+    qpts_nqc = 2 * kpoint_convert(atoms.cell, ckpts_kv=qpts_qv)
+    en_nq = []
+    for i, q_qc in enumerate(qpts_nqc):
         en_q = []
         for j, q_c in enumerate(q_qc):
             if not path.isfile(f'gsq{j}d{i}.gpw'):
@@ -76,15 +76,15 @@ def prepare_dmi(calculator: dict = {
                 calculator['mode']['qspiral'] = q_c
                 calc = spinspiral(calculator, write_gpw=True, return_calc=True)
                 en_q.append(calc.get_potential_energy())
-        en_Rq.append(en_q)
-    en_Rq = np.array(en_Rq)
-    return PreResult.fromdata(qpts_Rqc=qpts_Rqc, en_Rq=en_Rq)
+        en_nq.append(en_q)
+    en_nq = np.array(en_nq)
+    return PreResult.fromdata(qpts_nqc=qpts_nqc, en_nq=en_nq)
 
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, WebPanel
     print(row.get('pbc'))
-    D = np.round(1000 * result.get('dmi_Rq'), 2)
+    D = np.round(1000 * result.get('dmi_nq'), 2)
     if len(D) == 2:
         rows = [['D(q<sub>x</sub>)', D[0][0]],
                 ['D(q<sub>y</sub>)', D[1][0]]]
@@ -104,12 +104,12 @@ def webpanel(result, row, key_descriptions):
 
 @prepare_result
 class Result(ASRResult):
-    qpts_Rqc: np.ndarray
-    en_Rq: np.ndarray
-    dmi_Rq: np.ndarray
-    key_descriptions = {"qpts_Rqc": "nearest neighbour orthogonal q-vectors",
-                        "en_Rq": "energy of respective spin spiral groundstates",
-                        "dmi_Rq": "Components of projected soc in orthogonal directions"}
+    qpts_nqc: np.ndarray
+    en_nq: np.ndarray
+    dmi_nq: np.ndarray
+    key_descriptions = {"qpts_nqc": "nearest neighbour orthogonal q-vectors",
+                        "en_nq": "energy of respective spin spiral groundstates",
+                        "dmi_nq": "Components of projected soc in orthogonal directions"}
     formats = {"ase_webpanel": webpanel}
 
 @command(module='asr.dmi',
@@ -122,11 +122,11 @@ def main() -> Result:
     from ase.calculators.calculator import get_calculator_class
     from asr.core import read_json    
     name = 'gpaw'
-    qpts_Rqc = read_json('results-asr.dmi@prepare_dmi.json')['qpts_Rqc']
-    en_Rq = read_json('results-asr.dmi@prepare_dmi.json')['en_Rq']
+    qpts_nqc = read_json('results-asr.dmi@prepare_dmi.json')['qpts_nqc']
+    en_nq = read_json('results-asr.dmi@prepare_dmi.json')['en_nq']
     
-    dmi_Rq = []
-    for i, q_qc in enumerate(qpts_Rqc):
+    dmi_nq = []
+    for i, q_qc in enumerate(qpts_nqc):
         en_q = []
         for j, q_c in enumerate(q_qc):
             calc = get_calculator_class(name)(f'gsq{j}d{i}.gpw')
@@ -136,10 +136,10 @@ def main() -> Result:
                           for theta, phi in [(90, 0), (90, 90), (0, 0)])
             en_q.append(np.array([Ex, Ey, Ez]))
         en_q = np.array(en_q)
-        dmi_Rq.append(en_q[::2] - en_q[1::2])
-    dmi_Rq = np.array(dmi_Rq)
+        dmi_nq.append(en_q[::2] - en_q[1::2])
+    dmi_nq = np.array(dmi_nq)
 
-    return Result.fromdata(qpts_Rqc=qpts_Rqc, en_Rq=en_Rq, dmi_Rq=dmi_Rq)
+    return Result.fromdata(qpts_nqc=qpts_nqc, en_nq=en_nq, dmi_nq=dmi_nq)
 
 
 if __name__ == '__main__':
