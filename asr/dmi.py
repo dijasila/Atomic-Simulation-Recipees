@@ -41,6 +41,7 @@ class PreResult(ASRResult):
          resources='40:1h',
          requires=['structure.json'])
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
+@option('-n', help='Number of points along ortho directions', type=DictStr())
 def prepare_dmi(calculator: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800, 'qspiral': [0, 0, 0]},
