@@ -88,8 +88,11 @@ def webpanel(result, row, key_descriptions):
     bmin, qmin = result.minimum
     gap = result.gaps[bmin][qmin]
     
-    spiraltable = table(row=result, title='Property', keys=['bandwidth', 'Qmin'],
-                        kd=key_descriptions)
+    rows = [['bandwidth', str(np.round(result.get('bandwidth'), 1))],
+            ['Q<sub>min</sub>', str(np.round(result.get('Qmin'), 3))]]
+    spiraltable = {'type': 'table',
+                   'header': ['Property', 'Value'],
+                   'rows': rows}
     
     panel = {'title': 'Spin spirals',
              'columns': [[fig('spin_spiral_bs.png')], [spiraltable]],

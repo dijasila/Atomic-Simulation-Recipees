@@ -30,8 +30,13 @@ def sphere_points(N=None, d=None):
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import table, fig
-    spiraltable = table(row=result, title='Property', keys=['angle_min'],
-                        kd=key_descriptions)
+    rows = [['SOC bandwidth',
+             str(np.round(1000 * (max(result.get('soc')) - min(result.get('soc'))), 1))],
+            ['(&theta;, &phi;)', '('+str(np.round(result.get('angle_min')[0], 1)) + ', ' +
+             str(np.round(result.get('angle_min')[1], 1)) + ')']]
+    spiraltable = {'type': 'table',
+                   'header': ['Property', 'Value'],
+                   'rows': rows}
 
     panel = {'title': 'Spin spirals',
              'columns': [[fig('spinorbit.png')], [spiraltable]],
@@ -48,11 +53,13 @@ class Result(ASRResult):
     phi: np.ndarray
     angle_min: tuple
     angle_q: tuple
+    projected: bool
     key_descriptions = {"soc": "q-constant Spin Orbit correction",
                         "theta": "Angles from z->x",
                         "phi": "Angles from x->y",
                         "angle_min": "Theta, phi angles at minimum",
-                        "angle_q": "Theta, phi angles of q-vector"}
+                        "angle_q": "Theta, phi angles of q-vector",
+                        "projected": "Boolean indicates projected spin orbit operator"}
     formats = {"ase_webpanel": webpanel}
 
 
@@ -106,7 +113,7 @@ def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
     angle_min = (thetas[imin] + theta_q, phis[imin] + phi_q)
     angle_q = [theta_q, phi_q]
     return Result.fromdata(soc=soc_i, theta=thetas + theta_q, phi=phis + phi_q,
-                           angle_min=angle_min, angle_q=angle_q)
+                           angle_min=angle_min, angle_q=angle_q, projected=projected)
 
 
 def plot_stereographic_energies(row, fname):
