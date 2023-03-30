@@ -124,7 +124,7 @@ class Result(ASRResult):
                         "minimum": "Q-vector at energy minimum",
                         "gaps": "List of bandgaps",
                         "gapmin": "Bandgap at minimum energy"}
-    #formats = {"ase_webpanel": webpanel}
+    # formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.spinspiral',

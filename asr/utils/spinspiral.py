@@ -1,4 +1,3 @@
-from asr.core import command, option, DictStr
 from asr.utils.magnetism import magnetic_atoms
 import numpy as np
 
@@ -99,8 +98,8 @@ def spinspiral(calculator: dict = {
         'nbands': '200%',
         'txt': 'gsq.txt',
         'charge': 0},
-               write_gpw: bool = True,
-               return_calc: bool = False) -> dict:
+        write_gpw: bool = True,
+        return_calc: bool = False) -> dict:
     """Calculate the groundstate of a given spin spiral vector q_c"""
     from ase.io import read
     from ase.dft.kpoints import kpoint_convert
@@ -158,7 +157,7 @@ def spinspiral(calculator: dict = {
         return calc
     else:
         return {'energy': energy, 'totmom_v': totmom_v,
-                'magmom_av': magmom_av, 'gap': gap}    
+                'magmom_av': magmom_av, 'gap': gap}
 
 
 if __name__ == '__main__':

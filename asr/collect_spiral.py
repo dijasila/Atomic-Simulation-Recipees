@@ -63,7 +63,7 @@ class SpinSpiralPathCalculation:
     def qmin(self):
         minimum = self.minimum()
         return self.Q[minimum[1]]
-        
+
     def failed_calculations(self, nkpts: int):
         assert len(self.indices) > 0
         natoms = len(self.sscalculations[0].m_av)
@@ -84,16 +84,17 @@ class SpinSpiralPathCalculation:
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
+    from asr.database.browser import fig
     bmin, qmin = result.minimum
     gap = result.gaps[bmin][qmin]
-    
-    rows = [['bandwidth', str(np.round(result.get('bandwidth'), 1))],
+
+    rows = [['bandgap(Q<sub>min</sub>)', gap],
+            ['bandwidth', str(np.round(result.get('bandwidth'), 1))],
             ['Q<sub>min</sub>', str(np.round(result.get('Qmin'), 3))]]
     spiraltable = {'type': 'table',
                    'header': ['Property', 'Value'],
                    'rows': rows}
-    
+
     panel = {'title': 'Spin spirals',
              'columns': [[fig('spin_spiral_bs.png')], [spiraltable]],
              'plot_descriptions': [{'function': plot_bandstructure,
@@ -199,7 +200,7 @@ def plot_bandstructure(row, fname):
     # Process energies
     e0 = energies_bq[0][0]
     emin = np.min((energies_bq[energies_bq != 0] - e0) * 1000 * 1.1)
-    emax = np.max((energies_bq[energies_bq != 0] - e0) * 1000 *1.15)
+    emax = np.max((energies_bq[energies_bq != 0] - e0) * 1000 * 1.15)
     nbands, nqpts = np.shape(energies_bq)
 
     try:
@@ -215,7 +216,7 @@ def plot_bandstructure(row, fname):
         splitarg = np.argwhere(energies_bq == 0)[:1]
         energies_sq = np.split(e_q, splitarg)
         magmom_sq = np.split(m_q, splitarg, axis=0)
-        
+
         q_s = np.split(Q, splitarg)
         for q, energies_q, magmom_q in zip(q_s, energies_sq, magmom_sq):
             if len(q) == 0:
@@ -225,12 +226,12 @@ def plot_bandstructure(row, fname):
             energies_q = energies_q[energies_q != 0]
 
             # Setup main energy plot
-            hnd = plot_energies(ax1, q, (energies_q - e0)*1000, emin, emax, x, X)
+            hnd = plot_energies(ax1, q, (energies_q - e0) * 1000, emin, emax, x, X)
 
             # Non-cumulative length of q-vectors to find wavelength
             ax2 = ax1.twiny()
             add_wavelength_axis(ax2, Q, q_v, wavepointsfreq)
-        
+
             # Add the magnetic moment plot
             ax3 = ax1.twinx()
             plot_magmoms(ax3, q, magmom_q, mommin, mommax, symbols)
@@ -243,14 +244,12 @@ def plot_bandstructure(row, fname):
             fig.legend(updict.values(), updict.keys(), loc="upper right",
                        bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
 
-    #ax1.set_title(str(row.formula), fontsize=14)
     ax1.set_ylabel('Spin spiral energy [meV]')
     ax1.set_xlabel('q vector [Å$^{-1}$]')
 
     ax2.set_xlabel(r"Wave length $\lambda$ [Å]")
     ax3.set_ylabel(r"Local norm magnetic moment [|$\mu_B$|]")
 
-    # fig.suptitle('')
     plt.tight_layout()
     plt.savefig(fname)
 
@@ -280,13 +279,13 @@ def plot_energies(ax, q, energies, emin, emax, x, X):
 
 
 def add_wavelength_axis(ax, q, q_v, wavepointsfreq):
-        # Add spin wavelength axis
-        def tick_function(X):
-            lmda = 2 * np.pi / X
-            return [f"{z:.1f}" for z in lmda]
+    # Add spin wavelength axis
+    def tick_function(X):
+        lmda = 2 * np.pi / X
+        return [f"{z:.1f}" for z in lmda]
 
-        ax.set_xticks(q[::wavepointsfreq])
-        ax.set_xticklabels(tick_function(q_v[::wavepointsfreq]))
+    ax.set_xticks(q[::wavepointsfreq])
+    ax.set_xticklabels(tick_function(q_v[::wavepointsfreq]))
 
 
 def plot_magmoms(ax, q, magmoms_qa, mommin, mommax, symbols):
@@ -296,7 +295,8 @@ def plot_magmoms(ax, q, magmoms_qa, mommin, mommax, symbols):
 
     for a in range(magmoms_qa.shape[-1]):
         magmom_q = magmoms_qa[:, a]
-        ax.plot(q, magmom_q, c=mag_c[symbols[a]], marker='.', label=f'{symbols[a]} magmom')
+        ax.plot(q, magmom_q, c=mag_c[symbols[a]],
+                marker='.', label=f'{symbols[a]} magmom')
 
     ax.set_ylim([mommin, mommax])
 

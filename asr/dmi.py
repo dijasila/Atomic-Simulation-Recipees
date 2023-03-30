@@ -25,7 +25,7 @@ def findOrthoNN(kpts: List[float], pbc: List[bool], n: int = 2):
                     break
 
     assert 0 not in np.shape(orthNN), 'No k-points in some orthogonal direction(s)'
-    #assert np.shape(orthNN)[-2] == n, 'Missing k-points in orthogonal directions'
+    # assert np.shape(orthNN)[-2] == n, 'Missing k-points in orthogonal directions'
     return np.round(np.array(orthNN), 16)
 
 
@@ -60,8 +60,9 @@ def prepare_dmi(calculator: dict = {
     from ase.dft.kpoints import kpoint_convert, monkhorst_pack
     from ase.calculators.calculator import kpts2sizeandoffsets
     from asr.utils.spinspiral import spinspiral
+    from gpaw import GPAW
     atoms = read('structure.json')
-    
+
     size, offsets = kpts2sizeandoffsets(atoms=atoms, **calculator['kpts'])
     kpts_kc = monkhorst_pack(size) + offsets
     kpts_kv = kpoint_convert(atoms.cell, skpts_kc=kpts_kc)
@@ -77,13 +78,15 @@ def prepare_dmi(calculator: dict = {
                 calculator['mode']['qspiral'] = q_c
                 calc = spinspiral(calculator, write_gpw=True, return_calc=True)
                 en_q.append(calc.get_potential_energy())
+            else:
+                calc = GPAW(f'gsq{j}d{i}.gpw')
+                en_q.append(calc.get_potential_energy())
         en_nq.append(en_q)
     en_nq = np.array(en_nq)
     return PreResult.fromdata(qpts_nqc=qpts_nqc, en_nq=en_nq)
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, WebPanel
     print(row.get('pbc'))
     D = np.round(1000 * result.get('dmi_nq'), 2)
     if len(D) == 2:
@@ -93,15 +96,16 @@ def webpanel(result, row, key_descriptions):
         rows = [['D(q<sub>x</sub>)', D[0][0]],
                 ['D(q<sub>y</sub>)', D[1][0]],
                 ['D(q<sub>z</sub>)', D[2][0]]]
-    
+
     dmi_table = {'type': 'table',
                  'header': ['Property', 'Value'],
                  'rows': rows}
-    
+
     panel = {'title': 'Spin spirals',
              'columns': [[], [dmi_table]],
              'sort': 2}
     return [panel]
+
 
 @prepare_result
 class Result(ASRResult):
@@ -110,8 +114,9 @@ class Result(ASRResult):
     dmi_nq: np.ndarray
     key_descriptions = {"qpts_nqc": "nearest neighbour orthogonal q-vectors",
                         "en_nq": "energy of respective spin spiral groundstates",
-                        "dmi_nq": "Components of projected soc in orthogonal directions"}
+                        "dmi_nq": "Components of projected soc in orthogonal q-vectors"}
     formats = {"ase_webpanel": webpanel}
+
 
 @command(module='asr.dmi',
          dependencies=['asr.dmi@prepare_dmi'],
@@ -119,13 +124,12 @@ class Result(ASRResult):
          returns=Result)
 def main() -> Result:
     from gpaw.spinorbit import soc_eigenstates
-    from gpaw.occupations import create_occ_calc
     from ase.calculators.calculator import get_calculator_class
-    from asr.core import read_json    
+    from asr.core import read_json
     name = 'gpaw'
     qpts_nqc = read_json('results-asr.dmi@prepare_dmi.json')['qpts_nqc']
     en_nq = read_json('results-asr.dmi@prepare_dmi.json')['en_nq']
-    
+
     dmi_nq = []
     for i, q_qc in enumerate(qpts_nqc):
         en_q = []

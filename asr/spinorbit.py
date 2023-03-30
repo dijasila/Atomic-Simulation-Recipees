@@ -29,11 +29,11 @@ def sphere_points(N=None, d=None):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
-    rows = [['SOC bandwidth',
-             str(np.round(1000 * (max(result.get('soc')) - min(result.get('soc'))), 1))],
-            ['(&theta;, &phi;)', '('+str(np.round(result.get('angle_min')[0], 1)) + ', ' +
-             str(np.round(result.get('angle_min')[1], 1)) + ')']]
+    from asr.database.browser import fig
+    rows = [['SOC bandwidth', str(np.round(1000 * (max(result.get('soc'))
+                                                   - min(result.get('soc'))), 1))],
+            ['(&theta;, &phi;)', '(' + str(np.round(result.get('angle_min')[0], 1))
+             + ', ' + str(np.round(result.get('angle_min')[1], 1)) + ')']]
     spiraltable = {'type': 'table',
                    'header': ['Property', 'Value'],
                    'rows': rows}
@@ -72,13 +72,31 @@ class Result(ASRResult):
         help='Boolean to choose projected spin orbit operator')
 def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
          projected: bool = True) -> Result:
+
+    '''Calculates the spin-orbit coupling at various sampling points on a unit sphere.
+
+    Args:
+        calctxt (str, optional): The file path for the GPAW calculator context.
+        socdensity (int, optional): The density of sampling points on a unit sphere.
+        projected (bool, optional): Whether spin-orbit coupling is projected or tota´l.
+
+    Returns:
+        Result: A `Result` object containing the following attributes:
+            - `soc`(ndarray): Spin-orbit coupling (eV) at each sampling point.
+            - `theta`(ndarray): Polar angle (degrees) of each sampling point.
+            - `phi`(ndarray): Azimuthal angle (degrees) of each sampling point.
+            - `angle_min`(list): Polar and azimuthal angles (in radians) at which
+                                  the minimum spin-orbit coupling occurs.
+            - `angle_q`(list): Polar and azimuthal angles (degrees) of the wavevector q
+            - `projected`(bool): Whether spin-orbit coupling is projected or total.
+    '''
     from gpaw.spinorbit import soc_eigenstates
     from gpaw import GPAW
 
-    calc = GPAW(calctxt)
+    calc = GPAW(calctxt, parallel=False)
     try:
         qn = calc.parameters['mode']['qspiral']
-    except:
+    except KeyError:
         qn = 0  # Quick collinear / non-Q implementation
 
     if not np.isclose(np.linalg.norm(qn), 0):
@@ -98,21 +116,21 @@ def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
         theta_q = 0
 
     thetas, phis = sphere_points(d=socdensity)
-    soc_i = np.array([])
-    for i, (theta, phi) in enumerate(zip(thetas, phis)):
-        theta += theta_q
-        phi += phi_q
+    thetas += theta_q
+    phis += phi_q
+
+    soc = np.array([])
+    for theta, phi in zip(thetas, phis):
         en_soc = soc_eigenstates(calc, projected=projected,
                                  theta=theta, phi=phi).calculate_band_energy()
         en_soc_0 = soc_eigenstates(calc, projected=projected, scale=0.0,
                                    theta=theta, phi=phi).calculate_band_energy()
+        soc = np.append(soc, en_soc - en_soc_0)
 
-        soc_i = np.append(soc_i, en_soc - en_soc_0)
-
-    imin = np.argmin(soc_i)
-    angle_min = (thetas[imin] + theta_q, phis[imin] + phi_q)
+    imin = np.argmin(soc)
+    angle_min = [thetas[imin], phis[imin]]
     angle_q = [theta_q, phi_q]
-    return Result.fromdata(soc=soc_i, theta=thetas + theta_q, phi=phis + phi_q,
+    return Result.fromdata(soc=soc, theta=thetas, phi=phis,
                            angle_min=angle_min, angle_q=angle_q, projected=projected)
 
 
@@ -120,7 +138,6 @@ def plot_stereographic_energies(row, fname):
     from matplotlib.colors import Normalize
     from matplotlib import pyplot as plt
     from scipy.interpolate import griddata
-    from asr.core import read_json
 
     def stereo_project_point(inpoint, axis=0, r=1, max_norm=1):
         point = np.divide(inpoint * r, inpoint[axis] + r)
@@ -148,11 +165,11 @@ def plot_stereographic_energies(row, fname):
         upper_points.append(pupper)
         lower_points.append(plower)
 
-    fig, ax = plt.subplots(1, 1, figsize=(2.2*5, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(2.2 * 5, 5))
     norm = Normalize(vmin=min(soc), vmax=max(soc))
     for points in [upper_points, lower_points]:
         X, Y, Z = np.array(points).T
-        mask = X != None
+        mask = X is not None
         if sum(mask) == 0:
             continue
         X = X[mask]
@@ -161,16 +178,16 @@ def plot_stereographic_energies(row, fname):
         xi = np.linspace(min(X), max(X), 100)
         yi = np.linspace(min(Y), max(Y), 100)
         zi = griddata((X, Y), soci, (xi[None, :], yi[:, None]))
-        CS = ax.contour(xi, yi, zi, 15, linewidths=0.5, colors='k', norm=norm)
-        CS = ax.contourf(xi, yi, zi, 15, cmap=plt.cm.jet, norm=norm)
-        #ax.scatter(X, Y, marker='o', c='k', s=5)
+        ax.contour(xi, yi, zi, 15, linewidths=0.5, colors='k', norm=norm)
+        ax.contourf(xi, yi, zi, 15, cmap=plt.cm.jet, norm=norm)
+        # ax.scatter(X, Y, marker='o', c='k', s=5)
 
     ax.axis('equal')
-    ax.set_xlim(-1,3)
-    ax.set_ylim(-1,1)
+    ax.set_xlim(-1, 3)
+    ax.set_ylim(-1, 1)
     ax.set_xticks([])
     ax.set_yticks([])
-    cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='jet'), ax=ax) # draw colorbar
+    cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='jet'), ax=ax)
     cbar.ax.set_ylabel(r'$E_{soc} [\mu eV]$')
     plt.savefig(fname)
 
