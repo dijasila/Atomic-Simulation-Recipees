@@ -5,6 +5,7 @@ from asr.c2db.plasmafrequency import PlasmaFrequencyWorkflow
 def workflow(rn, atoms, calculator):
     scf = rn.task(
         'asr.c2db.gs.calculate',
+        name='gscalculate',
         atoms=atoms,
         calculator=calculator)
 

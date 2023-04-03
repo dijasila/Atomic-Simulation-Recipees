@@ -35,7 +35,8 @@ def test_infrared_polarizability(repo, mockgpaw, asr_tmpdir, test_material,
         calculator=fast_calc)
 
     def gscalculate(rn):
-        return rn.task('asr.c2db.gs.calculate', atoms=test_material,
+        return rn.task('asr.c2db.gs.calculate',
+                       name='gscalculate', atoms=test_material,
                        calculator=fast_calc)
 
     # There is some room for improved interface here
