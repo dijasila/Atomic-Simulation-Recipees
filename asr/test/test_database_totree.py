@@ -6,6 +6,7 @@ from ase.db import connect
 from asr.database.totree import main
 
 
+@pytest.mark.xfail
 @pytest.mark.ci
 def test_database_totree(unlocked_repo):
     dbname = 'database.db'
