@@ -653,19 +653,24 @@ class GSWorkflow:
     def __init__(self, rn, atoms, calculator):
         self.scf = rn.task(
             'asr.c2db.gs.calculate',
+            name='scf',
             atoms=atoms, calculator=calculator)
 
         self.magstate = rn.task(
             'asr.c2db.magstate.main',
+            name='magstate',
             groundstate=self.scf.output)
 
         self.magnetic_anisotropy = rn.task(
             'asr.c2db.magnetic_anisotropy.main',
+            name='mag_ani',
             groundstate=self.scf.output,
             magnetic=self.magstate.output['is_magnetic'])
 
         self.postprocess = rn.task(
-            'asr.c2db.gs.postprocess', groundstate=self.scf.output,
+            'asr.c2db.gs.postprocess',
+            name='postprocess',
+            groundstate=self.scf.output,
             mag_ani=self.magnetic_anisotropy.output)
 
 

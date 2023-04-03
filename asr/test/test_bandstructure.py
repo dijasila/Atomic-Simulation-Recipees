@@ -18,17 +18,17 @@ def test_bandstructure_workflow(repo, mockgpaw, test_material,
                  'fixdensity': True}
 
     with repo:
-        gsw = repo.run_workflow(GSWorkflow, atoms=test_material,
-                                calculator=fast_calc)
+        gsw = repo.run_workflow_blocking(
+            GSWorkflow, atoms=test_material, calculator=fast_calc)
 
-        bsw = repo.run_workflow(
+        bsw = repo.run_workflow_blocking(
             BSWorkflow,
             gsworkflow=gsw,
             kptpath=None,
             bsrestart=bsrestart,
             npoints=npoints)
 
-    bsw.postprocess.runall_blocking(repo)
+    # bsw.postprocess.runall_blocking(repo)
 
     with repo:
         res = bsw.postprocess.value().output

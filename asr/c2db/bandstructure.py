@@ -597,10 +597,12 @@ class BSWorkflow:
         self.gsworkflow = gsworkflow
         self.bs = rn.task(
             'asr.c2db.bandstructure.calculate',
+            name='bscalculate',
             gsresult=gsworkflow.scf.output, bsrestart=bsrestart,
             kptpath=kptpath, npoints=npoints)
         self.postprocess = rn.task(
             'asr.c2db.bandstructure.postprocess',
+            name='bspostprocess',
             bsresult=self.bs.output,
             gsresult=gsworkflow.scf.output,
             mag_ani=gsworkflow.magnetic_anisotropy.output,
