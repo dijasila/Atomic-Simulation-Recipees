@@ -101,6 +101,7 @@ class PhonopyWorkflow:
 
         self.calculate = rn.task(
             'asr.c2db.phonopy.calculate',
+            name='phonopy_calculate',
             atoms=atoms,
             d=d,
             sc=sc,
@@ -109,6 +110,7 @@ class PhonopyWorkflow:
 
         self.postprocess = rn.task(
             'asr.c2db.phonopy.postprocess',
+            name='phonopy_postprocess',
             calculateresult=self.calculate.output,
             atoms=atoms,
             sc=sc,

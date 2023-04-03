@@ -25,6 +25,8 @@ def test_gw(repo, asr_tmpdir_w_params, test_material,
     gpaw.GPAW._get_fermi_level.return_value = 0.5
 
     ndim = sum(test_material.pbc)
+    if ndim == 1:
+        pytest.skip(reason='1d not supported by gw')
 
     def calculate(self):
         eps = self.calc.get_all_eigenvalues()[np.newaxis, :, 0:6]

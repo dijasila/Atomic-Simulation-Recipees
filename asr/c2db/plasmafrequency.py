@@ -148,8 +148,10 @@ class PlasmaFrequencyWorkflow:
     def __init__(self, rn, gsresult):
         self.gpwfile = rn.task(
             'asr.c2db.plasmafrequency.calculate',
+            name='plasmafrequency_calculate',
             gsresult=gsresult)
 
         self.postprocess = rn.task(
             'asr.c2db.plasmafrequency.postprocess',
+            name='plasmafrequency_postprocess',
             gpwfile=self.gpwfile.output)

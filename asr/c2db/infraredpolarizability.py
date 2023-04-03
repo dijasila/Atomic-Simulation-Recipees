@@ -266,12 +266,14 @@ class InfraredPolarizabilityWorkflow:
 
         self.borndict = rn.task(
             'asr.c2db.borncharges.main',
+            name='borncharges_main',
             atoms=atoms,
             calculator=borncalculator,
             displacement=displacement)
 
         self.elecdict = rn.task(
             'asr.c2db.polarizability.main',
+            name='polarizability_main',
             gsresult=polarizability_gs,
             kptdensity=kptdensity,
             ecut=ecut,
@@ -280,6 +282,7 @@ class InfraredPolarizabilityWorkflow:
 
         self.postprocess = rn.task(
             'asr.c2db.infraredpolarizability.postprocess',
+            name='infrared_polarizability_postprocess',
             atoms=atoms,
             phresults=phonons,
             borndict=self.borndict.output,

@@ -246,14 +246,22 @@ class StrainWorkflow:
 
         for i, j in ij:
             for sign in [-1, 1]:
+                key = StrainID(i, j, sign)
                 strained = rn.task(
                     'asr.setup.strains.main',
-                    name='strainmain',
+                    name=key.name,
                     atoms=atoms,
                     # XXX dangerous floating point multiplication:
                     strain_percent=sign * strain_percent,
                     i=i, j=j)
-                self.strains[i, j, sign] = strained
+                self.strains[key] = strained
+
+
+from collections import namedtuple
+class StrainID(namedtuple('StrainID', ['i', 'j', 'sign'])):
+    @property
+    def name(self):
+        return f'{self.i}_{self.j}_{self.sign}'
 
 
 def stiffnesstensor(stress_tensors, strain_percent):
@@ -288,7 +296,7 @@ class StiffnessWorkflow:
         for key, strained in strainworkflow.strains.items():
             self.relaxations[key] = rn.task(
                 'asr.c2db.relax.main',
-                name='strainrelax',
+                name=f'strainrelax-{key.name}',
                 atoms=strained.output,
                 calculator=calculator,
                 fixcell=True,

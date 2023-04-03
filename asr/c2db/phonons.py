@@ -48,10 +48,12 @@ class PhononWorkflow:  # not actually a workflow yet
 
         self.calculate = rn.task(
             'asr.c2db.phonons.calculate',
+            name='phonons_calculate',
             atoms=atoms, calculator=calculator, n=n)
 
         self.postprocess = rn.task(
             'asr.c2db.phonons.postprocess',
+            name='phonons_postprocess',
             phononresult=self.calculate.output, atoms=atoms)
 
 

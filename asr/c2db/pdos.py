@@ -181,16 +181,19 @@ class PDOSWorkflow:
                  kptdensity=20.0, emptybands=20):
         self.pdos_gpwfile = rn.task(
             'asr.c2db.pdos.calculate',
+            name='pdoscalculate',
             gsresult=gsworkflow.scf.output,
             kptdensity=kptdensity,
             emptybands=emptybands)
 
         self.dos_erange = rn.task(
             'asr.c2db.pdos.dos_erange',
+            name='pdos_erange',
             gspostprocess=gsworkflow.postprocess.output)
 
         self.postprocess = rn.task(
             'asr.c2db.pdos.postprocess',
+            name='pdos_postprocess',
             gpwfile=self.pdos_gpwfile.output,
             mag_ani=gsworkflow.magnetic_anisotropy.output,
             erange=self.dos_erange.output)

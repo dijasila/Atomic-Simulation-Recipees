@@ -183,5 +183,4 @@ def _main(repo, database, run, select, tree_structure):
         rn = Runner(repo,
                     directory=directory)
 
-        # The name "structure" should likely be a choice
-        rn.define(structure=atoms)
+        rn.define(obj=atoms, taskdir='structure')
