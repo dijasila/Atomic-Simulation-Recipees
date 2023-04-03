@@ -52,11 +52,12 @@ def test_hse(repo, asr_tmpdir_w_params, test_material, mockgpaw, mocker,
     mocker.patch('gpaw.xc.tools.vxc', create=True, new=vxc)
 
     with repo:
-        hseworkflow = repo.run_workflow(gs_bs_hse_workflow,
-                                        atoms=test_material,
-                                        calculator=fast_calc)
+        hseworkflow = repo.run_workflow_blocking(
+            gs_bs_hse_workflow,
+            atoms=test_material,
+            calculator=fast_calc)
 
-    hseworkflow.postprocess.runall_blocking(repo)
+    # hseworkflow.postprocess.runall_blocking(repo)
 
     with repo:
         results = hseworkflow.postprocess.value().output

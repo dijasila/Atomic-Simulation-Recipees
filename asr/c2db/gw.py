@@ -479,12 +479,14 @@ class GWWorkflow:
 
         self.gs_gw = rn.task(
             'asr.c2db.gw.gs_gw',
+            name='gwgs',
             gsresult=gsworkflow.scf.output,
             kptdensity=kptdensity,
             ecut=ecut)
 
         self.gw_no_mean_z = rn.task(
             'asr.c2db.gw.gw',
+            name='gw',
             gsresult=gsworkflow.scf.output,
             gs_gw_result=self.gs_gw.output,
             kptdensity=kptdensity,
@@ -492,12 +494,14 @@ class GWWorkflow:
 
         self.gw = rn.task(
             'asr.c2db.gw.empirical_mean_z',
+            name='gwempirical_mean_z',
             gwresults=self.gw_no_mean_z.output,
             correctgw=correctgw,
             empz=empz)
 
         self.postprocess = rn.task(
             'asr.c2db.gw.postprocess',
+            name='gwpostprocess',
             gsresult=gsworkflow.scf.output,
             gs_gw_result=self.gs_gw.output,
             gwresults=self.gw.output,

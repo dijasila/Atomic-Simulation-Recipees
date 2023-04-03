@@ -36,8 +36,9 @@ def test_gw(repo, asr_tmpdir_w_params, test_material,
     mocker.patch.object(G0W0, "calculate", calculate)
 
     with repo:
-        gwworkflow = repo.run_workflow(gw_workflow, atoms=test_material,
-                                       calculator=fast_calc)
+        gwworkflow = repo.run_workflow_blocking(
+            gw_workflow, atoms=test_material,
+            calculator=fast_calc)
 
     if ndim > 1:
         expectation = nullcontext()

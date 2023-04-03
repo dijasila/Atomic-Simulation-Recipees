@@ -476,6 +476,7 @@ class HSEWorkflow:
 
         self.calculate = rn.task(
             'asr.c2db.hse.calculate',
+            name='hsecalculate',
             gsresult=gsw.scf.output,
             mag_ani=mag_ani,
             kptdensity=kptdensity,
@@ -483,6 +484,7 @@ class HSEWorkflow:
 
         self.postprocess = rn.task(
             'asr.c2db.hse.postprocess',
+            name='hsepostprocess',
             results_hse=self.calculate.output,
             results_bs_post=bsworkflow.postprocess.output,
             results_bs_calculate=bsworkflow.bs.output,

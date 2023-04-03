@@ -248,6 +248,7 @@ class StrainWorkflow:
             for sign in [-1, 1]:
                 strained = rn.task(
                     'asr.setup.strains.main',
+                    name='strainmain',
                     atoms=atoms,
                     # XXX dangerous floating point multiplication:
                     strain_percent=sign * strain_percent,
@@ -287,6 +288,7 @@ class StiffnessWorkflow:
         for key, strained in strainworkflow.strains.items():
             self.relaxations[key] = rn.task(
                 'asr.c2db.relax.main',
+                name='strainrelax',
                 atoms=strained.output,
                 calculator=calculator,
                 fixcell=True,
@@ -302,11 +304,13 @@ class StiffnessWorkflow:
 
         self.stiffness = rn.task(
             'asr.c2db.stiffness.stiffnesstensor',
+            name='stiffnesstensor',
             stress_tensors=stress_tensors_flat,
             strain_percent=strainworkflow.strain_percent)
 
         self.postprocess = rn.task(
             'asr.c2db.stiffness.postprocess',
+            name='stiffnesspostprocess',
             atoms=atoms,
             stiffness=self.stiffness.output)
 
