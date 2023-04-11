@@ -130,6 +130,11 @@ class LabelResult(ASRResult):
     # and hardcodedness of the webpanels.
     # formats = {'ase_webpanel': webpanel}
 
+    def __getitem__(self, item):
+        if item == 'origin':
+            item = 'label'
+        return super().__getitem__(item)
+
     def as_formatted_tablerow(self):
         return get_label_tablerow(self['label'])
 
