@@ -96,7 +96,7 @@ def bader(gs,
     * check for correct number of volumes
     * check for correct total charge
 
-    Returns ASE Atoms object and ndarray of charges in units of |e|.
+    Returns ASE Atoms object and ndarray of charges in units of :math:`|e|`.
     """
     dens = gs.calculation.densities()
     n_sR = dens.all_electron_densities(grid_spacing=grid_spacing)
