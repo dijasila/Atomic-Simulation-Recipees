@@ -72,7 +72,7 @@ using the MoSSe and BiTeI monolayers as seed structures.
 Ref: {link}
 """.format(link=doi('10.1021/acsnano.9b06698'))
 
-    # All remaining materials, original c2db
+    # Original c2db
     original03_18_description = """\
 The materials constituted the first version of the C2DB.
 They were obtained by lattice decoration of prototype monolayer crystals
@@ -80,6 +80,12 @@ known from experiments or earlier computational studies.
 
 Ref: {link}
 """.format(link=doi('10.1088/2053-1583/aacfc1'))
+    
+    # Materials added manually to C2DB. Apply to all materials in 
+    # the folder "adhoc_materials"
+    ad_hoc_description = """\
+The materials were added manually to the C2DB.
+"""
 
     descriptions = {
         'exfoliated02-21': exfoliated02_21_description,
@@ -89,6 +95,7 @@ Ref: {link}
         'Lyngby22_training': lyngby22_description_training,
         'original03-18': original03_18_description,
         'Manti22_pushed': pushed02_22_description,
+        'ad_hoc': ad_hoc_description,
     }
 
     if label in descriptions:
