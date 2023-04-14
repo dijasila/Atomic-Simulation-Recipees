@@ -95,7 +95,7 @@ def dos_plot(row, filename: str):
     dos = row.data.get('results-asr.dos.json')
     x = dos['energies_e']
     y0 = dos['dosspin0_e']
-    y1 = dos['dosspin1_e']
+    y1 = dos.get('dosspin1_e')
     fig, ax = plt.subplots()
     if y1:
         ax.plot(x, y0, label='up')
