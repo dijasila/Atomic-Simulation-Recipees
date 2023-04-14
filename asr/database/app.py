@@ -107,9 +107,9 @@ class WebApp:
         self.projects[name] = project
 
 
-def setup_app(route_slash=True):
+def setup_app(route_slash=True, tmpdir=None):
     # used to cache png-files:
-    tmpdir = Path(tempfile.mkdtemp(prefix="asr-app-"))
+    tmpdir = tmpdir or Path(tempfile.mkdtemp(prefix="asr-app-"))
 
     path = Path(asr.__file__).parent.parent
     projects = {}
