@@ -91,9 +91,13 @@ def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
             - `projected`(bool): Whether spin-orbit coupling is projected or total.
     '''
     from gpaw.spinorbit import soc_eigenstates
+    from gpaw.occupations import create_occ_calc
     from gpaw import GPAW
 
     calc = GPAW(calctxt, parallel=False)
+    width = 0.001
+    occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
+
     try:
         qn = calc.parameters['mode']['qspiral']
     except KeyError:
@@ -122,10 +126,12 @@ def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
     soc = np.array([])
     for theta, phi in zip(thetas, phis):
         en_soc = soc_eigenstates(calc, projected=projected,
-                                 theta=theta, phi=phi).calculate_band_energy()
-        en_soc_0 = soc_eigenstates(calc, projected=projected, scale=0.0,
-                                   theta=theta, phi=phi).calculate_band_energy()
-        soc = np.append(soc, en_soc - en_soc_0)
+                                 theta=theta, phi=phi,
+                                 occcalc=occcalc).calculate_band_energy()
+        # Noise should not be an issue since it is the same for the calculator
+        # en_soc_0 = soc_eigenstates(calc, projected=projected, scale=0.0,
+        #                            theta=theta, phi=phi).calculate_band_energy()
+        soc = np.append(soc, en_soc)  # - en_soc_0)
 
     imin = np.argmin(soc)
     angle_min = [thetas[imin], phis[imin]]

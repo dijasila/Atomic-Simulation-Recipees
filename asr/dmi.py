@@ -8,15 +8,17 @@ def findOrthoNN(kpts: List[float], pbc: List[bool], n: int = 2):
     # Warning, might not find inversion symmetric points if k-points are not symmetric
     from scipy.spatial import cKDTree
 
+    # Calculate distance-ordered indices from the origin
     _, indices = cKDTree(kpts).query([0, 0, 0], k=len(kpts))
     indices = indices[1:]
+
     N = sum(pbc)
     orthNN = [[], [], []][:N]
-
     for direction in np.arange(N):
         orthoDirs = [(direction + 1) % 3, (direction + 2) % 3]
         i = 0
         for j, idx in enumerate(indices):
+            # Check if point lies on a line x, y or z
             if np.isclose(kpts[idx][orthoDirs[0]], 0) and \
                np.isclose(kpts[idx][orthoDirs[1]], 0):
                 orthNN[direction].append(kpts[idx])
@@ -87,7 +89,7 @@ def prepare_dmi(calculator: dict = {
 
 
 def webpanel(result, row, key_descriptions):
-    print(row.get('pbc'))
+
     D = np.round(1000 * result.get('dmi_nq'), 2)
     if len(D) == 2:
         rows = [['D(q<sub>x</sub>)', D[0][0]],
@@ -124,11 +126,15 @@ class Result(ASRResult):
          returns=Result)
 def main() -> Result:
     from gpaw.spinorbit import soc_eigenstates
+    from gpaw.occupations import create_occ_calc
     from ase.calculators.calculator import get_calculator_class
     from asr.core import read_json
     name = 'gpaw'
     qpts_nqc = read_json('results-asr.dmi@prepare_dmi.json')['qpts_nqc']
     en_nq = read_json('results-asr.dmi@prepare_dmi.json')['en_nq']
+
+    width = 0.001
+    occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
 
     dmi_nq = []
     for i, q_qc in enumerate(qpts_nqc):
@@ -136,10 +142,15 @@ def main() -> Result:
         for j, q_c in enumerate(q_qc):
             calc = get_calculator_class(name)(f'gsq{j}d{i}.gpw')
 
-            Ex, Ey, Ez = (soc_eigenstates(calc, projected=True,
-                                          theta=theta, phi=phi).calculate_band_energy()
-                          for theta, phi in [(90, 0), (90, 90), (0, 0)])
-            en_q.append(np.array([Ex, Ey, Ez]))
+            Ex, Ey, Ez = (soc_eigenstates(calc, projected=True, occcalc=occcalc,
+                                          theta=th, phi=phi).calculate_band_energy()
+                          for th, phi in [(90, 0), (90, 90), (0, 0)])
+            # This is required, otherwise result is very noisy
+            E0x, E0y, E0z = (soc_eigenstates(calc, projected=True,
+                                             occcalc=occcalc, scale=0,
+                                             theta=th, phi=phi).calculate_band_energy()
+                             for th, phi in [(90, 0), (90, 90), (0, 0)])
+            en_q.append(np.array([Ex - E0x, Ey - E0y, Ez - E0z]))
         en_q = np.array(en_q)
         dmi_nq.append(en_q[::2] - en_q[1::2])
     dmi_nq = np.array(dmi_nq)
