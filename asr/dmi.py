@@ -89,15 +89,15 @@ def prepare_dmi(calculator: dict = {
 
 
 def webpanel(result, row, key_descriptions):
-
-    D = np.round(1000 * result.get('dmi_nq'), 2)
-    if len(D) == 2:
-        rows = [['D(q<sub>x</sub>)', D[0][0]],
-                ['D(q<sub>y</sub>)', D[1][0]]]
+    dq = np.linalg.norm(result.get('qpts_nqc'), axis=-1)
+    dE = np.round(1000 * result.get('dmi_nq'), 2) + .0
+    if len(dq) == 2:
+        rows = [['D(q<sub>x</sub>)', dE[0][0] / dq[0][0]],
+                ['D(q<sub>y</sub>)', dE[1][0] / dq[1][0]]]
     else:
-        rows = [['D(q<sub>x</sub>)', D[0][0]],
-                ['D(q<sub>y</sub>)', D[1][0]],
-                ['D(q<sub>z</sub>)', D[2][0]]]
+        rows = [['D(q<sub>x</sub>)', dE[0][0] / dq[0][0]],
+                ['D(q<sub>y</sub>)', dE[1][0] / dq[1][0]],
+                ['D(q<sub>z</sub>)', dE[2][0] / dq[2][0]]]
 
     dmi_table = {'type': 'table',
                  'header': ['Property', 'Value'],

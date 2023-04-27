@@ -30,9 +30,9 @@ def sphere_points(N=None, d=None):
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
-    rows = [['SOC bandwidth', str(np.round(1000 * (max(result.get('soc'))
-                                                   - min(result.get('soc'))), 1))],
-            ['(&theta;, &phi;)', '(' + str(np.round(result.get('angle_min')[0], 1))
+    rows = [['SOC bandwidth', str(np.round(1e6 * (max(result.get('soc'))
+                                                  - min(result.get('soc'))), 1))],
+            ['Minimum (&theta;, &phi;)', '(' + str(np.round(result.get('angle_min')[0], 1))
              + ', ' + str(np.round(result.get('angle_min')[1], 1)) + ')']]
     spiraltable = {'type': 'table',
                    'header': ['Property', 'Value'],
@@ -140,7 +140,7 @@ def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
                            angle_min=angle_min, angle_q=angle_q, projected=projected)
 
 
-def plot_stereographic_energies(row, fname):
+def plot_stereographic_energies(row, fname, display_sampling=False):
     from matplotlib.colors import Normalize
     from matplotlib import pyplot as plt
     from scipy.interpolate import griddata
@@ -175,7 +175,7 @@ def plot_stereographic_energies(row, fname):
     norm = Normalize(vmin=min(soc), vmax=max(soc))
     for points in [upper_points, lower_points]:
         X, Y, Z = np.array(points).T
-        mask = X is not None
+        mask = [x is not None for x in X]
         if sum(mask) == 0:
             continue
         X = X[mask]
@@ -186,7 +186,8 @@ def plot_stereographic_energies(row, fname):
         zi = griddata((X, Y), soci, (xi[None, :], yi[:, None]))
         ax.contour(xi, yi, zi, 15, linewidths=0.5, colors='k', norm=norm)
         ax.contourf(xi, yi, zi, 15, cmap=plt.cm.jet, norm=norm)
-        # ax.scatter(X, Y, marker='o', c='k', s=5)
+        if display_sampling:
+            ax.scatter(X, Y, marker='o', c='k', s=5)
 
     ax.axis('equal')
     ax.set_xlim(-1, 3)
