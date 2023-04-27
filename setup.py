@@ -19,7 +19,7 @@ requirements = [
     'simplejson',
     'spglib', # 'plotly',
     'flask', # 'pymatgen',
-    'phonopy',
+    # 'phonopy',
 ]
 
 setup_requirements = []
