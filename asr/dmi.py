@@ -4,12 +4,17 @@ import numpy as np
 from os import path
 
 
-def findOrthoNN(kpts: List[float], pbc: List[bool], n: int = 2):
+def findOrthoNN(kpts: List[float], pbc: List[bool], n: int = 2, eps: float = 0):
+    '''
+    Given a list of kpoints, we find the points along vectors [1,0,0], [0,1,0], [0,0,1]
+    and search through them ordered on the distance to the origin. Vectors along the 
+    postive axis will appear first.
+    '''
     # Warning, might not find inversion symmetric points if k-points are not symmetric
     from scipy.spatial import cKDTree
 
-    # Calculate distance-ordered indices from the origin
-    _, indices = cKDTree(kpts).query([0, 0, 0], k=len(kpts))
+    # Calculate distance-ordered indices from the (eps postive) origin
+    _, indices = cKDTree(kpts).query([eps, eps, eps], k=len(kpts))
     indices = indices[1:]
 
     N = sum(pbc)
@@ -26,8 +31,13 @@ def findOrthoNN(kpts: List[float], pbc: List[bool], n: int = 2):
                 if i == n:
                     break
 
-    assert 0 not in np.shape(orthNN), 'No k-points in some orthogonal direction(s)'
-    # assert np.shape(orthNN)[-2] == n, 'Missing k-points in orthogonal directions'
+    assert (0,) not in (shape := [np.shape(orthNN[i]) for i in range(N)]), \
+        f'No k-points in some periodic direction(s), out.shape = {shape}'
+    assert all([(n, 3) == np.shape(orthNN[i]) for i in range(N)]), \
+        f'Missing k-points in some periodic direction(s), out.shape = {shape}'
+    # This test is incompatible with len(pbc) = 2, while it works fine otherwise
+    # assert not all([all(np.dot(orthNN[i], pbc) == 0) for i in range(N)]), \
+    #     f'The k-points found are in a non-periodic direction'
     return np.round(np.array(orthNN), 16)
 
 
