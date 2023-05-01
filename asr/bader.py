@@ -105,7 +105,7 @@ def bader(gs,
     atoms = gs.atoms
     if np.linalg.det(n_sR.desc.cell) < 0.0:
         print('Left handed unit cell!')
-        data = data.transpose([0, 1])
+        data = data.transpose([1, 0, 2])
         atoms = atoms.copy()
         atoms.cell = atoms.cell[[1, 0, 2]]
         atoms.pbc = atoms.pbc[[1, 0, 2]]
