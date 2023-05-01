@@ -100,14 +100,11 @@ def bader(gs,
     """
     dens = gs.calculation.densities()
     n_sR = dens.all_electron_densities(grid_spacing=grid_spacing)
-    print(n_sR.integrate())
-    print(n_sR.data.shape)
-    print(n_sR.data[0, 0, 0])
 
     data = n_sR.data.sum(axis=0)
     atoms = gs.atoms
     if np.linalg.det(n_sR.desc.cell) < 0.0:
-        print('Left screw!')
+        print('Left handed unit cell!')
         data = data.transpose([0, 1])
         atoms = atoms.copy()
         atoms.cell = atoms.cell[[1, 0, 2]]
@@ -153,9 +150,4 @@ def count_number_of_bader_maxima(path: Path) -> int:
 
 
 if __name__ == '__main__':
-    # main.cli()
-    from gpaw.new.ase_interface import GPAW
-    gs = GPAW('gs.gpw')
-    atoms, charges = bader(gs, 0.05)
-    sym_a = atoms.get_chemical_symbols()
-    print(charges)
+    main.cli()

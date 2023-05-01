@@ -28,15 +28,19 @@ ACF_dat = """\
 class FakeGPAW:
     """Fake GPAW implementation.
 
-    Creates np.ndarray of densities via::
+    Implements the following:
 
-        gs.calculation.densities().all_electron_densities(grid_spacing).data
+        nt_sR = gs.calculation.densities().all_electron_densities(grid_spacing)
+        nt_sR.data -> ndarray
+        nt_sR.desc.cell -> ndarray
     """
 
     def __init__(self, atoms):
         self.atoms = atoms
         self.calculation = self
         self.data = np.ones((1, 2, 3, 4))
+        self.desc = self
+        self.cell = np.array([[1, 0, 0], [0, 1, 0], [0, 0, -1]])
 
     def densities(self):
         return self
