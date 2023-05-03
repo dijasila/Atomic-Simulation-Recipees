@@ -1,34 +1,6 @@
 """Plasma frequency."""
-from asr.core import command, option, ASRResult, prepare_result
+from asr.core import command, ASRResult, prepare_result, read_json
 import typing
-from asr.utils.kpts import get_kpts_size
-
-
-@command('asr.plasmafrequency',
-         creates=['es_plasma.gpw'],
-         dependencies=['asr.gs@calculate'],
-         requires=['gs.gpw'])
-@option('--kptdensity', help='k-point density', type=float)
-def calculate(kptdensity: float = 20) -> ASRResult:
-    """Calculate excited states for polarizability calculation."""
-    from gpaw import GPAW
-    from ase.parallel import world
-    from pathlib import Path
-
-    calc_old = GPAW('gs.gpw', txt=None)
-    kpts = get_kpts_size(atoms=calc_old.atoms, kptdensity=kptdensity)
-    nval = calc_old.wfs.nvalence
-    try:
-        calc = GPAW('gs.gpw', fixdensity=True, kpts=kpts,
-                    nbands=2 * nval, txt='gsplasma.txt')
-        calc.get_potential_energy()
-        calc.write('es_plasma.gpw', 'all')
-    except Exception:
-        if world.rank == 0:
-            es_file = Path("es_plasma.gpw")
-            if es_file.is_file():
-                es_file.unlink()
-        world.barrier()
 
 
 def webpanel(result, row, key_descriptions):
@@ -64,45 +36,22 @@ class Result(ASRResult):
 
 @command('asr.plasmafrequency',
          returns=Result,
-         dependencies=['asr.plasmafrequency@calculate'])
-@option('--tetra', is_flag=True,
-        help='Use tetrahedron integration')
-def main(tetra: bool = True) -> Result:
+         dependencies=['asr.polarizability'])
+def main() -> Result:
     """Calculate polarizability."""
-    from gpaw.response.df import DielectricFunction
     from ase.io import read
     import numpy as np
     from ase.units import Hartree, Bohr
-    from pathlib import Path
-    from ase.parallel import world
 
     atoms = read('structure.json')
     nd = sum(atoms.pbc)
     if not nd == 2:
         raise AssertionError('Plasmafrequency recipe only implemented for 2D')
 
-    if tetra:
-        kwargs = {'truncation': '2D',
-                  'eta': 0.05,
-                  'domega0': 0.2,
-                  'integrationmode': 'tetrahedron integration',
-                  'ecut': 1}
-    else:
-        kwargs = {'truncation': '2D',
-                  'eta': 0.05,
-                  'domega0': 0.2,
-                  'ecut': 1}
+    # The plasmafrequency has already been calculated in the polarizability recipe
+    polresult = read_json("results-asr.polarizability.json")
+    plasmafreq_vv = polresult["plasmafreq_vv"].real
 
-    try:
-        df = DielectricFunction('es_plasma.gpw', **kwargs)
-        df.get_polarizability(q_c=[0, 0, 0], direction='x',
-                              filename=None)
-    finally:
-        world.barrier()
-        if world.rank == 0:
-            es_file = Path("es_plasma.gpw")
-            es_file.unlink()
-    plasmafreq_vv = df.chi0.plasmafreq_vv.real
     data = {'plasmafreq_vv': plasmafreq_vv}
 
     if nd == 2:
