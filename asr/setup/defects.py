@@ -88,6 +88,26 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
          scaling_double: float = 1.7, uniform_vacuum: bool = False,
          halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
+
+    from ase.io import read
+    structure = read(atomfile)
+
+    return _main(structure, chargestates,
+                 supercell,
+                 maxsize,
+                 intrinsic,
+                 extrinsic,
+                 vacancies, double, double_exclude,
+                 scaling_double, uniform_vacuum,
+                 halfinteger, general_algorithm)
+
+
+def _main(structure, chargestates: int = 3,
+          supercell: Sequence[int] = (3, 3, 3),
+          maxsize: float = None, intrinsic: bool = True, extrinsic: str = 'NO',
+          vacancies: bool = True, double: str = 'NO', double_exclude: str = 'NO',
+          scaling_double: float = 1.7, uniform_vacuum: bool = False,
+          halfinteger: bool = False, general_algorithm: float = None) -> ASRResult:
     """Set up defect structures for a given host.
 
     Recipe setting up all possible defects within a reasonable supercell as well as the
@@ -128,7 +148,6 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
       'params.json' file which contains specific parameters as well as the charge states
       of the different defect structures.
     """
-    from ase.io import read
     from asr.core import read_json
 
     # convert extrinsic defect string
@@ -157,7 +176,6 @@ def main(atomfile: str = 'unrelaxed.json', chargestates: int = 3,
     # otherwise, run complete setup of defect structures
     elif not halfinteger:
         # first, read input atomic structure and store it in ase's atoms object
-        structure = read(atomfile)
         print('INFO: starting recipe for setting up defect systems of '
               '{} host system.'.format(structure.symbols))
         # check dimensionality of initial parent structure
