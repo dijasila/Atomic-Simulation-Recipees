@@ -120,8 +120,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
         'eta': 0.05,
         'domega0': 0.005,
         'ecut': ecut,
-        'name': 'chi',
-        'intraband': False
+        'intraband': False,
     }
 
     ND = np.sum(pbc)
@@ -134,15 +133,16 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             nblocks = world.size // 4
         else:
             nblocks = world.size // 2
+
         dfkwargs.update({
             'nblocks': nblocks,
             'integrationmode': 'tetrahedron integration',
-            'truncation': '2D'
+            'truncation': '2D',
         })
 
     else:
         raise NotImplementedError(
-            'Polarizability not implemented for 1D and 2D structures')
+            'Polarizability not implemented for 0D structures')
 
     try:
         if not Path('es.gpw').is_file():
@@ -162,9 +162,23 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             calc.write('es.gpw', mode='all')
 
         df = DielectricFunction('es.gpw', **dfkwargs)
+
+        try:
+            df.chi0calc.check_high_symmetry_ibz_kpts()
+        except ValueError:
+            print('Ground state k-point grid does not include all vertices of'
+                  ' the IBZ. Disabling symmetry and integrates the full'
+                  ' Brillouin zone instead')
+            dfkwargs.update({
+                'disable_point_group': True,
+                'disable_time_reversal': True
+            })
+            df = DielectricFunction('es.gpw', **dfkwargs)
+
         alpha0x, alphax = df.get_polarizability(
             q_c=[0, 0, 0], direction='x', filename=None,
             xc=xc)
+
         alpha0y, alphay = df.get_polarizability(
             q_c=[0, 0, 0], direction='y', filename=None,
             xc=xc)
@@ -172,7 +186,23 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             q_c=[0, 0, 0], direction='z', filename=None,
             xc=xc)
 
-        plasmafreq_vv = df.chi0.plasmafreq_vv
+        # Hack for calculating plasmafreq_vv and make the recipe
+        # backwards compatible. Will probably break in the future...
+        # Don't know why intraband is False, but this has been this way since
+        # the original recipe. To calculate plasmafrequency it has to be True.
+        dfkwargs.update({
+            'intraband': True,
+            'rate': 'eta'
+        })
+        df = DielectricFunction('es.gpw', **dfkwargs)
+        chi0_calc = df.chi0calc
+        if chi0_calc.drude_calc is not None:
+            wd = chi0_calc.wd
+            rate = chi0_calc.rate
+            chi0_drude = chi0_calc.drude_calc.calculate(wd, rate)
+            plasmafreq_vv = chi0_drude.plasmafreq_vv
+        else:
+            plasmafreq_vv = np.zeros((3, 3), complex)
 
         frequencies = df.get_frequencies()
         data = {
