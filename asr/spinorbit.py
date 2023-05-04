@@ -94,7 +94,7 @@ def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
     from gpaw.occupations import create_occ_calc
     from gpaw import GPAW
 
-    calc = GPAW(calctxt, parallel=False)
+    calc = GPAW(calctxt)
     width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
 
@@ -125,7 +125,7 @@ def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
 
     soc = np.array([])
     for theta, phi in zip(thetas, phis):
-        en_soc = soc_eigenstates(calc, projected=projected,
+        en_soc = soc_eigenstates(calc=calctxt, projected=projected,
                                  theta=theta, phi=phi,
                                  occcalc=occcalc).calculate_band_energy()
         # Noise should not be an issue since it is the same for the calculator
