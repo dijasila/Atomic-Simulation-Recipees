@@ -12,13 +12,18 @@ def sphere_points(N=None, d=None):
     A = 4 * math.pi
     a = A / N
     d = math.sqrt(a)
-    Mtheta = round(math.pi / d)
+
+    # Even number of theta angles ensure 90 deg is included
+    Mtheta = round(math.pi / (2 * d)) * 2
     dtheta = math.pi / Mtheta
     dphi = a / dtheta
     points = []
-    for m in range(Mtheta):
-        theta = math.pi * (m + 0.5) / Mtheta
-        Mphi = round(2 * math.pi * math.sin(theta) / dphi)
+
+    # Limit theta loop to upper half-sphere
+    for m in range(Mtheta // 2 + 1):
+        # m = 0 ensure 0 deg is included, Mphi = 1 is used in this case
+        theta = math.pi * m / Mtheta
+        Mphi = max(round(2 * math.pi * math.sin(theta) / dphi), 1)
         for n in range(Mphi):
             phi = 2 * math.pi * n / Mphi
             points.append([theta * 180 / math.pi, phi * 180 / math.pi])
@@ -32,7 +37,8 @@ def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
     rows = [['SOC bandwidth', str(np.round(1e6 * (max(result.get('soc'))
                                                   - min(result.get('soc'))), 1))],
-            ['Minimum (&theta;, &phi;)', '(' + str(np.round(result.get('angle_min')[0], 1))
+            ['Minimum (&theta;, &phi;)', '('
+             + str(np.round(result.get('angle_min')[0], 1))
              + ', ' + str(np.round(result.get('angle_min')[1], 1)) + ')']]
     spiraltable = {'type': 'table',
                    'header': ['Property', 'Value'],
