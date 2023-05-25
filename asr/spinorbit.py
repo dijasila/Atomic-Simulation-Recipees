@@ -3,8 +3,13 @@ import numpy as np
 
 
 def sphere_points(N=None, d=None):
-    # Calculates N equidistant point on a sphere or
-    # finds N from density d in inverse angles
+    # Input:
+    #   Option 1: Number of points
+    #   Option 2: Density of points
+    # Output:
+    #   Equidistant points on a (upper half) sphere
+    #   (thetas, phis) are list of angles in degrees
+
     import math
     if N is None and d is not None:
         N = math.ceil(129600 / (math.pi) * 1 / d**2)
@@ -154,12 +159,7 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
     def stereo_project_point(inpoint, axis=0, r=1, max_norm=1):
         point = np.divide(inpoint * r, inpoint[axis] + r)
         point[axis] = 0
-        norm = np.linalg.norm(point)
-        if norm >= max_norm:
-            point = np.divide(inpoint * r, -inpoint[axis] + r)
-            point[axis] = 0
-            return ([None, None, None], point + [2, 0, 0])
-        return (point, [None, None, None])
+        return point
 
     socdata = row.data.get('results-asr.spinorbit.json')
     soc = (socdata['soc'] - min(socdata['soc'])) * 10**6
@@ -169,31 +169,23 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
     x = np.sin(theta) * np.cos(phi)
     y = np.sin(theta) * np.sin(phi)
     z = np.cos(theta)
-    upper_points = []
-    lower_points = []
-    for i in range(len(x)):
-        p = [x[i], y[i], z[i]]
-        pupper, plower = stereo_project_point(p, axis=2)
-        upper_points.append(pupper)
-        lower_points.append(plower)
+    points = np.array([x, y, z]).T
+    projected_points = []
+    for p in points:
+        projected_points.append(stereo_project_point(p, axis=2))
 
     fig, ax = plt.subplots(1, 1, figsize=(2.2 * 5, 5))
     norm = Normalize(vmin=min(soc), vmax=max(soc))
-    for points in [upper_points, lower_points]:
-        X, Y, Z = np.array(points).T
-        mask = [x is not None for x in X]
-        if sum(mask) == 0:
-            continue
-        X = X[mask]
-        Y = Y[mask]
-        soci = soc[mask]
-        xi = np.linspace(min(X), max(X), 100)
-        yi = np.linspace(min(Y), max(Y), 100)
-        zi = griddata((X, Y), soci, (xi[None, :], yi[:, None]))
-        ax.contour(xi, yi, zi, 15, linewidths=0.5, colors='k', norm=norm)
-        ax.contourf(xi, yi, zi, 15, cmap=plt.cm.jet, norm=norm)
-        if display_sampling:
-            ax.scatter(X, Y, marker='o', c='k', s=5)
+
+    X, Y, Z = np.array(projected_points).T
+
+    xi = np.linspace(min(X), max(X), 100)
+    yi = np.linspace(min(Y), max(Y), 100)
+    zi = griddata((X, Y), soc, (xi[None, :], yi[:, None]))
+    ax.contour(xi, yi, zi, 15, linewidths=0.5, colors='k', norm=norm)
+    ax.contourf(xi, yi, zi, 15, cmap=plt.cm.jet, norm=norm)
+    if display_sampling:
+        ax.scatter(X, Y, marker='o', c='k', s=5)
 
     ax.axis('equal')
     ax.set_xlim(-1, 3)
