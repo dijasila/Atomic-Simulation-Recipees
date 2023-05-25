@@ -7,7 +7,7 @@ from os import path
 def findOrthoNN(kpts: List[float], pbc: List[bool], n: int = 2, eps: float = 0):
     '''
     Given a list of kpoints, we find the points along vectors [1,0,0], [0,1,0], [0,0,1]
-    and search through them ordered on the distance to the origin. Vectors along the 
+    and search through them ordered on the distance to the origin. Vectors along the
     postive axis will appear first.
     '''
     # Warning, might not find inversion symmetric points if k-points are not symmetric
@@ -31,7 +31,8 @@ def findOrthoNN(kpts: List[float], pbc: List[bool], n: int = 2, eps: float = 0):
                 if i == n:
                     break
 
-    assert (0,) not in (shape := [np.shape(orthNN[i]) for i in range(N)]), \
+    shape = [np.shape(orthNN[i]) for i in range(N)]
+    assert (0,) not in shape, \
         f'No k-points in some periodic direction(s), out.shape = {shape}'
     assert all([(n, 3) == np.shape(orthNN[i]) for i in range(N)]), \
         f'Missing k-points in some periodic direction(s), out.shape = {shape}'
@@ -69,7 +70,7 @@ def prepare_dmi(calculator: dict = {
         'txt': 'gsq.txt',
         'charge': 0}, n: int = 2) -> PreResult:
     from ase.io import read
-    from ase.dft.kpoints import kpoint_convert, monkhorst_pack
+    from ase.dft.kpoints import monkhorst_pack
     from ase.calculators.calculator import kpts2sizeandoffsets
     from asr.utils.spinspiral import spinspiral
     from gpaw import GPAW
@@ -77,9 +78,7 @@ def prepare_dmi(calculator: dict = {
 
     size, offsets = kpts2sizeandoffsets(atoms=atoms, **calculator['kpts'])
     kpts_kc = monkhorst_pack(size) + offsets
-    kpts_kv = kpoint_convert(atoms.cell, skpts_kc=kpts_kc)
-    qpts_qv = findOrthoNN(kpts_kv, atoms.pbc, n=n)
-    qpts_nqc = 2 * kpoint_convert(atoms.cell, ckpts_kv=qpts_qv)
+    qpts_nqc = 2 * findOrthoNN(kpts_kc, atoms.pbc, n=n)
     en_nq = []
     for i, q_qc in enumerate(qpts_nqc):
         en_q = []
