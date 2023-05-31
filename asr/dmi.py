@@ -98,15 +98,26 @@ def prepare_dmi(calculator: dict = {
 
 
 def webpanel(result, row, key_descriptions):
-    dq = np.linalg.norm(result.get('qpts_nqc'), axis=-1)
-    dE = np.round(1000 * result.get('dmi_nq'), 2) + .0
-    if len(dq) == 2:
-        rows = [['D(q<sub>x</sub>)', dE[0][0] / dq[0][0]],
-                ['D(q<sub>y</sub>)', dE[1][0] / dq[1][0]]]
-    else:
-        rows = [['D(q<sub>x</sub>)', dE[0][0] / dq[0][0]],
-                ['D(q<sub>y</sub>)', dE[1][0] / dq[1][0]],
-                ['D(q<sub>z</sub>)', dE[2][0] / dq[2][0]]]
+    from ase.dft.kpoints import kpoint_convert
+    qpts_nqc = result.get('qpts_nqc')
+    qpts_nqv = kpoint_convert(cell_cv=row.cell, skpts_kc=qpts_nqc)
+    dq = np.linalg.norm(qpts_nqv, axis=-1)
+    dE = 1000 * result.get('dmi_nq')
+    D_v = np.round(np.divide(dE[:, 0].T, dq[:, 0]).T, 2) + 0.
+
+    # Estimate error
+    en_nq = result.get('en_nq')    
+    energy_error = (en_nq[:, 0] - en_nq[:, 1])
+    print(abs(energy_error), abs(energy_error / en_nq[0]))
+    abs_error_threshold = 1.1e-7
+    rel_error_threshold = 1.1e-8
+    error_marker = ['*' if abs(energy_error[i]) > abs_error_threshold
+                    or abs(energy_error[i] / en_nq[0][i]) > rel_error_threshold
+                    else '' for i in range(len(dq))]
+    
+    rows = [['D(q<sub>'+'xyz'[i]+'</sub>) (meV / Å<sup>-1</sup>)',
+             f"{np.array2string(D_v[i], formatter={'float': lambda x: f'{x:.2f}'})}{error_marker[i]}"]
+            for i in range(len(dq))]
 
     dmi_table = {'type': 'table',
                  'header': ['Property', 'Value'],

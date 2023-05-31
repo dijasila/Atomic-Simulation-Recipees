@@ -40,9 +40,9 @@ def sphere_points(N=None, d=None):
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
-    rows = [['SOC bandwidth', str(np.round(1e6 * (max(result.get('soc'))
+    rows = [['Spinorbit bandwidth', str(np.round(1e3 * (max(result.get('soc'))
                                                   - min(result.get('soc'))), 1))],
-            ['Minimum (&theta;, &phi;)', '('
+            ['Spinorbit Minimum (&theta;, &phi;)', '('
              + str(np.round(result.get('angle_min')[0], 1))
              + ', ' + str(np.round(result.get('angle_min')[1], 1)) + ')']]
     spiraltable = {'type': 'table',
@@ -162,7 +162,7 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
         return point
 
     socdata = row.data.get('results-asr.spinorbit.json')
-    soc = (socdata['soc'] - min(socdata['soc'])) * 10**6
+    soc = (socdata['soc'] - min(socdata['soc'])) * 10**3
     theta, phi = socdata['theta'], socdata['phi']
     theta = theta * np.pi / 180
     phi = phi * np.pi / 180
@@ -174,7 +174,7 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
     for p in points:
         projected_points.append(stereo_project_point(p, axis=2))
 
-    fig, ax = plt.subplots(1, 1, figsize=(2.2 * 5, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(5*1.25, 5))
     norm = Normalize(vmin=min(soc), vmax=max(soc))
 
     X, Y, Z = np.array(projected_points).T
@@ -188,12 +188,12 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
         ax.scatter(X, Y, marker='o', c='k', s=5)
 
     ax.axis('equal')
-    ax.set_xlim(-1, 3)
-    ax.set_ylim(-1, 1)
+    ax.set_xlim(-1.05, 1.05)
+    ax.set_ylim(-1.05, 1.05)
     ax.set_xticks([])
     ax.set_yticks([])
     cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='jet'), ax=ax)
-    cbar.ax.set_ylabel(r'$E_{soc} [\mu eV]$')
+    cbar.ax.set_ylabel(r'$E_{soc} [meV]$')
     plt.savefig(fname)
 
 

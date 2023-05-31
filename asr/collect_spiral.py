@@ -88,9 +88,9 @@ def webpanel(result, row, key_descriptions):
     bmin, qmin = result.minimum
     gap = result.gaps[bmin][qmin]
 
-    rows = [['bandgap(Q<sub>min</sub>)', gap],
-            ['bandwidth', str(np.round(result.get('bandwidth'), 1))],
-            ['Q<sub>min</sub>', str(np.round(result.get('Qmin'), 3))]]
+    rows = [['Q<sub>min</sub>', str(np.round(result.get('Qmin'), 3))],
+            ['Bandgap(Q<sub>min</sub>)', round(gap, 2)],
+            ['Spiral bandwidth', str(np.round(result.get('bandwidth'), 1))]]
     spiraltable = {'type': 'table',
                    'header': ['Property', 'Value'],
                    'rows': rows}
@@ -209,7 +209,7 @@ def plot_bandstructure(row, fname):
     except AttributeError:
         symbols = row.symbols
 
-    fig, ax1 = plt.subplots(1, 1, figsize=((1 + np.sqrt(5)) / 2 * 5, 5))
+    fig, ax1 = plt.subplots(1, 1, figsize=((1 + np.sqrt(5)) / 2 * 4, 4))
     for bidx in range(nbands):
         e_q = energies_bq[bidx]
         m_q = magmom_bq[bidx]
