@@ -106,17 +106,17 @@ def webpanel(result, row, key_descriptions):
     D_v = np.round(np.divide(dE[:, 0].T, dq[:, 0]).T, 2) + 0.
 
     # Estimate error
-    en_nq = result.get('en_nq')    
+    en_nq = result.get('en_nq')
     energy_error = (en_nq[:, 0] - en_nq[:, 1])
-    print(abs(energy_error), abs(energy_error / en_nq[0]))
     abs_error_threshold = 1.1e-7
     rel_error_threshold = 1.1e-8
     error_marker = ['*' if abs(energy_error[i]) > abs_error_threshold
                     or abs(energy_error[i] / en_nq[0][i]) > rel_error_threshold
                     else '' for i in range(len(dq))]
-    
-    rows = [['D(q<sub>'+'xyz'[i]+'</sub>) (meV / Å<sup>-1</sup>)',
-             f"{np.array2string(D_v[i], formatter={'float': lambda x: f'{x:.2f}'})}{error_marker[i]}"]
+    formatter = {'float': lambda x: f'{x:.2f}'}
+
+    rows = [['D(q<sub>' + 'xyz'[i] + '</sub>) (meV / Å<sup>-1</sup>)',
+             f"{np.array2string(D_v[i], formatter=formatter)}{error_marker[i]}"]
             for i in range(len(dq))]
 
     dmi_table = {'type': 'table',

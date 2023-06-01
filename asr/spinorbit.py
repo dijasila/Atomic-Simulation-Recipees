@@ -41,7 +41,7 @@ def sphere_points(N=None, d=None):
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
     rows = [['Spinorbit bandwidth', str(np.round(1e3 * (max(result.get('soc'))
-                                                  - min(result.get('soc'))), 1))],
+                                                        - min(result.get('soc'))), 1))],
             ['Spinorbit Minimum (&theta;, &phi;)', '('
              + str(np.round(result.get('angle_min')[0], 1))
              + ', ' + str(np.round(result.get('angle_min')[1], 1)) + ')']]
@@ -174,7 +174,7 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
     for p in points:
         projected_points.append(stereo_project_point(p, axis=2))
 
-    fig, ax = plt.subplots(1, 1, figsize=(5*1.25, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(5 * 1.25, 5))
     norm = Normalize(vmin=min(soc), vmax=max(soc))
 
     X, Y, Z = np.array(projected_points).T

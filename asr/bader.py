@@ -1,7 +1,7 @@
 """Bader charge analysis."""
 import subprocess
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 import numpy as np
 from ase import Atoms
