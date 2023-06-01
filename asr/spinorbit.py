@@ -77,11 +77,11 @@ class Result(ASRResult):
 @command(module='asr.spinorbit',
          returns=Result)
 @option('--calctxt', help='gpw restart filename', type=str)
-@option('--socdensity',
+@option('--socdensity', type=float,
         help='Density of spin orbit energies on the sphere in per angle')
 @option('--projected', type=bool,
         help='Boolean to choose projected spin orbit operator')
-def main(calctxt: str = "gsq.gpw", socdensity: int = 10,
+def main(calctxt: str = "gsq.gpw", socdensity: float = 10.0,
          projected: bool = True) -> Result:
 
     '''Calculates the spin-orbit coupling at various sampling points on a unit sphere.

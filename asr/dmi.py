@@ -68,7 +68,7 @@ def prepare_dmi(calculator: dict = {
         'convergence': {'bands': 'CBM+3.0'},
         'nbands': '200%',
         'txt': 'gsq.txt',
-        'charge': 0}, n: int = 2) -> PreResult:
+        'charge': 0}, n: int = 2) -> ASRResult:
     from ase.io import read
     from ase.dft.kpoints import monkhorst_pack
     from ase.calculators.calculator import kpts2sizeandoffsets
