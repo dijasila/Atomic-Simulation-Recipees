@@ -1,8 +1,7 @@
 """Bader charge analysis."""
-from __future__ import annotations
 import subprocess
 from pathlib import Path
-from typing import List
+from typing import List, Tuple, Union
 
 import numpy as np
 from ase import Atoms
@@ -86,7 +85,7 @@ def main(grid_spacing: float = 0.05) -> Result:
 
 
 def bader(gs,
-          grid_spacing: float = 0.05) -> tuple[Atoms, np.ndarray]:
+          grid_spacing: float = 0.05) -> Tuple[Atoms, np.ndarray]:
     """Preform Bader analysis.
 
     * read GPAW-gpw file
@@ -120,7 +119,7 @@ def bader(gs,
     return gs.atoms, charges
 
 
-def read_bader_charges(filename: str | Path = 'ACF.dat') -> np.ndarray:
+def read_bader_charges(filename: "str | Path" = 'ACF.dat') -> np.ndarray:
     path = Path(filename)
     charges = []
     with path.open() as fd:
