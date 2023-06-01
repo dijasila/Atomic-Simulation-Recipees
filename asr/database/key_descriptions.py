@@ -137,6 +137,14 @@ def all_the_keydescs():
         kvp('spin', 'Maximum value of S_z at magnetic sites'),
         kvp('N_nn', 'Number of nearest neighbors'),
     ]
+    yield 'spinorbit', [
+        kd('angle_min', 'Theta, phi angles at minimum', unit='deg'),
+        kvp('projected', 'Boolean indicates projected spin orbit operator')
+    ]
+    yield 'collect_spiral', [
+        kvp('bandwidth', 'Energy bandwidth', unit='meV'),
+        kd('Qmin', 'Q-vector of energy minimum in fractional coordinates')
+    ]
     yield 'pdos', [
         kd('pdos_nosoc', 'Projected density of states w/o soc.',
            'PDOS no soc'),

@@ -114,7 +114,6 @@ def webpanel(result, row, key_descriptions):
                     or abs(energy_error[i] / en_nq[0][i]) > rel_error_threshold
                     else '' for i in range(len(dq))]
     formatter = {'float': lambda x: f'{x:.2f}'}
-
     rows = [['D(q<sub>' + 'xyz'[i] + '</sub>) (meV / Å<sup>-1</sup>)',
              f"{np.array2string(D_v[i], formatter=formatter)}{error_marker[i]}"]
             for i in range(len(dq))]
