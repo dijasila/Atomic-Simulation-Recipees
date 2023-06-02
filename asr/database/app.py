@@ -149,7 +149,7 @@ def setup_app(route_slash=True, tmpdir=None):
     return webapp
 
 
-class ASEJsonProvider(JSONProvider):
+class _ASEJsonProvider(JSONProvider):
     def dumps(self, obj):
         return ase_encode(obj)
 
@@ -159,7 +159,7 @@ def setup_data_endpoints(webapp):
 
     projects = webapp.projects
     app = webapp.app
-    app.json = ASEJsonProvider(app)
+    app.json = _ASEJsonProvider(app)
 
     @app.route('/<project_name>/row/<uid>/all_data')
     def get_all_data(project_name: str, uid: str):
