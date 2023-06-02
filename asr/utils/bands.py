@@ -23,7 +23,7 @@ def bs_from_json(fname, soc):
     else:
         evs = read['eigenvalues_nosoc'] - read['evac']
         bs = BandStructure(read['path'],
-                           evs[np.newaxis],
+                           evs,
                            read['efermi_nosoc'] - read['evac'])
     return bs
 

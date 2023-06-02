@@ -248,7 +248,8 @@ def main(uid_a: str = None,
          keep_asymmetrical: bool = False,
          overwrite: bool = False,
          directory: Union[str, None] = None,
-         database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/c2db.db"):
+         #database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/c2db.db"):
+         database: str = "/home/niflheim2/cmr/C2DB-ASR/collected-databases/c2db.db"):
 
     layer_a, layer_b, stif_a, stif_b = get_atoms_and_stiffness(uid_a, uid_b, database)
     name_a = layer_a.get_chemical_formula()

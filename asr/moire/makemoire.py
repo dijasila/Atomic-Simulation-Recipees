@@ -176,7 +176,7 @@ def main(solution,
          root: str='.',
          make_subdirectory: bool=False,
          stacking=None,
-         database: str='/home/niflheim/steame/hetero-bilayer-project/databases/c2db.db'):
+         database: str='/home/niflheim2/cmr/C2DB-ASR/collected-databases/c2db.db'):
 
     cellfile = f'{root}/cells.json'
     uid_a, uid_b, coeffs_a, coeffs_b, twist = get_parameters(solution, cellfile)

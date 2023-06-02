@@ -52,16 +52,16 @@ def make_strained_atoms(
     return atoms
 
 
-def make_strained_tree(atoms, strain_percent, directory='.'):
+def make_strained_tree(struct='structure.json', strain_percent=1.0, directory='.'):
     from pathlib import Path
-    Path(f'{directory}/strained').mkdir(parents=True)
+    atoms = read(struct)
     strain_ij, _ = get_relevant_strains(atoms.pbc)
     for i, j in strain_ij:
         for strain_perc in [-strain_percent, strain_percent]:
             strained_atoms = make_strained_atoms(atoms, strain_perc, i, j)
             dirname = f'{directory}/strained/{i}_{j}_{strain_perc}'
-            Path(dirname).mkdir()
-            strained_atoms.write(f'{dirname}/unrelaxed.json')
+            Path(dirname).mkdir(parents=True, exist_ok=True)
+            strained_atoms.write(f'{dirname}/structure.json')
 
 
 #TODO use finer parameters after testing!
@@ -114,7 +114,7 @@ class Result(ASRResult):
 @option('--special-kpts-only', is_flag=True, help="Calculate deformation potentials only at the special points.", type=bool)
 #@option('--soc', is_flag=True, help='Calculate spin-orbit coupling eigenvalues and corresponding deformation potentials', type=bool)
 def main(strain_percent = 1.0,
-         special_kpts_only = False) -> Result:
+         special_kpts_only = True) -> Result:
 
     def get_edges(calc, soc):
         from gpaw.spinorbit import soc_eigenstates
@@ -145,7 +145,7 @@ def main(strain_percent = 1.0,
         kpts = calc_nostrain.get_ibz_k_points()
 
     ij, comps = get_relevant_strains(atoms.pbc)
-    results = {'kpts': kpts}
+    results = {'kpts': kpts,}
 
     # Band edges at different k points are now collected in edges_kpin, with shape:
     # (N_kpts, N_strain_percents (including 0%), N_strain_components, (vbm, cbm)).

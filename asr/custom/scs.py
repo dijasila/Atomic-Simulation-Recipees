@@ -119,7 +119,7 @@ def calculate_gs(atoms, kpts, calculator, scs):
     kptgrid = np.asarray([[x, y, 0.0] for x in X for y in Y])
 
     calculator.update({'kpts': kptgrid})
-    calc = GPAW('gs_scs.gpw').fixed_density(kpts=kptgrid,
+    calc = GPAW('gs_scs_old.gpw').fixed_density(kpts=kptgrid,
                                             symmetry='off')
 
     calc.get_potential_energy()
