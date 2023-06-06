@@ -98,13 +98,8 @@ def prepare_dmi(calculator: dict = {
 
 
 def webpanel(result, row, key_descriptions):
-    from ase.dft.kpoints import kpoint_convert
-    qpts_nqc = result.get('qpts_nqc')
-    qpts_nqv = kpoint_convert(cell_cv=row.cell, skpts_kc=qpts_nqc)
-    dq = np.linalg.norm(qpts_nqv, axis=-1)
-    dE = 1000 * result.get('dmi_nq')
-    D_v = np.round(np.divide(dE[:, 0].T, dq[:, 0]).T, 2) + 0.
-
+    D_v = np.round(result.get('D_v'), 2) + 0.
+    
     # Estimate error
     en_nq = result.get('en_nq')
     energy_error = (en_nq[:, 0] - en_nq[:, 1])
@@ -112,11 +107,11 @@ def webpanel(result, row, key_descriptions):
     rel_error_threshold = 1.1e-8
     error_marker = ['*' if abs(energy_error[i]) > abs_error_threshold
                     or abs(energy_error[i] / en_nq[0][i]) > rel_error_threshold
-                    else '' for i in range(len(dq))]
+                    else '' for i in range(len(D_v))]
     formatter = {'float': lambda x: f'{x:.2f}'}
-    rows = [['D(q<sub>' + 'xyz'[i] + '</sub>) (meV / Å<sup>-1</sup>)',
+    rows = [['D(q<sub>' + ['a1', 'a2', 'a3'][i] + '</sub>) (meV / Å<sup>-1</sup>)',
              f"{np.array2string(D_v[i], formatter=formatter)}{error_marker[i]}"]
-            for i in range(len(dq))]
+            for i in range(len(D_v))]
 
     dmi_table = {'type': 'table',
                  'header': ['Property', 'Value'],
@@ -133,9 +128,12 @@ class Result(ASRResult):
     qpts_nqc: np.ndarray
     en_nq: np.ndarray
     dmi_nq: np.ndarray
+    D_v: List[float]
+    DMI: float
     key_descriptions = {"qpts_nqc": "nearest neighbour orthogonal q-vectors",
                         "en_nq": "energy of respective spin spiral groundstates",
-                        "dmi_nq": "Components of projected soc in orthogonal q-vectors"}
+                        "dmi_nq": "Components of projected soc in orthogonal q-vectors",
+                        "DMI": 'Dzyaloshinskii Moriya interaction [meV Å]'}
     formats = {"ase_webpanel": webpanel}
 
 
@@ -147,7 +145,11 @@ def main() -> Result:
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
     from ase.calculators.calculator import get_calculator_class
+    from ase.dft.kpoints import kpoint_convert
+    from ase.io import read
     from asr.core import read_json
+    atoms = read('structure.json')
+    
     name = 'gpaw'
     qpts_nqc = read_json('results-asr.dmi@prepare_dmi.json')['qpts_nqc']
     en_nq = read_json('results-asr.dmi@prepare_dmi.json')['en_nq']
@@ -174,7 +176,11 @@ def main() -> Result:
         dmi_nq.append(en_q[::2] - en_q[1::2])
     dmi_nq = np.array(dmi_nq)
 
-    return Result.fromdata(qpts_nqc=qpts_nqc, en_nq=en_nq, dmi_nq=dmi_nq)
+    qpts_nqv = kpoint_convert(cell_cv=atoms.cell, skpts_kc=qpts_nqc)
+    dq = np.linalg.norm(qpts_nqv, axis=-1)
+    D_v = np.divide(1000 * dmi_nq[:, 0].T, dq[:, 0]).T
+    DMI = np.round(np.max(np.linalg.norm(D_v, axis=-1)), 2)
+    return Result.fromdata(qpts_nqc=qpts_nqc, en_nq=en_nq, dmi_nq=dmi_nq, D_v=D_v, DMI=DMI)
 
 
 if __name__ == '__main__':

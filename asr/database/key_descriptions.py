@@ -137,13 +137,16 @@ def all_the_keydescs():
         kvp('spin', 'Maximum value of S_z at magnetic sites'),
         kvp('N_nn', 'Number of nearest neighbors'),
     ]
+    yield 'collect_spiral', [
+        kvp('bandwidth', 'Spin spiral bandwidth', unit='meV'),
+        kd('Qmin', 'Magnetic order vector Q', unit='inverse unit cell'),
+    ]
     yield 'spinorbit', [
         kd('angle_min', 'SOC angles at Qmin', unit='deg'),
         kvp('projected', 'Projected SOC')
     ]
-    yield 'collect_spiral', [
-        kvp('bandwidth', 'Spin spiral bandwidth', unit='meV'),
-        kd('Qmin', 'Magnetic order vector Q', unit='inverse unit cell'),
+    yield 'dmi', [
+        kvp('DMI', 'Dzyaloshinskii Moriya interaction', unit='meV Å')
     ]
     yield 'pdos', [
         kd('pdos_nosoc', 'Projected density of states w/o soc.',
