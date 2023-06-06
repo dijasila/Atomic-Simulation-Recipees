@@ -65,13 +65,13 @@ class Result(ASRResult):
     angle_min: tuple
     angle_q: tuple
     projected: bool
-    key_descriptions = {"soc": "q-constant Spin Orbit correction",
-                        "theta": "Angles from z->x",
-                        "phi": "Angles from x->y",
-                        "angle_min": "Theta, phi angles at minimum",
-                        "angle_q": "Theta, phi angles of q-vector",
-                        "projected": "Boolean indicates projected spin orbit operator"}
-    formats = {"ase_webpanel": webpanel}
+    key_descriptions = {'soc': 'q-constant Spin Orbit correction [eV]',
+                        'theta': 'Angles from z->x [deg]',
+                        'phi': 'Angles from x->y [deg]',
+                        'angle_min': 'SOC angles at Qmin [deg]',
+                        'angle_q': 'Orientation of Qmin [deg]',
+                        'projected': 'Projected SOC'}
+    formats = {'ase_webpanel': webpanel}
 
 
 @command(module='asr.spinorbit',
@@ -94,9 +94,9 @@ def main(calctxt: str = "gsq.gpw", socdensity: float = 10.0,
     Returns:
         Result: A `Result` object containing the following attributes:
             - `soc`(ndarray): Spin-orbit coupling (eV) at each sampling point.
-            - `theta`(ndarray): Polar angle (degrees) of each sampling point.
-            - `phi`(ndarray): Azimuthal angle (degrees) of each sampling point.
-            - `angle_min`(list): Polar and azimuthal angles (in radians) at which
+            - `theta`(ndarray): Polar angle (degrees) at each sampling point.
+            - `phi`(ndarray): Azimuthal angle (degrees) at each sampling point.
+            - `angle_min`(list): Polar and azimuthal angles (in degrees) at which
                                   the minimum spin-orbit coupling occurs.
             - `angle_q`(list): Polar and azimuthal angles (degrees) of the wavevector q
             - `projected`(bool): Whether spin-orbit coupling is projected or total.

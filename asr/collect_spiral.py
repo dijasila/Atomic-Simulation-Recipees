@@ -111,17 +111,17 @@ class Result(ASRResult):
     local_magmoms: np.ndarray
     total_magmoms: np.ndarray
     bandwidth: float
-    minimum: list
+    minimum: List[int]
     Qmin: np.ndarray
-    key_descriptions = {"path": "List of Spin spiral vectors",
-                        "energies": "Total energy of spin spiral calculations [eV]",
-                        "gaps": "Bandgaps of spin spiral calculations [eV]",
-                        "local_magmoms": "Estimated local moments [mu_B]",
-                        "total_magmoms": "Estimated total moment [mu_B]",
-                        "bandwidth": "Energy bandwidth [meV]",
-                        "minimum": "Band and qpt index of energy minimum",
-                        "Qmin": "Q-vector of energy minimum in fractional coordinates"}
-    formats = {"ase_webpanel": webpanel}
+    key_descriptions = {'path': 'List of Spin spiral vectors',
+                        'energies': 'Total energy of spin spiral calculations [eV]',
+                        'gaps': 'Bandgaps of spin spiral calculations [eV]',
+                        'local_magmoms': 'Estimated local moments [mu_B]',
+                        'total_magmoms': 'Estimated total moment [mu_B]',
+                        'bandwidth': 'Spin spiral bandwidth [meV]',
+                        'minimum': 'Band and q index of energy minimum',
+                        'Qmin': 'Magnetic order vector Q [inverse unit cell]'}
+    formats = {'ase_webpanel': webpanel}
 
 
 @command(module='asr.collect_spiral',
