@@ -183,6 +183,8 @@ def _main(path, sscalculations):
 
 
 def plot_bandstructure(row, fname):
+    import matplotlib
+    matplotlib.use('Agg')
     from matplotlib import pyplot as plt
     path, energies_bq, lm_bqa = extract_data(row)
 
@@ -199,8 +201,8 @@ def plot_bandstructure(row, fname):
 
     # Process energies
     e0 = energies_bq[0][0]
-    emin = np.min((energies_bq[energies_bq != 0] - e0) * 1000 * 1.1)
-    emax = np.max((energies_bq[energies_bq != 0] - e0) * 1000 * 1.15)
+    emin = np.min((energies_bq[energies_bq != 0] - e0) * 1000)
+    emax = np.max((energies_bq[energies_bq != 0] - e0) * 1000)
     nbands, nqpts = np.shape(energies_bq)
 
     try:
@@ -209,7 +211,8 @@ def plot_bandstructure(row, fname):
     except AttributeError:
         symbols = row.symbols
 
-    fig, ax1 = plt.subplots(1, 1, figsize=((1 + np.sqrt(5)) / 2 * 4, 4))
+    fig = plt.figure(figsize=((1 + np.sqrt(5)) / 2 * 4, 4))
+    ax1 = plt.gca()
     for bidx in range(nbands):
         e_q = energies_bq[bidx]
         m_q = magmom_bq[bidx]
@@ -244,11 +247,13 @@ def plot_bandstructure(row, fname):
             fig.legend(updict.values(), updict.keys(), loc="upper right",
                        bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
 
+    ax1.margins(x=0, y=1e-3 * (emax - emin))
+    ax3.margins(x=0, y=1e-3 * (mommax - mommin))
     ax1.set_ylabel('Spin spiral energy [meV]')
     ax1.set_xlabel('q vector [Å$^{-1}$]')
 
     ax2.set_xlabel(r"Wave length $\lambda$ [Å]")
-    ax3.set_ylabel(r"Local norm magnetic moment [|$\mu_B$|]")
+    ax3.set_ylabel(r"Mag. mom. $|\mathbf{m}|$ [$\mu_B$]")
 
     plt.tight_layout()
     plt.savefig(fname)
@@ -268,13 +273,12 @@ def extract_data(row):
 
 def plot_energies(ax, q, energies, emin, emax, x, X):
     hnd = ax.plot(q, energies, c='C0', marker='.', label='Energy')
-    ax.set_ylim([emin, emax])
+    #ax.set_ylim([emin, emax])
     ax.set_xticks(x)
     ax.set_xticklabels([i.replace('G', r"$\Gamma$") for i in X])
     for xc in x:
         if xc != min(q) and xc != max(q):
-            ax.axvline(xc, c='gray', linestyle='--')
-    ax.margins(x=0)
+            ax.axvline(xc, c='gray', linestyle='--')    
     return hnd
 
 
@@ -286,7 +290,7 @@ def add_wavelength_axis(ax, q, q_v, wavepointsfreq):
 
     ax.set_xticks(q[::wavepointsfreq])
     ax.set_xticklabels(tick_function(q_v[::wavepointsfreq]))
-
+    
 
 def plot_magmoms(ax, q, magmoms_qa, mommin, mommax, symbols):
     unique = list(set(symbols))
@@ -296,7 +300,7 @@ def plot_magmoms(ax, q, magmoms_qa, mommin, mommax, symbols):
     for a in range(magmoms_qa.shape[-1]):
         magmom_q = magmoms_qa[:, a]
         ax.plot(q, magmom_q, c=mag_c[symbols[a]],
-                marker='.', label=f'{symbols[a]} magmom')
+                marker='.', label=f'{symbols[a]}'+ r' $|\mathbf{m}|$')
 
     ax.set_ylim([mommin, mommax])
 

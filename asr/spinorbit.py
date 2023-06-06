@@ -153,6 +153,8 @@ def main(calctxt: str = "gsq.gpw", socdensity: float = 10.0,
 
 def plot_stereographic_energies(row, fname, display_sampling=False):
     from matplotlib.colors import Normalize
+    import matplotlib
+    matplotlib.use('Agg')
     from matplotlib import pyplot as plt
     from scipy.interpolate import griddata
 
@@ -174,7 +176,8 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
     for p in points:
         projected_points.append(stereo_project_point(p, axis=2))
 
-    fig, ax = plt.subplots(1, 1, figsize=(5 * 1.25, 5))
+    fig = plt.figure(figsize=(5 * 1.25, 5))
+    ax = plt.gca()
     norm = Normalize(vmin=min(soc), vmax=max(soc))
 
     X, Y, Z = np.array(projected_points).T
