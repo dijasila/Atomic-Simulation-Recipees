@@ -73,6 +73,19 @@ class Result(ASRResult):
                         'projected': 'Projected SOC'}
     formats = {'ase_webpanel': webpanel}
 
+    def get_projected_points(self):
+        theta, phi = self['theta'], self['phi']
+        theta = theta * np.pi / 180
+        phi = phi * np.pi / 180
+        x = np.sin(theta) * np.cos(phi)
+        y = np.sin(theta) * np.sin(phi)
+        z = np.cos(theta)
+        points = np.array([x, y, z]).T
+        projected_points = []
+        for p in points:
+            projected_points.append(stereo_project_point(p, axis=2))
+        return projected_points
+
 
 @command(module='asr.spinorbit',
          returns=Result)
@@ -180,33 +193,34 @@ def _main(gs, socdensity, projected):
 
 
 def plot_stereographic_energies(row, fname, display_sampling=False):
-    from matplotlib.colors import Normalize
     import matplotlib
     matplotlib.use('Agg')
     from matplotlib import pyplot as plt
+
+    plt.figure(figsize=(5 * 1.25, 5))
+    ax = plt.gca()
+    socdata = row.data.get('results-asr.spinorbit.json')
+    _plot_stereographic_energies(socdata, ax=ax,
+                                 display_sampling=display_sampling)
+    plt.savefig(fname)
+
+
+def stereo_project_point(inpoint, axis=0, r=1):
+    point = np.divide(inpoint * r, inpoint[axis] + r)
+    point[axis] = 0
+    return point
+
+
+def _plot_stereographic_energies(socdata, ax, display_sampling):
+    from matplotlib import pyplot as plt
+    from matplotlib.colors import Normalize
     from scipy.interpolate import griddata
 
-    def stereo_project_point(inpoint, axis=0, r=1, max_norm=1):
-        point = np.divide(inpoint * r, inpoint[axis] + r)
-        point[axis] = 0
-        return point
-
-    socdata = row.data.get('results-asr.spinorbit.json')
     soc = (socdata['soc'] - min(socdata['soc'])) * 10**3
-    theta, phi = socdata['theta'], socdata['phi']
-    theta = theta * np.pi / 180
-    phi = phi * np.pi / 180
-    x = np.sin(theta) * np.cos(phi)
-    y = np.sin(theta) * np.sin(phi)
-    z = np.cos(theta)
-    points = np.array([x, y, z]).T
-    projected_points = []
-    for p in points:
-        projected_points.append(stereo_project_point(p, axis=2))
 
-    fig = plt.figure(figsize=(5 * 1.25, 5))
-    ax = plt.gca()
     norm = Normalize(vmin=min(soc), vmax=max(soc))
+
+    projected_points = socdata.get_projected_points()
 
     X, Y, Z = np.array(projected_points).T
 
@@ -225,7 +239,6 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
     ax.set_yticks([])
     cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap='jet'), ax=ax)
     cbar.ax.set_ylabel(r'$E_{soc} [meV]$')
-    plt.savefig(fname)
 
 
 if __name__ == '__main__':
