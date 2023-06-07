@@ -101,18 +101,45 @@ def main(calctxt: str = "gsq.gpw", socdensity: float = 10.0,
             - `angle_q`(list): Polar and azimuthal angles (degrees) of the wavevector q
             - `projected`(bool): Whether spin-orbit coupling is projected or total.
     '''
+
+    gs = GroundState(calctxt)
+    return _main(gs, socdensity, projected)
+
+
+class GroundState:
+    def __init__(self, calctxt):
+        self.calctxt = calctxt
+
+    def get_qn(self):
+        calc = GPAW(self.calctxt)
+
+        try:
+            qn = calc.parameters['mode']['qspiral']
+        except KeyError:
+            qn = 0  # Quick collinear / non-Q implementation
+
+        return qn
+
+    def band_energy(self, **kwargs):
+        return soc_eigenstates(
+            calc=calctxt, projected=projected,
+            theta=theta, phi=phi,
+            occcalc=occcalc).calculate_band_energy()
+
+
+class MockGroundState:
+    ...
+
+
+def _main(gs, socdensity, projected):
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
     from gpaw import GPAW
 
-    calc = GPAW(calctxt)
     width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
 
-    try:
-        qn = calc.parameters['mode']['qspiral']
-    except KeyError:
-        qn = 0  # Quick collinear / non-Q implementation
+    qn = gs.get_qn()
 
     if not np.isclose(np.linalg.norm(qn), 0):
         qn /= np.linalg.norm(qn)
@@ -136,9 +163,10 @@ def main(calctxt: str = "gsq.gpw", socdensity: float = 10.0,
 
     soc = np.array([])
     for theta, phi in zip(thetas, phis):
-        en_soc = soc_eigenstates(calc=calctxt, projected=projected,
-                                 theta=theta, phi=phi,
-                                 occcalc=occcalc).calculate_band_energy()
+        en_soc = gs.band_energy(
+            projected=projected,
+            theta=theta, phi=phi,
+            occcalc=occcalc)
         # Noise should not be an issue since it is the same for the calculator
         # en_soc_0 = soc_eigenstates(calc, projected=projected, scale=0.0,
         #                            theta=theta, phi=phi).calculate_band_energy()
