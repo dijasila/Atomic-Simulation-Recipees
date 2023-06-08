@@ -6,7 +6,7 @@ import numpy as np
 
 def sphere_points(distance=None):
     '''Calculates equidistant points on the upper half sphere
-    
+
     Returns list of spherical coordinates (thetas, phis) in degrees
     '''
 
@@ -40,18 +40,29 @@ def sphere_points(distance=None):
     return thetas * 180 / math.pi, phis * 180 / math.pi % 180
 
 
-def to_spherical(vector):
-    """ Converts vector from cartesian coordinates to spherical coordinates
+class GroundState:
+    def __init__(self, gpw):
+        self.gpw = gpw
 
-    Returns angles in radians
-    """
-    vector /= np.linalg.norm(vector)
-    R = np.linalg.norm([vector[0], vector[1]])
-    phi_= np.arctan2(vector[1], vector[0])
-    r = np.linalg.norm([vector[2], R])
-    theta = np.arctan2(R, vector[2])
-    assert np.isclose(r, 1.), f'r == {r}'
-    return theta, phi
+    def is_collinear(self):
+        from gpaw import GPAW
+        calc = GPAW(self.gpw)
+
+        is_collinear = 'qspiral' not in calc.parameters['mode'].keys()
+
+        if not is_collinear:
+            qn = calc.parameters['mode']['qspiral']
+            if np.linalg.norm(qn) < 1e-14:
+                is_collinear = True
+
+        return is_collinear
+
+    def band_energy(self, projected, theta, phi, occcalc):
+        from gpaw.spinorbit import soc_eigenstates
+        return soc_eigenstates(
+            calc=self.gpw, projected=projected,
+            theta=theta, phi=phi,
+            occcalc=occcalc).calculate_band_energy()
 
 
 @prepare_result
@@ -59,13 +70,32 @@ class PreResult(ASRResult):
     soc_tp: np.ndarray
     theta_tp: np.ndarray
     phi_tp: np.ndarray
-    angle_q: List[float]
     projected_soc: bool
     key_descriptions = {'soc_tp': 'Spin Orbit correction [eV]',
                         'theta_tp': 'Orientation of magnetic order from z->x [deg]',
                         'phi_tp': 'Orientation of magnetic order from x->y [deg]',
-                        'angle_q': 'Propagation direction of magnetic order',
                         'projected_soc': 'Projected SOC for non-collinear spin spirals'}
+
+    def stereographic_projection(self):
+        
+        def stereo_project_point(inpoint, axis=0, r=1, max_norm=1):
+            point = np.divide(inpoint * r, inpoint[axis] + r)
+            point[axis] = 0
+            return point
+
+        theta, phi = self['theta_tp'], self['phi_tp']
+        theta = theta * np.pi / 180
+        phi = phi * np.pi / 180
+        x = np.sin(theta) * np.cos(phi)
+        y = np.sin(theta) * np.sin(phi)
+        z = np.cos(theta)
+        points = np.array([x, y, z]).T
+        projected_points = []
+        for p in points:
+            projected_points.append(stereo_project_point(p, axis=2))
+
+        return projected_points
+
 
 
 @command(module='asr.spinorbit',
@@ -77,48 +107,34 @@ class PreResult(ASRResult):
         help='For non-collinear spin spirals, projected SOC should be applied (True)')
 @option('--width', type=float,
         help='The fermi smearing of the SOC calculation (eV)')
-def calculate(gpw, distance: float = 2.0,
+def calculate(gpw: str = 'gs.gpw', distance: float = 2.0,
               projected_soc: bool = None, width: float = 0.001) -> ASRResult:
-    '''Calculates the spin-orbit coupling at equidistant points on a unit sphere.
-    '''
-    from gpaw.spinorbit import soc_eigenstates
-    from gpaw.occupations import create_occ_calc
-    from gpaw import GPAW
-    from ase.dft.kpoints import kpoint_convert
+    '''Calculates the spin-orbit coupling at equidistant points on a unit sphere. '''
 
-    calc = GPAW(gpw)
+    gs = GroundState(gpw)
+    return _calculate(gs, distance, projected_soc, width)
+
+
+def _calculate(gs: GroundState, distance: float,
+               projected_soc: bool, width: float) -> ASRResult:
+
+    from gpaw.occupations import create_occ_calc
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
 
-    try:
-        qn = [round(qi, 15) for qi in calc.parameters['mode']['qspiral']]
-        is_collinear = tuple(qn) in list(product([0., 0.5, -0.5], repeat=3))
-    except KeyError:
-        is_collinear = True
-    projected_soc = not is_collinear if projected_soc is None else projected_soc
-
-    if is_collinear:
-        theta_q, phi_q = (0, 0)
-    else:
-        qv = kpoint_convert(cell_cv=calc.atoms.cell, skpts_kc=qn)
-        theta_q, phi_q = to_spherical(vector=qv)
-
+    projected_soc = not gs.is_collinear() if projected_soc is None else projected_soc
     theta_tp, phi_tp = sphere_points(distance=distance)
-    phi_tp += phi_q
-    # theta_tp += theta_q
 
     soc_tp = np.array([])
     for theta, phi in zip(theta_tp, phi_tp):
-        en_soc = soc_eigenstates(calc=gpw, projected=projected_soc,
-                                 theta=theta, phi=phi,
-                                 occcalc=occcalc).calculate_band_energy()
+        en_soc = gs.band_energy(projected=projected_soc, theta=theta, phi=phi,
+                                occcalc=occcalc)
         # Noise should not be an issue since it is the same for the calculator
         # en_soc_0 = soc_eigenstates(calc, projected=projected, scale=0.0,
         #                            theta=theta, phi=phi).calculate_band_energy()
-        soc_tp = np.append(soc_tp, en_soc)  # - en_soc_0)
+        soc_tp = np.append(soc_tp, en_soc)
 
-    angle_q = [theta_q, phi_q]
     return PreResult.fromdata(soc_tp=soc_tp, theta_tp=theta_tp, phi_tp=phi_tp,
-                              angle_q=angle_q, projected_soc=projected_soc)
+                              projected_soc=projected_soc)
 
 
 def webpanel(result, row, key_descriptions):
@@ -144,12 +160,10 @@ class Result(ASRResult):
     soc_bw: float
     theta_min: float
     phi_min: float
-    angle_q: List[float]
     projected_soc: bool
     key_descriptions = {'soc_bw': 'Bandwidth of SOC energies [meV]',
                         'theta_min': 'Angles from z->x [deg]',
                         'phi_min': 'Angles from x->y [deg]',
-                        'angle_q': 'Orientation of Qmin [deg]',
                         'projected_soc': 'Projected SOC for spin spirals'}
     formats = {'ase_webpanel': webpanel}
 
@@ -165,7 +179,6 @@ def main() -> Result:
     soc_tp = results['soc_tp']
     theta_tp = results['theta_tp']
     phi_tp = results['phi_tp']
-    angle_q = results['angle_q']
     projected_soc = results['projected_soc']
 
     tp_min = np.argmin(soc_tp)
@@ -174,7 +187,7 @@ def main() -> Result:
     soc_bw = 1e3 * (np.max(soc_tp) - np.min(soc_tp))
 
     return Result.fromdata(soc_bw=soc_bw, theta_min=theta_min, phi_min=phi_min,
-                           angle_q=angle_q, projected_soc=projected_soc)
+                           projected_soc=projected_soc)
 
 
 def plot_stereographic_energies(row, fname, display_sampling=False):
@@ -184,23 +197,8 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
     from matplotlib import pyplot as plt
     from scipy.interpolate import griddata
 
-    def stereo_project_point(inpoint, axis=0, r=1, max_norm=1):
-        point = np.divide(inpoint * r, inpoint[axis] + r)
-        point[axis] = 0
-        return point
-
-    socdata = row.data.get('results-asr.spinorbit.json')
-    soc = (socdata['soc'] - min(socdata['soc'])) * 10**3
-    theta, phi = socdata['theta'], socdata['phi']
-    theta = theta * np.pi / 180
-    phi = phi * np.pi / 180
-    x = np.sin(theta) * np.cos(phi)
-    y = np.sin(theta) * np.sin(phi)
-    z = np.cos(theta)
-    points = np.array([x, y, z]).T
-    projected_points = []
-    for p in points:
-        projected_points.append(stereo_project_point(p, axis=2))
+    socdata = row.data.get('results-asr.spinorbit@calculate.json')
+    soc = (socdata['soc_tp'] - min(socdata['soc_tp'])) * 10**3
 
     plt.figure(figsize=(5 * 1.25, 5))
     ax = plt.gca()
