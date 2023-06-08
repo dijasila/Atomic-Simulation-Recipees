@@ -4,17 +4,14 @@ from itertools import product
 import numpy as np
 
 
-def sphere_points(N=None, d=None):
-    # Input:
-    #   Option 1: Number of points
-    #   Option 2: Density of points
-    # Output:
-    #   Equidistant points on a (upper half) sphere
-    #   (thetas, phis) are list of angles in degrees
+def sphere_points(distance=None):
+    '''Calculates equidistant points on the upper half sphere
+    
+    Returns list of spherical coordinates (thetas, phis) in degrees
+    '''
 
     import math
-    if N is None and d is not None:
-        N = math.ceil(129600 / (math.pi) * 1 / d**2)
+    N = math.ceil(129600 / (math.pi) * 1 / distance**2)
 
     A = 4 * math.pi
     a = A / N
@@ -35,8 +32,11 @@ def sphere_points(N=None, d=None):
             phi = 2 * math.pi * n / Mphi
             points.append([theta, phi])
     thetas, phis = np.array(points).T
-    if np.pi / 2 not in thetas:
-        print('Warning, xy-plane not included in sampling')
+
+    if not any(thetas - np.pi / 2 < 1e-14):
+        import warnings
+        warnings.warn('xy-plane not included in sampling')
+
     return thetas * 180 / math.pi, phis * 180 / math.pi % 180
 
 
@@ -62,33 +62,21 @@ class PreResult(ASRResult):
                         'theta_tp': 'Orientation of magnetic order from z->x [deg]',
                         'phi_tp': 'Orientation of magnetic order from x->y [deg]',
                         'angle_q': 'Propagation direction of magnetic order',
-                        'projected_soc': 'Projected SOC for spin spirals'}
+                        'projected_soc': 'Projected SOC for non-collinear spin spirals'}
+
 
 @command(module='asr.spinorbit',
          resources='1:4h')
-@option('--gpwcalc', help='gpw restart filename', type=str)
+@option('--gpwcalc', help='The file path for the GPAW calculator context.', type=str)
 @option('--soc_density', type=float,
         help='Density of spin orbit energies on the sphere in per angle')
 @option('--projected_soc', type=bool,
-        help='Boolean to choose projected spin orbit operator')
+        help='For non-collinear spin spirals, projected SOC should be applied (True)')
 @option('--width', type=float,
-        help='The fermi smearing of the SOC calculation')
+        help='The fermi smearing of the SOC calculation (eV)')
 def calculate(gpwcalc, soc_density: float = 2.0,
               projected_soc: bool = None, width: float = 0.001) -> ASRResult:
-    '''Calculates the spin-orbit coupling at various sampling points on a unit sphere.
-
-    Args:
-        gpwcalc (str): The file path for the GPAW calculator context.
-        soc_density (int, optional): The density of sampling points on a unit sphere.
-        projected (bool, optional): Whether spin-orbit coupling is projected or total.
-        width (float, optional): The fermi smearing of soc calculation in eV
-
-    Returns:
-        Result: A `Result` object containing the following attributes:
-            - `soc`(ndarray): Spin-orbit coupling (eV) at each sampling point.
-            - `theta`(ndarray): Polar angle (degrees) at each sampling point.
-            - `phi`(ndarray): Azimuthal angle (degrees) at each sampling point.
-            - The input Args, except gpwcalc
+    '''Calculates the spin-orbit coupling at equidistant points on a unit sphere.
     '''
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
