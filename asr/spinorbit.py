@@ -40,15 +40,18 @@ def sphere_points(distance=None):
     return thetas * 180 / math.pi, phis * 180 / math.pi % 180
 
 
-def to_spherical(q):
-    # Output: Rad
-    q /= np.linalg.norm(q)
-    R = np.linalg.norm([q[0], q[1]])
-    phi_q = np.arctan2(q[1], q[0])
-    r = np.linalg.norm([q[2], R])
-    theta_q = np.arctan2(R, q[2])
+def to_spherical(vector):
+    """ Converts vector from cartesian coordinates to spherical coordinates
+
+    Returns angles in radians
+    """
+    vector /= np.linalg.norm(vector)
+    R = np.linalg.norm([vector[0], vector[1]])
+    phi_= np.arctan2(vector[1], vector[0])
+    r = np.linalg.norm([vector[2], R])
+    theta = np.arctan2(R, vector[2])
     assert np.isclose(r, 1.), f'r == {r}'
-    return theta_q, phi_q
+    return theta, phi
 
 
 @prepare_result
@@ -67,14 +70,14 @@ class PreResult(ASRResult):
 
 @command(module='asr.spinorbit',
          resources='1:4h')
-@option('--gpwcalc', help='The file path for the GPAW calculator context.', type=str)
-@option('--soc_density', type=float,
-        help='Density of spin orbit energies on the sphere in per angle')
+@option('--gpw', help='The file path for the GPAW calculator context.', type=str)
+@option('--distance', type=float,
+        help='Distance between sample points on the sphere')
 @option('--projected_soc', type=bool,
         help='For non-collinear spin spirals, projected SOC should be applied (True)')
 @option('--width', type=float,
         help='The fermi smearing of the SOC calculation (eV)')
-def calculate(gpwcalc, soc_density: float = 2.0,
+def calculate(gpw, distance: float = 2.0,
               projected_soc: bool = None, width: float = 0.001) -> ASRResult:
     '''Calculates the spin-orbit coupling at equidistant points on a unit sphere.
     '''
@@ -83,7 +86,7 @@ def calculate(gpwcalc, soc_density: float = 2.0,
     from gpaw import GPAW
     from ase.dft.kpoints import kpoint_convert
 
-    calc = GPAW(gpwcalc)
+    calc = GPAW(gpw)
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
 
     try:
@@ -97,15 +100,15 @@ def calculate(gpwcalc, soc_density: float = 2.0,
         theta_q, phi_q = (0, 0)
     else:
         qv = kpoint_convert(cell_cv=calc.atoms.cell, skpts_kc=qn)
-        theta_q, phi_q = to_spherical(q=qv)
+        theta_q, phi_q = to_spherical(vector=qv)
 
-    theta_tp, phi_tp = sphere_points(d=soc_density)
+    theta_tp, phi_tp = sphere_points(distance=distance)
     phi_tp += phi_q
     # theta_tp += theta_q
 
     soc_tp = np.array([])
     for theta, phi in zip(theta_tp, phi_tp):
-        en_soc = soc_eigenstates(calc=gpwcalc, projected=projected_soc,
+        en_soc = soc_eigenstates(calc=gpw, projected=projected_soc,
                                  theta=theta, phi=phi,
                                  occcalc=occcalc).calculate_band_energy()
         # Noise should not be an issue since it is the same for the calculator
