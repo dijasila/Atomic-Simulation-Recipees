@@ -1,4 +1,6 @@
 from asr.core import command, option, ASRResult, prepare_result
+from typing import List
+from itertools import product
 import numpy as np
 
 
@@ -31,20 +33,109 @@ def sphere_points(N=None, d=None):
         Mphi = max(round(2 * math.pi * math.sin(theta) / dphi), 1)
         for n in range(Mphi):
             phi = 2 * math.pi * n / Mphi
-            points.append([theta * 180 / math.pi, phi * 180 / math.pi])
+            points.append([theta, phi])
     thetas, phis = np.array(points).T
-    if 90. not in thetas:
+    if np.pi / 2 not in thetas:
         print('Warning, xy-plane not included in sampling')
-    return thetas, phis
+    return thetas * 180 / math.pi, phis * 180 / math.pi % 180
+
+
+def to_spherical(q):
+    # Output: Rad
+    q /= np.linalg.norm(q)
+    R = np.linalg.norm([q[0], q[1]])
+    phi_q = np.arctan2(q[1], q[0])
+    r = np.linalg.norm([q[2], R])
+    theta_q = np.arctan2(R, q[2])
+    assert np.isclose(r, 1.), f'r == {r}'
+    return theta_q, phi_q
+
+
+@prepare_result
+class PreResult(ASRResult):
+    soc_tp: np.ndarray
+    theta_tp: np.ndarray
+    phi_tp: np.ndarray
+    angle_q: List[float]
+    projected_soc: bool
+    key_descriptions = {'soc_tp': 'Spin Orbit correction [eV]',
+                        'theta_tp': 'Orientation of magnetic order from z->x [deg]',
+                        'phi_tp': 'Orientation of magnetic order from x->y [deg]',
+                        'angle_q': 'Propagation direction of magnetic order',
+                        'projected_soc': 'Projected SOC for spin spirals'}
+
+@command(module='asr.spinorbit',
+         resources='1:4h')
+@option('--gpwcalc', help='gpw restart filename', type=str)
+@option('--soc_density', type=float,
+        help='Density of spin orbit energies on the sphere in per angle')
+@option('--projected_soc', type=bool,
+        help='Boolean to choose projected spin orbit operator')
+@option('--width', type=float,
+        help='The fermi smearing of the SOC calculation')
+def calculate(gpwcalc, soc_density: float = 2.0,
+              projected_soc: bool = None, width: float = 0.001) -> ASRResult:
+    '''Calculates the spin-orbit coupling at various sampling points on a unit sphere.
+
+    Args:
+        gpwcalc (str): The file path for the GPAW calculator context.
+        soc_density (int, optional): The density of sampling points on a unit sphere.
+        projected (bool, optional): Whether spin-orbit coupling is projected or total.
+        width (float, optional): The fermi smearing of soc calculation in eV
+
+    Returns:
+        Result: A `Result` object containing the following attributes:
+            - `soc`(ndarray): Spin-orbit coupling (eV) at each sampling point.
+            - `theta`(ndarray): Polar angle (degrees) at each sampling point.
+            - `phi`(ndarray): Azimuthal angle (degrees) at each sampling point.
+            - The input Args, except gpwcalc
+    '''
+    from gpaw.spinorbit import soc_eigenstates
+    from gpaw.occupations import create_occ_calc
+    from gpaw import GPAW
+    from ase.dft.kpoints import kpoint_convert
+
+    calc = GPAW(gpwcalc)
+    occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
+
+    try:
+        qn = [round(qi, 15) for qi in calc.parameters['mode']['qspiral']]
+        is_collinear = tuple(qn) in list(product([0., 0.5, -0.5], repeat=3))
+    except KeyError:
+        is_collinear = True
+    projected_soc = not is_collinear if projected_soc is None else projected_soc
+
+    if is_collinear:
+        theta_q, phi_q = (0, 0)
+    else:
+        qv = kpoint_convert(cell_cv=calc.atoms.cell, skpts_kc=qn)
+        theta_q, phi_q = to_spherical(q=qv)
+
+    theta_tp, phi_tp = sphere_points(d=soc_density)
+    phi_tp += phi_q
+    # theta_tp += theta_q
+
+    soc_tp = np.array([])
+    for theta, phi in zip(theta_tp, phi_tp):
+        en_soc = soc_eigenstates(calc=gpwcalc, projected=projected_soc,
+                                 theta=theta, phi=phi,
+                                 occcalc=occcalc).calculate_band_energy()
+        # Noise should not be an issue since it is the same for the calculator
+        # en_soc_0 = soc_eigenstates(calc, projected=projected, scale=0.0,
+        #                            theta=theta, phi=phi).calculate_band_energy()
+        soc_tp = np.append(soc_tp, en_soc)  # - en_soc_0)
+
+    angle_q = [theta_q, phi_q]
+    return PreResult.fromdata(soc_tp=soc_tp, theta_tp=theta_tp, phi_tp=phi_tp,
+                              angle_q=angle_q, projected_soc=projected_soc)
 
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
-    rows = [['Spinorbit bandwidth', str(np.round(1e3 * (max(result.get('soc'))
-                                                        - min(result.get('soc'))), 1))],
+    rows = [['Spinorbit bandwidth', str(np.round(result.get('soc_bw'), 1))],
             ['Spinorbit Minimum (&theta;, &phi;)', '('
-             + str(np.round(result.get('angle_min')[0], 1))
-             + ', ' + str(np.round(result.get('angle_min')[1], 1)) + ')']]
+             + str(np.round(result.get('theta_min'), 1))
+             + ', ' + str(np.round(result.get('phi_min')[1], 1)) + ')']]
     spiraltable = {'type': 'table',
                    'header': ['Property', 'Value'],
                    'rows': rows}
@@ -59,96 +150,40 @@ def webpanel(result, row, key_descriptions):
 
 @prepare_result
 class Result(ASRResult):
-    soc: np.ndarray
-    theta: np.ndarray
-    phi: np.ndarray
-    angle_min: tuple
-    angle_q: tuple
-    projected: bool
-    key_descriptions = {'soc': 'q-constant Spin Orbit correction [eV]',
-                        'theta': 'Angles from z->x [deg]',
-                        'phi': 'Angles from x->y [deg]',
-                        'angle_min': 'SOC angles at Qmin [deg]',
+    soc_bw: float
+    theta_min: float
+    phi_min: float
+    angle_q: List[float]
+    projected_soc: bool
+    key_descriptions = {'soc_bw': 'Bandwidth of SOC energies [meV]',
+                        'theta_min': 'Angles from z->x [deg]',
+                        'phi_min': 'Angles from x->y [deg]',
                         'angle_q': 'Orientation of Qmin [deg]',
-                        'projected': 'Projected SOC'}
+                        'projected_soc': 'Projected SOC for spin spirals'}
     formats = {'ase_webpanel': webpanel}
 
 
 @command(module='asr.spinorbit',
+         dependencies=['asr.spinorbit@calculate'],
+         resources='1:1m',
          returns=Result)
-@option('--calctxt', help='gpw restart filename', type=str)
-@option('--socdensity', type=float,
-        help='Density of spin orbit energies on the sphere in per angle')
-@option('--projected', type=bool,
-        help='Boolean to choose projected spin orbit operator')
-def main(calctxt: str = "gsq.gpw", socdensity: float = 10.0,
-         projected: bool = True) -> Result:
+def main() -> Result:
+    from asr.core import read_json
 
-    '''Calculates the spin-orbit coupling at various sampling points on a unit sphere.
+    results = read_json('results-asr.spinorbit@calculate.json')
+    soc_tp = results['soc_tp']
+    theta_tp = results['theta_tp']
+    phi_tp = results['phi_tp']
+    angle_q = results['angle_q']
+    projected_soc = results['projected_soc']
 
-    Args:
-        calctxt (str, optional): The file path for the GPAW calculator context.
-        socdensity (int, optional): The density of sampling points on a unit sphere.
-        projected (bool, optional): Whether spin-orbit coupling is projected or tota´l.
+    tp_min = np.argmin(soc_tp)
+    theta_min = theta_tp[tp_min]
+    phi_min = phi_tp[tp_min]
+    soc_bw = 1e3 * (np.max(soc_tp) - np.min(soc_tp))
 
-    Returns:
-        Result: A `Result` object containing the following attributes:
-            - `soc`(ndarray): Spin-orbit coupling (eV) at each sampling point.
-            - `theta`(ndarray): Polar angle (degrees) at each sampling point.
-            - `phi`(ndarray): Azimuthal angle (degrees) at each sampling point.
-            - `angle_min`(list): Polar and azimuthal angles (in degrees) at which
-                                  the minimum spin-orbit coupling occurs.
-            - `angle_q`(list): Polar and azimuthal angles (degrees) of the wavevector q
-            - `projected`(bool): Whether spin-orbit coupling is projected or total.
-    '''
-    from gpaw.spinorbit import soc_eigenstates
-    from gpaw.occupations import create_occ_calc
-    from gpaw import GPAW
-
-    calc = GPAW(calctxt)
-    width = 0.001
-    occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
-
-    try:
-        qn = calc.parameters['mode']['qspiral']
-    except KeyError:
-        qn = 0  # Quick collinear / non-Q implementation
-
-    if not np.isclose(np.linalg.norm(qn), 0):
-        qn /= np.linalg.norm(qn)
-        if qn[0] < 0:
-            qn = -qn
-        if qn[0] == 0:
-            qn = np.abs(qn)
-        sign = np.sign(np.cross([1, 0, 0], qn)[2])
-
-        # Starting phases are in xy-plane pointing parallel to q
-        phi_q = np.arccos(np.clip(np.dot(qn, [1, 0, 0]),
-                                  -1.0, 1.0)) * 180 / np.pi * sign
-        theta_q = np.arccos(np.dot(qn, [0, 0, 1])) * 180 / np.pi - 90
-    else:
-        phi_q = 0
-        theta_q = 0
-
-    thetas, phis = sphere_points(d=socdensity)
-    thetas += theta_q
-    phis += phi_q
-
-    soc = np.array([])
-    for theta, phi in zip(thetas, phis):
-        en_soc = soc_eigenstates(calc=calctxt, projected=projected,
-                                 theta=theta, phi=phi,
-                                 occcalc=occcalc).calculate_band_energy()
-        # Noise should not be an issue since it is the same for the calculator
-        # en_soc_0 = soc_eigenstates(calc, projected=projected, scale=0.0,
-        #                            theta=theta, phi=phi).calculate_band_energy()
-        soc = np.append(soc, en_soc)  # - en_soc_0)
-
-    imin = np.argmin(soc)
-    angle_min = [thetas[imin], phis[imin]]
-    angle_q = [theta_q, phi_q]
-    return Result.fromdata(soc=soc, theta=thetas, phi=phis,
-                           angle_min=angle_min, angle_q=angle_q, projected=projected)
+    return Result.fromdata(soc_bw=soc_bw, theta_min=theta_min, phi_min=phi_min,
+                           angle_q=angle_q, projected_soc=projected_soc)
 
 
 def plot_stereographic_energies(row, fname, display_sampling=False):
@@ -176,7 +211,7 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
     for p in points:
         projected_points.append(stereo_project_point(p, axis=2))
 
-    fig = plt.figure(figsize=(5 * 1.25, 5))
+    plt.figure(figsize=(5 * 1.25, 5))
     ax = plt.gca()
     norm = Normalize(vmin=min(soc), vmax=max(soc))
 
