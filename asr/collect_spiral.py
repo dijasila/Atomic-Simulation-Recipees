@@ -112,7 +112,7 @@ class Result(ASRResult):
     total_magmoms: np.ndarray
     bandwidth: float
     minimum: List[int]
-    Qmin: np.ndarray
+    Qmin: List[float]
     key_descriptions = {'path': 'List of Spin spiral vectors',
                         'energies': 'Total energy of spin spiral calculations [eV]',
                         'gaps': 'Bandgaps of spin spiral calculations [eV]',
@@ -163,7 +163,7 @@ def _main(path, sscalculations):
     minarg = np.argmin(energies)
     min_sscalc = sscalculations[minarg]
     minimum = min_sscalc.index
-    Qmin = Q[minimum[1]]
+    Qmin = list(Q[minimum[1]])
 
     bandwidth = (np.max(energies) - np.min(energies)) * 1000
 
