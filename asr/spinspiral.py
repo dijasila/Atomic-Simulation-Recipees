@@ -5,6 +5,46 @@ import numpy as np
 from os import path
 
 
+def get_magnetic_moments(atoms, params, q_c, smooth):
+    try:
+        magmoms = params["experimental"]["magmoms"]
+    except KeyError:
+        if atoms.has('initial_magmoms'):
+            magmomx = atoms.get_initial_magnetic_moments()
+        else:
+            magmomx = np.ones(len(atoms), float)
+        magmoms = np.zeros((len(atoms), 3))
+        magmoms[:, 0] = magmomx
+
+    if smooth:  # Smooth spiral
+
+        from ase.dft.kpoints import kpoint_convert
+            
+        def rotation_matrix(axis, theta):
+            """
+            Return the rotation matrix associated with counterclockwise rotation
+            about the given axis by theta radians.
+            https://stackoverflow.com/questions/6802577/rotation-of-3d-vector
+            """
+            axis = np.asarray(axis)
+            axis = axis / np.sqrt(np.dot(axis, axis))
+            a = np.cos(theta / 2.0)
+            b, c, d = -axis * np.sin(theta / 2.0)
+            aa, bb, cc, dd = a * a, b * b, c * c, d * d
+            bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
+            return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
+                             [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
+                             [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
+
+        q_v = kpoint_convert(atoms.get_cell(), skpts_kc=[q_c])[0]
+        pos_av = atoms.get_positions()
+        theta = np.dot(pos_av, q_v)
+        R = [rotation_matrix([0, 0, 1], theta[i]) for i in range(len(atoms))]
+        magmoms = [R[i] @ magmoms[i] for i in range(len(atoms))]
+        magmoms = np.asarray(magmoms)
+    return magmoms
+
+
 @command(module='asr.spinspiral',
          requires=['structure.json'])
 @argument('q_c', type=List[float])
@@ -30,46 +70,7 @@ def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
        not (path.isfile(f'gsq{n}.txt') and not path.isfile(f'gsq{n+1}.txt')):
         raise Exception("SFC finished but didn't converge")
 
-    try:
-        magmoms = params["experimental"]["magmoms"]
-    except KeyError:
-        if atoms.has('initial_magmoms'):
-            magmomx = atoms.get_initial_magnetic_moments()
-        else:
-            magmomx = np.ones(len(atoms), float)
-        magmoms = np.zeros((len(atoms), 3))
-        magmoms[:, 0] = magmomx
-
-        if smooth:  # Smooth spiral
-            def rotate_magmoms(magmoms, q):
-                import numpy as np
-                from ase.io import read
-                from ase.dft.kpoints import kpoint_convert
-
-                def rotation_matrix(axis, theta):
-                    """
-                    Return the rotation matrix associated with counterclockwise rotation
-                    about the given axis by theta radians.
-                    https://stackoverflow.com/questions/6802577/rotation-of-3d-vector
-                    """
-                    axis = np.asarray(axis)
-                    axis = axis / np.sqrt(np.dot(axis, axis))
-                    a = np.cos(theta / 2.0)
-                    b, c, d = -axis * np.sin(theta / 2.0)
-                    aa, bb, cc, dd = a * a, b * b, c * c, d * d
-                    bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-                    return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
-                                     [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
-                                     [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
-                atoms = read('structure.json')
-                q_v = kpoint_convert(atoms.get_cell(), skpts_kc=[q])[0]
-                pos_av = atoms.get_positions()
-                theta = np.dot(pos_av, q_v)
-                R = [rotation_matrix([0, 0, 1], theta[i]) for i in range(len(atoms))]
-                magmoms = [R[i] @ magmoms[i] for i in range(len(atoms))]
-                return np.asarray(magmoms)
-
-            magmoms = rotate_magmoms(magmoms, q_c)
+    magmoms = get_magnetic_moments(atoms, params, q_c, smooth)
 
     if restart:
         params = dict(restart=f'gsq{n}.gpw')
@@ -83,7 +84,7 @@ def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
         params["txt"] = f'gsq{n}.txt'
 
     calc = GPAW(**params)
-    atoms.center(vacuum=4.0, axis=2)
+    # atoms.center(vacuum=4.0, axis=2)
     atoms.calc = calc
     energy = atoms.get_potential_energy()
     totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
@@ -92,18 +93,6 @@ def calculate(q_c : List[float] = [1 / 3, 1 / 3, 0], n : int = 0,
     if not restart:
         atoms.calc.write(f'gsq{n}.gpw')
     return ASRResult.fromdata(en=energy, q=q_c, ml=magmom_av, mT=totmom_v, gap=gap)
-
-
-# def webpanel(result, row, key_descriptions):
-#     from asr.database.browser import table, fig
-#     spiraltable = table(row, 'Property', ['bandwidth', 'minimum'], key_descriptions)
-
-#     panel = {'title': 'Spin spirals',
-#              'columns': [[fig('spin_spiral_bs.png')], [spiraltable]],
-#              'plot_descriptions': [{'function': plot_bandstructure,
-#                                     'filenames': ['spin_spiral_bs.png']}],
-#              'sort': 3}
-#     return [panel]
 
 
 @prepare_result
@@ -124,7 +113,6 @@ class Result(ASRResult):
                         "minimum": "Q-vector at energy minimum",
                         "gaps": "List of bandgaps",
                         "gapmin": "Bandgap at minimum energy"}
-    # formats = {"ase_webpanel": webpanel}
 
 
 @command(module='asr.spinspiral',
@@ -222,78 +210,6 @@ def main(q_path: Union[str, None] = None, n: int = 11,
     return Result.fromdata(path=path, energies=energies, minimum=qmin,
                            local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
                            bandwidth=bandwidth, gaps=gaps, gapmin=gapmin)
-
-
-# def plot_bandstructure(row, fname):
-#     from matplotlib import pyplot as plt
-#     data = row.data.get('results-asr.spinspiral.json')
-#     path = data['path']
-#     energies = data['energies']
-
-#     energies = ((energies - energies[0]) * 1000)  # / nmagatoms
-#     q, x, X = path.get_linear_kpoint_axis()
-
-#     total_magmoms = data['total_magmoms']
-
-#     fig = plt.figure()
-#     ax1 = fig.add_subplot(111)
-
-#     # Setup main energy plot
-#     ax1.plot(q, energies, c='C1', marker='.', label='Energy')
-#     ax1.set_ylim([np.min(energies * 1.1), np.max(energies * 1.15)])
-#     ax1.set_ylabel('Spin spiral energy [meV]')
-
-#     ax1.set_xlabel('q vector [Å$^{-1}$]')
-#     ax1.set_xticks(x)
-#     ax1.set_xticklabels([i.replace('G', r"$\Gamma$") for i in X])
-#     for xc in x:
-#         if xc != min(q) and xc != max(q):
-#             ax1.axvline(xc, c='gray', linestyle='--')
-#     ax1.margins(x=0)
-
-#     # Add spin wavelength axis
-#     def tick_function(X):
-#         lmda = 2 * np.pi / X
-#         return [f"{z:.1f}" for z in lmda]
-
-#     # Non-cumulative length of q-vectors to find wavelength
-#     Q = np.linalg.norm(2 * np.pi * path.cartesian_kpts(), axis=-1)
-#     ax2 = ax1.twiny()
-#     ax2.set_xlim(ax1.get_xlim())
-#     idx = round(len(Q) / 5)
-
-#     ax2.set_xticks(q[::idx])
-#     ax2.set_xticklabels(tick_function(Q[::idx]))
-#     ax2.set_xlabel(r"Wave length $\lambda$ [Å]")
-
-#     # Add the magnetic moment plot
-#     ax3 = ax1.twinx()
-#     mT = abs(total_magmoms[:, 0])
-#     # mT = np.linalg.norm(total_magmoms, axis=-1)#mT[:, 1]#
-#     mT2 = abs(total_magmoms[:, 1])
-#     mT3 = abs(total_magmoms[:, 2])
-#     ax3.plot(q, mT, c='r', marker='.', label='$m_x$')
-#     ax3.plot(q, mT2, c='g', marker='.', label='$m_y$')
-#     ax3.plot(q, mT3, c='b', marker='.', label='$m_z$')
-
-#     ax3.set_ylabel(r"Total norm magnetic moment ($\mu_B$)")
-#     mommin = np.min(mT * 0.9)
-#     mommax = np.max(mT * 1.15)
-#     ax3.set_ylim([mommin, mommax])
-
-#     fig.legend(loc="upper right", bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
-#     # fig.suptitle('')
-#     plt.tight_layout()
-#     plt.savefig(fname)
-
-#     # energies = energies - energies[0]
-#     # energies = (energies)*1000
-#     # bs = BandStructure(path=path, energies=energies[None, :, None])
-#     # bs.plot(ax=plt.gca(), ls='-', marker='.', colors=['C1'],
-#     #         emin=np.min(energies * 1.1), emax=np.max([np.max(energies * 1.15)]),
-#     #         ylabel='Spin spiral energy [meV]')
-#     # plt.tight_layout()
-#     # plt.savefig(fname)
 
 
 if __name__ == '__main__':
