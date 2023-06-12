@@ -142,8 +142,10 @@ def all_the_keydescs():
         kd('Qmin', 'Magnetic order vector Q', unit='inverse unit cell'),
     ]
     yield 'spinorbit', [
-        kd('angle_min', 'SOC angles at Qmin', unit='deg'),
-        kvp('projected', 'Projected SOC')
+        kvp('soc_bw', 'Bandwidth of SOC energies', unit='meV'),
+        kvp('theta_min', 'Angles from z->x', unit='deg'),
+        kvp('phi_min', 'Angles from x->y', unit='deg'),
+        kvp('projected_soc', 'Projected SOC for spin spirals')
     ]
     yield 'dmi', [
         kvp('DMI', 'Dzyaloshinskii Moriya interaction', unit='meV Å')
