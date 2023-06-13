@@ -802,7 +802,7 @@ def main(
         urange=[-1, 15],
         npoints=600,
         counter=False,
-        database='/home/niflheim/steame/utils/oqmd123.db',
+        database='/home/niflheim2/cmr/databases/referencedatabases/oqmd123.db',
         eval_points: [List[Tuple]]=[
            (0.0, 0.0),
            (0.0, 1.229),
