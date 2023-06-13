@@ -216,7 +216,7 @@ def plot_bandstructure(row, fname):
     for bidx in range(nbands):
         e_q = energies_bq[bidx]
         m_q = magmom_bq[bidx]
-        splitarg = np.argwhere(energies_bq == 0)[:1]
+        splitarg = np.argwhere(e_q == 0)[0]
         energies_sq = np.split(e_q, splitarg)
         magmom_sq = np.split(m_q, splitarg, axis=0)
 
