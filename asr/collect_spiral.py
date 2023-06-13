@@ -216,13 +216,18 @@ def plot_bandstructure(row, fname):
     for bidx in range(nbands):
         e_q = energies_bq[bidx]
         m_q = magmom_bq[bidx]
-        splitarg = np.argwhere(e_q == 0)[0]
-        energies_sq = np.split(e_q, splitarg)
-        magmom_sq = np.split(m_q, splitarg, axis=0)
-
-        q_s = np.split(Q, splitarg)
+        splitarg = np.argwhere(e_q == 0.0).flatten()
+        if splitarg is []:
+            energies_sq = [e_q]
+            magmom_sq = [m_q]
+            q_s = [Q]
+        else:
+            energies_sq = np.split(e_q, splitarg)
+            magmom_sq = np.split(m_q, splitarg, axis=0)
+            q_s = np.split(Q, splitarg)
+        
         for q, energies_q, magmom_q in zip(q_s, energies_sq, magmom_sq):
-            if len(q) == 0:
+            if len(q) == 0 or len(q[energies_q != 0]) == 0:
                 continue
             magmom_q = magmom_q[energies_q != 0]
             q = q[energies_q != 0]
@@ -273,12 +278,12 @@ def extract_data(row):
 
 def plot_energies(ax, q, energies, emin, emax, x, X):
     hnd = ax.plot(q, energies, c='C0', marker='.', label='Energy')
-    #ax.set_ylim([emin, emax])
+    # ax.set_ylim([emin, emax])
     ax.set_xticks(x)
     ax.set_xticklabels([i.replace('G', r"$\Gamma$") for i in X])
     for xc in x:
         if xc != min(q) and xc != max(q):
-            ax.axvline(xc, c='gray', linestyle='--')    
+            ax.axvline(xc, c='gray', linestyle='--')
     return hnd
 
 
@@ -290,7 +295,7 @@ def add_wavelength_axis(ax, q, q_v, wavepointsfreq):
 
     ax.set_xticks(q[::wavepointsfreq])
     ax.set_xticklabels(tick_function(q_v[::wavepointsfreq]))
-    
+
 
 def plot_magmoms(ax, q, magmoms_qa, mommin, mommax, symbols):
     unique = list(set(symbols))
@@ -300,7 +305,7 @@ def plot_magmoms(ax, q, magmoms_qa, mommin, mommax, symbols):
     for a in range(magmoms_qa.shape[-1]):
         magmom_q = magmoms_qa[:, a]
         ax.plot(q, magmom_q, c=mag_c[symbols[a]],
-                marker='.', label=f'{symbols[a]}'+ r' $|\mathbf{m}|$')
+                marker='.', label=f'{symbols[a]}' + r' $|\mathbf{m}|$')
 
     ax.set_ylim([mommin, mommax])
 
