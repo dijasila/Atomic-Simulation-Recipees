@@ -327,7 +327,7 @@ def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'pw', 'ecut': 800},
                              'xc': 'PBE',
-                             'kpts': {'density': 6.0, 'gamma': True},
+                             'kpts': {'size': (8, 8, 1), 'gamma': True},
                              'basis': 'dzp',
                              'symmetry': {'symmorphic': False},
                              'convergence': {'forces': 1e-4},
@@ -339,9 +339,9 @@ def main(atoms: Atoms,
          tmp_atoms_file: str = 'relax.traj',
          d3: bool = False,
          fixcell: bool = False,
-         allow_symmetry_breaking: bool = False,
+         allow_symmetry_breaking: bool = True,
          fmax: float = 0.01,
-         enforce_symmetry: bool = True) -> Result:
+         enforce_symmetry: bool = False) -> Result:
     """Relax atomic positions and unit cell.
 
     The relaxed structure is saved to `structure.json` which can be processed
@@ -382,7 +382,7 @@ def main(atoms: Atoms,
         # We don't know whether the system is spin polarized,
         # so we must assume it is.
         initially_spinpol = True
-        set_initial_magnetic_moments(atoms)
+        #set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
     Calculator = get_calculator_class(calculatorname)

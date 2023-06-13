@@ -91,7 +91,7 @@ class RedOx:
     '''
     def __init__(self, reactant, products,
                  T=298.15, conc=1e-6,
-                 env='acidic', counter=True):
+                 env='acidic', counter=False):
         self.reactant = reactant.name
         self.products = [p.name for p in products]
         self.species = {reactant.name: -1}
@@ -204,7 +204,7 @@ class RedOx:
 
 
 class Pourbaix:
-    def __init__(self, material, refs, T=298.15, conc=1.0e-6, counter=True):
+    def __init__(self, material, refs, T=298.15, conc=1.0e-6, counter=False):
         self.material = material
         self.phases, phase_matrix = get_phases(material, refs, T, conc, counter)
         self._const = phase_matrix[:, 0]
@@ -571,15 +571,15 @@ def get_references(material, db_name, computed_energy=None, include_aq=True):
             refs[name] = ref
 
     mat = refs.get(material.name, None)
-    if not computed_energy:
-        if not mat:
+    if not mat:
+        if computed_energy is None:
             raise ValueError(\
                 f'Your material has not been found in {db_name}. '
                 f'Please provide an energy for it!'
             )
-        material.set_chemical_potential(mat.mu, None)
-    else:
         material.set_chemical_potential(computed_energy, reference_energies)
+    else:
+        material.set_chemical_potential(mat.mu, None)
 
     refs[material.name] = material
 
@@ -612,10 +612,6 @@ def get_phases(material, refs, T, conc, counter):
     phases = [no_reaction]
     phase_matrix = [no_reaction._vector]
 
-    #TODO add solid-state decomposition if the material is not on the hull
-    # this can be done by adding both the adjacent phases on the hull
-    # as an additional product combo
-
     for combo in product(*array):
         # Sometimes product can give combinations 
         # with equal elements. We don't want that
@@ -638,7 +634,6 @@ def get_phases(material, refs, T, conc, counter):
 def get_pourbaix_diagram(
         material,
         energy=None,
-        pop=[],
         T=298.15, conc=1e-6,
         counter=False,
         database='/home/niflheim/steame/utils/oqmd123.db'):
@@ -647,9 +642,8 @@ def get_pourbaix_diagram(
         material = Species(material)
 
     refs = get_references(material, database, computed_energy=energy)
-
-    for popped in pop:
-        refs.pop(popped)
+    refs.pop('H+(aq)')
+    refs.pop('H2O(aq)')
 
     pourbaix = Pourbaix(material, refs, T, conc, counter)
 
