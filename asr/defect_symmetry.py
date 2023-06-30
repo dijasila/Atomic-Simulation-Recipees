@@ -1,11 +1,20 @@
-from ase.io import read
 from asr.core import command, option, ASRResult, prepare_result, read_json
-from asr.database.browser import make_panel_description, href
-from gpaw import restart
+from ase.geometry import wrap_positions
+from asr.database.browser import make_panel_description, href, describe_entry
+import spglib as spg
 import typing
 import numpy as np
+import warnings
 from pathlib import Path
-from ase import Atoms
+from ase.io import read
+
+
+# TODO: make zrange an input
+# TODO: make shift an input
+
+reference = """\
+S. Kaappa et al. Point group symmetry analysis of the electronic structure
+of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)"""
 
 
 panel_description = make_panel_description(
@@ -14,358 +23,199 @@ Analysis of defect states localized inside the pristine bandgap (energetics and
  symmetry).
 """,
     articles=[
-        href("""S. Kaappa et al. Point group symmetry anallysis of the electronic structure
-of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)""",
-             'https://doi.org/10.1021/acs.jpca.8b07923'),
+        href(reference, 'https://doi.org/10.1021/acs.jpca.8b07923'),
     ],
 )
 
 
-def get_symmetry_table(state_results, vbm, cbm, row):
-    import numpy as np
-    from asr.database.browser import (matrixtable, table,
-        describe_entry)
+def get_number_of_rows(res, spin, vbm, cbm):
+    counter = 0
+    for i in range(len(res)):
+        if (int(res[i]['spin']) == spin
+           and res[i]['energy'] < cbm
+           and res[i]['energy'] > vbm):
+            counter += 1
 
-    data = row.data.get('results-asr.defect_symmetry.json')
-    gsdata = row.data.get('results-asr.gs.json')
-    eref = row.data.get('results-asr.get_wfs.json')['eref']
-    ef = gsdata['efermi'] - eref
+    return counter
 
-    Nrows = len(state_results)
+
+def get_matrixtable_array(state_results, vbm, cbm, ef,
+                          spin, style):
+    Nrows = get_number_of_rows(state_results, spin, vbm, cbm)
     state_array = np.empty((Nrows, 5), dtype='object')
-    state_rowlabels_0 = []
-    state_rowlabels_1 = []
-    state_spins_0 = []
-    state_energies_0 = []
-    state_label_0 = []
-    state_accuracy_0 = []
-    state_loc_ratio_0 = []
-    state_spins_1 = []
-    state_energies_1 = []
-    state_energies_1 = []
-    state_label_1 = []
-    state_accuracy_1 = []
-    state_loc_ratio_1 = []
-    for i, row in enumerate(state_array):
+    rowlabels = []
+    spins = []
+    energies = []
+    symlabels = []
+    accuracies = []
+    loc_ratios = []
+    for i, row in enumerate(state_results):
         rowname = f"{int(state_results[i]['state']):.0f}"
         label = str(state_results[i]['best'])
         labelstr = label.lower()
-        splitstr = split(labelstr)
+        splitstr = list(labelstr)
         if len(splitstr) == 2:
             labelstr = f'{splitstr[0]}<sub>{splitstr[1]}</sub>'
         if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
-            if int(state_results[i]['spin']) == 0:
-                state_rowlabels_0.append(rowname)
-                state_spins_0.append(f"{int(state_results[i]['spin']):.0f}")
-                state_energies_0.append(f"{state_results[i]['energy']:.2f}")
-                state_label_0.append(labelstr)
-                state_accuracy_0.append(f"{state_results[i]['error']:.2f}")
-                state_loc_ratio_0.append(f"{state_results[i]['loc_ratio']:.2f}")
-            elif int(state_results[i]['spin']) == 1:
-                state_rowlabels_1.append(rowname)
-                state_spins_1.append(f"{int(state_results[i]['spin']):.0f}")
-                state_energies_1.append(f"{state_results[i]['energy']:.2f}")
-                state_label_1.append(labelstr)
-                state_accuracy_1.append(f"{state_results[i]['error']:.2f}")
-                state_loc_ratio_1.append(f"{state_results[i]['loc_ratio']:.2f}")
-    Nrows_0 = len(state_rowlabels_0)
-    Nrows_1 = len(state_rowlabels_1)
-    state_array_0 = np.empty((Nrows_0, 5), dtype='object')
-    state_rowlabels_0.sort(reverse=True)
-    state_array_1 = np.empty((Nrows_1, 5), dtype='object')
-    state_rowlabels_1.sort(reverse=True)
-    for i in range(Nrows_0):
-        state_array_0[i, 0] = state_label_0[i]
-        state_array_0[i, 1] = state_spins_0[i]
-        state_array_0[i, 2] = state_accuracy_0[i]
-        state_array_0[i, 3] = state_loc_ratio_0[i]
-        state_array_0[i, 4] = state_energies_0[i]
-    state_array_0 = state_array_0[state_array_0[:, -1].argsort()]
-    for i in range(Nrows_1):
-        state_array_1[i, 0] = state_label_1[i]
-        state_array_1[i, 1] = state_spins_1[i]
-        state_array_1[i, 2] = state_accuracy_1[i]
-        state_array_1[i, 3] = state_loc_ratio_1[i]
-        state_array_1[i, 4] = state_energies_1[i]
-    state_array_1 = state_array_1[state_array_1[:, -1].argsort()]
+            if int(state_results[i]['spin']) == spin:
+                rowlabels.append(rowname)
+                spins.append(f"{int(state_results[i]['spin']):.0f}")
+                energies.append(f"{state_results[i]['energy']:.2f}")
+                if style == 'symmetry':
+                    symlabels.append(labelstr)
+                    accuracies.append(f"{state_results[i]['error']:.2f}")
+                    loc_ratios.append(f"{state_results[i]['loc_ratio']:.2f}")
+    state_array = np.empty((Nrows, 5), dtype='object')
+    rowlabels.sort(reverse=True)
 
-    N_homo = 0
-    N_lumo = 0
-    for i in range(len(state_array_0)):
-        if float(state_array_0[i, 4]) > ef:
-            N_lumo += 1
-    for i in range(len(state_array_0)):
-        if float(state_array_0[i, 4]) > ef:
-            state_rowlabels_0[i] = f'LUMO + {N_lumo - 1}'
-            N_lumo = N_lumo - 1
-            if N_lumo == 0:
-                state_rowlabels_0[i] = 'LUMO'
-        elif float(state_array_0[i, 4]) <= ef:
-            state_rowlabels_0[i] = f'HOMO - {N_homo}'
-            if N_homo == 0:
-                state_rowlabels_0[i] = 'HOMO'
-            N_homo = N_homo + 1
-    state_array_0 = np.delete(state_array_0, 2, 1)
+    for i in range(Nrows):
+        state_array[i, 1] = spins[i]
+        if style == 'symmetry':
+            state_array[i, 0] = symlabels[i]
+            state_array[i, 2] = accuracies[i]
+            state_array[i, 3] = loc_ratios[i]
+        state_array[i, 4] = energies[i]
+    state_array = state_array[state_array[:, -1].argsort()]
 
-    N_homo = 0
-    N_lumo = 0
-    for i in range(len(state_array_1)):
-        if float(state_array_1[i, 4]) > ef:
-            N_lumo += 1
-    for i in range(len(state_array_1)):
-        if float(state_array_1[i, 4]) > ef:
-            state_rowlabels_1[i] = f'LUMO + {N_lumo - 1}'
-            N_lumo = N_lumo - 1
-            if N_lumo == 0:
-                state_rowlabels_1[i] = 'LUMO'
-        elif float(state_array_1[i, 4]) <= ef:
-            state_rowlabels_1[i] = f'HOMO - {N_homo}'
-            if N_homo == 0:
-                state_rowlabels_1[i] = 'HOMO'
-            N_homo = N_homo + 1
-
-    state_array_1 = np.delete(state_array_1, 2, 1)
-    state_table_0 = matrixtable(state_array_0,
-                                digits=None,
-                                title='Orbital',
-                                columnlabels=['Symmetry',
-                                              'Spin',
-                                              # 'Accuracy',
-                                              'Localization ratio',
-                                              'Energy [eV]'],
-                                rowlabels=state_rowlabels_0)
-    state_table_1 = matrixtable(state_array_1,
-                                digits=None,
-                                title='Orbital',
-                                columnlabels=['Symmetry',
-                                              'Spin',
-                                              # 'Accuracy',
-                                              'Localization ratio',
-                                              'Energy [eV]'],
-                                rowlabels=state_rowlabels_1)
-
-    return state_table_0, state_table_1
+    return state_array, rowlabels
 
 
-def get_state_table(state_results, vbm, cbm, row):
-    import numpy as np
-    from asr.database.browser import (matrixtable, table,
-        describe_entry)
-
-    data = row.data.get('results-asr.defect_symmetry.json')
+def get_symmetry_tables(state_results, vbm, cbm, row, style):
+    state_tables = []
     gsdata = row.data.get('results-asr.gs.json')
     eref = row.data.get('results-asr.get_wfs.json')['eref']
     ef = gsdata['efermi'] - eref
 
-    Nrows = len(state_results)
-    state_array = np.empty((Nrows, 2), dtype='object')
-    state_rowlabels_0 = []
-    state_rowlabels_1 = []
-    state_spins_0 = []
-    state_energies_0 = []
-    state_spins_1 = []
-    state_energies_1 = []
-    print(vbm, cbm)
-    for i, row in enumerate(state_array):
-        rowname = f"{int(state_results[i]['state']):.0f}"
-        if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
-            if int(state_results[i]['spin']) == 0:
-                state_rowlabels_0.append(rowname)
-                state_spins_0.append(f"{int(state_results[i]['spin']):.0f}")
-                state_energies_0.append(f"{state_results[i]['energy']:.2f}")
-            elif int(state_results[i]['spin']) == 1:
-                state_rowlabels_1.append(rowname)
-                state_spins_1.append(f"{int(state_results[i]['spin']):.0f}")
-                state_energies_1.append(f"{state_results[i]['energy']:.2f}")
-    Nrows_0 = len(state_rowlabels_0)
-    Nrows_1 = len(state_rowlabels_1)
-    state_array_0 = np.empty((Nrows_0, 2), dtype='object')
-    state_rowlabels_0.sort(reverse=True)
-    state_array_1 = np.empty((Nrows_1, 2), dtype='object')
-    state_rowlabels_1.sort(reverse=True)
-    for i in range(Nrows_0):
-        state_array_0[i, 0] = state_spins_0[i]
-        state_array_0[i, 1] = state_energies_0[i]
-    state_array_0 = state_array_0[state_array_0[:, 1].argsort()]
-    for i in range(Nrows_1):
-        state_array_1[i, 0] = state_spins_1[i]
-        state_array_1[i, 1] = state_energies_1[i]
-    state_array_1 = state_array_1[state_array_1[:, 1].argsort()]
+    E_hls = []
+    for spin in range(2):
+        state_array, rowlabels = get_matrixtable_array(
+            state_results, vbm, cbm, ef, spin, style)
+        if style == 'symmetry':
+            delete = [2]
+            columnlabels = ['Symmetry',
+                            # 'Spin',
+                            'Localization ratio',
+                            'Energy']
+        elif style == 'state':
+            delete = [0, 2, 3]
+            columnlabels = [  # 'Spin',
+                'Energy']
 
-    N_homo = 0
-    N_lumo = 0
-    for i in range(len(state_array_0)):
-        if float(state_array_0[i, 1]) > ef:
-            N_lumo += 1
+        N_homo = 0
+        N_lumo = 0
+        for i in range(len(state_array)):
+            if float(state_array[i, 4]) > ef:
+                N_lumo += 1
 
-    E_homo = vbm
-    E_lumo = cbm
-    for i in range(len(state_array_0)):
-        if float(state_array_0[i, 1]) > ef:
-            state_rowlabels_0[i] = f'LUMO + {N_lumo - 1}'
-            N_lumo = N_lumo - 1
-            if N_lumo == 0:
-                state_rowlabels_0[i] = 'LUMO'
-                E_lumo = float(state_array_0[i, 1])
-        elif float(state_array_0[i, 1]) <= ef:
-            state_rowlabels_0[i] = f'HOMO - {N_homo}'
-            if N_homo == 0:
-                state_rowlabels_0[i] = 'HOMO'
-                E_homo = float(state_array_0[i, 1])
-            N_homo = N_homo + 1
-    E_hl_0 = E_lumo - E_homo
+        E_homo = vbm
+        E_lumo = cbm
+        for i in range(len(state_array)):
+            if float(state_array[i, 4]) > ef:
+                rowlabels[i] = f'LUMO + {N_lumo - 1}'
+                N_lumo = N_lumo - 1
+                if N_lumo == 0:
+                    rowlabels[i] = 'LUMO'
+                    E_lumo = float(state_array[i, 4])
+            elif float(state_array[i, 4]) <= ef:
+                rowlabels[i] = f'HOMO — {N_homo}'
+                if N_homo == 0:
+                    rowlabels[i] = 'HOMO'
+                    E_homo = float(state_array[i, 4])
+                N_homo = N_homo + 1
+        E_hl = E_lumo - E_homo
+        E_hls.append(E_hl)
 
-    N_homo = 0
-    N_lumo = 0
-    for i in range(len(state_array_1)):
-        if float(state_array_1[i, 1]) > ef:
-            N_lumo += 1
+        state_array = np.delete(state_array, delete, 1)
+        headerlabels = [f'Orbitals in spin channel {spin}',
+                        *columnlabels]
 
-    E_homo = vbm
-    E_lumo = cbm
-    for i in range(len(state_array_1)):
-        if float(state_array_1[i, 1]) > ef:
-            state_rowlabels_1[i] = f'LUMO + {N_lumo - 1}'
-            N_lumo = N_lumo - 1
-            if N_lumo == 0:
-                state_rowlabels_1[i] = 'LUMO'
-                E_lumo = float(state_array_1[i, 1])
-        elif float(state_array_1[i, 1]) <= ef:
-            state_rowlabels_1[i] = f'HOMO - {N_homo}'
-            if N_homo == 0:
-                state_rowlabels_1[i] = 'HOMO'
-                E_homo = float(state_array_1[i, 1])
-            N_homo = N_homo + 1
-    E_hl_1 = E_lumo - E_homo
+        rows = []
+        state_table = {'type': 'table',
+                       'header': headerlabels}
+        for i in range(len(state_array)):
+            if style == 'symmetry':
+                rows.append((rowlabels[i],
+                             # state_array[i, 0],
+                             state_array[i, 1],
+                             describe_entry(state_array[i, 2],
+                                            'The localization ratio is defined as the '
+                                            'volume of the cell divided by the integral'
+                                            ' of the fourth power of the '
+                                            'wavefunction.'),
+                             f'{state_array[i, 3]} eV'))
+            elif style == 'state':
+                rows.append((rowlabels[i],
+                             # state_array[i, 0],
+                             f'{state_array[i, 1]} eV'))
 
-    state_table_0 = matrixtable(state_array_0,
-                                digits=None,
-                                title='Orbital',
-                                columnlabels=['Spin',
-                                              'Energy [eV]'],
-                                rowlabels=state_rowlabels_0)
-    state_table_1 = matrixtable(state_array_1,
-                                digits=None,
-                                title='Orbital',
-                                columnlabels=['Spin',
-                                              'Energy [eV]'],
-                                rowlabels=state_rowlabels_1)
+        state_table['rows'] = rows
+        state_tables.append(state_table)
 
-    transition_table = table(row, 'Kohn-Sham HOMO-LUMO gap', [])
-    transition_table['rows'].extend(
-        [[describe_entry('Spin 0',
-                         'KS HOMO-LUMO gap for spin 0 channel.'),
-          f'{E_hl_0:.2f} eV']])
-    transition_table['rows'].extend(
-        [[describe_entry('Spin 1',
-                         'KS HOMO-LUMO gap for spin 1 channel.'),
-          f'{E_hl_1:.2f} eV']])
+    transition_table = get_transition_table(row, E_hls)
 
-    return state_table_0, state_table_1, transition_table
+    return state_tables, transition_table
+
+
+def get_transition_table(row, E_hls):
+    """Create table for HOMO-LUMO transition in both spin channels."""
+    from asr.database.browser import table
+
+    transition_table = table(row, 'Kohn—Sham HOMO—LUMO gap', [])
+    for i, element in enumerate(E_hls):
+        transition_table['rows'].extend(
+            [[describe_entry(f'Spin {i}',
+                             f'KS HOMO—LUMO gap for spin {i} channel.'),
+              f'{element:.2f} eV']])
+
+    return transition_table
+
+
+def get_summary_table(result, row):
+    from asr.database.browser import table
+    from asr.structureinfo import get_spg_href, describe_pointgroup_entry
+
+    spglib = get_spg_href('https://spglib.github.io/spglib/')
+    basictable = table(row, 'Defect properties', [])
+    pg_string = result.defect_pointgroup
+    pg_strlist = list(pg_string)
+    sub = ''.join(pg_strlist[1:])
+    pg_string = f'{pg_strlist[0]}<sub>{sub}</sub>'
+    pointgroup = describe_pointgroup_entry(spglib)
+    basictable['rows'].extend(
+        [[pointgroup, pg_string]])
+
+    return basictable
 
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import (WebPanel,
                                       describe_entry,
-                                      table,
-                                      matrixtable,
-                                      fig,
-                                      href)
-
-    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
-
-    eref = row.data.get('results-asr.get_wfs.json')['eref']
-    gsdata = row.data.get('results-asr.gs.json')
-    ef = gsdata['efermi'] - eref
-
-    basictable = table(row, 'Defect properties', [])
-    pg_string = result.defect_pointgroup
-    pg_strlist = split(pg_string)
-    sub = ''.join(pg_strlist[1:])
-    pg_string = f'{pg_strlist[0]}<sub>{sub}</sub>'
-    basictable['rows'].extend(
-        [[describe_entry('Point group',
-                         f'The defect point group is calculated with {spglib}.'),
-          pg_string]])
+                                      fig)
 
     description = describe_entry('One-electron states', panel_description)
+    basictable = get_summary_table(result, row)
 
     vbm = result.pristine['vbm']
     cbm = result.pristine['cbm']
-    # adjust = compute_offset(result.symmetries, vbm, cbm, ef)
-    # vbm = vbm + adjust
-    # cbm = cbm + adjust
     if result.symmetries[0]['best'] is None:
-        print('WARNING: no symmetry analysis for this defect present. Only plot '
-              'gapstates!')
-        state_table_0, state_table_1, transition_table = get_state_table(
-            result.symmetries, vbm, cbm, row)
-        if len(state_table_0['rows']) > 1 and len(state_table_1['rows']) > 1:
-            panel = WebPanel(description,
-                             columns=[[state_table_0, fig('ks_gap.png')], [state_table_1,
-                                                            transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-        elif len(state_table_0['rows']) == 1 and len(state_table_1['rows']) > 1:
-            panel = WebPanel(description,
-                             columns=[[fig('ks_gap.png')], [state_table_1,
-                                                            transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-        elif len(state_table_1['rows']) == 1 and len(state_table_0['rows']) > 1:
-            panel = WebPanel(description,
-                             columns=[[state_table_0, fig('ks_gap.png')], [transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-        else:
-            panel = WebPanel(description,
-                             columns=[[fig('ks_gap.png')], [transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-
+        warnings.warn("no symmetry analysis present for this defect. "
+                      "Only plot gapstates!", UserWarning)
+        style = 'state'
     else:
-        state_table_0, state_table_1, transition_table = get_state_table(
-            result.symmetries, vbm, cbm, row)
-        symmetry_table_0, symmetry_table_1 = get_symmetry_table(
-            result.symmetries, vbm, cbm, row)
-        if len(symmetry_table_0['rows']) > 1 and len(symmetry_table_1['rows']) > 1:
-            panel = WebPanel(description,
-                             columns=[[symmetry_table_0,
-                                       fig('ks_gap.png')],
-                                      [symmetry_table_1,
-                                       transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-        elif len(symmetry_table_0['rows']) == 1 and len(symmetry_table_1['rows']) > 1:
-            panel = WebPanel(description,
-                             columns=[[fig('ks_gap.png')],
-                                      [symmetry_table_1, transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-        elif len(symmetry_table_1['rows']) == 1 and len(symmetry_table_0['rows']) > 1:
-            panel = WebPanel(description,
-                             columns=[[symmetry_table_0,
-                                       fig('ks_gap.png')],
-                                      [transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
-        else:
-            panel = WebPanel(description,
-                             columns=[[fig('ks_gap.png')], [transition_table]],
-                             plot_descriptions=[{'function': plot_gapstates,
-                                                 'filenames': ['ks_gap.png']}],
-                             sort=30)
+        style = 'symmetry'
 
+    state_tables, transition_table = get_symmetry_tables(
+        result.symmetries, vbm, cbm, row, style=style)
+    panel = WebPanel(description,
+                     columns=[[state_tables[0],
+                               fig('ks_gap.png')],
+                              [state_tables[1], transition_table]],
+                     plot_descriptions=[{'function': plot_gapstates,
+                                         'filenames': ['ks_gap.png']}],
+                     sort=30)
 
     summary = {'title': 'Summary',
-               'columns': [[basictable], []],
+               'columns': [[basictable, transition_table], []],
                'sort': 2}
 
     return [panel, summary]
@@ -442,18 +292,26 @@ class Result(ASRResult):
 
 
 @command(module='asr.defect_symmetry',
-         requires=['structure.json', 'unrelaxed.json',
-                   '../../unrelaxed.json'],
+         requires=['structure.json'],
          dependencies=['asr.get_wfs'],
-         resources='1:1h',
+         resources='1:6h',
          returns=Result)
+@option('--primitivefile', help='Path to the primitive structure file.',
+        type=str)
+@option('--pristinefile', help='Path to the pristine supercell file'
+        '(needs to be of the same shape as structure.json).', type=str)
+@option('--unrelaxedfile', help='Path to an the unrelaxed '
+        'supercell file (only needed if --mapping is set).', type=str)
 @option('--mapping/--no-mapping', help='Choose mapping if defect '
         'supercells are created with the general algorithm of '
         'asr.setup.defects, or if non-uniform supercells are used.'
         ' Use --no-mapping otherwise.', is_flag=True)
 @option('--radius', help='Radius around the defect where the wavefunction '
         'gets analyzed.', type=float)
-def main(mapping: bool = False,
+def main(primitivefile: str = 'primitive.json',
+         pristinefile: str = 'pristine.json',
+         unrelaxedfile: str = 'NO',
+         mapping: bool = False,
          radius: float = 2.0) -> Result:
     """
     Analyze defect wavefunctions and their symmetries.
@@ -463,13 +321,25 @@ def main(mapping: bool = False,
     run asr.get_wfs beforehand to write out the needed wavefunctions.
     """
     from ase.io.cube import read_cube_data
+    from gpaw import restart
     from gpaw.point_groups import SymmetryChecker, point_group_names
 
-    # define path of the current directory
-    defect = Path('.')
+    # define path of the current directory, and initialize DefectInfo class
+    defectdir = Path('.')
+    defectinfo = DefectInfo(defectpath=defectdir)
 
-    # check whether input is correct and return important structures
-    structure, unrelaxed, primitive, pristine = check_and_return_input()
+    # everything where files are handled: input structures, wf_results,
+    # calculator and cubefilepaths
+    structurefile = 'structure.json'
+    structure, unrelaxed, primitive, pristine = check_and_return_input(
+        structurefile, unrelaxedfile, primitivefile, pristinefile)
+    wf_result = read_json('results-asr.get_wfs.json')
+    pris_result = get_pristine_result()
+    atoms, calc = restart('gs.gpw', txt=None)
+    cubefilepaths = list(defectdir.glob('*.cube'))
+    if len(cubefilepaths) == 0:
+        raise FileNotFoundError('WARNING: no cube files available in this '
+                                'folder!')
 
     # construct mapped structure, or return relaxed defect structure in
     # case mapping is not needed
@@ -478,118 +348,163 @@ def main(mapping: bool = False,
                                                 unrelaxed,
                                                 primitive,
                                                 pristine,
-                                                defect)
+                                                defectinfo)
     else:
-        mapped_structure = read('structure.json')
+        mapped_structure = structure.copy()
 
     # return point group of the defect structure
     point_group = get_spg_symmetry(mapped_structure)
+    print(f'INFO: point group of the defect: {point_group}')
 
-    # evaluate coordinates of defect in the supercell
-    defecttype, defectpos = get_defect_info(primitive, defect)
-    defectname = defecttype + '_' + defectpos
-    center = return_defect_coordinates(structure,
-                                       unrelaxed,
-                                       primitive,
-                                       pristine,
-                                       defect)
-    print(f'INFO: defect position: {center}, structural symmetry: {point_group}')
-
-    # return pristine results to visualise wavefunctions within the gap
-    pris_result = get_pristine_result()
-
-    # read in cubefiles of the wavefunctions
-    cubefiles = list(defect.glob('*.cube'))
-    if len(cubefiles) == 0:
-        raise FileNotFoundError('WARNING: no cube files available in this '
-                                'folder!')
-
-    # check whether point group is implemented in GPAW, return results
-    # without symmetry analysis if it is not implmented
+    # loop over cubefiles to save symmetry results
     symmetry_results = []
-    if point_group not in point_group_names:
-        print(f'WARNING: point group {point_group} not implemented in GPAW. '
-              'Return results without symmetry analysis of the wavefunctions.')
-        for wf_file in cubefiles:
-            spin = str(wf_file)[str(wf_file).find('_') + 1]
-            band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
-            res_wf = find_wf_result(band, spin)
-            energy = res_wf['energy']
-            wf, atoms = read_cube_data(str(wf_file))
-            localization = get_localization_ratio(atoms, wf)
+    centers = []
+    for cubefilepath in cubefilepaths:
+        cubefilename = str(cubefilepath)
+        wfcubefile = WFCubeFile.fromfilename(cubefilename)
+        # read cubefile and atoms
+        wf, atoms = read_cube_data(wfcubefile.filename)
+        # calculate localization ratio
+        localization = get_localization_ratio(atoms, wf, calc)
+        # evaluate defect center
+        Ngrid = calc.get_number_of_grid_points()
+        shift = [0.5, 0.5, 0]
+        dim = sum(atoms.pbc)
+        center = get_defect_center_from_wf(wf=wf, cell=atoms.cell, Ngrid=Ngrid,
+                                           shift=shift, dim=dim)
+        centers.append(center)
+        # extract WF results and energies
+        res_wf = find_wf_result(wf_result, wfcubefile.band, wfcubefile.spin)
+        energy = res_wf['energy']
+        # only evaluate 'best' and 'error' for knows point groups
+        if point_group in point_group_names:
+            # symmetry analysis only for point groups implemented in GPAW
+            checker = SymmetryChecker(point_group, center, radius=radius)
+            dct = checker.check_function(wf, (atoms.cell.T / wf.shape).T)
+            best = dct['symmetry']
+            error = (np.array(list(dct['characters'].values()))**2).sum()
+            irrep_results = []
+            for element in dct['characters']:
+                irrep_result = IrrepResult.fromdata(
+                    sym_name=element, sym_score=dct['characters'][element])
+                irrep_results.append(irrep_result)
+        # otherwise, set irrep results and 'best', 'error' to None
+        else:
             irrep_results = [IrrepResult.fromdata(
                 sym_name=None,
                 sym_score=None)]
-            symmetry_result = SymmetryResult.fromdata(irreps=irrep_results,
-                                                      best=None,
-                                                      error=None,
-                                                      loc_ratio=localization,
-                                                      state=band,
-                                                      spin=spin,
-                                                      energy=energy)
-            symmetry_results.append(symmetry_result)
-        return Result.fromdata(
-            defect_pointgroup=point_group,
-            defect_center=center,
-            defect_name=defectname,
-            symmetries=symmetry_results,
-            pristine=pris_result)
-
-    # symmetry analysis
-    checker = SymmetryChecker(point_group, center, radius=radius)
-
-    print('spin  band     norm    normcut     best    '
-          + ''.join(f'{x:8.3s}' for x in checker.group.symmetries) + 'error')
-
-    labels_up = []
-    labels_down = []
-
-    # read in calc once
-    atoms, calc = restart('gs.gpw', txt=None)
-
-    symmetry_results = []
-    for wf_file in cubefiles:
-        spin = str(wf_file)[str(wf_file).find('_') + 1]
-        band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
-        res_wf = find_wf_result(band, spin)
-        energy = res_wf['energy']
-
-        wf, atoms = read_cube_data(str(wf_file))
-        localization = get_localization_ratio(atoms, wf)
-
-        dct = checker.check_function(wf, (atoms.cell.T / wf.shape).T)
-        best = dct['symmetry']
-        norm = dct['norm']
-        normcut = dct['overlaps'][0]
-        error = (np.array(list(dct['characters'].values()))**2).sum()
-
-        print(f'{spin:6} {band:5} {norm:6.3f} {normcut:9.3f} {best:>8}'
-              + ''.join(f'{x:8.3f}' for x in dct['characters'].values())
-              + '{:9.3}'.format(error))
-
-        [labels_up, labels_down][0].append(best)
-
-        irrep_results = []
-        for element in dct['characters']:
-            irrep_result = IrrepResult.fromdata(sym_name=element,
-                                                sym_score=dct['characters'][element])
-            irrep_results.append(irrep_result)
+            best = None
+            error = None
 
         symmetry_result = SymmetryResult.fromdata(irreps=irrep_results,
                                                   best=best,
                                                   error=error,
                                                   loc_ratio=localization,
-                                                  state=band,
-                                                  spin=spin,
+                                                  state=wfcubefile.band,
+                                                  spin=wfcubefile.spin,
                                                   energy=energy)
         symmetry_results.append(symmetry_result)
 
+    defect_center = average_centers(centers)
+
     return Result.fromdata(
         defect_pointgroup=point_group,
-        defect_center=center,
-        defect_name=defectname,
+        defect_center=defect_center,
+        defect_name=defectinfo.defecttoken,
         symmetries=symmetry_results,
         pristine=pris_result)
+
+
+def average_centers(centers):
+    return np.average(centers, axis=0)
+
+
+def get_defect_center_from_wf(wf, cell, Ngrid, shift, dim):
+    """Extract defect center from individual wavefunction cubefile."""
+    if dim == 2:
+        midpoint = Ngrid[2] // 2
+        zrange = range(midpoint - 5, midpoint + 5)
+        print(f'WARNING: {dim}-dimensional structure read in. For the correct '
+              'extraction of the defect center, make sure that the structure '
+              'is centered along the z-direction of the cell.')
+    else:
+        zrange = range(Ngrid[2])
+    wf_array = get_gridpoints(cell=cell, Ngrid=Ngrid, shift=shift, zrange=zrange)
+    density = np.square(wf)
+    center = get_center_of_mass(wf_array, density, zrange)
+    center -= shift * cell.sum(axis=0)
+    # center = shift_positions(center_shifted, shift, cell, invert=True)
+
+    return center
+
+
+def get_total_mass(m, zrange):
+    """Calculate total mass of an array containing weights."""
+    mflat = m[:, :, zrange].flatten()
+    return np.sum(mflat)
+
+
+def get_center_of_mass(r, m, zrange):
+    """Calculate the center of set of positions r, and weights m."""
+    M = get_total_mass(m, zrange)
+    coords = [0, 0, 0]
+    for i in range(3):
+        rflat = r[:, :, zrange, i].flatten()
+        mflat = m[:, :, zrange].flatten()
+        smd = 0
+        for j in range(len(mflat)):
+            smd += mflat[j] * rflat[j]
+        coords[i] = smd
+
+    return coords / M
+
+
+def grid_generator(Ngrid, zrange):
+    """Yield generator looping over x-, y-, and z-grid."""
+    for x in range(Ngrid[0]):
+        for y in range(Ngrid[1]):
+            for z in zrange:
+                yield (x, y, z)
+
+
+def get_gridpoints(cell, Ngrid, shift, zrange):
+    """
+    Get an array of grid point coordinates shifted with 'shift'.
+
+    The shape of the array now matches the one containing the wave-
+    function weights.
+    """
+    fullgrid = [Ngrid[0], Ngrid[1], Ngrid[2], 3]
+    array = np.zeros(fullgrid)
+
+    lengths = [cell[i] / Ngrid[i] for i in range(3)]
+    max_iter_grid = np.prod(Ngrid[:2]) * len(zrange)
+    grid_indices = grid_generator(Ngrid, zrange)
+    for _ in range(max_iter_grid):
+        grid_tuple = next(grid_indices)
+        shifts = [grid_tuple[0] * lengths[0][i]
+                  + grid_tuple[1] * lengths[1][i]
+                  + grid_tuple[2] * lengths[2][i] for i in range(3)]
+        shifts += shift * cell.sum(axis=0)
+        # shifts = shift_positions(positions, shift, cell)
+        wrap = wrap_positions([shifts],
+                              cell)
+        if wrap[0][0] != shifts[0] or wrap[0][1] != shifts[1]:
+            newpos = wrap[0]
+        else:
+            newpos = shifts
+        for i in range(3):
+            array[grid_tuple[0], grid_tuple[1], grid_tuple[2], i] = newpos[i]
+
+    return array
+
+
+def get_spin_and_band(wf_file):
+    """Extract spin and band index from cube file name."""
+    spin = str(wf_file)[str(wf_file).find('_') + 1]
+    band = str(wf_file)[str(wf_file).find('.') + 1: str(wf_file).find('_')]
+
+    return int(spin), int(band)
 
 
 def get_pristine_result():
@@ -603,19 +518,12 @@ def get_pristine_result():
 
     try:
         p = Path('.')
-        # sc = str(p.absolute()).split('/')[-2].split('_')[1].split('.')[0]
-        # pristinelist = list(p.glob(f'./../../defects.pristine_sc.{sc}/'))
-        # pris_folder = pristinelist[0]
-        pris = list(p.glob('./../../defects.pristine_sc*'))[0]
+        pris = list(p.glob('./../../../defects.pristine_sc*/full_params'))[0]
         res_pris = read_json(pris / 'results-asr.gs.json')
-    except FileNotFoundError:
-        print('ERROR: does not find pristine results. Did you run setup.defects '
-              'and calculate the ground state for the pristine system?')
-
-    try:
-        read_json('results-asr.get_wfs.json')
-    except FileNotFoundError:
-        print('ERROR: does not find get_wfs results. Did you run asr.get_wfs? ')
+    except FileNotFoundError as err:
+        msg = ('ERROR: does not find pristine results. Did you run setup.defects '
+               'and calculate the ground state for the pristine system?')
+        raise RuntimeError(msg) from err
 
     ref_pris = res_pris['evac']
     if ref_pris is None:
@@ -627,15 +535,18 @@ def get_pristine_result():
         gap=res_pris['gap'])
 
 
-def get_localization_ratio(atoms, wf):
+def get_localization_ratio(atoms, wf, calc):
     """
     Return the localization ratio of the wavefunction.
 
     It is defined as the volume of the cell divided the
     integral of the fourth power of the wavefunction.
     """
-    grid_vectors = (atoms.cell.T / wf.shape).T
-    dv = abs(np.linalg.det(grid_vectors))
+    assert wf.size == np.prod(calc.wfs.gd.N_c), (
+        'grid points in wf cube file and calculator '
+        'are not the same!')
+
+    dv = atoms.cell.volume / wf.size
     V = atoms.get_volume()
 
     IPR = 1 / ((wf**4).sum() * dv)
@@ -644,121 +555,84 @@ def get_localization_ratio(atoms, wf):
     return local_ratio
 
 
-def find_wf_result(state, spin):
+def find_wf_result(wf_result, state, spin):
     """Read in results of asr.get_wfs and returns WaveFunctionResult."""
-    res = read_json('results-asr.get_wfs.json')
-    wfs = res['wfs']
+    wfs = wf_result['wfs']
     for wf in wfs:
-        if int(wf['state']) == int(state) and int(wf['spin']) == int(spin):
+        if wf['state'] == state and wf['spin'] == spin:
             return wf
 
-    print('ERROR: wf result to given wavefunction file not found! Make sure that '
-          'you have consitent wavefunctions or delete old wavefunctions and rerun'
-          ' asr.get_wfs.')
     raise Exception('ERROR: can not find corresponging wavefunction result for '
                     f'wavefunction no. {state}/{spin}!')
-    return None
 
 
-def get_mapped_structure(structure, unrelaxed, primitive, pristine, defect):
+def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     """Return centered and mapped structure."""
-    import numpy as np
-    for delta in [0, 0.03, 0.05, 0.1, -0.03, -0.05, -0.1]:
-        for cutoff in np.arange(0.1, 0.8, 0.04):
-            threshold = 0.99
-            translation = return_defect_coordinates(structure, unrelaxed, primitive,
-                                                    pristine, defect)
-            rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(
-                structure,
-                unrelaxed,
-                primitive,
-                pristine,
-                translation,
-                delta)
-            indexlist = compare_structures(artificial, ref_struc, cutoff)
-            ref_struc = remove_atoms(ref_struc, indexlist)
-            rel_struc = remove_atoms(rel_struc, indexlist)
-            indexlist = indexlist_cut_atoms(ref_struc, threshold)
-            ref_struc = remove_atoms(ref_struc, indexlist)
-            rel_struc = remove_atoms(rel_struc, indexlist)
-            if not conserved_atoms(ref_struc, primitive, N, defect):
-                threshold = 1.01
-                rel_struc, ref_struc, artificial, cell, N = recreate_symmetric_cell(
-                    structure,
-                    unrelaxed,
-                    primitive,
-                    pristine,
-                    translation,
-                    delta)
-                indexlist = compare_structures(artificial, ref_struc, cutoff)
-                ref_struc = remove_atoms(ref_struc, indexlist)
-                rel_struc = remove_atoms(rel_struc, indexlist)
-                indexlist = indexlist_cut_atoms(ref_struc, threshold)
-                ref_struc = remove_atoms(ref_struc, indexlist)
-                rel_struc = remove_atoms(rel_struc, indexlist)
-            if conserved_atoms(ref_struc, primitive, N, defect):
-                break
-        if conserved_atoms(ref_struc, primitive, N, defect):
-            break
-    if not conserved_atoms(ref_struc, primitive, N, defect):
-        raise ValueError('number of atoms wrong in {}! Mapping not correct!'.format(
-            defect.absolute()))
+    Nvac = defectinfo.number_of_vacancies
+    translation = return_defect_coordinates(pristine, defectinfo)
+    rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
+        structure, unrelaxed, primitive, pristine, translation, delta=0)
+    for delta in [0.1, 0.3]:
+        # for cutoff in [0.01, 0.03, 0.1]:
+        for cutoff in np.arange(0.1, 1.2, 0.5):
+            rel_tmp = rel_struc.copy()
+            ref_tmp = ref_struc.copy()
+            art_tmp = art_struc.copy()
+            rel_tmp = apply_shift(rel_tmp, delta)
+            ref_tmp = apply_shift(ref_tmp, delta)
+            art_tmp = apply_shift(art_tmp, delta)
+            indexlist = compare_structures(art_tmp, ref_tmp, cutoff)
+            del ref_tmp[indexlist]
+            del rel_tmp[indexlist]
+            for threshold in [1.05, 1.01, 0.99]:
+                indexlist = indexlist_cut_atoms(ref_tmp, threshold)
+                del ref_tmp[indexlist]
+                del rel_tmp[indexlist]
+                if conserved_atoms(ref_tmp, primitive, N, Nvac):
+                    print(f'Parameters: delta {delta}, '
+                          f'cutoff {cutoff}, threshold {threshold}')
+                    return rel_tmp
 
-    return rel_struc
+    raise ValueError('number of atoms wrong! Mapping not correct!')
 
 
 def get_spg_symmetry(structure, symprec=0.1):
     """Return the symmetry of a given structure evaluated with spglib."""
-    import spglib as spg
-
     spg_sym = spg.get_spacegroup(structure, symprec=symprec, symbol_type=1)
 
     return spg_sym.split('^')[0]
 
 
-def conserved_atoms(ref_struc, primitive, N, defectpath):
+def conserved_atoms(ref_struc, primitive, N, Nvac):
     """Return whether number of atoms is correct after the mapping or not."""
-    if (is_vacancy(defectpath) and len(ref_struc) != (N * N * len(primitive) - 1)):
-        return False
-    elif (not is_vacancy(defectpath) and len(ref_struc) != (N * N * len(primitive))):
-        return False
-    else:
-        print('INFO: number of atoms correct in {}'.format(
-            defectpath.absolute()))
+    if len(ref_struc) == (N * N * len(primitive) - Nvac):
+        print('INFO: number of atoms correct after mapping.')
         return True
-
-
-def remove_atoms(structure, indexlist):
-    indices = np.array(indexlist)
-    indices = np.sort(indices)[::-1]
-    for element in indices:
-        structure.pop(element)
-    return structure
+    else:
+        return False
 
 
 def indexlist_cut_atoms(structure, threshold):
     indexlist = []
+    pos = structure.get_scaled_positions(wrap=False)
     for i in range(len(structure)):
-        pos = structure.get_scaled_positions()[i]
         # save indices that are outside the new cell
-        if abs(max(pos) > threshold) or min(pos) < -0.01:
+        if abs(max(pos[i]) > threshold) or min(pos[i]) < 1 - threshold:
             indexlist.append(i)
 
     return indexlist
 
 
-def compare_structures(artificial, unrelaxed_rattled, cutoff):
-    indexlist = []
+def compare_structures(ref_atoms, atoms, cutoff):
+    from ase.neighborlist import neighbor_list
+
+    tmp_atoms = atoms + ref_atoms
+    nl = neighbor_list('i', tmp_atoms, cutoff=cutoff)
     rmindexlist = []
-    for i in range(len(unrelaxed_rattled)):
-        for j in range(len(artificial)):
-            if (abs(max((artificial.get_positions()[j]
-                         - unrelaxed_rattled.get_positions()[i]))) < cutoff
-               and i not in indexlist):
-                indexlist.append(i)
-    for i in range(len(unrelaxed_rattled)):
-        if i not in indexlist:
+    for i in range(len(atoms)):
+        if i not in nl:
             rmindexlist.append(i)
+
     return rmindexlist
 
 
@@ -781,30 +655,45 @@ def recreate_symmetric_cell(structure, unrelaxed, primitive, pristine,
     scell = structure.get_cell()
 
     # create intermediate big structure for the relaxed structure
-    bigatoms_rel = structure.repeat((5, 5, 1))
-    positions = bigatoms_rel.get_positions()
+    rel_struc = structure.repeat((5, 5, 1))
+    positions = rel_struc.get_positions()
     positions += [-translation[0], -translation[1], 0]
     positions += -2.0 * scell[0] - 1.0 * scell[1]
-    positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
-    kinds = bigatoms_rel.get_chemical_symbols()
-    rel_struc = Atoms(symbols=kinds, positions=positions, cell=cell)
+    # positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
+    rel_struc.set_positions(positions)
+    rel_struc.set_cell(cell)
 
     # create intermediate big structure for the unrelaxed structure
-    bigatoms_rel = unrelaxed.repeat((5, 5, 1))
-    positions = bigatoms_rel.get_positions()
+    ref_struc = unrelaxed.repeat((5, 5, 1))
+    positions = ref_struc.get_positions()
     positions += [-translation[0], -translation[1], 0]
     positions += -2.0 * scell[0] - 1.0 * scell[1]
-    positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
-    kinds = bigatoms_rel.get_chemical_symbols()
-    ref_struc = Atoms(symbols=kinds, positions=positions, cell=cell)
+    # positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
+    ref_struc.set_positions(positions)
+    ref_struc.set_cell(cell)
 
     refpos = reference.get_positions()
     refpos += [-translation[0], -translation[1], 0]
-    refpos += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
+    # refpos += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
     reference.set_positions(refpos)
     reference.wrap()
 
-    return rel_struc, ref_struc, reference, cell, N
+    return rel_struc, ref_struc, reference, N
+
+
+def apply_shift(atoms, delta=0):
+    newatoms = atoms.copy()
+    positions = newatoms.get_positions()
+    cell = newatoms.cell
+    positions += (0.5 + delta) * cell[0] + (0.5 + delta) * cell[1]
+    newatoms.set_positions(positions)
+    # scaled_delta = delta / np.mean(atoms.cell.lengths()[:2])
+    # newatoms = atoms.copy()
+    # spos = newatoms.get_scaled_positions()
+    # spos[:2] += 0.5 + scaled_delta
+    # newatoms.set_scaled_positions(spos)
+
+    return newatoms
 
 
 def get_supercell_shape(primitive, pristine):
@@ -819,61 +708,130 @@ def get_supercell_shape(primitive, pristine):
     reconstruct = reconstruct.repeat((N, N, 1))
     rcell = reconstruct.get_cell()
     pcell = pristine.get_cell()
-    if rcell[1, 1] > pcell[1, 1]:
-        N -= 1
-    return N
+
+    for size in range(N, 0, -1):
+        suits = True
+        reconstruct = primitive.repeat((size, size, 1))
+        rcell = reconstruct.get_cell()
+        for i in range(3):
+            if rcell[i, i] > pcell[i, i]:
+                suits = False
+                break
+        if suits:
+            return size
+
+    return size
 
 
-def is_vacancy(defectpath):
-    """Check whether current defect is a vacancy."""
-    try:
-        defecttype = str(defectpath.absolute()).split(
-            '/')[-2].split('_')[-2].split('.')[-1]
-        if defecttype == 'v':
-            return True
+class WFCubeFile:
+    """Class containing functionalities about WFs and file I/O."""
+
+    def __init__(self, spin, band, wf_data=None, calc=None):
+        self.spin = spin
+        assert spin in [0, 1], 'spin can only be zero or one!'
+        self.band = band
+        assert band >= 0, 'negative band indices are not allowed!'
+        self.wf_data = wf_data
+        self.calc = calc
+
+    @classmethod
+    def fromfilename(cls, filename):
+        band_spin = filename.split('.')[1]
+        band = int(band_spin.split('_')[0])
+        spin = int(band_spin.split('_')[1])
+
+        return cls(spin=spin, band=band)
+
+    @property
+    def filename(self):
+        return f'wf.{self.band}_{self.spin}.cube'
+
+    def write_to_cubefile(self):
+        from ase.io import write
+
+        assert (self.wf_data is not None and self.calc is not None), (
+            'calculator and wavefunction data needed to write cubefile!')
+
+        write(self.filename, self.calc.atoms, data=self.wf_data)
+
+    def get_wavefunction_from_calc(self):
+        assert self.calc is not None, ('initialize WFCubeFile class with a '
+                                       'calculator to obtain wavefunction!')
+        wf = self.calc.get_pseudo_wave_function(band=self.band, spin=self.spin)
+        self.wf_data = wf
+
+
+class DefectInfo:
+    """Class containing all information about a specific defect."""
+
+    def __init__(self,
+                 defectpath=None,
+                 defecttoken=None):
+        assert not (defectpath is None and defecttoken is None), (
+            'either defectpath or defecttoken has to be given as input to the '
+            'DefectBuilder class!')
+        assert not (defectpath is not None and defecttoken is not None), (
+            'please give either defectpath or defecttoken as an input, not both!')
+        if defectpath is not None:
+            self.names, self.specs = self._defects_from_path_or_token(
+                defectpath=defectpath)
+            self.defecttoken = self._defect_token_from_path(defectpath)
+        elif defecttoken is not None:
+            self.names, self.specs = self._defects_from_path_or_token(
+                defecttoken=defecttoken)
+
+    def _defect_token_from_path(self, defectpath):
+        complete_defectpath = Path(defectpath.absolute())
+        dirname = complete_defectpath.parent.parent.name #Changed for dd folder structure _ks
+        return ".".join(dirname.split('.')[2:])
+
+    def _defects_from_path_or_token(self, defectpath=None, defecttoken=None):
+        """Return defecttype, and kind."""
+        if defectpath is not None:
+            complete_defectpath = Path(defectpath.absolute())
+            dirname = complete_defectpath.parent.parent.name #Changed for dd folder structure _ks
+            defecttoken = dirname.split('.')[2:]
+        elif defecttoken is not None:
+            defecttoken = defecttoken.split('.')
+        if len(defecttoken) >= 2:
+            defects = defecttoken[:-1]
+            specs_str = defecttoken[-1].split('-')
+            specs = [int(spec) for spec in specs_str]
         else:
-            return False
-    except IndexError:
-        return False
+            defects = defecttoken
+            specs = [0]
+
+        return defects, specs
+
+    def get_defect_type_and_kind_from_defectname(self, defectname):
+        tokens = defectname.split('_')
+        return tokens[0], tokens[1]
+
+    def is_vacancy(self, defectname):
+        return defectname.split('_')[0] == 'v'
+
+    def is_interstitial(self, defectname):
+        return defectname.split('_')[0] == 'i'
+
+    @property
+    def number_of_vacancies(self):
+        Nvac = 0
+        for name in self.names:
+            if self.is_vacancy(name):
+                Nvac += 1
+
+        return Nvac
 
 
-def get_defect_info(primitive, defectpath):
-    """Return defecttype, and kind."""
-    defecttype = str(defectpath.absolute()).split(
-        '/')[-2].split('_')[-2].split('.')[-1]
-    defectpos = str(defectpath.absolute()).split(
-        '/')[-2].split('_')[-1]
-
-    return defecttype, defectpos
-
-
-def return_defect_coordinates(structure, unrelaxed, primitive, pristine,
-                              defectpath):
+def return_defect_coordinates(pristine, defectinfo):
     """Return the coordinates of the present defect."""
-    deftype, defpos = get_defect_info(primitive, defectpath)
-    if not is_vacancy(defectpath):
-        for i in range(len(primitive)):
-            if not (primitive.get_chemical_symbols()[i]
-                    == structure.get_chemical_symbols()[i]):
-                label = i
-                break
-            else:
-                label = 0
-    elif is_vacancy(defectpath):
-        for i in range(len(primitive)):
-            if not (primitive.get_chemical_symbols()[i]
-                    == structure.get_chemical_symbols()[i]):
-                label = i
-                break
-            else:
-                label = 0
-
-    pos = pristine.get_positions()[label]
+    defect_index = defectinfo.specs[0]
+    pos = pristine.get_positions()[defect_index]
 
     return pos
 
 
-def draw_band_edge(energy, edge, color, offset=2, ax=None):
+def draw_band_edge(energy, edge, color, *, offset=2, ax):
     if edge == 'vbm':
         eoffset = energy - offset
         elabel = energy - offset / 2
@@ -884,45 +842,38 @@ def draw_band_edge(energy, edge, color, offset=2, ax=None):
     ax.plot([0, 1], [energy] * 2, color='black', zorder=1)
     ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color='grey', alpha=0.5)
     ax.text(0.5, elabel, edge.upper(), color='w', weight='bold', ha='center',
-            va='center')
-
-
-def split(word):
-    return [char for char in word]
+            va='center', fontsize=12)
 
 
 class Level:
     """Class to draw a single defect state level in the gap."""
 
-    def __init__(self, energy, size=0.05, ax=None):
+    def __init__(self, energy, spin, deg, off, size=0.05, ax=None):
         self.size = size
         self.energy = energy
         self.ax = ax
+        self.spin = spin
+        self.deg = deg
+        assert deg in [1, 2], ('only degeneracies up to two are '
+                               'implemented!')
+        self.off = off
+        self.relpos = self.get_relative_position(self.spin, self.deg, self.off)
 
-    def draw(self, spin, deg, off):
-        """Draw the defect state according to spin and degeneracy."""
-        xpos_deg = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]]
+    def get_relative_position(self, spin, deg, off):
+        """Set relative position of the level based on spin, degeneracy and offset."""
+        xpos_deg = [[2 / 12, 4 / 12], [8 / 12, 10 / 12]]
         xpos_nor = [1 / 4, 3 / 4]
         if deg == 2:
             relpos = xpos_deg[spin][off]
         elif deg == 1:
             relpos = xpos_nor[spin]
-        # if deg - 1:
-        #     relpos = [[1 / 8, 3 / 8], [5 / 8, 7 / 8]][off][spin]
-        # else:
-        #     relpos = [[1 / 4, [1 / 8, 3 / 8]],
-        #                [3 / 4, [5 / 8, 7 / 8]]][spin][deg - 1]
-        pos = [relpos - self.size, relpos + self.size]
-        self.relpos = relpos
-        self.spin = spin
-        self.deg = deg
-        self.off = off
 
-        if deg == 1:
-            self.ax.plot(pos, [self.energy] * 2, '-k')
+        return relpos
 
-        if deg == 2:
-            self.ax.plot(pos, [self.energy] * 2, '-k')
+    def draw(self):
+        """Draw the defect state according to spin and degeneracy."""
+        pos = [self.relpos - self.size, self.relpos + self.size]
+        self.ax.plot(pos, [self.energy] * 2, '-k')
 
     def add_occupation(self, length):
         """Draw an arrow if the defect state if occupied."""
@@ -937,94 +888,33 @@ class Level:
     def add_label(self, label, static=None):
         """Add symmetry label of the irrep of the point group."""
         shift = self.size / 5
-        labelcolor ='C3'
+        labelcolor = 'C3'
         if static is None:
             labelstr = label.lower()
-            splitstr = split(labelstr)
+            splitstr = list(labelstr)
             if len(splitstr) == 2:
                 labelstr = f'{splitstr[0]}$_{splitstr[1]}$'
         else:
             labelstr = 'a'
+
         if (self.off == 0 and self.spin == 0):
-            self.ax.text(self.relpos - self.size - shift,
-                         self.energy,
-                         labelstr,
-                         va='center',
-                         ha='right',
-                         color=labelcolor)
+            xpos = self.relpos - self.size - shift
+            ha = 'right'
         if (self.off == 0 and self.spin == 1):
-            self.ax.text(self.relpos + self.size + shift,
-                         self.energy,
-                         labelstr,
-                         va='center',
-                         ha='left',
-                         color=labelcolor)
+            xpos = self.relpos + self.size + shift
+            ha = 'left'
         if (self.off == 1 and self.spin == 0):
-            self.ax.text(self.relpos - self.size - shift,
-                         self.energy,
-                         labelstr,
-                         va='center',
-                         ha='right',
-                         color=labelcolor)
+            xpos = self.relpos - self.size - shift
+            ha = 'right'
         if (self.off == 1 and self.spin == 1):
-            self.ax.text(self.relpos + self.size + shift,
-                         self.energy,
-                         labelstr,
-                         va='center',
-                         ha='left',
-                         color=labelcolor)
-
-
-def compute_offset(symmetrydata, evbm, ecbm, ef):
-    closelist = []
-    energylist_0 = []
-    energylist_1 = []
-    for sym in symmetrydata:
-        if int(sym.spin) == 0:
-            energylist_0.append(sym.energy)
-        elif int(sym.spin) == 1:
-            energylist_1.append(sym.energy)
-    energylist_0.sort()
-    energylist_1.sort()
-    energy = 0
-    for i, en in enumerate(energylist_0):
-        try:
-            if abs(en - energylist_0[i + 4]) < 0.3:
-                energy = energylist_0[i + 4]
-            else:
-                break
-        except:
-            continue
-    abovelist = []
-    belowlist = []
-    for element in energylist_0:
-        if element > ef:
-            abovelist.append(element)
-        elif element < ef:
-            belowlist.append(element)
-    if len(abovelist) == 0:
-        above = ecbm
-    else:
-        above = min(abovelist)
-    if len(belowlist) == 0:
-        below = evbm
-    else:
-        below = max(belowlist)
-    # if ef < ecbm and ef > evbm:
-    if energy != 0:
-        return energy - evbm
-    #     return 0
-    # else:
-    elif ef < evbm:
-        shift = evbm - ef + (above - ef) / 2
-        return energy - shift
-    elif ef > ecbm:
-        shift = ecbm - ef - (ef - below) / 2
-        return energy + shift
-    else:
-        return energy
-
-    # return 0
+            xpos = self.relpos + self.size + shift
+            ha = 'left'
+        self.ax.text(xpos,
+                     self.energy,
+                     labelstr,
+                     va='center', ha=ha,
+                     size=12,
+                     color=labelcolor)
 
 
 def plot_gapstates(row, fname):
@@ -1041,76 +931,17 @@ def plot_gapstates(row, fname):
     gap = data.pristine.gap
     eref = row.data.get('results-asr.get_wfs.json')['eref']
     ef = gsdata['efermi'] - eref
-    # adjust = compute_offset(data.data['symmetries'], evbm, ecbm, ef)
-    # evbm = evbm + adjust
-    # ecbm = ecbm + adjust
 
     # Draw band edges
     draw_band_edge(evbm, 'vbm', 'C0', offset=gap / 5, ax=ax)
     draw_band_edge(ecbm, 'cbm', 'C1', offset=gap / 5, ax=ax)
-    # Loop over eigenvalues to draw the level
 
-    degoffset = 0
-
-    if data.symmetries[0].best is None:
-        levelflag = False
-    else:
-        levelflag = True
-
-    # start with first spin channel
-    i = 0
-    for sym in data.data['symmetries']:
-        if int(sym.spin) == 0:
-            ene = sym.energy
-            if ene < ecbm and ene > evbm:
-                spin = int(sym.spin)
-                irrep = sym.best
-                if levelflag:
-                    deg = [1, 2]['E' in irrep]
-                else:
-                    deg = 1
-                    degoffset = 1
-                if deg == 2 and i == 0:
-                    degoffset = 0
-                    i = 1
-                elif deg == 2 and i == 1:
-                    degoffset = 1
-                    i = 0
-                lev = Level(ene, ax=ax)
-                lev.draw(spin=spin, deg=deg, off=degoffset)
-                if ene <= ef:
-                    lev.add_occupation(length=gap / 15.)
-                if levelflag:
-                    lev.add_label(irrep)
-                elif not levelflag:
-                    lev.add_label(irrep, 'A')
-    # start with first spin channel
-    i = 0
-    for sym in data.data['symmetries']:
-        if int(sym.spin) == 1:
-            ene = sym.energy
-            if ene < ecbm and ene > evbm:
-                spin = int(sym.spin)
-                irrep = sym.best
-                if levelflag:
-                    deg = [1, 2]['E' in irrep]
-                else:
-                    deg = 1
-                    degoffset = 1
-                if deg == 2 and i == 0:
-                    degoffset = 0
-                    i = 1
-                elif deg == 2 and i == 1:
-                    degoffset = 1
-                    i = 0
-                lev = Level(ene, ax=ax)
-                lev.draw(spin=spin, deg=deg, off=degoffset)
-                if ene <= ef:
-                    lev.add_occupation(length=gap / 15)
-                if levelflag:
-                    lev.add_label(irrep)
-                elif not levelflag:
-                    lev.add_label(irrep, 'A')
+    levelflag = data.symmetries[0].best is not None
+    # draw the levels with occupations, and labels for both spins
+    for spin in [0, 1]:
+        spin_data = get_spin_data(data, spin)
+        draw_levels_occupations_labels(ax, spin, spin_data, ecbm, evbm,
+                                       ef, gap, levelflag)
 
     ax1 = ax.twinx()
     ax.set_xlim(0, 1)
@@ -1118,33 +949,119 @@ def plot_gapstates(row, fname):
     ax1.set_ylim(evbm - gap / 5, ecbm + gap / 5)
     ax1.plot([0, 1], [ef] * 2, '--k')
     ax1.set_yticks([ef])
-    ax1.set_yticklabels([r'E$_\mathrm{F}$'])
+    ax1.set_yticklabels([r'$E_\mathrm{F}$'])
     ax.set_xticks([])
-    ax.set_ylabel(r'$E-E\mathrm{vac}$ [eV]')
+    ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
 
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
 
 
-def check_and_return_input():
-    """Check whether folder structure is correct and return input."""
-    pristinepath = list(Path('.').glob('../../defects.pristine*'))[0]
-    try:
-        pris_struc = read(pristinepath / 'structure.json')
-    except FileNotFoundError:
-        print('ERROR: pristine structure not available!')
-    try:
-        struc = read('structure.json')
-        unrel = read('unrelaxed.json')
-    except FileNotFoundError:
-        print('ERROR: defect structure(s) not available!')
-    try:
-        prim_unrel = read('../../unrelaxed.json')
-    except FileNotFoundError:
-        print('ERROR: primitive unrelaxed structure not available!')
+def get_spin_data(data, spin):
+    """Create symmetry result only containing entries for one spin channel."""
+    spin_data = []
+    for sym in data.data['symmetries']:
+        if int(sym.spin) == spin:
+            spin_data.append(sym)
 
-    return struc, unrel, prim_unrel, pris_struc
+    return spin_data
+
+
+def draw_levels_occupations_labels(ax, spin, spin_data, ecbm, evbm, ef,
+                                   gap, levelflag):
+    """Loop over all states in the gap and plot the levels.
+
+    This function loops over all states in the gap of a given spin
+    channel, and dravs the states with labels. If there are
+    degenerate states, it makes use of the degeneracy_counter, i.e. if two
+    degenerate states follow after each other, one of them will be drawn
+    on the left side (degoffset=0, degeneracy_counter=0), the degeneracy
+    counter will be increased by one and the next degenerate state will be
+    drawn on the right side (degoffset=1, degeneracy_counter=1). Since we
+    only deal with doubly degenerate states here, the degeneracy counter
+    will be set to zero again after drawing the second degenerate state.
+
+    For non degenerate states, i.e. deg = 1, all states will be drawn
+    in the middle and the counter logic is not needed.
+    """
+    # initialize degeneracy counter and offset
+    degeneracy_counter = 0
+    degoffset = 0
+    for sym in spin_data:
+        energy = sym.energy
+        is_inside_gap = evbm < energy < ecbm
+        if is_inside_gap:
+            spin = int(sym.spin)
+            irrep = sym.best
+            # only do drawing left and right if levelflag, i.e.
+            # if there is a symmetry analysis to evaluate degeneracies
+            if levelflag:
+                deg = [1, 2]['E' in irrep]
+            else:
+                deg = 1
+                degoffset = 1
+            # draw draw state on the left hand side
+            if deg == 2 and degeneracy_counter == 0:
+                degoffset = 0
+                degeneracy_counter = 1
+            # draw state on the right hand side, set counter to zero again
+            elif deg == 2 and degeneracy_counter == 1:
+                degoffset = 1
+                degeneracy_counter = 0
+            # intitialize and draw the energy level
+            lev = Level(energy, ax=ax, spin=spin, deg=deg,
+                        off=degoffset)
+            lev.draw()
+            # add occupation arrow if level is below E_F
+            if energy <= ef:
+                lev.add_occupation(length=gap / 15.)
+            # draw label based on irrep
+            if levelflag:
+                static = None
+            else:
+                static = 'A'
+            lev.add_label(irrep, static=static)
+
+
+def check_and_return_input(structurefile='', unrelaxedfile='NO',
+                           primitivefile='', pristinefile=''):
+    """Check whether all neccessary structures are available."""
+    if pristinefile != '':
+        try:
+            pristine = read(pristinefile)
+        except FileNotFoundError as err:
+            msg = 'ERROR: pristine structure not available! Check your inputs.'
+            raise RuntimeError(msg) from err
+    else:
+        pristine = None
+    if structurefile != '':
+        try:
+            structure = read(structurefile)
+        except FileNotFoundError as err:
+            msg = ('ERROR: relaxed defect structure not available! '
+                   'Check your inputs.')
+            raise RuntimeError(msg) from err
+    else:
+        structure = None
+    if primitivefile != '':
+        try:
+            primitive = read(primitivefile)
+        except FileNotFoundError as err:
+            msg = 'ERROR: primitive unrelaxed structure not available!'
+            raise RuntimeError(msg) from err
+    else:
+        primitive = None
+    if unrelaxedfile != 'NO':
+        try:
+            unrelaxed = read(unrelaxedfile)
+        except FileNotFoundError as err:
+            msg = 'ERROR: unrelaxed defect structure not available! Check your inputs.'
+            raise RuntimeError(msg) from err
+    else:
+        unrelaxed = None
+
+    return structure, unrelaxed, primitive, pristine
 
 
 if __name__ == '__main__':

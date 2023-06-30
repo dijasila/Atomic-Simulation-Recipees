@@ -571,7 +571,7 @@ def get_chemical_potentials(stoi, element, el_list):
     from asr.core import read_json
     from pathlib import Path
 
-    paths = list(Path('.').glob('../defects.*/charge_0/results-asr.sj_analyze.json'))
+    paths = list(Path('.').glob('../../defects.*/charge_0/full_params/results-asr.sj_analyze.json'))
     sj_res = read_json(paths[0])
     hof = sj_res['hof']
     sstates = {}
@@ -627,7 +627,7 @@ def adjust_formation_energies(defectdict, element):
 
 def get_stoichiometry():
     from ase.formula import Formula
-    atoms = read('../unrelaxed.json')
+    atoms = read('../../unrelaxed.json')
     w = Formula(atoms.get_chemical_formula())
 
     return w.count()
@@ -742,7 +742,7 @@ def return_defect_dict():
     from pathlib import Path
 
     p = Path('.')
-    charged_folders = list(p.glob('./../defects.*/charge_0/'))
+    charged_folders = list(p.glob('./../../defects.*/charge_0/full_params'))
     sjflag = False
 
     defect_dict = {}
@@ -750,7 +750,7 @@ def return_defect_dict():
         respath = Path(folder / 'results-asr.sj_analyze.json')
         if respath.is_file():
             res = read_json(respath)
-            defect_name = str(folder.absolute()).split('/')[-2].split('.')[-1]
+            defect_name = str(folder.absolute()).split('/')[-3].split('.')[-1]
             defect_dict[defect_name] = res['eform']
             sjflag = True
 
