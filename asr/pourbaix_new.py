@@ -29,7 +29,7 @@ def initialize_refs(refs_dct):
     return refs
 
 
-def get_solid_refs(material, db_name, energy_key):
+def get_solid_refs(material, db_name, energy_key, predef_energies):
     """Extract solid references in the compositional space
        of a given material from a database"""
     from ase.db import connect
@@ -48,7 +48,7 @@ def get_solid_refs(material, db_name, energy_key):
             name = ref.name
 
             if nspecies == 1:
-                energy_elem = PREDEF_ENERGIES.get(
+                energy_elem = predef_energies.get(
                     name,
                     energy / row.natoms
                 )
@@ -75,11 +75,21 @@ def get_solvated_refs(name):
     return ref_dct
 
 
-def get_references(material, db_name, computed_energy=None, include_aq=True, energy_key='energy'):
+def get_references(
+        material, db_name,
+        computed_energy=None,
+        include_aq=True,
+        energy_key='energy',
+        predef_energies=PREDEF_ENERGIES):
     from ase.phasediagram import solvated
 
+    if predef_energies is None:
+        predef_energies = {}
+
     species = Species(material)
-    refs, element_energies = get_solid_refs(species, db_name, energy_key)
+    refs, element_energies = get_solid_refs(
+            species, db_name, energy_key, predef_energies
+    )
     refs.update(get_solvated_refs(species.name))
 
     if computed_energy:
@@ -147,9 +157,10 @@ def edge_detection(array):
             ypair = (array[i, j], array[i, j+1])
             for pair in [xpair, ypair]:
                 if np.ptp(pair) != 0:
-                    edges_raw[pair].append([i, j])
+                    edges_raw[pair].append([i+1, j])
 
     for pair, values in edges_raw.items():
+        #TODO fix for vertical lines!
         varr = np.array(values)
         left = values[np.argmin(varr[:, 1])]
         right = values[np.argmax(varr[:, 1])]
@@ -519,11 +530,12 @@ def main(material: str):
         computed_energy=None,
         include_aq=True,
         energy_key='energy',
+        predef_energies=PREDEF_ENERGIES
     )
 
     phrange=[0, 14]
     urange=[-3, 3]    
-    pbx = Pourbaix(material, refs, conc=1e-24)
+    pbx = Pourbaix(material, refs, conc=1e-6)
     pbx.plot(urange, phrange, show=True)
 
 
