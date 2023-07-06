@@ -29,7 +29,7 @@ def initialize_refs(refs_dct):
     return refs
 
 
-def get_solid_refs(material, db_name):
+def get_solid_refs(material, db_name, energy_key):
     """Extract solid references in the compositional space
        of a given material from a database"""
     from ase.db import connect
@@ -43,7 +43,7 @@ def get_solid_refs(material, db_name):
         query_str = ",".join(subsys) + f',nspecies={nspecies}'
 
         for row in db.select(query_str):
-            energy = row.energy
+            energy = row[energy_key]
             ref = Species(row.formula)
             name = ref.name
 
@@ -75,11 +75,11 @@ def get_solvated_refs(name):
     return ref_dct
 
 
-def get_references(material, db_name, computed_energy=None, include_aq=True):
+def get_references(material, db_name, computed_energy=None, include_aq=True, energy_key='energy'):
     from ase.phasediagram import solvated
 
     species = Species(material)
-    refs, element_energies = get_solid_refs(species, db_name)
+    refs, element_energies = get_solid_refs(species, db_name, energy_key)
     refs.update(get_solvated_refs(species.name))
 
     if computed_energy:
@@ -427,8 +427,8 @@ class Pourbaix:
 
         ratio = np.ptp(Urange) / np.ptp(pHrange)
         ratio = figsize[1] / figsize[0]
-        pH = np.linspace(*pHrange, num=npoints, retstep=True)
-        U = np.linspace(*Urange, num=int(npoints))
+        pH = np.linspace(*pHrange, num=npoints)
+        U = np.linspace(*Urange, num=npoints)
 
         pour, meta, text = self.get_diagrams(U, pH)
         levels = np.unique(pour)
@@ -486,50 +486,47 @@ class Pourbaix:
         add_numbers(ax, text)
         add_text(ax, text, offset=0.05)
         add_redox_lines(ax, pH, 'w')
-        plt.show()
 
         return ax
 
-
-    '''
-    def plot(self, U, pH, 
-             cmap="RdYlGn",
-             cap=1.0,
+    def plot(self,
+             Urange, pHrange,
+             npoints=300,
              normalize=True,
-             savefig='pourbaix.png',
+             cap=1.0,
              figsize=[12, 6],
-             show=True):
+             cmap="RdYlGn_r",
+             savefig="pourbaix.png",
+             show=False):
 
-        ax = draw_diagram_axes(pour, meta, text, pH, U, 0.75, figsize, cmap)
-        add_text(ax, text, offset=0.05)
+        ax = self.draw_diagram_axes(
+             Urange, pHrange,
+             npoints, normalize,
+             cap, figsize, cmap)
 
         if savefig:
-            plt.savefig(savefig, dpi=300)
+            plt.savefig(savefig)
         if show:
             plt.show()
 
-        return ax
-    '''
 
-
-def main():
+def main(material: str):
     import matplotlib.pyplot as plt
 
-    material = 'TiO2'
     refs = get_references(
         material,
         '/home/niflheim/steame/utils/oqmd123.db',
         computed_energy=None,
-        include_aq=True
+        include_aq=True,
+        energy_key='energy',
     )
 
     phrange=[0, 14]
     urange=[-3, 3]    
     pbx = Pourbaix(material, refs, conc=1e-24)
-    pbx.draw_diagram_axes(urange, phrange)
-    
-
+    pbx.plot(urange, phrange, show=True)
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    main(sys.argv[1])
