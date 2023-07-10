@@ -294,6 +294,12 @@ class Species:
     def __repr__(self):
         return f'({self.name}, μ={self.mu})'
 
+    def __lt__(self, other):
+        return self.name < other.name
+
+    def __gt__(self, other):
+        return self.name > other.name
+
 
 class RedOx:
     def __init__(self, species, coeffs,
