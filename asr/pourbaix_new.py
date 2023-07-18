@@ -345,6 +345,9 @@ class RedOx:
             pH_corr += n_e * alpha
             if counter == 'Pt' and n_e < 0:
                 gibbs_corr +=  n_e * 0.5 * PREDEF_ENERGIES['H2O']
+        if counter == 'AgCl':
+            gibbs_corr -= n_e * 0.222
+
         return gibbs_corr, pH_corr
 
     def equation(self):
