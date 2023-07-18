@@ -1,9 +1,11 @@
+from collections import Counter
+from itertools import product, chain, combinations
+from typing import Union
+
 import numpy as np
 import matplotlib.pyplot as plt
-
-from collections import Counter
-from itertools import product, chain, combinations, permutations
 from sympy import Matrix
+
 from ase.units import kB
 from ase.formula import Formula
 
@@ -530,22 +532,24 @@ class Pourbaix:
             plt.show()
 
 
-def main(material: str):
-    import matplotlib.pyplot as plt
+def main(material: str,
+         computed_energy: float=None,
+         database: str='/home/niflheim2/cmr/databases/referencedatabases/oqmd123.db',
+         pHrange: Union[list, tuple]=[0, 14],
+         Urange: Union[list, tuple]=[-3, 3],
+         npoints: int=300):
 
     refs, name = get_references(
         material,
-        '/home/niflheim/steame/utils/oqmd123.db',
-        computed_energy=300,
+        database,
+        computed_energy,
         include_aq=True,
         energy_key='energy',
         predef_energies=PREDEF_ENERGIES
     )
 
-    phrange=[0, 14]
-    urange=[-3, 3]    
     pbx = Pourbaix(name, refs, conc=1e-6)
-    pbx.plot(urange, phrange, show=True)
+    pbx.plot(Urange, pHrange, npoints=npoints, show=True)
 
 
 if __name__ == '__main__':
