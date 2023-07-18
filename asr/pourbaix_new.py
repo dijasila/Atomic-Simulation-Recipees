@@ -102,7 +102,7 @@ def get_references(
             raise ValueError(\
                 f'Your material has not been found in {db_name}. '
                 f'Please provide a total energy for it!')
-    return refs
+    return refs, species.name
 
 
 def get_product_combos(reactant, refs):
@@ -530,10 +530,10 @@ class Pourbaix:
 def main(material: str):
     import matplotlib.pyplot as plt
 
-    refs = get_references(
+    refs, name = get_references(
         material,
         '/home/niflheim/steame/utils/oqmd123.db',
-        computed_energy=None,
+        computed_energy=300,
         include_aq=True,
         energy_key='energy',
         predef_energies=PREDEF_ENERGIES
@@ -541,7 +541,7 @@ def main(material: str):
 
     phrange=[0, 14]
     urange=[-3, 3]    
-    pbx = Pourbaix(material, refs, conc=1e-6)
+    pbx = Pourbaix(name, refs, conc=1e-6)
     pbx.plot(urange, phrange, show=True)
 
 
