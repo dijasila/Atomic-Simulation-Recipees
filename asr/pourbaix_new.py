@@ -537,6 +537,8 @@ def main(material: str,
          database: str='/home/niflheim2/cmr/databases/referencedatabases/oqmd123.db',
          pHrange: Union[list, tuple]=[0, 14],
          Urange: Union[list, tuple]=[-3, 3],
+         conc: float=1e-6,
+         counter: str='SHE',
          npoints: int=300):
 
     refs, name = get_references(
@@ -548,7 +550,7 @@ def main(material: str,
         predef_energies=PREDEF_ENERGIES
     )
 
-    pbx = Pourbaix(name, refs, conc=1e-6)
+    pbx = Pourbaix(name, refs, conc=conc, counter=counter)
     pbx.plot(Urange, pHrange, npoints=npoints, show=True)
 
 
