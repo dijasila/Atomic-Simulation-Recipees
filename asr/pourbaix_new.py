@@ -164,6 +164,9 @@ def edge_detection(array):
         varr = np.array(values)
         left = values[np.argmin(varr[:, 1])]
         right = values[np.argmax(varr[:, 1])]
+        if left == right:
+            left = values[np.argmin(varr[:, 0])]
+            right = values[np.argmax(varr[:, 0])]
         edges[pair] = np.array([left, right]).T
 
     return edges
@@ -476,8 +479,6 @@ class Pourbaix:
 
         ax.set_xlabel('pH', fontsize=18)
         ax.set_ylabel(f'Potential vs. {self.counter} (V)', fontsize=18)
-        ax.set_xlim(*pHrange)
-        ax.set_ylim(*Urange)
         ax.set_xticks(np.arange(pHrange[0], pHrange[1] + 1, 2))
         ax.set_yticks(np.arange(Urange[0], Urange[1] + 1, 1))
         plt.xticks(fontsize=18)
@@ -503,6 +504,8 @@ class Pourbaix:
         add_numbers(ax, text)
         add_text(ax, text, offset=0.05)
         add_redox_lines(ax, pH, 'w')
+        ax.set_xlim(*pHrange)
+        ax.set_ylim(*Urange)
 
         return ax
 
