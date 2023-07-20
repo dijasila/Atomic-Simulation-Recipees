@@ -111,12 +111,12 @@ def all_the_keydescs():
         kd('efermi_hse_soc', 'Fermi level (HSE06) [eV]'),
     ]
     yield 'infraredpolarizability', [
-        kvp('alphax_lat', 'Static lattice polarizability (x)', unit='Å'),
-        kvp('alphay_lat', 'Static lattice polarizability (y)', unit='Å'),
-        kvp('alphaz_lat', 'Static lattice polarizability (z)', unit='Å'),
-        kvp('alphax', 'Static total polarizability (x)', unit='Å'),
-        kvp('alphay', 'Static total polarizability (y)', unit='Å'),
-        kvp('alphaz', 'Static total polarizability (z)', unit='Å'),
+        kvp('alphax_lat', 'Lattice polarizability (x)', unit='Å'),
+        kvp('alphay_lat', 'Lattice polarizability (y)', unit='Å'),
+        kvp('alphaz_lat', 'Lattice polarizability (z)', unit='Å'),
+        kvp('alphax', 'Static polarizability (x)', unit='Å'),
+        kvp('alphay', 'Static polarizability (y)', unit='Å'),
+        kvp('alphaz', 'Static polarizability (z)', unit='Å'),
     ]
     yield 'magnetic_anisotropy', [
         kvp('spin_axis', 'Magnetic easy axis'),
@@ -157,9 +157,9 @@ def all_the_keydescs():
         kvp('plasmafrequency_y', '2D plasma frequency (y)', unit='`eV/Å^0.5`'),
     ]
     yield 'polarizability', [
-        kvp('alphax_el', 'Static interband polarizability (x)', unit='Å'),
-        kvp('alphay_el', 'Static interband polarizability (y)', unit='Å'),
-        kvp('alphaz_el', 'Static interband polarizability (z)', unit='Å'),
+        kvp('alphax_el', 'Optical polarizability (x)', unit='Å'),
+        kvp('alphay_el', 'Optical polarizability (y)', unit='Å'),
+        kvp('alphaz_el', 'Optical polarizability (z)', unit='Å'),
     ]
     yield 'relax', [
         kd('edft', 'DFT total enrgy', unit='eV'),
