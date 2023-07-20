@@ -97,12 +97,14 @@ def webpanel(result, row, key_descriptions):
 
     spacegroup = describe_entry(
         'spacegroup',
-        f"{spg_list_link} determined with {spglib}."
+        f"The {spg_list_link} determined with {spglib} by stacking the "
+        f"monolayer in A-A configuration."
     )
 
     spgnum = describe_entry(
         'spgnum',
-        f"{spg_list_link} number determined with {spglib}."
+        f"{spg_list_link} number determined with {spglib} by stacking the "
+        f"monolayer in A-A configuration."
     )
 
     layergroup = describe_entry(
