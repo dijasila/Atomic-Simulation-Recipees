@@ -471,7 +471,8 @@ class Pourbaix:
 
         colorplot = ax.imshow(
             meta, cmap=cmap,
-            extent=extent, vmax=cap,
+            extent=extent,
+            vmin= 0.0, vmax=cap,
             origin='lower', aspect='auto',
             interpolation='gaussian'
         )
@@ -481,19 +482,6 @@ class Pourbaix:
                ax=ax,
                pad=0.02
         )
-
-        ax.set_xlabel('pH', fontsize=18)
-        ax.set_ylabel(f'Potential vs. {self.counter} (V)', fontsize=18)
-        ax.set_xticks(np.arange(pHrange[0], pHrange[1] + 1, 2))
-        ax.set_yticks(np.arange(Urange[0], Urange[1] + 1, 1))
-        plt.xticks(fontsize=18)
-        plt.yticks(fontsize=18)
-
-        ticks = np.linspace(0, cap, num=6)
-        cbar.set_ticks(ticks)
-        cbar.set_ticklabels([f'{tick:.1f}' for tick in ticks])
-        cbar.ax.tick_params(labelsize=18)
-        cbar.ax.set_ylabel(r'$E_{pbx}$ (eV/atom)', fontsize=18)
 
         edges = edge_detection(pour)
         for _, indexes in edges.items():
@@ -509,8 +497,21 @@ class Pourbaix:
         add_numbers(ax, text)
         add_text(ax, text, offset=0.05)
         add_redox_lines(ax, pH, 'w')
+
         ax.set_xlim(*pHrange)
         ax.set_ylim(*Urange)
+        ax.set_xlabel('pH', fontsize=18)
+        ax.set_ylabel(f'Potential vs. {self.counter} (V)', fontsize=18)
+        ax.set_xticks(np.arange(pHrange[0], pHrange[1] + 1, 2))
+        ax.set_yticks(np.arange(Urange[0], Urange[1] + 1, 1))
+        plt.xticks(fontsize=18)
+        plt.yticks(fontsize=18)
+
+        ticks = np.linspace(0, cap, num=6)
+        cbar.set_ticks(ticks)
+        cbar.set_ticklabels([f'{tick:.1f}' for tick in ticks])
+        cbar.ax.tick_params(labelsize=18)
+        cbar.ax.set_ylabel(r'$E_{pbx}$ (eV/atom)', fontsize=18)
 
         return ax
 
@@ -542,7 +543,9 @@ def main(material: str,
          Urange: Union[list, tuple]=[-3, 3],
          conc: float=1e-6,
          counter: str='SHE',
-         npoints: int=300):
+         npoints: int=300,
+         show: bool=False,
+         savefig: str='pourbaix.png'):
 
     refs, name = get_references(
         material,
@@ -554,7 +557,12 @@ def main(material: str,
     )
 
     pbx = Pourbaix(name, refs, conc=conc, counter=counter)
-    pbx.plot(Urange, pHrange, npoints=npoints, show=True)
+    pbx.plot(
+        Urange, pHrange,
+        npoints=npoints, 
+        show=show,
+        savefig=savefig
+    )
 
 
 if __name__ == '__main__':
