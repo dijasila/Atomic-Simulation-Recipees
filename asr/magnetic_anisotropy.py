@@ -80,7 +80,11 @@ def webpanel(result, row, key_descriptions):
     magtable = table(row, 'Property',
                      ['magstate', 'magmom',
                       'dE_zx', 'dE_zy'], kd=key_descriptions)
-
+    # currently, FM is not an accurate description of magnetic systems. So we
+    # change it to simply say magnetic until magnetic classification is
+    # accurate
+    if magtable['rows'][0][1] == 'FM':
+        magtable['rows'][0][1] = 'magnetic'
     from asr.utils.hacks import gs_xcname_from_row
     xcname = gs_xcname_from_row(row)
 
