@@ -8,7 +8,7 @@ import numpy as np
 
 from asr.core import command, argument, ASRResult, prepare_result
 from asr.database.browser import (
-    fig, table, describe_entry, dl, br, make_panel_description
+    fig, create_table, describe_entry, dl, br, make_panel_description
 )
 
 from ase.db import connect
@@ -48,10 +48,9 @@ phase of the constituent elements at T=0 K.""",
 
 
 def webpanel(result, row, key_descriptions):
-    hulltable1 = table(row,
-                       'Stability',
-                       ['hform', 'ehull'],
-                       key_descriptions)
+    hulltable1 = create_table(
+        row=row, header=['Stability', 'Value'], keys=['hform', 'ehull'],
+        key_descriptions=key_descriptions, digits=2)
     hulltables = convex_hull_tables(row)
     panel = {
         'title': describe_entry(

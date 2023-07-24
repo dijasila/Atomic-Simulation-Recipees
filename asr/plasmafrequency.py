@@ -4,13 +4,15 @@ import typing
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table
+    from asr.database.browser import create_table
 
     if row.get('gap', 1) > 0.01:
         return []
 
-    plasmatable = table(row, 'Property', [
-        'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
+    plasmatable = create_table(row=row, header=['Property', 'Value'],
+                               keys=['plasmafrequency_x',
+                                     'plasmafrequency_y'],
+                               key_descriptions=key_descriptions, digits=2)
 
     panel = {'title': 'Optical polarizability (RPA)',
              'columns': [[], [plasmatable]]}

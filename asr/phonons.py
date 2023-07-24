@@ -16,7 +16,7 @@ from ase.parallel import paropen
 from asr.utils.symmetry import c2db_symmetry_eps
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
-    table, fig, describe_entry, dl, make_panel_description)
+    create_table, fig, describe_entry, dl, make_panel_description)
 
 panel_description = make_panel_description(
     """
@@ -86,7 +86,9 @@ def requires():
 
 
 def webpanel(result, row, key_descriptions):
-    phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
+    phonontable = create_table(
+        row=row, header=['Property', 'Value'], keys=['minhessianeig'],
+        key_descriptions=key_descriptions, digits=2)
 
     panel = {'title': describe_entry('Phonons', panel_description),
              'columns': [[fig('phonon_bs.png')], [phonontable]],

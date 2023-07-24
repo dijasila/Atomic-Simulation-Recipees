@@ -83,7 +83,7 @@ def describe_crystaltype_entry(spglib):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import describe_entry, href, table
+    from asr.database.browser import describe_entry, href, create_table
 
     spglib = get_spg_href('https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)
@@ -108,11 +108,9 @@ def webpanel(result, row, key_descriptions):
     )
 
     layergroup = describe_entry(
-        'layergroup',
-        f'{layergroup_link} determined with {spglib}')
+        'layergroup', f'{layergroup_link} determined with {spglib}')
     lgnum = describe_entry(
-        'lgnum',
-        f'{layergroup_link} number determined with {spglib}')
+        'lgnum', f'{layergroup_link} number determined with {spglib}')
 
     pointgroup = describe_pointgroup_entry(spglib)
 
@@ -144,7 +142,9 @@ def webpanel(result, row, key_descriptions):
     # The table() function is EXTREMELY illogical.
     # I can't get it to work when appending another row
     # to the tablerows list.  Therefore we append rows afterwards.  WTF.
-    basictable = table(row, 'Structure info', tablerows, key_descriptions, 2)
+    basictable = create_table(
+        row=row, header=['Structure info', 'Value'], keys=tablerows,
+        key_descriptions=key_descriptions, digits=2)
     rows = basictable['rows']
 
     labelresult = row.data.get('results-asr.c2db.labels.json')
@@ -156,10 +156,10 @@ def webpanel(result, row, key_descriptions):
     if codid:
         # Monkey patch to make a link
         for tmprow in rows:
-            href = ('<a href="http://www.crystallography.net/cod/'
-                    + '{id}.html">{id}</a>'.format(id=codid))
+            row_href = href(codid, f'"http://www.crystallography.net/cod'
+                                   f'/{codid}.html"')
             if 'cod_id' in tmprow[0]:
-                tmprow[1] = href
+                tmprow[1] = row_href
 
     doi = row.get('doi')
     doistring = describe_entry(

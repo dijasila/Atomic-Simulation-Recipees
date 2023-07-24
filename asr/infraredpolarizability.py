@@ -2,7 +2,7 @@
 import typing
 from asr.core import command, option, read_json, ASRResult, prepare_result
 from asr.database.browser import (
-    fig, table, href, make_panel_description, describe_entry)
+    fig, create_table, href, make_panel_description, describe_entry)
 
 import numpy as np
 
@@ -36,10 +36,10 @@ def webpanel(result, row, key_descriptions):
     alphay = describe_entry('alphay', description=explanation + " y-direction")
     alphaz = describe_entry('alphaz', description=explanation + " z-direction")
 
-    opt = table(
-        row, "Property", [alphax_lat, alphay_lat, alphaz_lat, alphax,
-                          alphay, alphaz],
-        key_descriptions)
+    opt = create_table(
+        row=row, header=["Property", 'Value'],
+        keys=[alphax_lat, alphay_lat, alphaz_lat, alphax, alphay, alphaz],
+        key_descriptions=key_descriptions, digits=2)
 
     panel = {
         "title": describe_entry("Infrared polarizability",

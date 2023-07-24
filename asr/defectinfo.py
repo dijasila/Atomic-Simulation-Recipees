@@ -6,7 +6,7 @@ from asr.defect_symmetry import DefectInfo
 from asr.setup.defects import return_distances_cell
 from pathlib import Path
 import typing
-from asr.database.browser import (table, describe_entry, href)
+from asr.database.browser import (create_table, describe_entry, href)
 from asr.structureinfo import describe_crystaltype_entry, describe_pointgroup_entry
 
 
@@ -77,7 +77,9 @@ def webpanel(result, row, key_descriptions):
              [pointgroup, result.host_pointgroup],
              [host_hof, f'{result.host_hof:.2f} eV/atom'],
              [host_gap_pbe, f'{result.host_gap_pbe:.2f} eV']]
-    basictable = table(result, 'Pristine crystal', [])
+    basictable = create_table(
+        row=result, header=['Pristine crystal', 'Value'], keys=[],
+        key_descriptions=key_descriptions, digits=2)
     basictable['rows'].extend(lines)
 
     # add additional data to the table if HSE gap, defect-defect distance,
@@ -85,7 +87,9 @@ def webpanel(result, row, key_descriptions):
     if result.host_gap_hse is not None:
         basictable['rows'].extend(
             [[host_gap_hse, f'{result.host_gap_hse:.2f} eV']])
-    defecttable = table(result, 'Defect properties', [])
+    defecttable = create_table(
+        row=result, header=['Defect properties', 'Value'], keys=[],
+        key_descriptions=key_descriptions, digits=2)
     if result.R_nn is not None:
         defecttable['rows'].extend(
             [[R_nn, f'{result.R_nn:.2f} Å']])

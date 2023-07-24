@@ -197,7 +197,7 @@ def get_parameters(gs, exchange, txt=False,
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table,
+    from asr.database.browser import (create_table,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
     if row.get('magstate', 'NM') == 'NM':
@@ -222,9 +222,10 @@ def webpanel(result, row, key_descriptions):
     spin = describe_entry('spin', description=explanation_spin)
     N_nn = describe_entry('N_nn', description=explanation_N)
 
-    heisenberg_table = table(row, 'Heisenberg model',
-                             [J, lam, A, spin, N_nn],
-                             kd=key_descriptions)
+    heisenberg_table = create_table(
+        row=row, header=['Heisenberg model', 'Value'],
+        keys=[J, lam, A, spin, N_nn], key_descriptions=key_descriptions,
+        digits=2)
     from asr.utils.hacks import gs_xcname_from_row
     xcname = gs_xcname_from_row(row)
     panel = WebPanel(title=f'Basic magnetic properties ({xcname})',

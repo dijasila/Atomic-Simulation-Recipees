@@ -182,9 +182,11 @@ def requires():
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
+    from asr.database.browser import create_table, fig
 
-    phonontable = table(row, "Property", ["minhessianeig"], key_descriptions)
+    phonontable = create_table(
+        row=row, header=["Property", "Value"], keys=["minhessianeig"],
+        key_descriptions=key_descriptions, digits=2)
 
     panel = {
         "title": "Phonon bandstructure",

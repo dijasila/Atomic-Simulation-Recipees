@@ -7,7 +7,7 @@ from ase.units import alpha, Ha, Bohr
 
 from asr.core import command, option, file_barrier, ASRResult, prepare_result
 from asr.database.browser import (
-    fig, table, make_panel_description, describe_entry)
+    fig, create_table, make_panel_description, describe_entry)
 from asr.utils.kpts import get_kpts_size
 
 
@@ -259,7 +259,9 @@ def webpanel(result, row, key_descriptions):
     import numpy as np
     from functools import partial
 
-    E_B = table(row, 'Property', ['E_B'], key_descriptions)
+    E_B = create_table(
+        row=row, header=['Property', 'Value'], keys=['E_B'],
+        key_descriptions={}, digits=2)
 
     atoms = row.toatoms()
     pbc = atoms.pbc.tolist()

@@ -1,6 +1,6 @@
 from ase.formula import Formula
 from asr.core import (command, ASRResult, prepare_result, chdir, read_json)
-from asr.database.browser import WebPanel, table
+from asr.database.browser import WebPanel, create_table
 from asr.database.material_fingerprint import main as material_fingerprint
 from asr.defect_symmetry import DefectInfo
 from pathlib import Path
@@ -11,8 +11,12 @@ def webpanel(result, row, key_description):
     baselink = 'https://cmrdb.fysik.dtu.dk/qpod/row/'
 
     # initialize table for charged and neutral systems
-    charged_table = table(row, 'Other charge states', [])
-    neutral_table = table(row, 'Other defects', [])
+    charged_table = create_table(
+        row=row, header=['Other charge states', 'Value'], keys=[],
+        key_descriptions={}, digits=2)
+    neutral_table = create_table(
+        row=row, header=['Other defects', 'Value'], keys=[],
+        key_descriptions={}, digits=2)
     # fill in values for the two tables from the result object
     charged_table = extend_table(charged_table, result, 'charged', baselink)
     neutral_table = extend_table(neutral_table, result, 'neutral', baselink)

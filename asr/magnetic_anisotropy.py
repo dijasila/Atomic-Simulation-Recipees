@@ -1,7 +1,7 @@
 """Magnetic anisotropy."""
 from asr.core import command, read_json, ASRResult, prepare_result
 from asr.database.browser import (
-    table, make_panel_description, describe_entry, href)
+    create_table, make_panel_description, describe_entry, href)
 from math import pi
 
 
@@ -77,9 +77,9 @@ def webpanel(result, row, key_descriptions):
     if row.get('magstate', 'NM') == 'NM':
         return []
 
-    magtable = table(row, 'Property',
-                     ['magstate', 'magmom',
-                      'dE_zx', 'dE_zy'], kd=key_descriptions)
+    magtable = create_table(
+        row=row, header=['Property', 'Value'], keys=['magstate', 'magmom',
+            'dE_zx', 'dE_zy'], key_descriptions=key_descriptions, digits=2)
     # currently, FM is not an accurate description of magnetic systems. So we
     # change it to simply say magnetic until magnetic classification is
     # accurate

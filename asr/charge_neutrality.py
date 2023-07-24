@@ -2,7 +2,7 @@
 from asr.core import command, option, ASRResult, prepare_result, DictStr
 from ase.dft.bandgap import bandgap
 from ase.io import read
-from asr.database.browser import (table, describe_entry, dl, code,
+from asr.database.browser import (create_table, describe_entry, dl, code,
                                   make_panel_description, href, fig,
                                   WebPanel)
 from asr.defect_symmetry import DefectInfo
@@ -122,13 +122,16 @@ def get_overview_tables(scresult, result, unitstring):
         'Self-consistent Fermi level wrt. VBM at which charge neutrality condition is '
         f'fulfilled at T = {int(result.temperature):d} K [eV].')
 
-    scf_summary = table(result, 'Charge neutrality', [])
+    scf_summary = create_table(
+        row=result, header=['Charge neutrality', 'Value'], keys=[],
+        key_descriptions={}, digits=2)
     scf_summary['rows'].extend([[is_dopable, dopability]])
     scf_summary['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
     scf_summary['rows'].extend([[pn, pn_strength]])
 
-    scf_overview = table(result,
-                         f'Equilibrium properties @ {int(result.temperature):d} K', [])
+    scf_overview = create_table(row=result, header=[f'Equilibrium properties @'
+                                f' {int(result.temperature):d} K', 'Value'],
+                                keys=[], key_descriptions={}, digits=2)
     scf_overview['rows'].extend([[is_dopable, dopability]])
     scf_overview['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
     scf_overview['rows'].extend([[pn, pn_strength]])
@@ -155,7 +158,7 @@ def get_overview_tables(scresult, result, unitstring):
 
 
 def get_conc_table(result, element, unitstring):
-    from asr.database.browser import table, describe_entry
+    from asr.database.browser import create_table, describe_entry
     from asr.defectlinks import get_defectstring_from_defectinfo
 
     token = element['defect_name']
@@ -164,8 +167,9 @@ def get_conc_table(result, element, unitstring):
         defectinfo, charge=0)  # charge is only a dummy parameter here
     # remove the charge string from the defectstring again
     clean_defectstring = defectstring.split('(charge')[0]
-    scf_table = table(result, f'Eq. concentrations of '
-                              f'{clean_defectstring} [{unitstring}]', [])
+    scf_table = create_table(row=result, header=[f'Eq. concentrations of '
+                             f'{clean_defectstring} [{unitstring}]', 'Value'],
+                             keys=[], key_descriptions={}, digits=2)
     for altel in element['concentrations']:
         if altel[0] > 1e1:
             scf_table['rows'].extend(

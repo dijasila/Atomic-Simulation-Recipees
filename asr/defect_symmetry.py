@@ -158,9 +158,11 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
 
 def get_transition_table(row, E_hls):
     """Create table for HOMO-LUMO transition in both spin channels."""
-    from asr.database.browser import table
+    from asr.database.browser import create_table
 
-    transition_table = table(row, 'Kohn—Sham HOMO—LUMO gap', [])
+    transition_table = create_table(
+        row=row, header=['Kohn—Sham HOMO—LUMO gap', 'Value'], keys=[],
+        key_descriptions={}, digits=2)
     for i, element in enumerate(E_hls):
         transition_table['rows'].extend(
             [[describe_entry(f'Spin {i}',
@@ -171,11 +173,13 @@ def get_transition_table(row, E_hls):
 
 
 def get_summary_table(result, row):
-    from asr.database.browser import table
+    from asr.database.browser import create_table
     from asr.structureinfo import get_spg_href, describe_pointgroup_entry
 
     spglib = get_spg_href('https://spglib.github.io/spglib/')
-    basictable = table(row, 'Defect properties', [])
+    basictable = create_table(
+        row=row, header=['Defect properties', 'Value'], keys=[],
+        key_descriptions={}, digits=2)
     pg_string = result.defect_pointgroup
     pg_strlist = list(pg_string)
     sub = ''.join(pg_strlist[1:])

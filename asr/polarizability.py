@@ -8,7 +8,7 @@ from ase.io import read
 
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
-    table,
+    create_table,
     fig,
     describe_entry,
     make_panel_description)
@@ -39,11 +39,11 @@ def webpanel(result, row, key_descriptions):
     # alphay = describe_entry('alphay', description=explanation + " y-direction")
     # alphaz = describe_entry('alphaz', description=explanation + " z-direction")
 
-    opt = table(row, 'Property', [
-        alphax_el, alphay_el, alphaz_el,
+    opt = create_table(row=row, header=['Property', 'Value'],
+        keys=[alphax_el, alphay_el, alphaz_el,
         # alphax_lat, alphay_lat, alphaz_lat,
         # alphax, alphay, alphaz,
-    ], key_descriptions)
+        ], key_descriptions=key_descriptions, digits=2)
 
     panel = {'title': describe_entry('Optical polarizability',
                                      panel_description),

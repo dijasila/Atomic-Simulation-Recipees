@@ -71,9 +71,11 @@ def get_transition_table(result, defstr):
 
 
 def get_summary_table(result):
-    from asr.database.browser import table, describe_entry
+    from asr.database.browser import create_table, describe_entry
 
-    summary_table = table(result, 'Defect properties', [])
+    summary_table = create_table(
+        row=result, header=['Defect properties', 'Value'], keys=[],
+        key_descriptions={}, digits=2)
     summary_table['rows'].extend(
         [[describe_entry('Neutral formation energy',
                          description='Neutral formation energy [eV].'),
@@ -83,9 +85,11 @@ def get_summary_table(result):
 
 
 def get_formation_table(result, defstr):
-    from asr.database.browser import table, describe_entry
+    from asr.database.browser import create_table, describe_entry
 
-    formation_table = table(result, 'Defect formation energy', [])
+    formation_table = create_table(
+        row=result, header=['Defect formation energy', 'Value'], keys=[],
+        key_descriptions={}, digits=2)
     for element in result.eform:
         formation_table['rows'].extend(
             [[describe_entry(f'{defstr} (q = {element[1]:1d} @ VBM)',

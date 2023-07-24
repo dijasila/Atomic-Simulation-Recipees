@@ -35,15 +35,14 @@ def collect_data(atoms):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.browser import fig, table
+    from asr.database.browser import fig, create_table
 
     if 'something' not in row.data:
         return None, []
 
-    table1 = table(row,
-                   'Property',
-                   ['something'],
-                   kd=key_descriptions)
+    table1 = create_table(
+        row=row, header=['Property', 'Value'], keys=['something'],
+        key_descriptions=key_descriptions, digits=2)
     panel = ('Title',
              [[fig('something.png'), table1]])
     things = [(create_plot, ['something.png'])]
