@@ -63,36 +63,12 @@ def webpanel(result, row, key_descriptions):
         type='table',
         rows=eigrows)
 
-    panel = {'title': describe_entry('Stiffness tensor', description=panel_description),
+    panel = {'title': describe_entry('Stiffness tensor',
+                                     description=panel_description),
              'columns': [[ctable], [eigtable]],
              'sort': 2}
 
-    dynstab = row.dynamic_stability_stiffness
-    high = 'Minimum stiffness tensor eigenvalue > 0'
-    low = 'Minimum stiffness tensor eigenvalue < 0'
-
-    row = [
-        describe_entry(
-            'Dynamical (stiffness)',
-            'Classifier for the dynamical stability of a material '
-            'based on the minimum eigenvalue of the stiffness tensor.'
-            + dl(
-                [
-                    ["LOW", low],
-                    ["HIGH", high],
-                ]
-            )
-        ),
-        dynstab.upper()]
-
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Stability', 'Category'],
-                             'rows': [row],
-                             }]],
-               'sort': 3}
-
-    return [panel, summary]
+    return [panel]
 
 
 @prepare_result

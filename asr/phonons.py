@@ -94,32 +94,7 @@ def webpanel(result, row, key_descriptions):
                                     'filenames': ['phonon_bs.png']}],
              'sort': 3}
 
-    dynstab = row.get('dynamic_stability_phonons')
-
-    high = 'Minimum eigenvalue of Hessian > -0.01 meV/Å²'
-    low = 'Minimum eigenvalue of Hessian <= -0.01 meV/Å²'
-
-    row = [
-        describe_entry(
-            'Dynamical (phonons)',
-            'Classifier for the dynamical stability of a material '
-            'based on the minimum eigenvalue of the Hessian.'
-            + dl(
-                [
-                    ["LOW", low],
-                    ["HIGH", high],
-                ]
-            )
-        ),
-        dynstab.upper()
-    ]
-
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Stability', 'Category'],
-                             'rows': [row]}]],
-               'sort': 2}
-    return [panel, summary]
+    return [panel]
 
 
 @prepare_result
