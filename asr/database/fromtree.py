@@ -279,7 +279,7 @@ def _collect_folders(folders: List[str],
                      exclude_patterns: List[str] = None,
                      children_patterns: List[str] = None,
                      dbname: str = None,
-                     collection_hook=lambda context: None,
+                     collection_hook=None,
                      jobid: int = None):
     """Collect `myfolders` to `mydbname`."""
     nfolders = len(folders)
@@ -312,7 +312,8 @@ def _collect_folders(folders: List[str],
                                 data=data)
 
             try:
-                collection_hook(rowinput)
+                if collection_hook is not None:
+                    collection_hook(rowinput)
                 db.write(atoms, data=data, **key_value_pairs)
             except Exception:
                 print(f'folder={folder}')
@@ -328,7 +329,7 @@ def collect_folders(folders: List[str],
                     exclude_patterns: List[str] = None,
                     children_patterns: List[str] = None,
                     dbname: str = None,
-                    collection_hook=lambda rowinput: None,
+                    collection_hook=None,
                     jobid: int = None):
     """Collect `myfolders` to `mydbname`.
 
@@ -351,7 +352,7 @@ def collect_folders(folders: List[str],
 
 def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
                       patterns, exclude_patterns, children_patterns, dbname,
-                      collection_hooks):
+                      collection_hook):
     print(f'Delegating database collection to {njobs} subprocesses.')
     processes = []
     for jobid in range(njobs):
@@ -426,7 +427,7 @@ def main(folders: Union[str, None] = None,
          patterns: str = 'info.json,links.json,params.json,results-asr.*.json',
          exclude_patterns: str = '',
          dbname: str = 'database.db',
-         collection_hook=lambda rowinput: None,
+         collection_hook=None,
          njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""
     from asr.database.key_descriptions import main as set_key_descriptions
@@ -462,8 +463,16 @@ def main(folders: Union[str, None] = None,
 
     # Delegate collection of database to subprocesses to reduce I/O time.
     if njobs > 1:
-        delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
-                          patterns, exclude_patterns, children_patterns, dbname)
+        delegate_to_njobs(
+            njobs=njobs,
+            dbpath=dbpath, name=name,
+            folders=folders,
+            atomsname=atomsname,
+            patterns=patterns,
+            exclude_patterns=exclude_patterns,
+            children_patterns=children_patterns,
+            dbname=dbname,
+            collection_hook=collection_hook)
     else:
         _collect_folders(folders,
                          jobid=None,

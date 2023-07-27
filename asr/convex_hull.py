@@ -97,8 +97,11 @@ def ehull_table_rows(row, key_descriptions):
     # We have to magically hack a description into the arbitrarily
     # nested "table" *grumble*:
     rows = ehull_table['rows']
-    rows[0][0] = describe_entry(rows[0][0], ehull_long_description)
-    rows[1][0] = describe_entry(rows[1][0], eform_description)
+    if len(rows) == 2:
+        # ehull and/or hform may be missing if we run tests.
+        # Dangerous and hacky, as always.
+        rows[0][0] = describe_entry(rows[0][0], ehull_long_description)
+        rows[1][0] = describe_entry(rows[1][0], eform_description)
     return ehull_table
 
 
