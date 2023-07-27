@@ -265,12 +265,22 @@ def recurse_through_folders(folder, atomsname):
     return folders
 
 
+from dataclasses import dataclass
+
+@dataclass
+class RowInput:
+    atoms: Atoms
+    key_value_pairs: dict
+    data: dict
+
+
 def _collect_folders(folders: List[str],
                      atomsname: str = None,
                      patterns: List[str] = None,
                      exclude_patterns: List[str] = None,
                      children_patterns: List[str] = None,
                      dbname: str = None,
+                     collection_hook=lambda context: None,
                      jobid: int = None):
     """Collect `myfolders` to `mydbname`."""
     nfolders = len(folders)
@@ -294,7 +304,16 @@ def _collect_folders(folders: List[str],
 
             identifier_kvp = make_data_identifiers(data.keys())
             key_value_pairs.update(identifier_kvp)
+
+            # The collection hook gets to see and modify things in
+            # the form of RowInput as we write to the database.
+            #
+            # C2DB uses this to add extra KVPs.
+            rowinput = RowInput(atoms=atoms, key_value_pairs=key_value_pairs,
+                                data=data)
+
             try:
+                collection_hook(rowinput)
                 db.write(atoms, data=data, **key_value_pairs)
             except Exception:
                 print(f'folder={folder}')
@@ -310,6 +329,7 @@ def collect_folders(folders: List[str],
                     exclude_patterns: List[str] = None,
                     children_patterns: List[str] = None,
                     dbname: str = None,
+                    collection_hook=lambda rowinput: None,
                     jobid: int = None):
     """Collect `myfolders` to `mydbname`.
 
@@ -323,6 +343,7 @@ def collect_folders(folders: List[str],
                                 exclude_patterns=exclude_patterns,
                                 children_patterns=children_patterns,
                                 dbname=dbname,
+                                collection_hook=collection_hook,
                                 jobid=jobid)
     except Exception:
         # Put all exception text into an exception and raise that
@@ -330,7 +351,8 @@ def collect_folders(folders: List[str],
 
 
 def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
-                      patterns, exclude_patterns, children_patterns, dbname):
+                      patterns, exclude_patterns, children_patterns, dbname,
+                      collection_hooks):
     print(f'Delegating database collection to {njobs} subprocesses.')
     processes = []
     for jobid in range(njobs):
@@ -392,6 +414,10 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
     type=str,
 )
 @option('--dbname', help='Database name.', type=str)
+@option('--collection-hook',
+        help='<cannot be set using CLI>')
+# An assertion elsewhere obligates us to expose a CLI interface to the hook,
+# even though it requires python.
 @option('--njobs', type=int,
         help='Delegate collection of database to NJOBS subprocesses. '
         'Can significantly speed up database collection.')
@@ -401,6 +427,7 @@ def main(folders: Union[str, None] = None,
          patterns: str = 'info.json,links.json,params.json,results-asr.*.json',
          exclude_patterns: str = '',
          dbname: str = 'database.db',
+         collection_hook=lambda rowinput: None,
          njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""
     from asr.database.key_descriptions import main as set_key_descriptions
@@ -444,6 +471,7 @@ def main(folders: Union[str, None] = None,
                          dbname=dbname,
                          atomsname=atomsname,
                          patterns=patterns,
+                         collection_hook=collection_hook,
                          exclude_patterns=exclude_patterns,
                          children_patterns=children_patterns)
 
