@@ -26,23 +26,13 @@ ACF_dat = """\
 
 
 class FakeGPAW:
-    """Fake GPAW implementation.
-
-    Creates np.ndarray of densities via::
-
-        gs.calculation.densities().all_electron_densities(grid_spacing).data
-    """
+    """Fake GPAW implementation."""
 
     def __init__(self, atoms):
         self.atoms = atoms
-        self.calculation = self
-        self.data = np.ones((1, 2, 3, 4))
 
-    def densities(self):
-        return self
-
-    def all_electron_densities(self, grid_spacing):
-        return self
+    def get_all_electron_density(self, gridrefinement):
+        return np.ones((2, 3, 4))
 
 
 def run(args, stdout, stderr):
@@ -56,7 +46,7 @@ def run(args, stdout, stderr):
 def test_bader(asr_tmpdir, monkeypatch):
     monkeypatch.setattr(subprocess, 'run', run)
     gs = FakeGPAW(Atoms('H2'))
-    atoms, charges = bader(gs, 0.1)
+    atoms, charges = bader(gs)
     assert (charges == [0.0, 0.0]).all()
 
 

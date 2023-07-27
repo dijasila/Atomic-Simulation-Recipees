@@ -9,7 +9,7 @@ from ase import Atoms
 from ase.io import write
 from ase.units import Bohr
 
-from asr.core import ASRResult, command, option, prepare_result
+from asr.core import ASRResult, command, prepare_result
 from asr.database.browser import (describe_entry, entry_parameter_description,
                                   href, make_panel_description)
 
@@ -58,8 +58,7 @@ class Result(ASRResult):
 @command('asr.bader',
          dependencies=['asr.gs'],
          returns=Result)
-@option('--grid-spacing', help='Grid spacing (Å)', type=float)
-def main(grid_spacing: float = 0.05) -> Result:
+def main() -> Result:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable
@@ -74,19 +73,19 @@ def main(grid_spacing: float = 0.05) -> Result:
     """
 
     from gpaw.mpi import world
-    from gpaw.new.ase_interface import GPAW
+    # from gpaw.new.ase_interface import GPAW
+    from gpaw import GPAW
 
     assert world.size == 1, 'Do not run in parallel!'
 
     gs = GPAW('gs.gpw')
-    atoms, charges = bader(gs, grid_spacing)
+    atoms, charges = bader(gs)
     sym_a = atoms.get_chemical_symbols()
     return Result(data=dict(bader_charges=charges,
                             sym_a=sym_a))
 
 
-def bader(gs,
-          grid_spacing: float = 0.05) -> tuple[Atoms, np.ndarray]:
+def bader(gs) -> tuple[Atoms, np.ndarray]:
     """Preform Bader analysis.
 
     * read GPAW-gpw file
@@ -98,9 +97,8 @@ def bader(gs,
 
     Returns ASE Atoms object and ndarray of charges in units of :math:`|e|`.
     """
-    dens = gs.calculation.densities()
-    n_sR = dens.all_electron_densities(grid_spacing=grid_spacing)
-    write('density.cube', gs.atoms, data=n_sR.data.sum(axis=0) * Bohr**3)
+    rho = gs.get_all_electron_density(gridrefinement=4)
+    write('density.cube', gs.atoms, data=rho * Bohr**3)
 
     cmd = 'bader density.cube'
     with Path('bader.out').open('w') as out:
