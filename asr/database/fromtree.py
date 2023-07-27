@@ -1,5 +1,6 @@
 """Convert a folder tree to an ASE database."""
 
+from dataclasses import dataclass
 from typing import Union, List
 from ase import Atoms
 from ase.io import read
@@ -264,8 +265,6 @@ def recurse_through_folders(folder, atomsname):
             folders.append(root)
     return folders
 
-
-from dataclasses import dataclass
 
 @dataclass
 class RowInput:
