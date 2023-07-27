@@ -38,14 +38,34 @@ def get_hull_energies(pd: PhaseDiagram):
     return hull_energies
 
 
+eform_description = """\
+The heat of formation (ΔH) is the internal energy of a compound relative to
+the standard states of the constituent elements at T=0 K."""
+
+
+ehull_description = """\
+The energy above the convex hull is the internal energy relative to the most
+stable (possibly mixed) phase of the constituent elements at T=0 K."""
+
 panel_description = make_panel_description(
-    """The heat of formation (ΔH) is the internal energy of a compound relative to
-the standard states of the constituent elements at T=0 K.  The energy above the
-convex hull is the internal energy relative to the most stable (possibly mixed)
-phase of the constituent elements at T=0 K.""",
+    '{eform_description}\n\n{ehull_description}',
     articles=['C2DB'],
 )
 
+
+# XXX This string is hardcoded also in c2db's search html file in cmr repository
+# (with different formatting).
+# cmr could probably import the string from here instead.
+ehull_long_description = """\
+The energy above the convex hull (or the decomposition energy) is the main
+descriptor for thermodynamic stability. It represents the energy/atom of the
+material relative to the most stable, possibly mixed phase of the material.
+The latter is evaluated using a \
+<a href="https://cmrdb.fysik.dtu.dk/oqmd123/">reference database of bulk materials</a>.
+For more information see Sec. 2.3 in \
+<a href="http://iopscience.iop.org/article/10.1088/2053-1583/aacfc1"> \
+Haastrup <i>et al</i>.</a>
+"""
 
 def webpanel(result, row, key_descriptions):
     hulltable1 = table(row,
@@ -71,19 +91,20 @@ def webpanel(result, row, key_descriptions):
         for stab in [LOW, MEDIUM, HIGH]
     ]
 
-    thermodynamic = describe_entry(
-        'Thermodynamic',
-        'Classifier for the thermodynamic stability of a material.'
-        + br
-        + dl(stability_texts)
-    )
-    row = [thermodynamic, stability_names[thermostab]]
+    hulltable2 = table(row,
+                       'Stability',
+                       ['ehull', 'hform'],
+                       key_descriptions)
+
+    # We have to magically hack a description into the arbitrarily nested "table" *grumble*:
+    hulltable2_rows = hulltable2['rows']
+    hulltable2_rows[0][0] = describe_entry(hulltable2_rows[0][0], ehull_long_description)
+    hulltable2_rows[1][0] = describe_entry(hulltable2_rows[1][0], eform_description)
 
     summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Stability', ''],
-                             'rows': [row]}]],
+               'columns': [[hulltable2]],
                'sort': 1}
+
     return [panel, summary]
 
 
