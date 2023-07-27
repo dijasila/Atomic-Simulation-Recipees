@@ -8,7 +8,7 @@ import numpy as np
 
 from asr.core import command, argument, ASRResult, prepare_result
 from asr.database.browser import (
-    fig, table, describe_entry, dl, br, make_panel_description
+    fig, table, describe_entry, make_panel_description
 )
 
 from ase.db import connect
@@ -38,11 +38,17 @@ def get_hull_energies(pd: PhaseDiagram):
     return hull_energies
 
 
+eform_description = """\
+The heat of formation (ΔH) is the internal energy of a compound relative to
+the standard states of the constituent elements at T=0 K."""
+
+
+ehull_description = """\
+The energy above the convex hull is the internal energy relative to the most
+stable (possibly mixed) phase of the constituent elements at T=0 K."""
+
 panel_description = make_panel_description(
-    """The heat of formation (ΔH) is the internal energy of a compound relative to
-the standard states of the constituent elements at T=0 K.  The energy above the
-convex hull is the internal energy relative to the most stable (possibly mixed)
-phase of the constituent elements at T=0 K.""",
+    '{eform_description}\n\n{ehull_description}',
     articles=['C2DB'],
 )
 
@@ -64,27 +70,39 @@ def webpanel(result, row, key_descriptions):
         'sort': 1,
     }
 
-    thermostab = row.get('thermodynamic_stability_level')
+    return [panel]
 
-    stability_texts = [
-        [stability_names[stab], stability_descriptions[stab]]
-        for stab in [LOW, MEDIUM, HIGH]
-    ]
 
-    thermodynamic = describe_entry(
-        'Thermodynamic',
-        'Classifier for the thermodynamic stability of a material.'
-        + br
-        + dl(stability_texts)
-    )
-    row = [thermodynamic, stability_names[thermostab]]
+# XXX This string is hardcoded also in c2db's search html file in cmr
+# repository (with different formatting).
+# cmr could probably import the string from here instead.
+ehull_long_description = """\
+The energy above the convex hull (or the decomposition energy) is the main
+descriptor for thermodynamic stability. It represents the energy/atom of the
+material relative to the most stable, possibly mixed phase of the material.
+The latter is evaluated using a \
+<a href="https://cmrdb.fysik.dtu.dk/oqmd123/">reference database of bulk \
+materials</a>.
+For more information see Sec. 2.3 in \
+<a href="https://iopscience.iop.org/article/10.1088/2053-1583/aacfc1"> \
+Haastrup <i>et al</i>.</a>
+"""
 
-    summary = {'title': 'Summary',
-               'columns': [[{'type': 'table',
-                             'header': ['Stability', ''],
-                             'rows': [row]}]],
-               'sort': 1}
-    return [panel, summary]
+
+# This is for the c2db Summary panel.  We actually define most of that panel
+# in the structureinfo.py
+def ehull_table_rows(row, key_descriptions):
+    ehull_table = table(row, 'Stability', ['ehull', 'hform'], key_descriptions)
+
+    # We have to magically hack a description into the arbitrarily
+    # nested "table" *grumble*:
+    rows = ehull_table['rows']
+    if len(rows) == 2:
+        # ehull and/or hform may be missing if we run tests.
+        # Dangerous and hacky, as always.
+        rows[0][0] = describe_entry(rows[0][0], ehull_long_description)
+        rows[1][0] = describe_entry(rows[1][0], eform_description)
+    return ehull_table
 
 
 @prepare_result
