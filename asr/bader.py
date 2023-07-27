@@ -98,7 +98,16 @@ def bader(gs) -> tuple[Atoms, np.ndarray]:
     Returns ASE Atoms object and ndarray of charges in units of :math:`|e|`.
     """
     rho = gs.get_all_electron_density(gridrefinement=4)
-    write('density.cube', gs.atoms, data=rho * Bohr**3)
+    atoms = gs.atoms
+
+    if np.linalg.det(atoms.cell) < 0.0:
+        print('Left handed unit cell!')
+        rho = rho.transpose([1, 0, 2])
+        atoms = atoms.copy()
+        atoms.cell = atoms.cell[[1, 0, 2]]
+        atoms.pbc = atoms.pbc[[1, 0, 2]]
+
+    write('density.cube', atoms, data=rho * Bohr**3)
 
     cmd = 'bader density.cube'
     with Path('bader.out').open('w') as out:
@@ -108,11 +117,11 @@ def bader(gs) -> tuple[Atoms, np.ndarray]:
                            stderr=err)
 
     n = count_number_of_bader_maxima(Path('bader.out'))
-    if n != len(gs.atoms):
+    if n != len(atoms):
         raise ValueError(f'Wrong number of Bader volumes: {n}')
 
     charges = -read_bader_charges('ACF.dat')
-    charges += gs.atoms.get_atomic_numbers()
+    charges += atoms.get_atomic_numbers()
     assert abs(charges.sum()) < 0.01
 
     return gs.atoms, charges

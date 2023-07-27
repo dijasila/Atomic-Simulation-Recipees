@@ -32,6 +32,7 @@ class FakeGPAW:
         self.atoms = atoms
 
     def get_all_electron_density(self, gridrefinement):
+        assert gridrefinement == 4
         return np.ones((2, 3, 4))
 
 
@@ -45,7 +46,7 @@ def run(args, stdout, stderr):
 @pytest.mark.ci
 def test_bader(asr_tmpdir, monkeypatch):
     monkeypatch.setattr(subprocess, 'run', run)
-    gs = FakeGPAW(Atoms('H2'))
+    gs = FakeGPAW(Atoms('H2', cell=[[1, 0, 0], [0, 1, 0], [0, 0, -1]]))
     atoms, charges = bader(gs)
     assert (charges == [0.0, 0.0]).all()
 
