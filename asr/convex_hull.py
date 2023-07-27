@@ -8,7 +8,7 @@ import numpy as np
 
 from asr.core import command, argument, ASRResult, prepare_result
 from asr.database.browser import (
-    fig, table, describe_entry, dl, br, make_panel_description
+    fig, table, describe_entry, make_panel_description
 )
 
 from ase.db import connect

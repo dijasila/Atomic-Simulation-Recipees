@@ -203,8 +203,8 @@ def webpanel(result, row, key_descriptions):
 
     if phonon_stability is not None and stiffness_stability is not None:
         # XXX This will easily go wrong if 'high'/'low' strings are changed.
-        dynamically_stable = (phonon_stability == 'high' and
-                              stiffness_stability == 'high')
+        dynamically_stable = (
+            phonon_stability == 'high' and stiffness_stability == 'high')
 
         yesno = ['No', 'Yes'][dynamically_stable]
 

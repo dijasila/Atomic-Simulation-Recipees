@@ -1,7 +1,7 @@
 """Stiffness tensor."""
 import typing
 from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (matrixtable, describe_entry, dl,
+from asr.database.browser import (matrixtable, describe_entry,
                                   make_panel_description)
 
 panel_description = make_panel_description(

@@ -16,7 +16,7 @@ from ase.parallel import paropen
 from asr.utils.symmetry import c2db_symmetry_eps
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
-    table, fig, describe_entry, dl, make_panel_description)
+    table, fig, describe_entry, make_panel_description)
 
 panel_description = make_panel_description(
     """
