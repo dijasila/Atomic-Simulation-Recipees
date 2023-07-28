@@ -1,6 +1,7 @@
 """Convert a folder tree to an ASE database."""
 
 from dataclasses import dataclass
+import tempfile
 from typing import Union, List
 from ase import Atoms
 from ase.io import read
@@ -352,11 +353,12 @@ def collect_folders(folders: List[str],
 
 def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
                       patterns, exclude_patterns, children_patterns, dbname,
-                      collection_hook):
+                      collection_hook, tempdir):
     print(f'Delegating database collection to {njobs} subprocesses.')
     processes = []
+
     for jobid in range(njobs):
-        jobdbname = dbpath.parent / f'{name}.{jobid}.db'
+        jobdbname = tempdir / f'{name}.{jobid}.db'
         proc = multiprocessing.Process(
             target=collect_folders,
             args=(folders[jobid::njobs], ),
@@ -382,7 +384,7 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
     nmat = 0
     with connect(dbname, serial=True) as db2:
         for jobid in range(njobs):
-            jobdbname = f'{dbname}.{jobid}.db'
+            jobdbname = tempdir / f'{dbname}.{jobid}.db'
             assert Path(jobdbname).is_file()
             print(f'Merging {jobdbname} into {dbname}', flush=True)
             with connect(f'{jobdbname}', serial=True) as db:
@@ -463,16 +465,19 @@ def main(folders: Union[str, None] = None,
 
     # Delegate collection of database to subprocesses to reduce I/O time.
     if njobs > 1:
-        delegate_to_njobs(
-            njobs=njobs,
-            dbpath=dbpath, name=name,
-            folders=folders,
-            atomsname=atomsname,
-            patterns=patterns,
-            exclude_patterns=exclude_patterns,
-            children_patterns=children_patterns,
-            dbname=dbname,
-            collection_hook=collection_hook)
+        with tempfile.TemporaryDirectory() as tempdir:
+            tempdir = Path(tempdir)
+            delegate_to_njobs(
+                njobs=njobs,
+                dbpath=dbpath, name=name,
+                folders=folders,
+                atomsname=atomsname,
+                patterns=patterns,
+                exclude_patterns=exclude_patterns,
+                children_patterns=children_patterns,
+                dbname=dbname,
+                tempdir=tempdir,
+                collection_hook=collection_hook)
     else:
         _collect_folders(folders,
                          jobid=None,
