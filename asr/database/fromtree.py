@@ -384,7 +384,7 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
     nmat = 0
     with connect(dbname, serial=True) as db2:
         for jobid in range(njobs):
-            jobdbname = tempdir / f'{dbname}.{jobid}.db'
+            jobdbname = tempdir / f'{name}.{jobid}.db'
             assert Path(jobdbname).is_file()
             print(f'Merging {jobdbname} into {dbname}', flush=True)
             with connect(f'{jobdbname}', serial=True) as db:
