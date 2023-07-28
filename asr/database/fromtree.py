@@ -367,6 +367,7 @@ def delegate_to_njobs(njobs, dbpath, name, folders, atomsname,
                 'dbname': jobdbname,
                 'atomsname': atomsname,
                 'patterns': patterns,
+                'collection_hook': collection_hook,
                 'children_patterns': children_patterns,
                 'exclude_patterns': exclude_patterns,
             })
