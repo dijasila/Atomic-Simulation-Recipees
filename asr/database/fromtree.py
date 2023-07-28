@@ -465,7 +465,7 @@ def main(folders: Union[str, None] = None,
 
     # Delegate collection of database to subprocesses to reduce I/O time.
     if njobs > 1:
-        with tempfile.TemporaryDirectory() as tempdir:
+        with tempfile.TemporaryDirectory(dir='.') as tempdir:
             tempdir = Path(tempdir)
             delegate_to_njobs(
                 njobs=njobs,
