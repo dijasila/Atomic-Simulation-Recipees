@@ -40,6 +40,25 @@ def get_relevant_kpts(atoms, vbm, cbm, ibz_kpoints):
     If the band edges of the unstrained material are found away
     from any of the special points, the corresponding
     k-points will be added to the list
+
+    ISSUE:
+    There is no way to obtain the special k-points from atoms.cell.reciprocal(),
+    which is the correct reciprocal cell (respects vector orthogonality
+    wrt. direct cell) and the one used by GPAW when mapping the IBZ.
+
+    atoms.cell.bandpath can return the special points in fractional coordinates
+    of bandpath.icell, which is NOT the conventional reciprocal cell. 
+    However, when scaled by bandpath.icell, the absolute coordinates will
+    correspond to the actual special points.
+
+    If these fractional coordinates are used in a calculation,
+    GPAW will use cell.reciprocal() and NOT bandpath.icell, 
+    hence the fractional coordinates will not necessarily 
+    map to special points.
+
+    Here we obtain the absolute coordinates from bandpath and then convert
+    them to fractional coordinates of cell.reciprocal, to ensure that the
+    k-points passed to GPAW will actually correspond to special points.
     """
     ivbm = vbm[1]
     icbm = cbm[1]
@@ -228,7 +247,7 @@ def main(strain: float = 1.0, all_ibz: bool = False) -> Result:
 
     Parameters
     ----------
-    strain-percent: float
+    strain: float
         Percent strain to apply, in both direction and for all
         the relevant strain components, to the current material.
     all-ibz: bool
@@ -258,13 +277,12 @@ def main(strain: float = 1.0, all_ibz: bool = False) -> Result:
     else:
         kpts = get_relevant_kpts(atoms, vbm, cbm, ibz)
 
+
     def gpaw_get_edges(folder, kpts, soc):
         """Obtain the edge states at the different k-points.
 
         Returns, for each k-point included in the calculation,
-        the top eigenvalue of the valence band and the bottom
-        eigenvalue of the conduction band.
-        """
+        the top eigenvalue of the valence band and the bottom eigenvalue of the conduction band."""
         atoms = read(f'{folder}/structure.json')
         gpw = GPAW(f'{folder}/gs.gpw').fixed_density(
             kpts=kpts,
@@ -273,7 +291,7 @@ def main(strain: float = 1.0, all_ibz: bool = False) -> Result:
         )
         gpw.get_potential_energy()
         all_eigs, efermi = calc2eigs(gpw, soc=soc)
-        vac = vacuumlevels(atoms, calc)
+        evac = read_json(f'{folder}/results-asr.gs.json')['kwargs']['data']['evac']
 
         # This will take care of the spin polarization
         if not soc:
@@ -285,7 +303,7 @@ def main(strain: float = 1.0, all_ibz: bool = False) -> Result:
             cb = [eig for eig in eigs_k if eig - efermi > 0]
             edges[i, 0] = max(vb)
             edges[i, 1] = min(cb)
-        return edges - vac.evacmean
+        return edges - evac
 
     results = _main(atoms.pbc, kpts, gpaw_get_edges, strain)
 
@@ -319,7 +337,7 @@ def _main(pbc, kpts, get_edges, strain):
         kpts = list(kpts.values())
     else:
         kptlabels = kpts
-
+    
     # Initialize strains and deformation potentials results
     strains = [-abs(strain), abs(strain)]
     results.update({
