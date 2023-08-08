@@ -54,7 +54,7 @@ def webpanel(result, row, key_descriptions):
         if kpt == 'G':
             return 'Γ'
         elif kpt in ('VBM', 'CBM'):
-            return f'k<sub>{chunks[0]}</sub>'
+            return f'k<sub>{kpt}</sub>'
         else:
             return kpt
 
