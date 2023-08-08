@@ -21,7 +21,7 @@ bottom of the conduction band (CB) and the top of the valence band
 The two tables at the top show the deformation potentials for the
 valence band (D<sub>VB</sub>) and conduction band (D<sub>CB</sub>)
 at the high-symmetry k-points, subdivided into the different strain
-components. At the bottom of each table are shown the 
+components. At the bottom of each table are shown the
 deformation potentials at the k-points where the VBM and CBM are found
 (k<sub>VBM</sub> and k<sub>CBM</sub>, respectively).
 Note that the latter may coincide with any of the high-symmetry k-points.
@@ -169,13 +169,13 @@ def get_special_kpts(atoms):
     wrt. direct cell) and the one used by GPAW when mapping the IBZ.
 
     atoms.cell.bandpath can return the special points in fractional coordinates
-    of bandpath.icell, which is NOT the conventional reciprocal cell. 
+    of bandpath.icell, which is NOT the conventional reciprocal cell.
     However, when scaled by bandpath.icell, the absolute coordinates will
     correspond to the actual special points.
 
     If these fractional coordinates are used in a calculation,
-    GPAW will use cell.reciprocal() and NOT bandpath.icell, 
-    hence the fractional coordinates will not necessarily 
+    GPAW will use cell.reciprocal() and NOT bandpath.icell,
+    hence the fractional coordinates will not necessarily
     map to special points.
 
     Here we obtain the absolute coordinates from bandpath and then convert
@@ -186,7 +186,6 @@ def get_special_kpts(atoms):
     bp = atoms.cell.bandpath(pbc=atoms.pbc, npoints=0)
     spec_kpts = bp.special_points
 
-    kpoints = OrderedDict()
     labels = []
     coords = []
 
@@ -254,10 +253,9 @@ def gpaw_get_edges(folder, kpts, soc):
     """Obtain the edge states at the different k-points.
 
     Returns, for each k-point included in the calculation,
-    the top eigenvalue of the valence band and 
+    the top eigenvalue of the valence band and
     the bottom eigenvalue of the conduction band."""
 
-    atoms = read(f'{folder}/structure.json')
     gpw = GPAW(f'{folder}/gs.gpw').fixed_density(
         kpts=kpts,
         symmetry='off',
@@ -293,7 +291,7 @@ def _main(pbc, kpts, get_edges, strain, soc):
     }
     kptlabels = list(kpts)
     kpts = list(kpts.values())
-    
+
     # Initialize strains and deformation potentials results
     strains = [-abs(strain), abs(strain)]
     defpots = {kpt: OrderedDict() for kpt in kptlabels}
