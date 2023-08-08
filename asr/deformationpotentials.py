@@ -5,7 +5,6 @@ from collections import OrderedDict
 
 from gpaw import GPAW
 
-from ase.io import read
 from ase.io.jsonio import read_json
 
 from asr.core import command, option, ASRResult, prepare_result
