@@ -21,12 +21,14 @@ bottom of the conduction band (CB) and the top of the valence band
 The two tables at the top show the deformation potentials for the
 valence band (D<sub>VB</sub>) and conduction band (D<sub>CB</sub>)
 at the high-symmetry k-points, subdivided into the different strain
-components. If the VBM and/or the CBM are found at any other k-point,
-they are added to the list as
-'k<sub>VBM</sub>' / 'k<sub>VBM</sub>' / 'k<sub>VBM/CBM</sub>'.
-The table on the right shows the band gap deformation potentials.
+components. At the bottom of each table are shown the 
+deformation potentials at the k-points where the VBM and CBM are found
+(k<sub>VBM</sub> and k<sub>CBM</sub>, respectively).
+Note that the latter may coincide with any of the high-symmetry k-points.
+The table at the bottom shows the band gap deformation potentials.
 
-All the values are calculated with spin-orbit coupling.
+All the values shown are calculated with spin-orbit coupling (SOC).
+Values obtained without SOC can be found in the material raw data.
 """
 
 
