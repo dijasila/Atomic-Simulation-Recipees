@@ -281,8 +281,8 @@ def get_layer_group(atoms, symprec):
         perm[2], perm[aperiodic_dir] = perm[aperiodic_dir], perm[2]
         atoms = atoms.copy()
         atoms.set_pbc(atoms.get_pbc()[perm])
-        # The atoms are stored in cartesian coordinates, therefore, we are free to permute the cell
-        # vectors and system remains invariant.
+        # The atoms are stored in cartesian coordinates, therefore, we are
+        # free to permute the cell vectors and system remains invariant.
         atoms.set_cell(atoms.get_cell()[perm], scale_atoms=False)
         aperiodic_dir = 2
 
