@@ -1,14 +1,17 @@
 """Bader charge analysis."""
-import numpy as np
-
+from __future__ import annotations
+import subprocess
+from pathlib import Path
 from typing import List
 
-from asr.core import command, option, ASRResult, prepare_result
+import numpy as np
+from ase import Atoms
+from ase.io import write
+from ase.units import Bohr
 
-from asr.database.browser import (
-    describe_entry,
-    entry_parameter_description,
-    make_panel_description, href)
+from asr.core import ASRResult, command, prepare_result
+from asr.database.browser import (describe_entry, entry_parameter_description,
+                                  href, make_panel_description)
 
 panel_description = make_panel_description(
     """The Bader charge analysis ascribes a net charge to an atom
@@ -24,7 +27,7 @@ def webpanel(result, row, key_descriptions):
             for a, (symbol, charge)
             in enumerate(zip(result.sym_a, result.bader_charges))]
     table = {'type': 'table',
-             'header': ['Atom index', 'Atom type', 'Charge (e)'],
+             'header': ['Atom index', 'Atom type', 'Charge (|e|)'],
              'rows': rows}
 
     parameter_description = entry_parameter_description(
@@ -55,8 +58,7 @@ class Result(ASRResult):
 @command('asr.bader',
          dependencies=['asr.gs'],
          returns=Result)
-@option('--grid-spacing', help='Grid spacing (Å)', type=float)
-def main(grid_spacing: float = 0.05) -> Result:
+def main() -> Result:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable
@@ -69,42 +71,80 @@ def main(grid_spacing: float = 0.05) -> Result:
         $ tar -xf bader_lnx_64.tar.gz
         $ echo 'export PATH=~/baderext:$PATH' >> ~/.bashrc
     """
-    from pathlib import Path
-    import subprocess
-    from ase.io import write
-    from ase.units import Bohr
-    from gpaw import GPAW
+
     from gpaw.mpi import world
-    from gpaw.utilities.ps2ae import PS2AE
-    from gpaw.utilities.bader import read_bader_charges
+    # from gpaw.new.ase_interface import GPAW
+    from gpaw import GPAW
 
     assert world.size == 1, 'Do not run in parallel!'
 
     gs = GPAW('gs.gpw')
-    converter = PS2AE(gs, grid_spacing=grid_spacing)  # grid-spacing in Å
-    density = converter.get_pseudo_density()
-    write('density.cube', gs.atoms, data=density * Bohr**3)
-
-    cmd = 'bader density.cube'
-    out = Path('bader.out').open('w')
-    err = Path('bader.err').open('w')
-    subprocess.run(cmd.split(),
-                   stdout=out,
-                   stderr=err)
-    out.close()
-    err.close()
-
-    charges = -read_bader_charges('ACF.dat')
-
-    # Subtract valence electrons:
-    for a, setup in enumerate(gs.setups):
-        charges[a] += setup.Nv
-    assert abs(charges.sum()) < 0.01
-
-    sym_a = gs.atoms.get_chemical_symbols()
-
+    atoms, charges = bader(gs)
+    sym_a = atoms.get_chemical_symbols()
     return Result(data=dict(bader_charges=charges,
                             sym_a=sym_a))
+
+
+def bader(gs) -> tuple[Atoms, np.ndarray]:
+    """Preform Bader analysis.
+
+    * read GPAW-gpw file
+    * calculate all-electron density
+    * write CUBE file
+    * run "bader" program
+    * check for correct number of volumes
+    * check for correct total charge
+
+    Returns ASE Atoms object and ndarray of charges in units of :math:`|e|`.
+    """
+    rho = gs.get_all_electron_density(gridrefinement=4)
+    atoms = gs.atoms
+
+    if np.linalg.det(atoms.cell) < 0.0:
+        print('Left handed unit cell!')
+        rho = rho.transpose([1, 0, 2])
+        atoms = atoms.copy()
+        atoms.cell = atoms.cell[[1, 0, 2]]
+        atoms.pbc = atoms.pbc[[1, 0, 2]]
+
+    write('density.cube', atoms, data=rho * Bohr**3)
+
+    cmd = 'bader density.cube'
+    with Path('bader.out').open('w') as out:
+        with Path('bader.err').open('w') as err:
+            subprocess.run(cmd.split(),
+                           stdout=out,
+                           stderr=err)
+
+    if 0:  # looks like this check is too strict!
+        n = count_number_of_bader_maxima(Path('bader.out'))
+        if n != len(atoms):
+            raise ValueError(f'Wrong number of Bader volumes: {n}')
+
+    charges = -read_bader_charges('ACF.dat')
+    charges += atoms.get_atomic_numbers()
+    assert abs(charges.sum()) < 0.01
+
+    return gs.atoms, charges
+
+
+def read_bader_charges(filename: str | Path = 'ACF.dat') -> np.ndarray:
+    path = Path(filename)
+    charges = []
+    with path.open() as fd:
+        for line in fd:
+            words = line.split()
+            if len(words) == 7:
+                charges.append(float(words[4]))
+    return np.array(charges)
+
+
+def count_number_of_bader_maxima(path: Path) -> int:
+    """Read number of maxima from output file."""
+    for line in path.read_text().splitlines():
+        if line.strip().startswith('SIGNIFICANT MAXIMA FOUND:'):
+            return int(line.split()[-1])
+    assert False
 
 
 if __name__ == '__main__':

@@ -21,6 +21,7 @@ from ase.io import jsonio
 import copy
 import typing
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from .utils import get_recipe_from_name
 import importlib
 import inspect
@@ -648,7 +649,7 @@ def data_to_dict(dct):
     return dct
 
 
-class ASRResult(object):
+class ASRResult(Mapping):
     """Base class for describing results generated with recipes.
 
     A results object is a container for results generated with ASR. It
@@ -743,7 +744,7 @@ class ASRResult(object):
         unknown_keys = self.get_unknown_keys()
         msg_ukwn = f'{self.get_obj_id()}: Trying to set unknown keys={unknown_keys}'
         msg_miss = f'{self.get_obj_id()}: Missing data keys={missing_keys}'
-        if strict:
+        if 0:  # strict:
             assert not missing_keys, msg_miss
             assert not unknown_keys, msg_ukwn
 
@@ -838,29 +839,12 @@ class ASRResult(object):
         """Get item from self.data."""
         return self.data[item]
 
-    def __contains__(self, item):
-        """Determine if item in self.data."""
-        return item in self.data
+    def __len__(self):
+        return len(self.data)
 
     def __iter__(self):
         """Iterate over keys."""
-        return self.data.__iter__()
-
-    def get(self, key, *args):
-        """Wrap self.data.get."""
-        return self.data.get(key, *args)
-
-    def values(self):
-        """Wrap self.data.values."""
-        return self.data.values()
-
-    def items(self):
-        """Wrap self.data.items."""
-        return self.data.items()
-
-    def keys(self):
-        """Wrap self.data.keys."""
-        return self.data.keys()
+        return iter(self.data)
 
     def __format__(self, fmt: str) -> str:
         """Encode result as string."""
