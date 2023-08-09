@@ -273,6 +273,20 @@ def get_layer_group(atoms, symprec):
 
     assert atoms.pbc.sum() == 2
     aperiodic_dir = np.where(~atoms.pbc)[0][0]
+    # Prepare for spglib v3 API change to always have the aperiodic_dir == 2
+    # See: https://github.com/spglib/spglib/issues/314.
+    if aperiodic_dir != 2:
+        perm = np.array([0, 1, 2])
+        # Swap axes such that aperiodic is always 2
+        perm[2], perm[aperiodic_dir] = perm[aperiodic_dir], perm[2]
+        atoms = atoms.copy()
+        atoms.set_pbc(atoms.get_pbc()[perm])
+        # The atoms are stored in cartesian coordinates, therefore, we are free to permute the cell
+        # vectors and system remains invariant.
+        atoms.set_cell(atoms.get_cell()[perm], scale_atoms=False)
+        aperiodic_dir = 2
+
+    assert aperiodic_dir == 2
 
     lg_dct = get_symmetry_layerdataset(
         (atoms.get_cell(),
