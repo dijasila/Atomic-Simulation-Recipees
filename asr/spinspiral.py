@@ -17,9 +17,8 @@ def get_magnetic_moments(atoms, params, q_c, smooth):
         magmoms[:, 0] = magmomx
 
     if smooth:  # Smooth spiral
-
         from ase.dft.kpoints import kpoint_convert
-            
+
         def rotation_matrix(axis, theta):
             """
             Return the rotation matrix associated with counterclockwise rotation
@@ -119,56 +118,17 @@ class Result(ASRResult):
          requires=['structure.json'],
          returns=Result)
 @option('--q_path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
-@option('--n', type=int)
+@option('--npoints', help='Number of sample points', type=int)
 @option('--params', help='Calculator parameter dictionary', type=dict)
 @option('--smooth', help='Rotate initial magmoms by q dot a', type=bool)
 @option('--clean_up', help='Remove gpw files after execution', type=bool)
 @option('--eps', help='Bandpath symmetry threshold', type=float)
-def main(q_path: Union[str, None] = None, n: int = 11,
+def main(q_path: Union[str, None] = None, npoints: int = 11,
          params: dict = dict(mode={'name': 'pw', 'ecut': 800},
                              kpts={'density': 6.0, 'gamma': True}),
          smooth: bool = True, clean_up: bool = False, eps: float = None) -> Result:
-    from ase.io import read
-    atoms = read('structure.json')
-    cell = atoms.cell
-    if eps is None:
-        eps = c2db_symmetry_eps
 
-    if q_path is None:
-        # Input --q_path None
-        # eps = 0.1 is current c2db threshold
-        path = atoms.cell.bandpath(npoints=n, pbc=atoms.pbc, eps=eps)
-        Q = np.round(path.kpts, 16)
-    elif q_path == 'ibz':
-        # Input: --q_path 'ibz'
-        from gpaw.symmetry import atoms2symmetry
-        from gpaw.kpt_descriptor import kpts2sizeandoffsets
-        from ase.dft.kpoints import monkhorst_pack, kpoint_convert
-        # Create (n,n,1) for 2D, (n,n,n) for 3D
-        sizeInput = atoms.get_pbc() * (n - 1) + 1
-        size, offset = kpts2sizeandoffsets(sizeInput, gamma=True, atoms=atoms)
-        bzk_kc = monkhorst_pack(size) + offset
-        symmetry = atoms2symmetry(atoms, tolerance=eps)
-        ibzinfo = symmetry.reduce(bzk_kc)
-        Q = ibzinfo[0]
-        bz2ibz_k, ibz2bz_k = ibzinfo[4:6]
-        bzk_kv = kpoint_convert(cell, skpts_kc=bzk_kc) / (2 * np.pi)
-        path = [bzk_kv, bz2ibz_k, ibz2bz_k]
-    elif q_path.isalpha():
-        # Input: --q_path 'GKMG'
-        path = atoms.cell.bandpath(q_path, npoints=n, pbc=atoms.pbc, eps=eps)
-        Q = np.round(path.kpts, 16)
-    else:
-        # Input: --q_path 111 --n 5
-        from ase.dft.kpoints import (monkhorst_pack, kpoint_convert)
-        import sys
-        sys.path.insert(0, "/home/niflheim/joaso/scripts/")
-        from rotation import project_to_plane
-        plane = [eval(q) for q in q_path]
-        Q = monkhorst_pack([n, n, n])
-        Q = project_to_plane(Q, plane)
-        Qv = kpoint_convert(atoms.get_cell(), skpts_kc=Q) / (2 * np.pi)
-        path = [Q, Qv]
+    path, Q, natoms = get_spiral_bandpath(q_path, npoints, eps)
 
     energies = []
     lmagmom_av = []
@@ -184,7 +144,7 @@ def main(q_path: Union[str, None] = None, n: int = 11,
         except Exception as e:
             print('Exception caught: ', e)
             energies.append(0)
-            lmagmom_av.append(np.zeros((len(atoms), 3)))
+            lmagmom_av.append(np.zeros((natoms, 3)))
             Tmagmom_v.append(np.zeros(3))
             gaps.append(0)
 
@@ -210,6 +170,43 @@ def main(q_path: Union[str, None] = None, n: int = 11,
     return Result.fromdata(path=path, energies=energies, minimum=qmin,
                            local_magmoms=lmagmom_av, total_magmoms=Tmagmom_v,
                            bandwidth=bandwidth, gaps=gaps, gapmin=gapmin)
+
+
+def get_spiral_bandpath(q_path, npoints, eps):
+    from ase.io import read
+    atoms = read('structure.json')
+    natoms = len(atoms)
+
+    if eps is None:
+        eps = c2db_symmetry_eps
+
+    if q_path is None:
+        # Input --q_path None
+        # eps = 0.1 is current c2db threshold
+        path = atoms.cell.bandpath(npoints=npoints, pbc=atoms.pbc, eps=eps)
+        Q = np.round(path.kpts, 16)
+    elif q_path.isalpha():
+        # Input: --q_path 'GKMG'
+        path = atoms.cell.bandpath(q_path, npoints=npoints, pbc=atoms.pbc, eps=eps)
+        Q = np.round(path.kpts, 16)
+    else:
+        # Input: --q_path 111 --n 5
+        from ase.dft.kpoints import (monkhorst_pack, kpoint_convert)
+
+        def project_to_plane(points, plane, orig=[0, 0, 0]):
+            normal = plane / np.linalg.norm(plane)
+            dist = np.dot(points, normal)[:, np.newaxis]
+            new_points = (points - dist * normal)
+            new_points = np.unique(new_points.round(decimals=15), axis=0)
+            return new_points
+
+        plane = [eval(q) for q in q_path]
+        Q = monkhorst_pack([npoints, npoints, npoints])
+        Q = project_to_plane(Q, plane)
+        Qv = kpoint_convert(atoms.get_cell(), skpts_kc=Q) / (2 * np.pi)
+        path = [Q, Qv]
+
+    return path, Q, natoms
 
 
 if __name__ == '__main__':
