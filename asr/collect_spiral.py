@@ -213,10 +213,17 @@ def plot_bandstructure(row, fname):
 
     fig = plt.figure(figsize=((1 + np.sqrt(5)) / 2 * 4, 4))
     ax1 = plt.gca()
+
+    # Non-cumulative length of q-vectors to find wavelength
+    ax2 = ax1.twiny()
+    add_wavelength_axis(ax2, Q, q_v, wavepointsfreq)
+
+    # Magnetic moment axis
+    ax3 = ax1.twinx()
     for bidx in range(nbands):
         e_q = energies_bq[bidx]
         m_q = magmom_bq[bidx]
-        splitarg = np.argwhere(energies_bq == 0)[:1]
+        splitarg = np.argwhere(e_q == 0).flatten()
         energies_sq = np.split(e_q, splitarg)
         magmom_sq = np.split(m_q, splitarg, axis=0)
 
@@ -227,16 +234,13 @@ def plot_bandstructure(row, fname):
             magmom_q = magmom_q[energies_q != 0]
             q = q[energies_q != 0]
             energies_q = energies_q[energies_q != 0]
+            if len(q) == 0:
+                continue
 
             # Setup main energy plot
             hnd = plot_energies(ax1, q, (energies_q - e0) * 1000, emin, emax, x, X)
 
-            # Non-cumulative length of q-vectors to find wavelength
-            ax2 = ax1.twiny()
-            add_wavelength_axis(ax2, Q, q_v, wavepointsfreq)
-
             # Add the magnetic moment plot
-            ax3 = ax1.twinx()
             plot_magmoms(ax3, q, magmom_q, mommin, mommax, symbols)
 
             # Ensure unique legend entries
@@ -244,8 +248,10 @@ def plot_bandstructure(row, fname):
             by_label = dict(zip(labels, handles))
             updict = {'Energy': hnd[0]}
             updict.update(by_label)
-            fig.legend(updict.values(), updict.keys(), loc="upper right",
-                       bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
+
+    # Add legend
+    fig.legend(updict.values(), updict.keys(), loc="upper right",
+               bbox_to_anchor=(1, 1), bbox_transform=ax1.transAxes)
 
     ax1.margins(x=0, y=1e-3 * (emax - emin))
     ax3.margins(x=0, y=1e-3 * (mommax - mommin))
