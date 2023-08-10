@@ -89,9 +89,11 @@ def prepare_dmi(calculator: dict = {
                 calculator['mode']['qspiral'] = q_c
                 calc = spinspiral(calculator, write_gpw=True, return_calc=True)
                 en_q.append(calc.get_potential_energy())
+                del calc                
             else:
                 calc = GPAW(f'gsq{j}d{i}.gpw')
                 en_q.append(calc.get_potential_energy())
+                del calc
         en_nq.append(en_q)
     en_nq = np.array(en_nq)
     return PreResult.fromdata(qpts_nqc=qpts_nqc, en_nq=en_nq)
@@ -150,7 +152,6 @@ def main() -> Result:
     from asr.core import read_json
     atoms = read('structure.json')
     
-    name = 'gpaw'
     qpts_nqc = read_json('results-asr.dmi@prepare_dmi.json')['qpts_nqc']
     en_nq = read_json('results-asr.dmi@prepare_dmi.json')['en_nq']
 
@@ -161,7 +162,7 @@ def main() -> Result:
     for i, q_qc in enumerate(qpts_nqc):
         en_q = []
         for j, q_c in enumerate(q_qc):
-            calc = get_calculator_class(name)(f'gsq{j}d{i}.gpw')
+            calc = f'gsq{j}d{i}.gpw'
 
             Ex, Ey, Ez = (soc_eigenstates(calc, projected=True, occcalc=occcalc,
                                           theta=th, phi=phi).calculate_band_energy()
