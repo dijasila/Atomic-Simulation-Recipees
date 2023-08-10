@@ -6,7 +6,7 @@ def get_magmoms(atoms):
     from ase.calculators.calculator import PropertyNotImplementedError
     try:
         moments = atoms.get_magnetic_moments()
-    except PropertyNotImplementedError:
+    except (PropertyNotImplementedError, RuntimeError):
         if atoms.has('initial_magmoms'):
             moments = atoms.get_initial_magnetic_moments()
         else:
@@ -82,6 +82,55 @@ def nn(atoms, ref: int = 0):
     R_a = R_a[np.isclose(R_nn, r)]
     npos_av = allpos_av[np.isclose(R_nn, r)]
     return R_a, npos_av
+
+
+def get_afms(atoms):
+    """
+    Takes an atoms object
+    and creates a list of non-equivalent antiferromagnetic structures.
+    Note can only take even number of moment such that the antiferromagnetic
+    condition is sum(moments) = 0
+    Returns [[0, 1, -1, 0, 0, ...]]
+    """
+
+    import numpy as np
+
+    moments = get_magmoms(atoms)
+    arg = true_magnetic_atoms(atoms)
+
+    # Construct list with #up and downs
+    start = np.ones(sum(arg))
+    start[:len(start) // 2] = -1
+    # If number of magnetic atoms is odd, cannot generate afms
+    if sum(start) != 0:
+        return []
+
+    # Create all collinear afm structures
+    from itertools import permutations
+    afms = np.array(list(set(permutations(start))))
+
+    # Remove inversion symmetric structures
+    for i in range(len(afms) // 2):
+        mask = np.all(-afms[i] == afms, axis=1)
+        afms = afms[np.invert(mask), :]
+
+    # Apply the afm structure to the magmom list
+    afm_comps = np.ones((len(afms), len(moments)))
+    for n in range(len(afms)):
+        afm_comps[n, :] = moments
+        afm_comps[n, arg] = moments[arg] * afms[n]
+
+    return afm_comps
+
+
+def get_noncollinear_magmoms(atoms):
+    fm = get_magmoms(atoms)
+    afms = get_afms(atoms)
+    magmoms = np.zeros((len(afms) + 1, len(atoms), 3))
+    magmoms[0, :, 0] = fm
+    for n in range(1, len(afms) + 1):
+        magmoms[n, :, 0] = afms[n - 1]
+    return magmoms
 
 
 def spinspiral(calculator: dict = {
