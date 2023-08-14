@@ -16,8 +16,6 @@ class Result(ASRResult):
         "orbmag_a": "Local orbital magnetic moments [μ_B]"
     }
 
-    #formats = {"ase_webpanel": webpanel}
-
 
 @command('asr.orbmag',
          requires=['gs.gpw'],

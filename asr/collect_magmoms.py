@@ -1,11 +1,10 @@
 from typing import List
 from asr.core import command, ASRResult, prepare_result
-from asr.database.browser import table
 
 
 def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
-    from asr.database.browser import code, WebPanel
+    from asr.database.browser import WebPanel
 
     if row.get('magstate', 'NM') == 'NM':
         return []
@@ -42,7 +41,7 @@ class Result(ASRResult):
         "magmom_a": "Local spin magnetic moments [μ_B]",
         "orbmag_a": "Local orbital magnetic moments [μ_B]"
     }
-    
+
     formats = {"ase_webpanel": webpanel}
 
 
