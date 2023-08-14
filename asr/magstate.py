@@ -1,6 +1,7 @@
 """Module for determining magnetic state."""
+
+from typing import List
 from asr.core import command, ASRResult, prepare_result
-import typing
 
 atomic_mom_threshold = 0.1
 total_mom_threshold = 0.1
@@ -27,7 +28,7 @@ def get_magstate(calc):
 
 def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
-    from asr.database.browser import describe_entry, dl, code, WebPanel
+    from asr.database.browser import describe_entry, dl, code
 
     is_magnetic = describe_entry(
         'Magnetic',
@@ -56,24 +57,7 @@ def webpanel(result, row, key_descriptions):
                              'rows': rows}]],
                'sort': 0}
 
-    if result.magstate == 'NM':
-        return [summary]
-    else:
-        magmoms_rows = [[str(a), symbol, f'{magmom:.2f}']
-                        for a, (symbol, magmom)
-                        in enumerate(zip(row.get('symbols'), result.magmoms))]
-        magmoms_table = {'type': 'table',
-                         'header': ['Atom index', 'Atom type',
-                                    'Local magnetic moment (μ<sub>B</sub>)'],
-                         'rows': magmoms_rows}
-
-        from asr.utils.hacks import gs_xcname_from_row
-        xcname = gs_xcname_from_row(row)
-        panel = WebPanel(title=f'Basic magnetic properties ({xcname})',
-                         columns=[[], [magmoms_table]],
-                         sort=11)
-
-        return [summary, panel]
+    return [summary]
 
 
 @prepare_result
@@ -81,7 +65,7 @@ class Result(ASRResult):
 
     magstate: str
     is_magnetic: bool
-    magmoms: typing.List[float]
+    magmoms: List[float]
     magmom: float
     nspins: int
 
