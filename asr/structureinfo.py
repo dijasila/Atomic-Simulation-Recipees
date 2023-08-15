@@ -1,5 +1,8 @@
 """Structural information."""
-from asr.core import command, ASRResult, prepare_result
+import numpy as np
+
+from asr.core import ASRResult, command, prepare_result
+from asr.database.browser import bold, br, code, describe_entry, div, dl, href
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -21,10 +24,10 @@ def get_reduced_formula(formula, stoichiometry=False):
     -------
         A string containing the reduced formula.
     """
+    import re
+    import string
     from functools import reduce
     from math import gcd
-    import string
-    import re
     split = re.findall('[A-Z][^A-Z]*', formula)
     matches = [re.match('([^0-9]*)([0-9]+)', x)
                for x in split]
@@ -43,13 +46,22 @@ def get_reduced_formula(formula, stoichiometry=False):
     return result
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table, describe_entry, code, bold,
-                                      br, href, dl, div)
+def get_spg_href(url):
+    return href('SpgLib', url)
 
-    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
+
+def describe_pointgroup_entry(spglib):
+    pointgroup = describe_entry(
+        'Point group',
+        f"Point group determined with {spglib}."
+    )
+
+    return pointgroup
+
+
+def describe_crystaltype_entry(spglib):
     crystal_type = describe_entry(
-        'crystal_type',
+        'Crystal type',
         "The crystal type is defined as "
         + br
         + div(bold('-'.join([code('stoi'),
@@ -59,13 +71,22 @@ def webpanel(result, row, key_descriptions):
         + dl(
             [
                 [code('stoi'), 'Stoichiometry.'],
-                [code('spg no.'), f'The spacegroup calculated with {spglib}.'],
+                [code('spg no.'), f'The space group calculated with {spglib}.'],
                 [code('occ. wyck. pos.'),
                  'Alphabetically sorted list of occupied '
                  f'wyckoff positions determined with {spglib}.'],
             ]
         )
     )
+
+    return crystal_type
+
+
+def webpanel(result, row, key_descriptions):
+    from asr.database.browser import (table, describe_entry, href)
+
+    spglib = get_spg_href('https://spglib.github.io/spglib/')
+    crystal_type = describe_crystaltype_entry(spglib)
 
     cls = describe_entry(
         'class',
@@ -75,22 +96,19 @@ def webpanel(result, row, key_descriptions):
     )
 
     spg_list_link = href(
-        'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
+        'Space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
     )
     spacegroup = describe_entry(
         'spacegroup',
-        f"The {spg_list_link} is determined with {spglib}."
+        f"{spg_list_link} determined with {spglib}."
     )
 
     spgnum = describe_entry(
         'spgnum',
-        f"The {spg_list_link} number is determined with {spglib}."
+        f"{spg_list_link} number determined with {spglib}."
     )
 
-    pointgroup = describe_entry(
-        'pointgroup',
-        f"The point group is determined with {spglib}."
-    )
+    pointgroup = describe_pointgroup_entry(spglib)
 
     icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
                      'https://icsd.products.fiz-karlsruhe.de/')
@@ -128,7 +146,7 @@ def webpanel(result, row, key_descriptions):
     doi = row.get('doi')
     doistring = describe_entry(
         'Reported DOI',
-        'DOI of article where material has been synthesized.'
+        'DOI of article reporting the synthesis of the material.'
     )
     if doi:
         rows.append([
@@ -138,11 +156,10 @@ def webpanel(result, row, key_descriptions):
         ])
 
     panel = {'title': 'Summary',
-             # 'columns': [[basictable,
-             'columns': [[],
-                         # {'type': 'table', 'header': ['Stability', ''],
-                         #  'rows': [],
-                         #  'columnwidth': 4}],
+             'columns': [[basictable,
+                          {'type': 'table', 'header': ['Stability', ''],
+                           'rows': [],
+                           'columnwidth': 4}],
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
     return [panel]
@@ -172,7 +189,7 @@ class Result(ASRResult):
     formula: str
 
     key_descriptions = {
-        "cell_area": "Area of unit-cell [`Ang^2`]",
+        "cell_area": "Area of unit-cell [`Å²`]",
         "has_inversion_symmetry": "Material has inversion symmetry",
         "stoichiometry": "Stoichiometry",
         "spacegroup": "Space group",
@@ -200,6 +217,8 @@ def main() -> Result:
     import numpy as np
     from ase.io import read
 
+    from asr.utils.symmetry import c2db_symmetry_angle, c2db_symmetry_eps    #These are hard-coded values in utils.symmetry
+
     atoms = read('structure.json')
     info = {}
 
@@ -210,9 +229,10 @@ def main() -> Result:
 
     # Get crystal symmetries
     from asr.utils.symmetry import atoms2symmetry
+
     symmetry = atoms2symmetry(atoms,
-                              tolerance=1e-3,
-                              angle_tolerance=0.1)
+                              tolerance=c2db_symmetry_eps,
+                              angle_tolerance=c2db_symmetry_angle)    #Tolerance 0.001 -> 0.1 and angle tolerance 0.1->1 _ks
     info['has_inversion_symmetry'] = symmetry.has_inversion
     dataset = symmetry.dataset
     info['spglib_dataset'] = dataset
@@ -227,7 +247,7 @@ def main() -> Result:
     info['crystal_type'] = crystal_type
     info['spacegroup'] = sg
     info['spgnum'] = number
-    from ase.db.core import str_represents, convert_str_to_int_float_or_str
+    from ase.db.core import convert_str_to_int_float_or_str, str_represents
     if str_represents(pg):
         info['pointgroup'] = convert_str_to_int_float_or_str(pg)
     else:

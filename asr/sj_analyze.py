@@ -39,7 +39,7 @@ def webpanel(result, row, key_descriptions):
     formation_table_sum['rows'].extend(
         [[describe_entry('Neutral formation energy',
                          description='Neutral formation energy [eV].'),
-          f'{result.eform[0][0]:.2f} eV']])
+                         f'{result.eform[0][0]:.2f} eV']])
 
     formation_table = table(result, 'Defect formation', [])
     for element in result.eform:
@@ -184,7 +184,7 @@ class Result(ASRResult):
 
 @command(module='asr.sj_analyze',
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
-                   '../../../unrelaxed.json',
+                   '../../unrelaxed.json',
                    'gs.gpw'],
          resources='24:2h',
          returns=Result)
@@ -212,7 +212,7 @@ def main(index: int = None) -> Result:
 
     # get heat of formation
     c2db = connect('/home/niflheim/fafb/db/c2db_july20.db')
-    primitive = read('../../../unrelaxed.json')
+    primitive = read('../../unrelaxed.json')
     hof = get_heat_of_formation(c2db, primitive)
 
     # Obtain a list of all transitions with the respective ASRResults object
@@ -226,7 +226,7 @@ def main(index: int = None) -> Result:
     pristine = get_pristine_band_edges(index, defectinfo)
     # get neutral formation energy without chemical potentials applied
     p = Path('.')
-    pris = list(p.glob('./../../../defects.pristine_sc*/full_params'))[0]
+    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
     results_def = read_json('./results-asr.gs.json')
     results_pris = read_json(pris / 'results-asr.gs.json')
     etot_def = results_def['etot']
@@ -327,12 +327,12 @@ def calculate_transitions(index, N_homo_q, defectinfo):
             transition_list.append(transition_results)
 
     for q in [-3, -2, -1, 1, 2, 3]:
-        if q > 0 and Path('./../../charge_{}/full_params/sj_+0.5/gs.gpw'.format(q)).is_file():
+        if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
             transition_results = get_transition_level(
                 transition, q, index, N_homo_q, defectinfo)
             transition_list.append(transition_results)
-        if q < 0 and Path('./../../charge_{}/full_params/sj_-0.5/gs.gpw'.format(q)).is_file():
+        if q < 0 and Path('./../charge_{}/sj_-0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q - 1]
             transition_results = get_transition_level(
                 transition, q, index, N_homo_q, defectinfo)
@@ -366,7 +366,7 @@ def get_pristine_band_edges(index, defectinfo) -> PristineResults:
 
     print('INFO: extract pristine band edges.')
     p = Path('.')
-    pris = list(p.glob('./../../../defects.pristine_sc*/full_params'))[0]
+    pris = list(p.glob('./../../defects.pristine_sc*'))[0]
     if Path(pris / 'results-asr.gs.json').is_file():
         results_pris = read_json(pris / 'results-asr.gs.json')
         vbm = results_pris['vbm'] - pot_pris
@@ -420,7 +420,7 @@ def calculate_neutral_formation_energy(etot_def, etot_pris, db, defectinfo):
 def get_strucs_and_calcs(path):
     from gpaw import restart
     try:
-        pris_folder = list(path.glob(f'./../../../defects.pristine_sc*/full_params'))[0]
+        pris_folder = list(path.glob(f'./../../defects.pristine_sc*'))[0]
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         struc_def, calc_def = restart(path / 'gs.gpw', txt=None)
     except FileNotFoundError as err:
@@ -446,7 +446,7 @@ def get_half_integer_calc_and_index(charge, transition):
     elif transition[1] > transition[0]:
         identifier = '+0.5'
         delta_index = 0
-    parentpath = f'../../charge_{charge}/full_params/sj_{identifier}'
+    parentpath = f'../charge_{charge}/sj_{identifier}'
     try:
         calc = GPAW(f'{parentpath}/gs.gpw', txt=None)
         print('INFO: calculate transition level q = {} -> q = {} transition.'.format(
@@ -502,10 +502,10 @@ def get_transition_level(transition,
                                                   ref_index, is_vacancy)
 
     # if possible, calculate correction due to relaxation in the charge state
-    if Path('../../charge_{}/full_params/results-asr.relax.json'.format(
+    if Path('../charge_{}/results-asr.relax.json'.format(
             int(transition[1]))).is_file():
         print('INFO: calculate relaxation contribution to transition level.')
-        traj = Trajectory('../../charge_{}/full_params/relax.traj'.format(str(int(transition[1]))))
+        traj = Trajectory('../charge_{}/relax.traj'.format(str(int(transition[1]))))
         e_cor = traj[0].get_potential_energy() - traj[-1].get_potential_energy()
     else:
         print('INFO: no relaxation for the charged state present. Do not calculate '

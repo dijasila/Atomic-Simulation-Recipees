@@ -196,7 +196,7 @@ def return_gapstates(calc_def):
     # return index of the point defect in the defect structure
     structure, _, primitive, _ = check_and_return_input(
         structurefile='structure.json',
-        primitivefile='../../../unrelaxed.json')
+        primitivefile='../../unrelaxed.json')
 
     p = Path('.')
     defectinfo = DefectInfo(defectpath=p)
@@ -206,7 +206,7 @@ def return_gapstates(calc_def):
     # get calculators and atoms for pristine and defect calculation
     try:
         p = Path('.')
-        pris_folder = list(p.glob(f'./../../../defects.pristine_sc*/full_params'))[0]
+        pris_folder = list(p.glob(f'./../../defects.pristine_sc*'))[0]
         res_pris = read_json(pris_folder / 'results-asr.gs.json')
         struc_pris, calc_pris = restart(pris_folder / 'gs.gpw', txt=None)
         struc_def, calc_def = restart(p / 'gs.gpw', txt=None)

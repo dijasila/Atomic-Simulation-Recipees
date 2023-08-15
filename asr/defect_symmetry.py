@@ -308,11 +308,12 @@ class Result(ASRResult):
         ' Use --no-mapping otherwise.', is_flag=True)
 @option('--radius', help='Radius around the defect where the wavefunction '
         'gets analyzed.', type=float)
-def main(primitivefile: str = 'primitive.json',
-         pristinefile: str = 'pristine.json',
-         unrelaxedfile: str = 'NO',
+def main(primitivefile: str = '../../structure.json',
+         pristinefile: str = '../../defects.pristine_sc/structure.json',
+         unrelaxedfile: str = 'unrelaxed.json',
          mapping: bool = False,
          radius: float = 2.0) -> Result:
+    #Changed primitive.json and pristine.json to the paths of respective things and put unrelaxed.json in place of 'NO'
     """
     Analyze defect wavefunctions and their symmetries.
 
@@ -518,7 +519,7 @@ def get_pristine_result():
 
     try:
         p = Path('.')
-        pris = list(p.glob('./../../../defects.pristine_sc*/full_params'))[0]
+        pris = list(p.glob('./../../defects.pristine_sc*'))[0]
         res_pris = read_json(pris / 'results-asr.gs.json')
     except FileNotFoundError as err:
         msg = ('ERROR: does not find pristine results. Did you run setup.defects '
@@ -572,8 +573,8 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     translation = return_defect_coordinates(pristine, defectinfo)
     rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
         structure, unrelaxed, primitive, pristine, translation, delta=0)
-    for delta in [0.1, 0.3]:
-        # for cutoff in [0.01, 0.03, 0.1]:
+    for delta in [0.1, -0.06, 0.5, -0.1, 0.06]:
+        # for cutoff in [0.1, 0.6, 1.1]:
         for cutoff in np.arange(0.1, 1.2, 0.5):
             rel_tmp = rel_struc.copy()
             ref_tmp = ref_struc.copy()
@@ -598,7 +599,11 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
 
 def get_spg_symmetry(structure, symprec=0.1):
     """Return the symmetry of a given structure evaluated with spglib."""
-    spg_sym = spg.get_spacegroup(structure, symprec=symprec, symbol_type=1)
+    ## fix usage of deprecated spglib api (taken from old-master)  _ks
+    spgcell = (structure.cell,
+               structure.get_scaled_positions(),
+               structure.numbers)
+    spg_sym = spg.get_spacegroup(spgcell, symprec=symprec, symbol_type=1)
 
     return spg_sym.split('^')[0]
 
@@ -609,6 +614,8 @@ def conserved_atoms(ref_struc, primitive, N, Nvac):
         print('INFO: number of atoms correct after mapping.')
         return True
     else:
+        number = N * N * len(primitive) - Nvac
+        print(len(ref_struc), number, Nvac, N)
         return False
 
 
@@ -782,14 +789,14 @@ class DefectInfo:
 
     def _defect_token_from_path(self, defectpath):
         complete_defectpath = Path(defectpath.absolute())
-        dirname = complete_defectpath.parent.parent.name #Changed for dd folder structure _ks
+        dirname = complete_defectpath.parent.name #Change for dd folder structure --> add .parent  _ks 
         return ".".join(dirname.split('.')[2:])
 
     def _defects_from_path_or_token(self, defectpath=None, defecttoken=None):
         """Return defecttype, and kind."""
         if defectpath is not None:
             complete_defectpath = Path(defectpath.absolute())
-            dirname = complete_defectpath.parent.parent.name #Changed for dd folder structure _ks
+            dirname = complete_defectpath.parent.name #Change for dd folder structure --> add .parent  _ks
             defecttoken = dirname.split('.')[2:]
         elif defecttoken is not None:
             defecttoken = defecttoken.split('.')
@@ -973,7 +980,7 @@ def draw_levels_occupations_labels(ax, spin, spin_data, ecbm, evbm, ef,
     """Loop over all states in the gap and plot the levels.
 
     This function loops over all states in the gap of a given spin
-    channel, and dravs the states with labels. If there are
+    channel, and draws the states with labels. If there are
     degenerate states, it makes use of the degeneracy_counter, i.e. if two
     degenerate states follow after each other, one of them will be drawn
     on the left side (degoffset=0, degeneracy_counter=0), the degeneracy
@@ -1024,7 +1031,7 @@ def draw_levels_occupations_labels(ax, spin, spin_data, ecbm, evbm, ef,
             lev.add_label(irrep, static=static)
 
 
-def check_and_return_input(structurefile='', unrelaxedfile='NO',
+def check_and_return_input(structurefile='', unrelaxedfile='',
                            primitivefile='', pristinefile=''):
     """Check whether all neccessary structures are available."""
     if pristinefile != '':
@@ -1052,7 +1059,7 @@ def check_and_return_input(structurefile='', unrelaxedfile='NO',
             raise RuntimeError(msg) from err
     else:
         primitive = None
-    if unrelaxedfile != 'NO':
+    if unrelaxedfile != '':
         try:
             unrelaxed = read(unrelaxedfile)
         except FileNotFoundError as err:
