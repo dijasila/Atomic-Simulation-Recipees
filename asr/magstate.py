@@ -74,6 +74,7 @@ class Result(ASRResult):
                         'magmoms': 'Atomic magnetic moments.',
                         'magmom': 'Total magnetic moment.',
                         'nspins': 'Number of spins in system.'}
+
     formats = {"ase_webpanel": webpanel}
 
 

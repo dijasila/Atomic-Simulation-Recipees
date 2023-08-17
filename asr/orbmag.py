@@ -11,9 +11,13 @@ from gpaw.spinorbit import soc_eigenstates
 class Result(ASRResult):
 
     orbmag_a: List[float]
+    orbmag_sum: float
+    orbmag_max: float
 
     key_descriptions = {
-        "orbmag_a": "Local orbital magnetic moments [μ_B]"
+        "orbmag_a": "Local orbital magnetic moments [μ_B]",
+        "orbmag_sum": "Sum of local orbital magnetic moments [μ_B]",
+        "orbmag_max": "Maximum of local orbital magnetic moments [μ_B]"
     }
 
 
@@ -27,10 +31,10 @@ def main() -> Result:
     magstate = read_json('results-asr.magstate.json')['magstate']
 
     # Figure out if material is magnetic
-    results = {}
-
     if magstate == 'NM':
-        results['orbmag_a'] = float('NaN')
+        results = {'orbmag_a': None,
+                   'orbmag_sum': None,
+                   'orbmag_max': None}
         return Result(data=results)
 
     # Compute spin-orbit eigenstates non-self-consistently
@@ -41,8 +45,12 @@ def main() -> Result:
     soc_eigs = soc_eigenstates(calc, theta=theta, phi=phi)
 
     orbmag_a = np.linalg.norm(soc_eigs.get_orbital_magnetic_moments(), axis=1)
+    orbmag_sum = np.sum(orbmag_a)
+    orbmag_max = np.max(orbmag_a)
 
-    results = {'orbmag_a': orbmag_a}
+    results = {'orbmag_a': orbmag_a,
+               'orbmag_sum': orbmag_sum,
+               'orbmag_max': orbmag_max}
 
     return Result(data=results)
 
