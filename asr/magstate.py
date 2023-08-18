@@ -28,7 +28,7 @@ def get_magstate(calc):
 
 def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
-    from asr.database.browser import describe_entry, dl, code
+    from asr.database.browser import describe_entry, dl, code, WebPanel
 
     is_magnetic = describe_entry(
         'Magnetic',
@@ -57,7 +57,35 @@ def webpanel(result, row, key_descriptions):
                              'rows': rows}]],
                'sort': 0}
 
-    return [summary]
+    results_orbmag = row.data.get('results-asr.orbmag.json')
+    if result.magstate == 'NM':
+        return [summary]
+    else:
+        magmoms_header = ['Atom index', 'Atom type',
+                          'Local spin magnetic moment (μ<sub>B</sub>)',
+                          'Local orbital magnetic moment (μ<sub>B</sub>)']
+        if results_orbmag is None:
+            magmoms_rows = [[str(a), symbol, f'{magmom:.3f}', '--']
+                            for a, (symbol, magmom)
+                            in enumerate(zip(row.get('symbols'),
+                                             result.magmoms))]
+        else:
+            magmoms_rows = [[str(a), symbol, f'{magmom:.3f}', f'{orbmag:.3f}']
+                            for a, (symbol, magmom, orbmag)
+                            in enumerate(zip(row.get('symbols'),
+                                             result.magmoms,
+                                             results_orbmag['orbmag_a']))]
+
+        magmoms_table = {'type': 'table',
+                         'header': magmoms_header,
+                         'rows': magmoms_rows}
+
+        from asr.utils.hacks import gs_xcname_from_row
+        xcname = gs_xcname_from_row(row)
+        panel = WebPanel(title=f'Basic magnetic properties ({xcname})',
+                         columns=[[], [magmoms_table]], sort=11)
+
+        return [summary, panel]
 
 
 @prepare_result

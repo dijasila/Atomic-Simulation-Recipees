@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import numpy as np
 
 from asr.core import command, read_json, ASRResult, prepare_result
@@ -10,9 +10,9 @@ from gpaw.spinorbit import soc_eigenstates
 @prepare_result
 class Result(ASRResult):
 
-    orbmag_a: List[float]
-    orbmag_sum: float
-    orbmag_max: float
+    orbmag_a: Optional[List[float]]
+    orbmag_sum: Optional[float]
+    orbmag_max: Optional[float]
 
     key_descriptions = {
         "orbmag_a": "Local orbital magnetic moments [μ_B]",
