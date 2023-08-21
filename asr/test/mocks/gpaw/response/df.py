@@ -18,13 +18,18 @@ class DielectricFunction:
 
 class Chi0Calculator:
 
-    def __init__(self, wd=0, rate=0, *args, **kwargs):
-        self.drude_calc = Chi0DrudeCalculator()
-        self.wd = wd
-        self.rate = rate
+    def __init__(self, *args, **kwargs):
+        self.chi0_opt_ext_calc = Chi0OpticalExtensioneCalculator()
 
     def check_high_symmetry_ibz_kpts(self):
         pass
+
+
+class Chi0OpticalExtensioneCalculator:
+    def __init__(self, wd=0, rate=0):
+        self.wd = wd
+        self.rate = rate
+        self.drude_calc = Chi0DrudeCalculator()
 
 
 class Chi0DrudeCalculator:
