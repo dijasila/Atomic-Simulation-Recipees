@@ -196,10 +196,11 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
         })
         df = DielectricFunction('es.gpw', **dfkwargs)
         chi0_calc = df.chi0calc
-        if chi0_calc.drude_calc is not None:
-            wd = chi0_calc.wd
-            rate = chi0_calc.rate
-            chi0_drude = chi0_calc.drude_calc.calculate(wd, rate)
+        opt_ext_calc = chi0_calc.chi0_opt_ext_calc
+        if opt_ext_calc.drude_calc is not None:
+            wd = opt_ext_calc.wd
+            rate = opt_ext_calc.rate
+            chi0_drude = opt_ext_calc.drude_calc.calculate(wd, rate)
             plasmafreq_vv = chi0_drude.plasmafreq_vv
         else:
             plasmafreq_vv = np.zeros((3, 3), complex)
