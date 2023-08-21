@@ -1,3 +1,8 @@
+"""
+Module for calculating local orbital magnetic moment of each atom along the
+crystal's easy axis.
+"""
+
 from typing import List, Optional
 import numpy as np
 

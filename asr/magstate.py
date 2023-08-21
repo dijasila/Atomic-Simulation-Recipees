@@ -57,7 +57,16 @@ def webpanel(result, row, key_descriptions):
                              'rows': rows}]],
                'sort': 0}
 
+    """
+    It makes sense to write the local orbital magnetic moments in the same
+    table as the previous local spin magnetic moments; however, orbmag.py was
+    added much later than magstate.py, so in order to accomplish this without
+    inconvenient changes that may affect other people's projects, we need to
+    load the orbmag.py results in this 'hacky' way
+    """
     results_orbmag = row.data.get('results-asr.orbmag.json')
+
+
     if result.magstate == 'NM':
         return [summary]
     else:
