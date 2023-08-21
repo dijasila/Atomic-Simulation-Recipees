@@ -65,8 +65,6 @@ def webpanel(result, row, key_descriptions):
     load the orbmag.py results in this 'hacky' way
     """
     results_orbmag = row.data.get('results-asr.orbmag.json')
-
-
     if result.magstate == 'NM':
         return [summary]
     else:
