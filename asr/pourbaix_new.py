@@ -110,4 +110,9 @@ def main(material: str,
 
 if __name__ == '__main__':
     import sys
-    main(sys.argv[1])
+    if sys.argv[2]:
+        energy=float(sys.argv[2])
+    else:
+        energy=None
+
+    main(sys.argv[1], computed_energy=energy)
