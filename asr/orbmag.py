@@ -8,9 +8,6 @@ import numpy as np
 
 from asr.core import command, read_json, ASRResult, prepare_result
 
-from gpaw.new.ase_interface import GPAW
-from gpaw.spinorbit import soc_eigenstates
-
 
 @prepare_result
 class Result(ASRResult):
@@ -29,9 +26,13 @@ class Result(ASRResult):
 @command('asr.orbmag',
          requires=['gs.gpw'],
          returns=Result,
-         dependencies=['asr.gs@calculate', 'asr.magstate', 'asr.magnetic_anisotropy'])
+         dependencies=['asr.gs@calculate',
+                       'asr.magstate',
+                       'asr.magnetic_anisotropy'])
 def main() -> Result:
     """Calculate local orbital magnetic moments."""
+    from gpaw.new.ase_interface import GPAW
+    from gpaw.spinorbit import soc_eigenstates
 
     magstate = read_json('results-asr.magstate.json')['magstate']
 
