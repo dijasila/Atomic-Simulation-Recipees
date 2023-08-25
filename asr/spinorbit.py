@@ -110,6 +110,11 @@ def _calculate(calc, distance: float,
 
     soc_tp = np.array([])
     for theta, phi in zip(theta_tp, phi_tp):
+
+        # The recipe puts magmoms of ferromagnet in x-direction. The rotation angles
+        # should reflect this.
+        if not projected:
+            theta -= 90
         en_soc = soc_eigenstates(calc=calc, projected=projected, theta=theta, phi=phi,
                                  occcalc=occcalc).calculate_band_energy()
         soc_tp = np.append(soc_tp, en_soc)
@@ -172,15 +177,21 @@ def main() -> Result:
 
 
 def plot_stereographic_energies(row, fname, display_sampling=False):
+    results = row.data.get('results-asr.spinorbit@calculate.json')
+    soc = (results['soc_tp'] - min(results['soc_tp'])) * 10**3
+    projected_points = results.get_projected_points()
+    _plot_stereographic_energies(projected_points, soc,
+                                 fname, display_sampling)
+
+
+def _plot_stereographic_energies(projected_points, soc,
+                                 fname, display_sampling=False):
     from matplotlib.colors import Normalize
     import matplotlib
     matplotlib.use('Agg')
     from matplotlib import pyplot as plt
     from scipy.interpolate import griddata
 
-    results = row.data.get('results-asr.spinorbit@calculate.json')
-    soc = (results['soc_tp'] - min(results['soc_tp'])) * 10**3
-    projected_points = results.get_projected_points()
     plt.figure(figsize=(5 * 1.25, 5))
     ax = plt.gca()
 
