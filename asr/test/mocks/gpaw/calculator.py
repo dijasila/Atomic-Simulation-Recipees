@@ -120,6 +120,8 @@ class ASRCalculator(Calculator):
         if atoms is not None:
             self.atoms = atoms
 
+        self.density = Density(len(atoms))
+
         # These are reasonable instance attributes
         kpts = kpts2ndarray(self.parameters.kpts, atoms)
         self.kpts = kpts
@@ -429,3 +431,11 @@ class DOSCalculator:
 
     def raw_pdos(self, energies, a, l, m=None, spin=None, width=0.1):
         return np.ones_like(energies)
+
+
+class Density:
+    def __init__(self, natoms):
+        self.natoms = natoms
+
+    def estimate_magnetic_moments(self):
+        return np.ones(3), np.ones((self.natoms, 3))
