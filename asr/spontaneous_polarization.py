@@ -1,15 +1,11 @@
 """Topological analysis of electronic structure."""
-import numpy as np
-from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (fig, entry_parameter_description,
-                                  describe_entry, WebPanel, href)
-
+from asr.core import command, ASRResult, prepare_result
+from asr.database.browser import describe_entry, WebPanel, href
 
 kruse_title = ('M. Kruse et al. Two-dimensional ferroelectrics from '
                'high throughput computational screening '
-               'np Computational Materials 9, 45 (2023)')
+               'npj Computational Materials 9, 45 (2023)')
 kruse_doi = 'https://doi.org/10.1038/s41524-023-00999-5'
-
 
 def webpanel(result, row, key_descriptions):
     from asr.utils.hacks import gs_xcname_from_row
@@ -70,15 +66,14 @@ class Result(ASRResult):
 @command(module='asr.spontaneous_polarization',
          returns=Result)
 def main() -> Result:
-    from ase.parallel import paropen
     data = {}
-        
+
     f = open('polarization.dat', 'r')
     Px = eval(f.readline())
     Py = eval(f.readline())
     Pz = eval(f.readline())
     f.close()
-        
+
     data['Ferroelectric'] = True
     data['Px'] = Px
     data['Py'] = Py
