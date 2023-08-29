@@ -7,6 +7,7 @@ kruse_title = ('M. Kruse et al. Two-dimensional ferroelectrics from '
                'npj Computational Materials 9, 45 (2023)')
 kruse_doi = 'https://doi.org/10.1038/s41524-023-00999-5'
 
+
 def webpanel(result, row, key_descriptions):
     from asr.utils.hacks import gs_xcname_from_row
 
