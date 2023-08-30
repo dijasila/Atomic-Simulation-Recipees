@@ -17,9 +17,9 @@ class Result(ASRResult):
     orbmag_max: Optional[float]
 
     key_descriptions = {
-        "orbmag_a": "Local orbital magnetic moments [μ_B]",
+        "orbmag_a": "Local orbital magnetic moments along easy axis [μ_B]",
         "orbmag_sum": "Sum of local orbital magnetic moments [μ_B]",
-        "orbmag_max": "Maximum of local orbital magnetic moments [μ_B]"
+        "orbmag_max": "Maximum norm of local orbital magnetic moments [μ_B]"
     }
 
 
