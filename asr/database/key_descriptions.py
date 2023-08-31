@@ -139,7 +139,8 @@ def all_the_keydescs():
     ]
     yield 'orbmag', [
         kvp('orbmag_sum', 'Sum of local orbital magnetic moments', unit='μ_B'),
-        kvp('orbmag_max', 'Maximum of local orbital magnetic moments', unit='μ_B'),
+        kvp('orbmag_max', 'Maximum norm of local orbital magnetic moments',
+            unit='μ_B'),
     ]
     yield 'pdos', [
         kd('pdos_nosoc', 'Projected density of states w/o soc.',

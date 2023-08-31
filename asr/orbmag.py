@@ -17,9 +17,9 @@ class Result(ASRResult):
     orbmag_max: Optional[float]
 
     key_descriptions = {
-        "orbmag_a": "Local orbital magnetic moments [μ_B]",
+        "orbmag_a": "Local orbital magnetic moments along easy axis [μ_B]",
         "orbmag_sum": "Sum of local orbital magnetic moments [μ_B]",
-        "orbmag_max": "Maximum of local orbital magnetic moments [μ_B]"
+        "orbmag_max": "Maximum norm of local orbital magnetic moments [μ_B]"
     }
 
 
@@ -50,9 +50,13 @@ def main() -> Result:
     phi = read_json('results-asr.magnetic_anisotropy.json')['phi']
     soc_eigs = soc_eigenstates(calc, theta=theta, phi=phi)
 
-    orbmag_a = np.linalg.norm(soc_eigs.get_orbital_magnetic_moments(), axis=1)
+    easy_axis = np.array([np.sin(np.deg2rad(theta)) * np.cos(np.deg2rad(phi)),
+                          np.sin(np.deg2rad(theta)) * np.sin(np.deg2rad(phi)),
+                          np.cos(np.deg2rad(theta))])
+
+    orbmag_a = soc_eigs.get_orbital_magnetic_moments() @ easy_axis
     orbmag_sum = np.sum(orbmag_a)
-    orbmag_max = np.max(orbmag_a)
+    orbmag_max = np.max(np.abs(orbmag_a))
 
     results = {'orbmag_a': orbmag_a,
                'orbmag_sum': orbmag_sum,
