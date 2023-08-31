@@ -54,7 +54,7 @@ def main() -> Result:
                           np.sin(np.deg2rad(theta)) * np.sin(np.deg2rad(phi)),
                           np.cos(np.deg2rad(theta))])
 
-    orbmag_a = np.dot(soc_eigs.get_orbital_magnetic_moments(), easy_axis)
+    orbmag_a = soc_eigs.get_orbital_magnetic_moments() @ easy_axis
     orbmag_sum = np.sum(orbmag_a)
     orbmag_max = np.max(np.abs(orbmag_a))
 
