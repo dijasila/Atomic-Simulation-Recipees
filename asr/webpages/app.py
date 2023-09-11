@@ -9,7 +9,6 @@ import flask.json
 from jinja2 import UndefinedError
 from ase.db import connect
 from ase import Atoms
-from ase.calculators.calculator import kptdensity2monkhorstpack
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
 from ase.db.app import new_app
@@ -21,7 +20,7 @@ from asr.core import (command, option, argument, ASRResult,
 
 
 def create_key_descriptions():
-    from asr.database.key_descriptions import key_descriptions
+    from asr.webpages.key_descriptions import key_descriptions
     from ase.db.core import get_key_descriptions as get_ase_keydescs
 
     all_keydescs_flat = dict(get_ase_keydescs())
@@ -35,13 +34,17 @@ def create_key_descriptions():
 
 
 class Summary:
+    """
+    Summary is just one component that collects data and passes such
+    information to the html templates via the render_template flask function
+    """
     def __init__(self, row, key_descriptions, create_layout, prefix=''):
         self.row = row
 
         atoms = Atoms(cell=row.cell, pbc=row.pbc)
-        self.size = kptdensity2monkhorstpack(atoms,
-                                             kptdensity=1.8,
-                                             even=False)
+        # self.size = kptdensity2monkhorstpack(atoms,
+        #                                      kptdensity=1.8,
+        #                                      even=False)
 
         self.cell = [['{:.3f}'.format(a) for a in axis] for axis in row.cell]
         par = ['{:.3f}'.format(x) for x in cell_to_cellpar(row.cell)]
@@ -54,8 +57,7 @@ class Summary:
 
         self.formula = Formula(row.formula).convert('metal').format('html')
 
-        kd = key_descriptions
-        self.layout = create_layout(row, kd, prefix)
+        self.layout = create_layout(row, key_descriptions, prefix)
 
         self.dipole = row.get('dipole')
         if self.dipole is not None:
@@ -78,7 +80,7 @@ class WebApp:
         self.projects = projects
 
     def initialize_project(self, database, pool=None):
-        from asr.database import browser
+        from asr.webpages import browser
 
         db = connect(database, serial=True)
         metadata = db.metadata
@@ -113,12 +115,14 @@ def setup_app(route_slash=True, tmpdir=None):
 
     path = Path(asr.__file__).parent.parent
     projects = {}
+    # use ase flask app to render the template
     app = new_app(projects)
     app.jinja_loader.searchpath.append(str(path))
 
     if route_slash:
         @app.route("/")
         def index():
+            print('rendering setup_app index template',projects)
             return render_template(
                 "asr/database/templates/projects.html",
                 projects=sorted([
@@ -128,6 +132,7 @@ def setup_app(route_slash=True, tmpdir=None):
 
     @app.route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
+        print('asr database.app tmpdir', tmpdir)
         assert project in projects
         path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
@@ -174,6 +179,7 @@ def setup_data_endpoints(webapp):
         row = project.uid_to_row(uid)
         sorted_data = {key: value for key, value
                        in sorted(row.data.items(), key=lambda x: x[0])}
+        print('asr db:',project, row, sorted_data)
         return render_template(
             'asr/database/templates/data.html',
             data=sorted_data, uid=uid, project_name=project_name)
@@ -183,8 +189,10 @@ def setup_data_endpoints(webapp):
         """Show details for one database row."""
         project = projects[project_name]
         row = project.uid_to_row(uid)
+        print('asr db:', row)
         try:
             result = decode_object(row.data[filename])
+            print(result)
             return render_template(
                 'asr/database/templates/result_object.html',
                 result=result,
@@ -212,12 +220,16 @@ class ASRProject(DatabaseProject):
         self.uid_key = uid_key
 
     def row_to_dict(self, row):
-        from asr.database.browser import layout
+        from asr.webpages.browser import layout
         # XXX same as in CMR
-        return row_to_dict(
-            row=row, project=self,
-            layout_function=layout,
-            tmpdir=self.tempdir)
+        project_name = self.name
+        uid = row.get(self.uid_key)
+        # breakpoint()
+        s = Summary(row,
+                    create_layout=layout,
+                    key_descriptions=self.key_descriptions,
+                    prefix=str(self.tempdir / f'{project_name}/{uid}-'))
+        return s
 
     # XXX copypasty
     def get_table_template(self):
@@ -230,14 +242,17 @@ class ASRProject(DatabaseProject):
         return self._asr_templates / 'row.html'
 
 
-def row_to_dict(row, project, layout_function, tmpdir):
-    project_name = project.name
-    uid = row.get(project.uid_key)
-    s = Summary(row,
-                create_layout=layout_function,
-                key_descriptions=project.key_descriptions,
-                prefix=str(tmpdir / f'{project_name}/{uid}-'))
-    return s
+# this is kind of pointless to have outside the row_to_dict function
+# for the ASRProject class.
+# def row_to_dict(row, project, layout_function, tmpdir):
+#     project_name = project.name
+#     uid = row.get(project.uid_key)
+#     # breakpoint()
+#     s = Summary(row,
+#                 create_layout=layout_function,
+#                 key_descriptions=project.key_descriptions,
+#                 prefix=str(tmpdir / f'{project_name}/{uid}-'))
+#     return s
 
 
 @command()
@@ -246,7 +261,7 @@ def row_to_dict(row, project, layout_function, tmpdir):
 @option("--test", is_flag=True, help="Test the app.")
 def main(databases: List[str], host: str = "0.0.0.0",
          test: bool = False) -> ASRResult:
-
+    print('asr.app main')
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
     # We could use more cores, but they tend to fail to close
@@ -269,7 +284,7 @@ def _main(databases, host, test, pool):
 
     if test:
         app.testing = True
-        from asr.database.app_testing import run_testing
+        from asr.webpages.app_testing import run_testing
         run_testing(app, projects)
     else:
         webapp.app.run(host=host, debug=True)

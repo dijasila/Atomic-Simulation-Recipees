@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from ase.db.row import AtomsRow
 from ase.db.core import float_to_time_string, now
+from asr.webpages.appresources import HTMLStringFormat
 
 assert sys.version_info >= (3, 4)
 
@@ -22,13 +23,21 @@ plotlyjs = (
 external_libraries = [plotlyjs]
 
 
-def create_table(row,  # AtomsRow
-                 header,  # List[str]
-                 keys,  # List[str]
-                 key_descriptions,  # Dict[str, Tuple[str, str, str]]
-                 digits=3  # int
-                 ):  # -> Dict[str, Any]
-    """Create table-dict from row."""
+def create_table(row: AtomsRow, header: List[str], keys: List[str],
+                 key_descriptions: Dict[str, Tuple[str, str, str]] = {},
+                 digits: int = 3): #-> Dict[str, Any]
+    """
+    Assemble information in a dictionary from AtomsRow object to create an
+    HTML table.
+
+    :params row: An AtomsRow or ASRResults object to create the table from
+    :params header: The table header for each column in the table
+    :params keys: The AtomsRow key which you want to include in the table
+    :params key_descriptions:
+    :params digits: The significant figures to round a float in the table
+    :return: {'type': 'table', 'header': [header for table], 'rows': [data for
+    each row in the table]}
+    """
     table = []
     for key in keys:
         if key == 'age':
@@ -72,32 +81,30 @@ def miscellaneous_section(row, key_descriptions, exclude):
     misckeys = (set(key_descriptions)
                 | set(row.key_value_pairs)) - set(exclude)
     misc = create_table(row, ['Items', ''], sorted(misckeys), key_descriptions)
-    return ('Miscellaneous', [[misc]])
+    return ('Miscellaneous Stuff', [[misc]])
 
 
 def link_section(row, key_descriptions, exclude):
-    """Make help function for adding a "links" section.
-
+    """
+    Make help function for adding a "links" section.
+    Create links table in the links panel.
     Create table with all keys except those in exclude.
+    (exclude is not used this is nonsense)
     """
     try:
         links = row.data['links']
     except KeyError:
         return ('Links', [[]])
 
-    link_table = create_link_table(row, links, key_descriptions)
-    return ('Links', [[link_table]])
+    link_table = create_table(row=row, header=['Links', 'Value'], keys=[],
+                              key_descriptions=key_descriptions, digits=2)
 
-
-def create_link_table(row, links, key_descriptions):
-    """Create links table in the links panel."""
-    link_table = table(row, 'Links', [])
     for link in links:
-        linkname = f'<a href="{link[1]}">{link[0]}</a>'
+        linkname = HTMLStringFormat.href(link[0], link[1])
         linktype = link[2]
         link_table['rows'].extend([[linkname, linktype]])
 
-    return link_table
+    return ('Links', [[link_table]])
 
 
 value_type_to_explained_type = {}
@@ -109,7 +116,7 @@ def describe_entry(value, description, title='Information'):
     This function sets an __explanation__ attribute on the given object
     which is used by the web application to generate additional explanations.
     """
-    description = normalize_string(description)
+    description = HTMLStringFormat.normalize_string(description)
     if hasattr(value, '__explanation__'):
         if value.__explanation__ == '':
             value.__explanation__ += description
@@ -161,78 +168,17 @@ def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
             lst.append(indent * char + f'<b>{key}</b>={value}')
     return lst
 
-
-def get_recipe_href(asr_name, name=None):
-    """Get a hyperlink for the recipe documentation associated with a given result.
-
-    Parameters
-    ----------
-    asr_name : str
-        asr_name variable of recipe
-    name : str/None
-        name for link - falls back to asr_name if None
-
-    Returns
-    -------
-    link_name : str
-    """
-    if name is None:
-        name = asr_name
-    # ATM href only works to recipe main
-    asr_name = asr_name.split('@')[0]
-    link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
-                 f'src/generated/recipe_{asr_name}.html">{name}</a>')
-
-    return link_name
-
-
-def make_html_tag_wrapper(tag):
-
-    def wrap_tag(text):
-        return f'<{tag}>{text}</{tag}>'
-
-    return wrap_tag
-
-
-def div(text, cls=''):
-
-    return f'<div class="{cls}">{text}</div>'
-
-
-li = make_html_tag_wrapper('li')
-bold = make_html_tag_wrapper('b')
-pre = make_html_tag_wrapper('pre')
-code = make_html_tag_wrapper('code')
-dt = make_html_tag_wrapper('dt')
-dd = make_html_tag_wrapper('dd')
-par = make_html_tag_wrapper('p')
-
+div = HTMLStringFormat.div()
+li = HTMLStringFormat.lst()
+bold = HTMLStringFormat.bold()
+dt = HTMLStringFormat.dt()
+dd = HTMLStringFormat.dd()
+par = HTMLStringFormat.par()
+pre = HTMLStringFormat('pre').wrap_txt_with_tag()
+code = HTMLStringFormat('code').wrap_txt_with_tag()
 br = '<br>'
 
-
-def ul(items):
-
-    text = ''
-    for item in items:
-        text += li(item)
-
-    return '<ul>' + text + '</ul>'
-
-
-def dl(items):
-
-    text = ''
-    for item1, item2 in items:
-        text += dt(item1) + dd(item2)
-
-    return '<dl class="dl-horizontal">' + text + '<dl>'
-
-
-def href(text, link):
-    return f'<a href="{link}">{text}</a>'
-
-
-static_article_links = {'C2DB': href(
+static_article_links = {'C2DB': HTMLStringFormat.href(
     """S. Haastrup et al. The Computational 2D Materials Database: high-throughput
 modeling and discovery of atomically thin crystals, 2D Mater. 5 042002
 (2018).""",
@@ -241,24 +187,12 @@ modeling and discovery of atomically thin crystals, 2D Mater. 5 042002
 }
 
 
-def normalize_string(text):
-    while text.endswith('\n'):
-        text = text[:-1]
-    while text.startswith('\n'):
-        text = text[1:]
-    while text.endswith(br):
-        text = text[:-len(br)]
-    while text.startswith(br):
-        text = text[len(br):]
-    return text
-
-
 def make_panel_description(text, articles=None):
 
     if articles:
         articles = (
             bold('Relevant articles:')
-            + ul([
+            + HTMLStringFormat.indent_lst([
                 static_article_links.get(article, article) for article in articles]
             )
         )
@@ -266,13 +200,7 @@ def make_panel_description(text, articles=None):
     else:
         elements = [text]
 
-    return combine_elements(elements)
-
-
-def combine_elements(items, spacer=(br + br)):
-    items = [normalize_string(item) for item in items]
-
-    return spacer.join(items)
+    return HTMLStringFormat('<br>').combine_elements(items=elements)
 
 
 def entry_parameter_description(data, name, exclude_keys: set = set()):
@@ -289,7 +217,7 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
 
     """
     recipe = get_recipe_from_name(name)
-    link_name = get_recipe_href(name)
+    link_name = HTMLStringFormat('<a>').get_recipe_href(asr_name=name)
 
     if (f'results-{name}.json' in data
             and 'params' in getattr(data[f'results-{name}.json'],
@@ -299,14 +227,14 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
         # header = ''
         # asr_name = (metadata.asr_name if 'asr_name' in metadata
         #             else name)  # Fall back to name as best guess for asr_name
-        # link_name = get_recipe_href(asr_name, name=name)
+        # link_name = HTMLStringFormat.get_recipe_href(asr_name, name=name)
     else:
         params = recipe.get_defaults()
         # header = ('No parameters can be found, meaning that '
         #           'the recipe was probably run with the '
         #           'default parameter shown below\n'
         #           '<b>Default:</b>')
-        # link_name = get_recipe_href(name)
+        # link_name = HTMLStringFormat.get_recipe_href(name)
 
     lst = dict_to_list(params, exclude_keys=exclude_keys)
     string = pre(code('\n'.join(lst)))
@@ -319,18 +247,6 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
     return description
 
 
-def val2str(row, key: str, digits=2) -> str:
-    value = row.get(key)
-    if value is not None:
-        if isinstance(value, float):
-            value = '{:.{}f}'.format(value, digits)
-        elif not isinstance(value, str):
-            value = str(value)
-    else:
-        value = ''
-    return value
-
-
 def fig(filename: str, link: str = None,
         caption: str = None) -> 'Dict[str, Any]':
     """Shortcut for figure dict."""
@@ -340,14 +256,6 @@ def fig(filename: str, link: str = None,
     if caption:
         dct['caption'] = caption
     return dct
-
-
-def table(row, title, keys, kd={}, digits=2):
-    return create_table(row, [title, 'Value'], keys, kd, digits)
-
-
-def make_bold(text: str) -> str:
-    return f'<b>{text}</b>'
 
 
 def matrixtable(M, digits=2, unit='',
@@ -363,13 +271,13 @@ def matrixtable(M, digits=2, unit='',
 
     for column_index in range(shape[1]):
         if column_index == 0 and title is not None:
-            rows[0][0] = make_bold(title)
+            rows[0][0] = bold(title)
         elif column_index > 0 and columnlabels is not None:
-            rows[0][column_index] = make_bold(columnlabels[column_index - 1])
+            rows[0][column_index] = bold(columnlabels[column_index - 1])
 
     for row_index in range(shape[0]):
         if row_index > 0:
-            rows[row_index][0] = make_bold(rowlabels[row_index - 1])
+            rows[row_index][0] = bold(rowlabels[row_index - 1])
 
     for i in range(1, shape[0]):
         for j in range(1, shape[1]):
@@ -429,6 +337,15 @@ def merge_panels(page):
             panel['plot_descriptions'].extend(tmppanel['plot_descriptions'])
         panel = WebPanel(**panel)
         page[title] = panel
+
+
+def make_subpanels(page):
+    """
+    Merge panels into sub-panels based on the panel titles and a list of
+    related panels.
+    """
+    # Update panels
+    # breakpoint()
 
 
 def extract_recipe_from_filename(filename: str):
@@ -538,7 +455,10 @@ def layout(
         prefix: Path,
         pool: Optional[multiprocessing.Pool] = None
 ) -> List[Tuple[str, List[List[Dict[str, Any]]]]]:
-    """Page layout."""
+    """
+    Page layout for each ase.db row. This is only executed when the row's
+    webpage is loaded into the row.html.
+    """
     params = {'legend.fontsize': 'large',
               'axes.labelsize': 'large',
               'axes.titlesize': 'large',
@@ -546,10 +466,16 @@ def layout(
               'ytick.labelsize': 'large',
               'savefig.dpi': 200}
     with plt.rc_context(params):
+        # breakpoint()
         return _layout(row, key_descriptions, prefix, pool)
 
 
 def _layout(row, key_descriptions, prefix, pool):
+    """
+    Creates a list of web panel data in a tuple format, which indicates the
+    panel title and web panel data.
+    i.e. the content in the jinja2 row.html template
+    """
     page = {}
     exclude = set()
 
@@ -596,31 +522,36 @@ def _layout(row, key_descriptions, prefix, pool):
         for result in data_sources:
             asr_name = (result.metadata.asr_name
                         if 'asr_name' in result.metadata else '(Unknown data source)')
-            link_name = get_recipe_href(asr_name)
+            link_name = HTMLStringFormat('').get_recipe_href(asr_name=asr_name)
             recipe_links.append(link_name)
 
         links = (bold("Relevant recipes")
                  + br
                  + 'This panel contains information calculated with '
-                 'the following ASR Recipes:' + br + ul(recipe_links))
+                 'the following ASR Recipes:' + br + HTMLStringFormat.indent_lst(
+                recipe_links))
         elements.append(par(links))
-        description = combine_elements(elements, spacer='')
+        description = HTMLStringFormat('').combine_elements(elements)
         describe_entry(paneltitle, description=description,
                        title='General panel information')
 
     merge_panels(page)
+    with open('merged_panels.html','a') as f:
+        f.writelines(page)
+        f.close()
+
     page = [panel for _, panel in page.items()]
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 
-    # add miscellaneous section
+    # add a miscellaneous section
     misc_title, misc_columns = miscellaneous_section(row, key_descriptions,
                                                      exclude)
     misc_panel = {'title': misc_title,
                   'columns': misc_columns}
     page.append(misc_panel)
 
-    # add links section
+    # add a links section
     link_title, link_columns = link_section(row, key_descriptions,
                                             exclude)
     link_panel = {'title': link_title,
@@ -651,13 +582,22 @@ def _layout(row, key_descriptions, prefix, pool):
             return False
         return True
 
-    # Remove missing figures from layout:
+    # Remove missing figures from layout
     final_page = []
     for title, columns in asepage:
         columns = [[block for block in column if ok(block)]
                    for column in columns]
         if any(columns):
             final_page.append((title, columns))
+
+    # breakpoint()
+    # with open('finalpage_panels.html','a') as f:
+    #     f.writelines(final_page)
+    #     f.close()
+
+    subpanels = make_subpanels(final_page)
+    # breakpoint()
+
     return final_page
 
 
@@ -676,7 +616,7 @@ def main(database: str = 'database.db',
     cmd = f'python3 -m ase db {database} -w -M {custom}'
     if only_figures:
         cmd += ' -l'
-    print(cmd)
+    # print(cmd)
     try:
         subprocess.check_output(cmd.split())
     except subprocess.CalledProcessError as e:

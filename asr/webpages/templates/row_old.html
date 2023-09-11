@@ -1,0 +1,86 @@
+{% block content %}
+<div class="container">
+
+    <h1>
+        {{ dct.formula|safe }}
+      <a href="/{{ project.name }}/row/{{ uid }}/all_data">
+        <button type="button" class="btn btn-outline-primary">
+          Download raw data
+          <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-download" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"></path>
+            <path fill-rule="evenodd" d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"></path>
+          </svg>
+      </button></a>
+      <a href="/{{ project.name }}/row/{{ uid }}/data"><button type="button" class="btn btn-outline-primary">
+          Browse raw data
+          <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-folder" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9.828 4a3 3 0 0 1-2.12-.879l-.83-.828A1 1 0 0 0 6.173 2H2.5a1 1 0 0 0-1 .981L1.546 4h-1L.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3v1z"/>
+            <path fill-rule="evenodd" d="M13.81 4H2.19a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4zM2.19 3A2 2 0 0 0 .198 5.181l.637 7A2 2 0 0 0 2.826 14h10.348a2 2 0 0 0 1.991-1.819l.637-7A2 2 0 0 0 13.81 3H2.19z"/>
+          </svg>
+        </button></a>
+    </h1>
+
+    <div class="panel-group">
+        {% for title, things in dct.layout %}
+        <div class="panel panel-default">
+            <div class="panel-heading">
+              <h4 class="panel-title">
+            {{ help(title) }}
+            <a class="btn-lg" data-toggle="collapse" href="#collapse{{ loop.index0 }}">{{ title|safe }}</a>
+              </h4>
+            </div>
+
+            <div id="collapse{{ loop.index0 }}"
+               class="panel-collapse collapse {% if loop.index0 == 0 %}in{% endif %}">
+            <div class="panel-body">
+              {% for column in things %}
+
+              <div class="col-md-6">
+                <div class="col-md-12">
+                {% for data in column %}
+                <div class="row">
+                  {% if data.type == 'atoms' %}
+                    {{ atoms() }}
+                  {% elif data.type == 'cell' %}
+                    {{ cell() }}
+                  {% elif data.type == 'table' %}
+                    {{ table(data) }}
+                  {% else %}
+                    {% if data.link %}
+                      {% if data.link == 'empty' %}
+                        <br>
+                      {% else %}
+                        <center>
+                          <a target="_blank"
+                             rel="noopener noreferrer"
+                             href="/{{ project.name }}/file/{{ uid }}/{{ data.link }}">
+                            Interactive mode
+                          </a>
+                        </center>
+                      {% endif %}
+                {% endif %}
+                {{ help(data) }}
+                <figure class="figure">
+                    <a href="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}">
+                      <img
+                        src="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}"
+                        width="100%">
+                    </a>
+                    {% if data.caption %}
+                    <figcaption>{{ data.caption }}</figcaption>
+                    {% endif %}
+                </figure>
+
+                  {% endif %}
+                </div> <!--END ROW-->
+                {% endfor %}
+                </div>
+              </div> <!--END col-md-6-->
+              {% endfor %}
+            </div> <!--END PANEL BODY-->
+            </div> <!--END COLLAPSE-->
+        </div> <!--END PANEL-->
+        {% endfor %}
+    </div> <!--END PANEL GROUP-->
+</div>
+{% endblock content %}

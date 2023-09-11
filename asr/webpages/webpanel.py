@@ -1,28 +1,19 @@
 from pathlib import Path
 
 
-def make_property(name):
-    def getter(self):
-        return self.data[name]
-
-    def setter(self, value):
-        self.data[name] = value
-
-    return property(getter, setter)
-
-
 class WebPanel:
 
-    def __init__(self, title, columns=None, plot_descriptions=None, sort=99, id=None):
+    def __init__(self, title, columns=None, plot_descriptions=None,
+                 subpanel=False, sort=99, id=None):
+        self.title = title
+        self.columns = columns if columns is not None else [[], []]
+        self.plot_descriptions = plot_descriptions if plot_descriptions is not None else []
+        self.sort = sort
+        self.id = id if id is not None else title
 
-        if plot_descriptions is None:
-            plot_descriptions = []
-
-        if columns is None:
-            columns = [[], []]
-
-        if id is None:
-            id = title
+        # check if the panel title belongs to the sub-panel group
+        if subpanel:
+            self.subpanel = subpanel
 
         self.data = dict(
             columns=columns,
@@ -32,26 +23,20 @@ class WebPanel:
             id=id,
         )
 
-    columns = make_property('columns')
-    title = make_property('title')
-    plot_descriptions = make_property('plot_descriptions')
-    sort = make_property('sort')
-    id = make_property('id')
-
     def __getitem__(self, item):  # noqa
-        return self.data[item]
+        return self.__dict__[item]
 
     def get(self, item, default):
-        return self.data.get(item, default)
+        return self.__dict__.get(item, default)
 
     def update(self, dct):
-        self.data.update(dct)
+        self.__dict__.update(dct)
 
     def items(self):
-        return self.data.items
+        return self.__dict__.items()
 
     def __contains__(self, key):  # noqa
-        return key in self.data
+        return key in self.__dict__
 
     def __str__(self):  # noqa
         return (f'WebPanel(title="{self.title}",'
