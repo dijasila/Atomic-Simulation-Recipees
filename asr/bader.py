@@ -17,11 +17,10 @@ from asr.webpages.appresources import HTMLStringFormat
 panel_description = make_panel_description(
     """The Bader charge analysis ascribes a net charge to an atom
 by partitioning the electron density according to its zero-flux surfaces.""",
-    articles=[
-        HTMLStringFormat.href("""W. Tang et al. A grid-based Bader analysis
-        algorithm
-without lattice bias. J. Phys.: Condens. Matter 21, 084204 (2009).""",
-             'https://doi.org/10.1088/0953-8984/21/8/084204')])
+    articles=[HTMLStringFormat.href(
+        """W. Tang et al. A grid-based Bader analysis algorithm without
+        lattice bias. J. Phys.: Condens. Matter 21, 084204 (2009).""",
+        'https://doi.org/10.1088/0953-8984/21/8/084204')])
 
 
 def webpanel(result, row, key_descriptions):

@@ -37,14 +37,11 @@ calculations where the exchange-correlation magnetic field from a
 scalar calculation was aligned with the x, y and z directions.
 
 """.format(equation=equation()),
-    articles=[
-        'C2DB',
-        HTMLStringFormat.href("""D. Torelli et al. High throughput
-        computational screening
-        for 2D
-ferromagnetic materials: the critical role of anisotropy and local
-correlations, 2D Mater. 6 045018 (2019)""",
-             'https://doi.org/10.1088/2053-1583/ab2c43'),
+    articles=['C2DB', HTMLStringFormat.href(
+        """D. Torelli et al. High throughput computational screening for
+         2D ferromagnetic materials: the critical role of anisotropy and local
+         correlations, 2D Mater. 6 045018 (2019)""",
+        'https://doi.org/10.1088/2053-1583/ab2c43'),
     ],
 )
 
@@ -80,9 +77,9 @@ def webpanel(result, row, key_descriptions):
     if row.get('magstate', 'NM') == 'NM':
         return []
 
-    magtable = create_table(
-        row=row, header=['Property', 'Value'], keys=['magstate', 'magmom',
-            'dE_zx', 'dE_zy'], key_descriptions=key_descriptions, digits=2)
+    magtable = create_table(row=row, header=['Property', 'Value'],
+                            keys=['magstate', 'magmom', 'dE_zx', 'dE_zy'],
+                            key_descriptions=key_descriptions, digits=2)
     # currently, FM is not an accurate description of magnetic systems. So we
     # change it to simply say magnetic until magnetic classification is
     # accurate

@@ -25,7 +25,7 @@ external_libraries = [plotlyjs]
 
 def create_table(row: AtomsRow, header: List[str], keys: List[str],
                  key_descriptions: Dict[str, Tuple[str, str, str]] = {},
-                 digits: int = 3): #-> Dict[str, Any]
+                 digits: int = 3):  # -> Dict[str, Any]
     """
     Assemble information in a dictionary from AtomsRow object to create an
     HTML table.
@@ -168,6 +168,7 @@ def dict_to_list(dct, indent=0, char=' ', exclude_keys: set = set()):
             lst.append(indent * char + f'<b>{key}</b>={value}')
     return lst
 
+
 div = HTMLStringFormat.div()
 li = HTMLStringFormat.lst()
 bold = HTMLStringFormat.bold()
@@ -306,6 +307,7 @@ grouped_strings = {
     'Magnetic properties': ['Basic magnetic properties (PBE)',
                             'Basic magnetic properties (PBE+U)']
 }
+
 
 def merge_panels(page):
     """
@@ -553,8 +555,8 @@ def _layout(row, key_descriptions, prefix, pool):
         links = (bold("Relevant recipes")
                  + br
                  + 'This panel contains information calculated with '
-                 'the following ASR Recipes:' + br + HTMLStringFormat.indent_lst(
-                recipe_links))
+                 'the following ASR Recipes:'
+                 + br + HTMLStringFormat.indent_lst(recipe_links))
         elements.append(par(links))
         description = HTMLStringFormat('').combine_elements(elements)
         describe_entry(paneltitle, description=description,
@@ -633,7 +635,6 @@ def main(database: str = 'database.db',
     cmd = f'python3 -m ase db {database} -w -M {custom}'
     if only_figures:
         cmd += ' -l'
-    # print(cmd)
     try:
         subprocess.check_output(cmd.split())
     except subprocess.CalledProcessError as e:
@@ -643,7 +644,3 @@ def main(database: str = 'database.db',
 
 if __name__ == '__main__':
     main.cli()
-
-
-def subpanels(final_page):
-    names = [final_page[i][0] for i in range(len(final_page))]

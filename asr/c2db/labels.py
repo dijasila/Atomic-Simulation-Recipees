@@ -17,7 +17,7 @@ from asr.webpages.appresources import HTMLStringFormat
 def arxiv(identifier):
     # (Avoid "browser"-imports at module level)
     return HTMLStringFormat.href(f'arXiv:{identifier}',
-                f'https://arxiv.org/abs/{identifier}')
+                                 f'https://arxiv.org/abs/{identifier}')
 
 
 def doi(identifier):

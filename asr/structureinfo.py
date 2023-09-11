@@ -116,7 +116,7 @@ def webpanel(result, row, key_descriptions):
     pointgroup = describe_pointgroup_entry(spglib)
 
     icsd_link = HTMLStringFormat.href('Inorganic Crystal Structure Database (ICSD)',
-                     'https://icsd.products.fiz-karlsruhe.de/')
+                                      'https://icsd.products.fiz-karlsruhe.de/')
 
     icsd_id = describe_entry(
         'icsd_id',
@@ -157,8 +157,8 @@ def webpanel(result, row, key_descriptions):
     if codid:
         # Monkey patch to make a link
         for tmprow in rows:
-            row_href = HTMLStringFormat.href(codid, f'"http://www.crystallography.net/cod'
-                                   f'/{codid}.html"')
+            row_href = HTMLStringFormat.href(
+                codid, f'"http://www.crystallography.net/cod/{codid}.html"')
             if 'cod_id' in tmprow[0]:
                 tmprow[1] = row_href
 

@@ -27,12 +27,12 @@ All the values are calculated with spin-orbit coupling.
 
 panel_description = make_panel_description(
     description_text,
-    articles=[
-        HTMLStringFormat.href("""Wiktor, J. and Pasquarello, A.,
+    articles=[HTMLStringFormat.href(
+        """Wiktor, J. and Pasquarello, A.,
         2016. Absolute deformation
         potentials
 of two-dimensional materials. Physical Review B, 94(24), p.245411""",
-             "https://doi.org/10.1103/PhysRevB.94.245411")
+        "https://doi.org/10.1103/PhysRevB.94.245411")
     ],
 )
 

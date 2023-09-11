@@ -40,10 +40,9 @@ def gw_hse_webpanel(result, row, key_descriptions, info, sort):
         vbm = info.vbm - ref_value
         cbm = info.cbm - ref_value
 
-        tab = create_table(
-            row=row, header=['Property', 'Value'], keys=[info.gap_key,
-                                                    info.gap_dir_key],
-            key_descriptions=key_descriptions, digits=2)
+        tab = create_table(row=row, header=['Property', 'Value'],
+                           keys=[info.gap_key, info.gap_dir_key],
+                           key_descriptions=key_descriptions, digits=2)
         tab['rows'].extend([
             [f'Valence band maximum wrt. {ref_name} ({info.method_name})',
              f'{vbm:.2f} eV'],

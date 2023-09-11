@@ -15,8 +15,8 @@ from ase.db.app import new_app
 from ase.db.project import DatabaseProject
 
 import asr
-from asr.core import (command, option, argument, ASRResult,
-                      decode_object, UnknownDataFormat)
+from asr.core import (command, option, argument, ASRResult, decode_object,
+                      UnknownDataFormat)
 
 
 def create_key_descriptions():
@@ -122,7 +122,6 @@ def setup_app(route_slash=True, tmpdir=None):
     if route_slash:
         @app.route("/")
         def index():
-            print('rendering setup_app index template',projects)
             return render_template(
                 "asr/webpages/templates/projects.html",
                 projects=sorted([
@@ -132,7 +131,6 @@ def setup_app(route_slash=True, tmpdir=None):
 
     @app.route("/<project>/file/<uid>/<name>")
     def file(project, uid, name):
-        print('asr database.app tmpdir', tmpdir)
         assert project in projects
         path = tmpdir / f"{project}/{uid}-{name}"  # XXXXXXXXXXX
         return send_file(str(path))
@@ -179,7 +177,6 @@ def setup_data_endpoints(webapp):
         row = project.uid_to_row(uid)
         sorted_data = {key: value for key, value
                        in sorted(row.data.items(), key=lambda x: x[0])}
-        print('asr db:',project, row, sorted_data)
         return render_template(
             'asr/webpages/templates/data.html',
             data=sorted_data, uid=uid, project_name=project_name)
@@ -189,10 +186,8 @@ def setup_data_endpoints(webapp):
         """Show details for one database row."""
         project = projects[project_name]
         row = project.uid_to_row(uid)
-        print('asr db:', row)
         try:
             result = decode_object(row.data[filename])
-            print(result)
             return render_template(
                 'asr/webpages/templates/result_object.html',
                 result=result,
@@ -258,7 +253,6 @@ class ASRProject(DatabaseProject):
 @option("--test", is_flag=True, help="Test the app.")
 def main(databases: List[str], host: str = "0.0.0.0",
          test: bool = False) -> ASRResult:
-    print('asr.app main')
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
     # We could use more cores, but they tend to fail to close

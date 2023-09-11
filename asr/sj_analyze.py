@@ -16,7 +16,7 @@ Analysis of the thermodynamic stability of the defect using Slater-Janak
         HTMLStringFormat.href("""M. Pandey et al. Defect-tolerant monolayer
         transition metal
 dichalcogenides, Nano Letters, 16 (4) 2234 (2016)""",
-             'https://doi.org/10.1021/acs.nanolett.5b04513'),
+                              'https://doi.org/10.1021/acs.nanolett.5b04513'),
     ],
 )
 

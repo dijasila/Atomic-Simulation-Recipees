@@ -1,9 +1,3 @@
-import re
-
-from asr.webpages.webpanel import WebPanel
-from asr.core import (decode_object, ASRResult)
-
-
 class HTMLStringFormat:
     def __init__(self, html_format):
         """
@@ -25,7 +19,7 @@ class HTMLStringFormat:
             :params end: place the void element at the end (True) or
                 beginning (False)
             """
-            if end == True:
+            if end is True:
                 return f'{text}<{self.html_format}>'
             else:
                 return f'<{self.html_format}>{text}'
@@ -129,7 +123,7 @@ class HTMLStringFormat:
         for item in items:
             text += cls('li').wrap_txt_with_tag()(text=item)
         return cls('ul').wrap_txt_with_tagclass()(html_class=html_class,
-            text=text)
+                                                  text=text)
 
     @classmethod
     def dlst(cls, items, html_class='dl-horizontal'):
@@ -144,7 +138,7 @@ class HTMLStringFormat:
         text = ''
         for item1, item2 in items:
             text += cls('dt').wrap_txt_with_tag()(text=item1) + \
-                    cls('dd').wrap_txt_with_tag()(text=item2)
+                cls('dd').wrap_txt_with_tag()(text=item2)
         return cls('dl').wrap_txt_with_tagclass()(text=text,
                                                   html_class=html_class)
 
@@ -215,35 +209,3 @@ class HTMLStringFormat:
                               link="https://asr.readthedocs.io/en/"
                               f"latest/src/generated/recipe_{asr_name}.html")
         return link_name
-
-
-def extract_recipe_from_filename(filename: str):
-    """Parse filename and return recipe name."""
-    pattern = re.compile(r'results-(.*)\.json')  # noqa
-    m = pattern.match(filename)
-    return m.group(1)
-
-
-# this parses the dictionary representation of an ase.db row looking for
-# the "results-" key which is what contains the information to be turned
-# into a webpanel
-def parse_row_data(data: dict):
-    """
-    Searches a dictionary for keys that start with 'results-' and ends with
-    '.json'
-    """
-    newdata = {}
-    for key, value in data.items():
-        if key.startswith('results-') and key.endswith('.json'):
-            obj = decode_object(value)
-
-            # Below is to support old C2DB databases that contain
-            # hacked result files with no asr_name
-            if not isinstance(obj, ASRResult):
-                recipename = extract_recipe_from_filename(key)
-                value['__asr_hacked__'] = recipename
-                obj = decode_object(value)
-        else:
-            obj = value
-        newdata[key] = obj
-    return newdata

@@ -12,14 +12,12 @@ from asr.webpages.appresources import HTMLStringFormat
 
 panel_description = make_panel_description(
     """
-Analysis of hyperfine coupling and spin coherence time.
-""",
-    articles=[
-        HTMLStringFormat.href("""G. D. Cheng et al. Optical and spin
-        coherence properties
-        of NV
- center in diamond and 3C-SiC, Comp. Mat. Sc. 154, 60 (2018)""",
-             'https://doi.org/10.1016/j.commatsci.2018.07.039'),
+    Analysis of hyperfine coupling and spin coherence time.
+    """,
+    articles=[HTMLStringFormat.href(
+        """G. D. Cheng et al. Optical and spin coherence properties of NV
+        center in diamond and 3C-SiC, Comp. Mat. Sc. 154, 60 (2018)""",
+        'https://doi.org/10.1016/j.commatsci.2018.07.039'),
     ],
 )
 

@@ -19,11 +19,11 @@ panel_description = make_panel_description(
 Equilibrium defect energetics evaluated by solving E<sub>F</sub> self-consistently
 until charge neutrality is achieved.
 """,
-    articles=[
-        HTMLStringFormat.href("""J. Buckeridge, Equilibrium point defect and charge carrier
- concentrations in a meterial determined through calculation of the self-consistent
- Fermi energy, Comp. Phys. Comm. 244 329 (2019)""",
-             'https://doi.org/10.1016/j.cpc.2019.06.017'),
+    articles=[HTMLStringFormat.href(
+        """J. Buckeridge, Equilibrium point defect and charge carrier
+        concentrations in a meterial determined through calculation of the
+        self-consistent Fermi energy, Comp. Phys. Comm. 244 329 (2019)""",
+        'https://doi.org/10.1016/j.cpc.2019.06.017')
     ],
 )
 

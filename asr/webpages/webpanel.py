@@ -7,7 +7,8 @@ class WebPanel:
                  subpanel=False, sort=99, id=None):
         self.title = title
         self.columns = columns if columns is not None else [[], []]
-        self.plot_descriptions = plot_descriptions if plot_descriptions is not None else []
+        self.plot_descriptions = (plot_descriptions if plot_descriptions
+                                  is not None else [])
         self.sort = sort
         self.id = id if id is not None else title
 

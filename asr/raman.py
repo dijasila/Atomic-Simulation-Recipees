@@ -16,7 +16,7 @@ polarizations using third order perturbation theory.""",
         initio Raman spectra
         for automated
 identification of 2D materials. Nat Commun 11, 3011 (2020).""",
-             'https://doi.org/10.1038/s41467-020-16529-6'),
+                              'https://doi.org/10.1038/s41467-020-16529-6'),
     ],
 )
 

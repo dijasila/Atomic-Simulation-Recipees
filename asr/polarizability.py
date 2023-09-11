@@ -25,25 +25,16 @@ interactions. For metals a Drude term accounts for intraband transitions.""",
 
 def webpanel(result, row, key_descriptions):
     explanation = 'Optical polarizability along the'
-    alphax_el = describe_entry('alphax_el', description=explanation + " x-direction")
-    alphay_el = describe_entry('alphay_el', description=explanation + " y-direction")
-    alphaz_el = describe_entry('alphaz_el', description=explanation + " z-direction")
-
-    # explanation = 'Static lattice polarizability along the'
-    # alphax_lat = describe_entry('alphax_lat', description=explanation + " x-direction")
-    # alphay_lat = describe_entry('alphay_lat', description=explanation + " y-direction")
-    # alphaz_lat = describe_entry('alphaz_lat', description=explanation + " z-direction")
-
-    # explanation = 'Total static polarizability along the'
-    # alphax = describe_entry('alphax', description=explanation + " x-direction")
-    # alphay = describe_entry('alphay', description=explanation + " y-direction")
-    # alphaz = describe_entry('alphaz', description=explanation + " z-direction")
+    alphax_el = describe_entry('alphax_el',
+                               description=explanation + " x-direction")
+    alphay_el = describe_entry('alphay_el',
+                               description=explanation + " y-direction")
+    alphaz_el = describe_entry('alphaz_el',
+                               description=explanation + " z-direction")
 
     opt = create_table(row=row, header=['Property', 'Value'],
-        keys=[alphax_el, alphay_el, alphaz_el,
-        # alphax_lat, alphay_lat, alphaz_lat,
-        # alphax, alphay, alphaz,
-        ], key_descriptions=key_descriptions, digits=2)
+                       keys=[alphax_el, alphay_el, alphaz_el],
+                       key_descriptions=key_descriptions, digits=2)
 
     panel = {'title': describe_entry('Optical polarizability',
                                      panel_description),
@@ -65,12 +56,6 @@ class Result(ASRResult):
     alphax_el: typing.List[complex]
     alphay_el: typing.List[complex]
     alphaz_el: typing.List[complex]
-    # alphax_w: typing.List[complex]
-    # alphay_w: typing.List[complex]
-    # alphaz_w: typing.List[complex]
-    # alpha0x_w: typing.List[complex]
-    # alpha0y_w: typing.List[complex]
-    # alpha0z_w: typing.List[complex]
     plasmafreq_vv: typing.List[typing.List[float]]
     frequencies: typing.List[float]
 
