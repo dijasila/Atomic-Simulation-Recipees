@@ -19,7 +19,7 @@ def items():
 
 def test_href(text):
     href_format = HTMLStringFormat.href(text=text, link='https')
-    assert '<a href="https">the text</a>' == href_format
+    assert '<a href="https" target="_blank">the text</a>' == href_format
 
 
 def test_div(text):
