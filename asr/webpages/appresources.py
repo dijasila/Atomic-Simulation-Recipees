@@ -217,9 +217,6 @@ class HTMLStringFormat:
         return link_name
 
 
-# class
-
-
 def extract_recipe_from_filename(filename: str):
     """Parse filename and return recipe name."""
     pattern = re.compile(r'results-(.*)\.json')  # noqa
@@ -227,6 +224,9 @@ def extract_recipe_from_filename(filename: str):
     return m.group(1)
 
 
+# this parses the dictionary representation of an ase.db row looking for
+# the "results-" key which is what contains the information to be turned
+# into a webpanel
 def parse_row_data(data: dict):
     """
     Searches a dictionary for keys that start with 'results-' and ends with
@@ -247,45 +247,3 @@ def parse_row_data(data: dict):
             obj = value
         newdata[key] = obj
     return newdata
-
-
-def merge_panels(page):
-    """Merge panels which have the same title.
-
-    Also merge tables with same first entry in header.
-    """
-    # Update panels
-    for title, panels in page.items():
-        panels = sorted(panels, key=lambda x: x['sort'])
-
-        panel = {'title': title,
-                 'columns': [[], []],
-                 'plot_descriptions': [],
-                 'sort': panels[0]['sort']}
-        known_tables = {}
-        for tmppanel in panels:
-            for column in tmppanel['columns']:
-                for ii, item in enumerate(column):
-                    if isinstance(item, dict):
-                        if item['type'] == 'table':
-                            if 'header' not in item:
-                                continue
-                            header = item['header'][0]
-                            if header in known_tables:
-                                known_tables[header]['rows']. \
-                                    extend(item['rows'])
-                                column[ii] = None
-                            else:
-                                known_tables[header] = item
-
-            columns = tmppanel['columns']
-            if len(columns) == 1:
-                columns.append([])
-
-            columns[0] = [item for item in columns[0] if item]
-            columns[1] = [item for item in columns[1] if item]
-            panel['columns'][0].extend(columns[0])
-            panel['columns'][1].extend(columns[1])
-            panel['plot_descriptions'].extend(tmppanel['plot_descriptions'])
-        panel = WebPanel(**panel)
-        page[title] = panel

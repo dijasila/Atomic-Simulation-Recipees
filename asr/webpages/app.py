@@ -38,13 +38,10 @@ class Summary:
     Summary is just one component that collects data and passes such
     information to the html templates via the render_template flask function
     """
-    def __init__(self, row, key_descriptions, create_layout, prefix=''):
+    def __init__(self, row, key_descriptions, prefix=''):
         self.row = row
 
         atoms = Atoms(cell=row.cell, pbc=row.pbc)
-        # self.size = kptdensity2monkhorstpack(atoms,
-        #                                      kptdensity=1.8,
-        #                                      even=False)
 
         self.cell = [['{:.3f}'.format(a) for a in axis] for axis in row.cell]
         par = ['{:.3f}'.format(x) for x in cell_to_cellpar(row.cell)]
@@ -57,7 +54,10 @@ class Summary:
 
         self.formula = Formula(row.formula).convert('metal').format('html')
 
-        self.layout = create_layout(row, key_descriptions, prefix)
+        from asr.webpages.browser import layout
+        layout, subpanel = layout(row, key_descriptions, prefix)
+        self.layout = layout
+        self.subpanel = subpanel
 
         self.dipole = row.get('dipole')
         if self.dipole is not None:
@@ -124,7 +124,7 @@ def setup_app(route_slash=True, tmpdir=None):
         def index():
             print('rendering setup_app index template',projects)
             return render_template(
-                "asr/database/templates/projects.html",
+                "asr/webpages/templates/projects.html",
                 projects=sorted([
                     (name, project.title, project.database.count())
                     for name, project in projects.items()
@@ -181,7 +181,7 @@ def setup_data_endpoints(webapp):
                        in sorted(row.data.items(), key=lambda x: x[0])}
         print('asr db:',project, row, sorted_data)
         return render_template(
-            'asr/database/templates/data.html',
+            'asr/webpages/templates/data.html',
             data=sorted_data, uid=uid, project_name=project_name)
 
     @app.route('/<project_name>/row/<uid>/data/<filename>')
@@ -194,7 +194,7 @@ def setup_data_endpoints(webapp):
             result = decode_object(row.data[filename])
             print(result)
             return render_template(
-                'asr/database/templates/result_object.html',
+                'asr/webpages/templates/result_object.html',
                 result=result,
                 filename=filename,
                 project_name=project_name,
@@ -212,7 +212,7 @@ def setup_data_endpoints(webapp):
 
 
 class ASRProject(DatabaseProject):
-    _asr_templates = Path('asr/database/templates/')
+    _asr_templates = Path('asr/webpages/templates/')
 
     def __init__(self, *, uid_key, tempdir, **kwargs):
         self.tempdir = tempdir
@@ -220,13 +220,10 @@ class ASRProject(DatabaseProject):
         self.uid_key = uid_key
 
     def row_to_dict(self, row):
-        from asr.webpages.browser import layout
         # XXX same as in CMR
         project_name = self.name
         uid = row.get(self.uid_key)
-        # breakpoint()
         s = Summary(row,
-                    create_layout=layout,
                     key_descriptions=self.key_descriptions,
                     prefix=str(self.tempdir / f'{project_name}/{uid}-'))
         return s

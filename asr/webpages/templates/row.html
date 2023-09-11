@@ -1,4 +1,4 @@
-{% extends 'asr/database/templates/layout.html' %}
+{% extends 'asr/webpages/templates/layout.html' %}
 
 
 {% macro cell() %}
@@ -198,96 +198,104 @@
 
     <!--  Content for each panel  -->
     <div class="panel-group">
+        {% set close_subpanel = False %}
         {% for panel_title, panel_info in dct.layout %}
-        {% if panel_title in ["Summary", "Thermodynamic stability", "Phonons"] %}
-        <div class="panel-group" id="nestedAccordion">
-          <div class="panel panel-default">
-            <div class="panel-heading">
-                <h4 class="panel-title">
-                  <a class="btn-lg" data-toggle="collapse"
-                     data-parent="#nestedAccordion"
-                     href="#collapseNested{{ loop.index0 }}">
-                    panel_info.subtitle {{ loop.index0 }}
-                  </a>
-                </h4>
-            </div>
-            <div id="collapseNested{{ loop.index0 }}"
-                 class="panel-collapse collapse in">
-              <div class="panel-body">
-                <div class="col-md-12">
-                  <div class="row">
-        {% endif %}
-
-        <div class="panel panel-default">
-            <div class="panel-heading">
-              <h4 class="panel-title">
-                {{ help(panel_title) }}
-                <a class="btn-lg"
-                   data-toggle="collapse"
-                   href="#collapse{{ loop.index0 }}">
-                        {{ panel_title|safe }}
-                </a>
-              </h4>
-            </div>
-            <div id="collapse{{ loop.index0 }}"
-                 class="panel-collapse collapse {% if loop.index0 == 0 %}in{% endif %}">
-            <div class="panel-body">
-              <!--  place all the data in columns  -->
-              {% for column in panel_info %}
-              <div class="col-md-6">
-                <div class="col-md-12">
-                {% for data in column %}
-                <div class="row">
-                  {% if data.type == 'atoms' %}
-                    {{ atoms() }}
-                  {% elif data.type == 'cell' %}
-                    {{ cell() }}
-                  {% elif data.type == 'table' %}
-                    {{ table(data) }}
-                  {% else %}
-                    {% if data.link %}
-                      {% if data.link == 'empty' %}
-                        <br>
-                      {% else %}
-                        <center>
-                          <a target="_blank"
-                             rel="noopener noreferrer"
-                             href="/{{ project.name }}/file/{{ uid }}/{{ data.link }}">
-                            Interactive mode
-                          </a>
-                        </center>
-                      {% endif %}
-                {% endif %}
-                {{ help(data) }}
-                <figure class="figure">
-                    <a href="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}">
-                      <img
-                        src="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}"
-                        width="100%">
-                    </a>
-                    {% if data.caption %}
-                    <figcaption>{{ data.caption }}</figcaption>
-                    {% endif %}
-                </figure>
-
-                  {% endif %}
-                </div> <!--END ROW-->
-                {% endfor %}
+            {% if dct.subpanel[loop.index0] and not dct.subpanel[loop.index0 - 1] %}
+            <!-- START SUBPANEL GROUP-->
+            <div class="panel-group" id="nestedAccordion">
+              <div class="panel panel-default">
+                <!-- Subpanel Heading -->
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                      <a class="btn-lg" data-toggle="collapse"
+                         data-parent="#nestedAccordion"
+                         href="#collapseNested{{ loop.index0 }}">
+                          {{ dct.subpanel[loop.index0] }}
+                      </a>
+                    </h4>
                 </div>
-              </div> <!--END col-md-6-->
-              {% endfor %}
-            </div> <!--END PANEL BODY-->
-            </div> <!--END COLLAPSE-->
-        </div> <!--END PANEL-->
+                <!-- START Subpanel COLLAPSE -->
+                <div id="collapseNested{{ loop.index0 }}"
+                     class="panel-collapse collapse in">
+                  <div class="panel-body">
+                    <div class="col-md-12">
+                      <div class="row">
+            {% elif dct.subpanel[loop.index0] and not dct.subpanel[loop.index0 + 1] %}
+                {% set close_subpanel = True %}
+            {% endif %}
 
-        {% if panel_title in ["Summary", "Thermodynamic stability", "Phonons"] %}
+            <!-- MAIN Panel body data -->
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h4 class="panel-title">
+                    {{ help(panel_title) }}
+                    <a class="btn-lg"
+                       data-toggle="collapse"
+                       href="#collapse{{ loop.index0 }}">
+                            {{ panel_title|safe }}
+                    </a>
+                  </h4>
+                </div>
+                <div id="collapse{{ loop.index0 }}"
+                     class="panel-collapse collapse {% if loop.index0 == 0 %}in{% endif %}">
+                <div class="panel-body">
+                  <!--  place all the data in columns  -->
+                  {% for column in panel_info %}
+                  <div class="col-md-6">
+                    <div class="col-md-12">
+                    {% for data in column %}
+                    <div class="row">
+                      {% if data.type == 'atoms' %}
+                        {{ atoms() }}
+                      {% elif data.type == 'cell' %}
+                        {{ cell() }}
+                      {% elif data.type == 'table' %}
+                        {{ table(data) }}
+                      {% else %}
+                        {% if data.link %}
+                          {% if data.link == 'empty' %}
+                            <br>
+                          {% else %}
+                            <center>
+                              <a target="_blank"
+                                 rel="noopener noreferrer"
+                                 href="/{{ project.name }}/file/{{ uid }}/{{ data.link }}">
+                                Interactive mode
+                              </a>
+                            </center>
+                          {% endif %}
+                    {% endif %}
+                    {{ help(data) }}
+                    <figure class="figure">
+                        <a href="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}">
+                          <img
+                            src="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}"
+                            width="100%">
+                        </a>
+                        {% if data.caption %}
+                        <figcaption>{{ data.caption }}</figcaption>
+                        {% endif %}
+                    </figure>
+
+                      {% endif %}
+                    </div> <!--END ROW-->
+                    {% endfor %}
+                    </div>
+                  </div> <!--END col-md-6-->
+                  {% endfor %}
+                </div> <!--END PANEL BODY-->
+                </div> <!--END COLLAPSE-->
+            </div> <!--END PANEL-->
+
+            {% if close_subpanel == True %}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-        {% endif %}
+            <!--END SUBPANEL GROUP-->
+            {% endif %}
         {% endfor %}
     </div> <!--END PANEL GROUP-->
 </div>

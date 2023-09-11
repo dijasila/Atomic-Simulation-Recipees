@@ -297,10 +297,22 @@ def matrixtable(M, digits=2, unit='',
     return table
 
 
-def merge_panels(page):
-    """Merge panels which have the same title.
+# Example predefined grouping structure as a dictionary
+grouped_strings = {
+    'Band structures': ['Electronic band structure (HSE06@PBE)',
+                        'Electronic band structure (PBE)',
+                        'Electronic band structure (G0W0)'],
+    'Polarizability': ['Optical polarizability', 'Infrared polarizability'],
+    'Magnetic properties': ['Basic magnetic properties (PBE)',
+                            'Basic magnetic properties (PBE+U)']
+}
 
+def merge_panels(page):
+    """
+    Merge panels which have the same title.
     Also merge tables with same first entry in header.
+    Set the subpanel flag if the panel title is contained with the sub-panel
+    headers
     """
     # Update panels
     for title, panels in page.items():
@@ -311,6 +323,7 @@ def merge_panels(page):
                  'plot_descriptions': [],
                  'sort': panels[0]['sort']}
         known_tables = {}
+        # create the normal panels for the template
         for tmppanel in panels:
             for column in tmppanel['columns']:
                 for ii, item in enumerate(column):
@@ -335,17 +348,30 @@ def merge_panels(page):
             panel['columns'][0].extend(columns[0])
             panel['columns'][1].extend(columns[1])
             panel['plot_descriptions'].extend(tmppanel['plot_descriptions'])
+
+        # check if there are subpanel to create in the list of webpanels
+        # The band structures definitely need subpanels (PBE, HSE06, G0W0).
+        # Now we will soon also have PBE+U for band structure and magnetic
+        # properties (only for materials including any of the 3d magnetic
+        # metals), so the Magnetic properties will also have a subpanel (PBE
+        # and PBE+U)
+        def group_strings(string, grouped_strings):
+            """
+            when given a string and a dictionary of lists, the function
+            searches the list and returns the key of the list in which the
+            string is contained within
+            """
+            for key, values in grouped_strings.items():
+                if any(val in string for val in values):
+                    return key
+            return None
+
+        # check if the panel name is in the sub panel group
+        panel_is_subpanel = group_strings(panel['title'], grouped_strings)
+        if panel_is_subpanel:
+            panel['subpanel'] = panel_is_subpanel
         panel = WebPanel(**panel)
         page[title] = panel
-
-
-def make_subpanels(page):
-    """
-    Merge panels into sub-panels based on the panel titles and a list of
-    related panels.
-    """
-    # Update panels
-    # breakpoint()
 
 
 def extract_recipe_from_filename(filename: str):
@@ -466,7 +492,6 @@ def layout(
               'ytick.labelsize': 'large',
               'savefig.dpi': 200}
     with plt.rc_context(params):
-        # breakpoint()
         return _layout(row, key_descriptions, prefix, pool)
 
 
@@ -536,13 +561,13 @@ def _layout(row, key_descriptions, prefix, pool):
                        title='General panel information')
 
     merge_panels(page)
-    with open('merged_panels.html','a') as f:
-        f.writelines(page)
-        f.close()
-
     page = [panel for _, panel in page.items()]
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
+
+    subpanel = []
+    for panel in page:
+        subpanel.append(panel.subpanel)
 
     # add a miscellaneous section
     misc_title, misc_columns = miscellaneous_section(row, key_descriptions,
@@ -590,18 +615,10 @@ def _layout(row, key_descriptions, prefix, pool):
         if any(columns):
             final_page.append((title, columns))
 
-    # breakpoint()
-    # with open('finalpage_panels.html','a') as f:
-    #     f.writelines(final_page)
-    #     f.close()
-
-    subpanels = make_subpanels(final_page)
-    # breakpoint()
-
-    return final_page
+    return final_page, subpanel
 
 
-@command('asr.database.browser')
+@command('asr.webpages.browser')
 @option('--database', type=str)
 @option('--only-figures', is_flag=True,
         help='Dont show browser, just save figures')
@@ -626,3 +643,7 @@ def main(database: str = 'database.db',
 
 if __name__ == '__main__':
     main.cli()
+
+
+def subpanels(final_page):
+    names = [final_page[i][0] for i in range(len(final_page))]

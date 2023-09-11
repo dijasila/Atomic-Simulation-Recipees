@@ -12,8 +12,7 @@ class WebPanel:
         self.id = id if id is not None else title
 
         # check if the panel title belongs to the sub-panel group
-        if subpanel:
-            self.subpanel = subpanel
+        self.subpanel = subpanel if subpanel else False
 
         self.data = dict(
             columns=columns,
@@ -21,6 +20,7 @@ class WebPanel:
             plot_descriptions=plot_descriptions,
             sort=sort,
             id=id,
+            subpanel=subpanel
         )
 
     def __getitem__(self, item):  # noqa
