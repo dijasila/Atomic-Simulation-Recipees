@@ -40,9 +40,6 @@ class Summary:
     """
     def __init__(self, row, key_descriptions, prefix=''):
         self.row = row
-
-        atoms = Atoms(cell=row.cell, pbc=row.pbc)
-
         self.cell = [['{:.3f}'.format(a) for a in axis] for axis in row.cell]
         par = ['{:.3f}'.format(x) for x in cell_to_cellpar(row.cell)]
         self.lengths = par[:3]
