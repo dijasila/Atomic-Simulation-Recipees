@@ -1,5 +1,5 @@
 from asr.core import ASRResult, prepare_result
-from asr.database.browser import WebPanel, describe_entry, entry_parameter_description
+from asr.webpages.browser import WebPanel, describe_entry, entry_parameter_description
 import typing
 
 

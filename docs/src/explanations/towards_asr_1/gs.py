@@ -1,7 +1,7 @@
 """Electronic ground state properties."""
 from asr.core import command, option, DictStr, ASRResult, prepare_result
-from asr.database.browser import (
-    table, fig,
+from asr.webpages.browser import (
+    create_table, fig,
     entry_parameter_description,
     describe_entry, WebPanel,
     make_panel_description
@@ -97,7 +97,7 @@ def webpanel(result, row, key_descriptions):
         explained_keys.append(explained_key)
 
     gap = describe_entry('gap', description=explanation)
-    t = table(result, 'Property',
+    t = create_table(result, 'Property',
               explained_keys,
               key_descriptions)
 

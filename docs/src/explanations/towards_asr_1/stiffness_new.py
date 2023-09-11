@@ -2,8 +2,9 @@
 import typing
 from asr.core import (
     command, option, ASRResult, prepare_result, AtomsFile, DictStr)
-from asr.database.browser import (matrixtable, describe_entry, dl,
+from asr.webpages.browser import (matrixtable, describe_entry,
                                   make_panel_description)
+from asr.webpages.appresources import HTMLStringFormat
 
 panel_description = make_panel_description(
     """
@@ -76,7 +77,7 @@ def webpanel(result, row, key_descriptions):
             'Dynamical (stiffness)',
             'Classifier for the dynamical stability of a material '
             'based on the minimum eigenvalue of the stiffness tensor.'
-            + dl(
+            + HTMLStringFormat.dlst(
                 [
                     ["LOW", low],
                     ["HIGH", high],

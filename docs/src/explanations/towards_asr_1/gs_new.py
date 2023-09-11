@@ -1,16 +1,14 @@
 """Electronic ground state properties."""
-import pathlib
 from ase import Atoms
-from ase.io import read
 from asr.core import (
     command, option, DictStr, ASRResult, prepare_result, AtomsFile,
 )
 from asr.core.command import ASRControl
 from asr.calculators import (
-    set_calculator_hook, Calculation, get_calculator_class, Calculation)
+    set_calculator_hook, get_calculator_class, Calculation)
 
-from asr.database.browser import (
-    table, fig,
+from asr.webpages.browser import (
+    create_table, fig,
     entry_parameter_description,
     describe_entry, WebPanel,
     make_panel_description,
@@ -165,7 +163,7 @@ def webpanel(result, row, key_descriptions):
         explained_keys.append(explained_key)
 
     gap = describe_entry('gap', description=explanation)
-    t = table(result, 'Property',
+    t = create_table(result, 'Property',
               explained_keys,
               key_descriptions)
 
