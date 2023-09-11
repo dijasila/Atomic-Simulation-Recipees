@@ -8,7 +8,6 @@ from flask import render_template, send_file, Response, jsonify, redirect
 import flask.json
 from jinja2 import UndefinedError
 from ase.db import connect
-from ase import Atoms
 from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
 from ase.db.app import new_app
