@@ -10,14 +10,16 @@ from ase.io import write
 from ase.units import Bohr
 
 from asr.core import ASRResult, command, option, prepare_result
-from asr.database.browser import (describe_entry, entry_parameter_description,
-                                  href, make_panel_description)
+from asr.webpages.browser import (describe_entry, entry_parameter_description,
+                                  make_panel_description)
+from asr.webpages.appresources import HTMLStringFormat
 
 panel_description = make_panel_description(
     """The Bader charge analysis ascribes a net charge to an atom
 by partitioning the electron density according to its zero-flux surfaces.""",
     articles=[
-        href("""W. Tang et al. A grid-based Bader analysis algorithm
+        HTMLStringFormat.href("""W. Tang et al. A grid-based Bader analysis
+        algorithm
 without lattice bias. J. Phys.: Condens. Matter 21, 084204 (2009).""",
              'https://doi.org/10.1088/0953-8984/21/8/084204')])
 

@@ -1,9 +1,9 @@
 """Infrared polarizability."""
 import typing
 from asr.core import command, option, read_json, ASRResult, prepare_result
-from asr.database.browser import (
-    fig, create_table, href, make_panel_description, describe_entry)
-
+from asr.webpages.browser import (
+    fig, create_table, make_panel_description, describe_entry)
+from asr.webpages.appresources import HTMLStringFormat
 import numpy as np
 
 reference = """\
@@ -19,7 +19,8 @@ transitions is added, but is essentially constant for frequencies much smaller
 than the direct band gap.
 """,
     articles=[
-        href(reference, 'https://doi.org/10.1021/acs.jpcc.0c01635'),
+        HTMLStringFormat.href(reference,
+                              'https://doi.org/10.1021/acs.jpcc.0c01635'),
     ]
 
 )
@@ -51,6 +52,7 @@ def webpanel(result, row, key_descriptions):
               "filenames": ["infrax.png",
                             "infray.png",
                             "infraz.png"]}],
+        'subpanel': 'Polarizabilities',
         "sort": 21}
 
     return [panel]

@@ -7,7 +7,7 @@ import numpy as np
 from ase.io import read
 
 from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (
+from asr.webpages.browser import (
     create_table,
     fig,
     describe_entry,
@@ -54,6 +54,7 @@ def webpanel(result, row, key_descriptions):
                    'filenames': ['rpa-pol-x.png',
                                  'rpa-pol-y.png',
                                  'rpa-pol-z.png']}],
+             'subpanel': 'Polarizabilities',
              'sort': 20}
 
     return [panel]

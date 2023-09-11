@@ -6,7 +6,7 @@ import numpy as np
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig)
+    from asr.webpages.browser import (fig)
     from textwrap import wrap
 
     # Get the data

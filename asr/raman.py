@@ -2,7 +2,8 @@
 import typing
 import numpy as np
 from asr.core import command, ASRResult, prepare_result
-from asr.database.browser import fig, make_panel_description, href, describe_entry
+from asr.webpages.browser import fig, make_panel_description, describe_entry
+from asr.webpages.appresources import HTMLStringFormat
 
 
 panel_description = make_panel_description(
@@ -11,7 +12,9 @@ phonons. The Stokes part of the Raman spectrum, corresponding to emission of a
 single Gamma-point phonon is calculated for different incoming/outgoing photon
 polarizations using third order perturbation theory.""",
     articles=[
-        href("""A. Taghizadeh et al.  A library of ab initio Raman spectra for automated
+        HTMLStringFormat.href("""A. Taghizadeh et al.  A library of ab
+        initio Raman spectra
+        for automated
 identification of 2D materials. Nat Commun 11, 3011 (2020).""",
              'https://doi.org/10.1038/s41467-020-16529-6'),
     ],

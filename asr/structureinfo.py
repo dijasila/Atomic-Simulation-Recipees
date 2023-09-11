@@ -2,7 +2,8 @@
 import numpy as np
 
 from asr.core import ASRResult, command, prepare_result
-from asr.database.browser import bold, br, code, describe_entry, div, dl, href
+from asr.webpages.browser import br, code, bold, div, describe_entry
+from asr.webpages.appresources import HTMLStringFormat
 
 
 def get_reduced_formula(formula, stoichiometry=False):
@@ -47,7 +48,7 @@ def get_reduced_formula(formula, stoichiometry=False):
 
 
 def get_spg_href(url):
-    return href('SpgLib', url)
+    return HTMLStringFormat.href('SpgLib', url)
 
 
 def describe_pointgroup_entry(spglib):
@@ -68,7 +69,7 @@ def describe_crystaltype_entry(spglib):
                              code('spg no.'),
                              code('occ. wyck. pos.')])), 'well well-sm text-center')
         + 'where'
-        + dl(
+        + HTMLStringFormat.dlst(
             [
                 [code('stoi'), 'Stoichiometry.'],
                 [code('spg no.'), f'The space group calculated with {spglib}.'],
@@ -83,16 +84,16 @@ def describe_crystaltype_entry(spglib):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import describe_entry, href, create_table
+    from asr.webpages.browser import describe_entry, create_table
 
     spglib = get_spg_href('https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)
 
-    spg_list_link = href(
+    spg_list_link = HTMLStringFormat.href(
         'Space group', 'https://en.wikipedia.org/wiki/List_of_space_groups'
     )
 
-    layergroup_link = href(
+    layergroup_link = HTMLStringFormat.href(
         'Layer group', 'https://en.wikipedia.org/wiki/Layer_group')
 
     spacegroup = describe_entry(
@@ -114,7 +115,7 @@ def webpanel(result, row, key_descriptions):
 
     pointgroup = describe_pointgroup_entry(spglib)
 
-    icsd_link = href('Inorganic Crystal Structure Database (ICSD)',
+    icsd_link = HTMLStringFormat.href('Inorganic Crystal Structure Database (ICSD)',
                      'https://icsd.products.fiz-karlsruhe.de/')
 
     icsd_id = describe_entry(
@@ -122,7 +123,7 @@ def webpanel(result, row, key_descriptions):
         f"ID of a closely related material in the {icsd_link}."
     )
 
-    cod_link = href(
+    cod_link = HTMLStringFormat.href(
         'Crystallography Open Database (COD)',
         'http://crystallography.net/cod/browse.html'
     )
@@ -156,7 +157,7 @@ def webpanel(result, row, key_descriptions):
     if codid:
         # Monkey patch to make a link
         for tmprow in rows:
-            row_href = href(codid, f'"http://www.crystallography.net/cod'
+            row_href = HTMLStringFormat.href(codid, f'"http://www.crystallography.net/cod'
                                    f'/{codid}.html"')
             if 'cod_id' in tmprow[0]:
                 tmprow[1] = row_href
@@ -169,8 +170,8 @@ def webpanel(result, row, key_descriptions):
     if doi:
         rows.append([
             doistring,
-            '<a href="https://doi.org/{doi}" target="_blank">{doi}'
-            '</a>'.format(doi=doi)
+            HTMLStringFormat.href(text=doi,
+                                  link=f"https://doi.org/{doi}")
         ])
 
     panel = {'title': 'Summary',

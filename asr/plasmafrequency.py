@@ -4,7 +4,7 @@ import typing
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import create_table
+    from asr.webpages.browser import create_table
 
     if row.get('gap', 1) > 0.01:
         return []

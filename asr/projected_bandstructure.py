@@ -4,7 +4,7 @@ import numpy as np
 from asr.core import command, ASRResult, prepare_result
 import typing
 
-from asr.database.browser import make_panel_description
+from asr.webpages.browser import make_panel_description
 from asr.utils.hacks import gs_xcname_from_row
 
 panel_description = make_panel_description(
@@ -21,7 +21,7 @@ scf_projected_bs_filename = 'scf-projected-bs.png'
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig,
+    from asr.webpages.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
 

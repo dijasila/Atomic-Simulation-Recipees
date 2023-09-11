@@ -1,6 +1,6 @@
 from ase.formula import Formula
 from asr.core import (command, ASRResult, prepare_result, chdir, read_json)
-from asr.database.browser import WebPanel, create_table
+from asr.webpages.browser import WebPanel, create_table
 from asr.database.material_fingerprint import main as material_fingerprint
 from asr.defect_symmetry import DefectInfo
 from pathlib import Path

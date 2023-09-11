@@ -6,7 +6,8 @@ import ase.units as units
 from ase.geometry import get_distances
 from asr.core import (command, ASRResult, prepare_result,
                       read_json, option)
-from asr.database.browser import make_panel_description, href
+from asr.webpages.browser import make_panel_description
+from asr.webpages.appresources import HTMLStringFormat
 
 
 panel_description = make_panel_description(
@@ -14,7 +15,9 @@ panel_description = make_panel_description(
 Analysis of hyperfine coupling and spin coherence time.
 """,
     articles=[
-        href("""G. D. Cheng et al. Optical and spin coherence properties of NV
+        HTMLStringFormat.href("""G. D. Cheng et al. Optical and spin
+        coherence properties
+        of NV
  center in diamond and 3C-SiC, Comp. Mat. Sc. 154, 60 (2018)""",
              'https://doi.org/10.1016/j.commatsci.2018.07.039'),
     ],
@@ -232,7 +235,7 @@ def get_gyro_table(row, result):
 
 
 def webpanel(result, row, key_description):
-    from asr.database.browser import (WebPanel,
+    from asr.webpages.browser import (WebPanel,
                                       describe_entry)
 
     hf_results = result.hyperfine

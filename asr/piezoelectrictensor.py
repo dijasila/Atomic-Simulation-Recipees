@@ -9,7 +9,7 @@ tensor. The central recipe of this module is
 import itertools
 import typing
 from asr.core import command, option, DictStr, ASRResult, prepare_result
-from asr.database.browser import matrixtable, make_panel_description, describe_entry
+from asr.webpages.browser import matrixtable, make_panel_description, describe_entry
 
 
 panel_description = make_panel_description("""

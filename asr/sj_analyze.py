@@ -1,5 +1,6 @@
 from asr.core import command, ASRResult, prepare_result, option
-from asr.database.browser import make_panel_description, href
+from asr.webpages.browser import make_panel_description
+from asr.webpages.appresources import HTMLStringFormat
 from pathlib import Path
 from ase.io import Trajectory
 import numpy as np
@@ -12,7 +13,8 @@ Analysis of the thermodynamic stability of the defect using Slater-Janak
  transition state theory.
 """,
     articles=[
-        href("""M. Pandey et al. Defect-tolerant monolayer transition metal
+        HTMLStringFormat.href("""M. Pandey et al. Defect-tolerant monolayer
+        transition metal
 dichalcogenides, Nano Letters, 16 (4) 2234 (2016)""",
              'https://doi.org/10.1021/acs.nanolett.5b04513'),
     ],
@@ -21,7 +23,7 @@ dichalcogenides, Nano Letters, 16 (4) 2234 (2016)""",
 
 def get_transition_table(result, defstr):
     """Set up table for charge transition levels."""
-    from asr.database.browser import describe_entry
+    from asr.webpages.browser import describe_entry
 
     trans_results = result.transitions
     vbm = result.pristine.vbm
@@ -71,7 +73,7 @@ def get_transition_table(result, defstr):
 
 
 def get_summary_table(result):
-    from asr.database.browser import create_table, describe_entry
+    from asr.webpages.browser import create_table, describe_entry
 
     summary_table = create_table(
         row=result, header=['Defect properties', 'Value'], keys=[],
@@ -85,7 +87,7 @@ def get_summary_table(result):
 
 
 def get_formation_table(result, defstr):
-    from asr.database.browser import create_table, describe_entry
+    from asr.webpages.browser import create_table, describe_entry
 
     formation_table = create_table(
         row=result, header=['Defect formation energy', 'Value'], keys=[],
@@ -101,7 +103,7 @@ def get_formation_table(result, defstr):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig, WebPanel,
+    from asr.webpages.browser import (fig, WebPanel,
                                       describe_entry)
 
     explained_keys = []

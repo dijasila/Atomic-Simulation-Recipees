@@ -1,6 +1,6 @@
 """Effective masses."""
 from asr.core import command, option, DictStr, ASRResult, prepare_result
-from asr.database.browser import make_panel_description, describe_entry
+from asr.webpages.browser import make_panel_description, describe_entry
 import numpy as np
 
 panel_description = make_panel_description(
@@ -469,7 +469,7 @@ def make_the_plots(row, *args):
     # Make a final column containing a table with the numerical values
     # for the effective masses
     import matplotlib.pyplot as plt
-    from asr.database.browser import fig as asrfig
+    from asr.webpages.browser import fig as asrfig
 
     results = row.data.get('results-asr.emasses.json')
     efermi = row.efermi
@@ -670,7 +670,7 @@ def webpanel(result, row, key_descriptions):
 
 
 def create_columns_fnames(row):
-    from asr.database.browser import fig as asrfig
+    from asr.webpages.browser import fig as asrfig
 
     results = row.data.get('results-asr.emasses.json')
 

@@ -2,9 +2,10 @@
 from asr.core import command, option, ASRResult, prepare_result, DictStr
 from ase.dft.bandgap import bandgap
 from ase.io import read
-from asr.database.browser import (create_table, describe_entry, dl, code,
-                                  make_panel_description, href, fig,
+from asr.webpages.browser import (create_table, describe_entry, code,
+                                  make_panel_description, fig,
                                   WebPanel)
+from asr.webpages.appresources import HTMLStringFormat
 from asr.defect_symmetry import DefectInfo
 import typing
 import numpy as np
@@ -19,7 +20,7 @@ Equilibrium defect energetics evaluated by solving E<sub>F</sub> self-consistent
 until charge neutrality is achieved.
 """,
     articles=[
-        href("""J. Buckeridge, Equilibrium point defect and charge carrier
+        HTMLStringFormat.href("""J. Buckeridge, Equilibrium point defect and charge carrier
  concentrations in a meterial determined through calculation of the self-consistent
  Fermi energy, Comp. Phys. Comm. 244 329 (2019)""",
              'https://doi.org/10.1016/j.cpc.2019.06.017'),
@@ -76,7 +77,7 @@ def get_overview_tables(scresult, result, unitstring):
         'p-type / n-type balance',
         'Balance of p-/n-type dopability in percent '
         f'(normalized wrt. band gap) at T = {int(result.temperature):d} K.'
-        + dl(
+        + HTMLStringFormat.dlst(
             [
                 [
                     '100/0',
@@ -98,7 +99,7 @@ def get_overview_tables(scresult, result, unitstring):
         'Intrinsic doping type',
         'Is the material intrinsically n-type, p-type or intrinsic at '
         f'T = {int(result.temperature):d} K?'
-        + dl(
+        + HTMLStringFormat.dlst(
             [
                 [
                     'p-type',
@@ -158,7 +159,7 @@ def get_overview_tables(scresult, result, unitstring):
 
 
 def get_conc_table(result, element, unitstring):
-    from asr.database.browser import create_table, describe_entry
+    from asr.webpages.browser import create_table, describe_entry
     from asr.defectlinks import get_defectstring_from_defectinfo
 
     token = element['defect_name']

@@ -1,9 +1,10 @@
 """Topological analysis of electronic structure."""
 import numpy as np
 from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (fig, entry_parameter_description,
+from asr.webpages.browser import (fig, entry_parameter_description,
                                   describe_entry, WebPanel,
-                                  make_panel_description, href)
+                                  make_panel_description)
+from asr.webpages.appresources import HTMLStringFormat
 
 
 olsen_title = ('T. Olsen et al. Discovering two-dimensional topological '
@@ -21,7 +22,7 @@ as the charge centers of hybrid Wannier functions localised in the
 the corresponding Wannier functions. A gapless spectrum is a minimal
 requirement for non-trivial topological invariants.
 """,
-    articles=[href(olsen_title, olsen_doi)],
+    articles=[HTMLStringFormat.href(olsen_title, olsen_doi)],
 )
 
 

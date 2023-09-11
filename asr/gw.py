@@ -3,7 +3,8 @@ from asr.core import command, option, read_json, ASRResult, prepare_result
 from ase.spectrum.band_structure import BandStructure
 from click import Choice
 import typing
-from asr.database.browser import href, make_panel_description
+from asr.webpages.browser import make_panel_description
+from asr.webpages.appresources import HTMLStringFormat
 from asr.utils.gw_hse import GWHSEInfo
 from asr.utils.kpts import get_kpts_size
 
@@ -23,13 +24,13 @@ wave basis set limit. Spin–orbit interactions are included
 in post-process.""",
         articles=[
             'C2DB',
-            href(
+            HTMLStringFormat.href(
                 """F. Rasmussen et al. Efficient many-body calculations for
 two-dimensional materials using exact limits for the screened potential: Band gaps
 of MoS2, h-BN, and phosphorene, Phys. Rev. B 94, 155406 (2016)""",
                 'https://doi.org/10.1103/PhysRevB.94.155406',
             ),
-            href(
+            HTMLStringFormat.href(
                 """A. Rasmussen et al. Towards fully automatized GW band structure
 calculations: What we can learn from 60.000 self-energy evaluations,
 arXiv:2009.00314""",

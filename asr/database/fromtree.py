@@ -37,7 +37,7 @@ def get_key_value_pairs(resultsdct: dict):
     kvp: dict
         key-value-pairs.
     """
-    from asr.database.key_descriptions import key_descriptions as asr_kd
+    from asr.webpages.key_descriptions import key_descriptions as asr_kd
 
     all_kds = {}
     for section, dct in asr_kd.items():
@@ -403,7 +403,7 @@ def main(folders: Union[str, None] = None,
          dbname: str = 'database.db',
          njobs: int = 1) -> ASRResult:
     """Collect ASR data from folder tree into an ASE database."""
-    from asr.database.key_descriptions import main as set_key_descriptions
+    from asr.webpages.key_descriptions import main as set_key_descriptions
 
     def item_show_func(item):
         return str(item)

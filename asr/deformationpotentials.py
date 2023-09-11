@@ -4,7 +4,8 @@ import typing
 
 from asr.core import command, option, ASRResult, prepare_result
 from asr.utils.gpw2eigs import calc2eigs
-from asr.database.browser import href, make_panel_description
+from asr.webpages.browser import make_panel_description
+from asr.webpages.appresources import HTMLStringFormat
 
 
 description_text = """\
@@ -27,7 +28,9 @@ All the values are calculated with spin-orbit coupling.
 panel_description = make_panel_description(
     description_text,
     articles=[
-        href("""Wiktor, J. and Pasquarello, A., 2016. Absolute deformation potentials
+        HTMLStringFormat.href("""Wiktor, J. and Pasquarello, A.,
+        2016. Absolute deformation
+        potentials
 of two-dimensional materials. Physical Review B, 94(24), p.245411""",
              "https://doi.org/10.1103/PhysRevB.94.245411")
     ],
@@ -85,7 +88,7 @@ def get_table_row(kpt, band, data):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import matrixtable, describe_entry, WebPanel
+    from asr.webpages.browser import matrixtable, describe_entry, WebPanel
 
     def get_basename(kpt):
         chunks = kpt.split(' ')

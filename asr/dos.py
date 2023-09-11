@@ -7,7 +7,7 @@ from typing import List
 import numpy as np
 
 from asr.core import ASRResult, command, option, prepare_result
-from asr.database.browser import (describe_entry, entry_parameter_description,
+from asr.webpages.browser import (describe_entry, entry_parameter_description,
                                   fig, make_panel_description)
 
 panel_description = make_panel_description(

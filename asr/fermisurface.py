@@ -1,6 +1,6 @@
 """Fermi surfaces."""
 from asr.core import command, ASRResult, prepare_result, option
-from asr.database.browser import fig, make_panel_description, describe_entry
+from asr.webpages.browser import fig, make_panel_description, describe_entry
 
 
 panel_description = make_panel_description(

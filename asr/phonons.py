@@ -15,8 +15,9 @@ from ase.parallel import paropen
 
 from asr.utils.symmetry import c2db_symmetry_eps
 from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (
-    create_table, fig, describe_entry, dl, make_panel_description)
+from asr.webpages.browser import (
+    create_table, fig, describe_entry, make_panel_description)
+from asr.webpages.appresources import HTMLStringFormat
 
 panel_description = make_panel_description(
     """
@@ -106,7 +107,7 @@ def webpanel(result, row, key_descriptions):
             'Dynamical (phonons)',
             'Classifier for the dynamical stability of a material '
             'based on the minimum eigenvalue of the Hessian.'
-            + dl(
+            + HTMLStringFormat.dlst(
                 [
                     ["LOW", low],
                     ["HIGH", high],

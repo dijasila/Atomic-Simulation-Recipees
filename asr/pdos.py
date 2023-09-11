@@ -58,7 +58,7 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig,
+    from asr.webpages.browser import (fig,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
     from asr.utils.hacks import gs_xcname_from_row

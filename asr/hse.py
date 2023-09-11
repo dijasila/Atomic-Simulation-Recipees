@@ -3,7 +3,7 @@ from asr.core import command, option, read_json, ASRResult, prepare_result
 import typing
 from ase.spectrum.band_structure import BandStructure
 from asr.bandstructure import legend_on_top
-from asr.database.browser import make_panel_description
+from asr.webpages.browser import make_panel_description
 from asr.utils.gw_hse import GWHSEInfo
 from asr.utils.kpts import get_kpts_size
 
@@ -225,7 +225,7 @@ def plot_bs(row,
 def webpanel(result, row, key_descriptions):
     from asr.utils.gw_hse import gw_hse_webpanel
     return gw_hse_webpanel(result, row, key_descriptions, HSEInfo(row),
-                           sort=15)
+                           sort=12.5)
 
 
 @prepare_result

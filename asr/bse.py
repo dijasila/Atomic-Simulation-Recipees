@@ -6,7 +6,7 @@ import numpy as np
 from ase.units import alpha, Ha, Bohr
 
 from asr.core import command, option, file_barrier, ASRResult, prepare_result
-from asr.database.browser import (
+from asr.webpages.browser import (
     fig, create_table, make_panel_description, describe_entry)
 from asr.utils.kpts import get_kpts_size
 

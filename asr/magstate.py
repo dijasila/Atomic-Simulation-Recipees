@@ -1,5 +1,6 @@
 """Module for determining magnetic state."""
 from asr.core import command, ASRResult, prepare_result
+from asr.webpages.appresources import HTMLStringFormat
 import typing
 
 atomic_mom_threshold = 0.1
@@ -27,12 +28,12 @@ def get_magstate(calc):
 
 def webpanel(result, row, key_descriptions):
     """Webpanel for magnetic state."""
-    from asr.database.browser import describe_entry, dl, code, WebPanel
+    from asr.webpages.browser import describe_entry, code, WebPanel
 
     is_magnetic = describe_entry(
         'Magnetic',
         'Is material magnetic?'
-        + dl(
+        + HTMLStringFormat.dlst(
             [
                 [
                     'Magnetic',

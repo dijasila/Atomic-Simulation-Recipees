@@ -1,6 +1,7 @@
 from asr.core import command, option, ASRResult, prepare_result, read_json
 from ase.geometry import wrap_positions
-from asr.database.browser import make_panel_description, href, describe_entry
+from asr.webpages.browser import make_panel_description, describe_entry
+from asr.webpages.appresources import HTMLStringFormat
 import spglib as spg
 import typing
 import numpy as np
@@ -23,7 +24,8 @@ Analysis of defect states localized inside the pristine bandgap (energetics and
  symmetry).
 """,
     articles=[
-        href(reference, 'https://doi.org/10.1021/acs.jpca.8b07923'),
+        HTMLStringFormat.href(reference,
+                              'https://doi.org/10.1021/acs.jpca.8b07923'),
     ],
 )
 
@@ -158,7 +160,7 @@ def get_symmetry_tables(state_results, vbm, cbm, row, style):
 
 def get_transition_table(row, E_hls):
     """Create table for HOMO-LUMO transition in both spin channels."""
-    from asr.database.browser import create_table
+    from asr.webpages.browser import create_table
 
     transition_table = create_table(
         row=row, header=['Kohn—Sham HOMO—LUMO gap', 'Value'], keys=[],
@@ -173,7 +175,7 @@ def get_transition_table(row, E_hls):
 
 
 def get_summary_table(result, row):
-    from asr.database.browser import create_table
+    from asr.webpages.browser import create_table
     from asr.structureinfo import get_spg_href, describe_pointgroup_entry
 
     spglib = get_spg_href('https://spglib.github.io/spglib/')
@@ -192,7 +194,7 @@ def get_summary_table(result, row):
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (WebPanel,
+    from asr.webpages.browser import (WebPanel,
                                       describe_entry,
                                       fig)
 

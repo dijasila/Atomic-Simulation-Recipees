@@ -2,7 +2,8 @@
 from asr.core import command, option, ASRResult, prepare_result
 import numpy as np
 import typing
-from asr.database.browser import make_panel_description, href, describe_entry
+from asr.webpages.browser import make_panel_description, describe_entry
+from asr.webpages.appresources import HTMLStringFormat
 
 
 reference = """\
@@ -20,7 +21,8 @@ evaluation of the first moment of the electron density. The Born charge is
 obtained as a finite difference of the polarization for displaced atomic
 configurations.  """,
     articles=[
-        href(reference, 'https://doi.org/10.1021/acs.jpcc.0c01635')
+        HTMLStringFormat.href(reference,
+                              'https://doi.org/10.1021/acs.jpcc.0c01635')
     ]
 )
 

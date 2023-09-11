@@ -197,7 +197,7 @@ def get_parameters(gs, exchange, txt=False,
 
 
 def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (create_table,
+    from asr.webpages.browser import (create_table,
                                       entry_parameter_description,
                                       describe_entry, WebPanel)
     if row.get('magstate', 'NM') == 'NM':

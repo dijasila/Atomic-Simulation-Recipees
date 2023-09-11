@@ -3,7 +3,7 @@ from typing import Union
 import numpy as np
 from ase.dft.kpoints import labels_from_kpts
 from asr.core import command, option, ASRResult, singleprec_dict, prepare_result
-from asr.database.browser import fig, make_panel_description, describe_entry
+from asr.webpages.browser import fig, make_panel_description, describe_entry
 from asr.utils.hacks import gs_xcname_from_row
 from asr.utils.symmetry import c2db_symmetry_eps
 
@@ -416,9 +416,7 @@ def webpanel(result, row, key_descriptions):
     panel = {'title': describe_entry(f'Electronic band structure ({xcname})',
                                      panel_description),
              'columns': [
-                 [
-                     fig(bs_png, link=bs_html),
-                 ],
+                 [fig(bs_png, link=bs_html)],
                  [fig('bz-with-gaps.png')]],
              'plot_descriptions': [{'function': plot_bs_png,
                                     'filenames': [bs_png]},

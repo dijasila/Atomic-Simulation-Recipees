@@ -258,7 +258,7 @@ def results(name, show):
     from asr.core.material import (get_material_from_folder,
                                    make_panel_figures)
     recipe = get_recipe_from_name(name)
-
+    print('recipe', recipe)
     filename = f"results-{recipe.name}.json"
     assert Path(filename).is_file(), \
         f'No results file for {recipe.name}, so I cannot show the results!'
@@ -269,7 +269,7 @@ def results(name, show):
     if 'ase_webpanel' not in result.get_formats():
         print(f'{recipe.name} does not have any results to present!')
         return
-    from asr.database.app import create_key_descriptions
+    from asr.webpages.app import create_key_descriptions
     kd = create_key_descriptions()
     panels = result.format_as('ase_webpanel', material, kd)
     print('panels', panels)

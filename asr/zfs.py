@@ -1,5 +1,5 @@
 from asr.core import command, ASRResult, prepare_result
-from asr.database.browser import WebPanel
+from asr.webpages.browser import WebPanel
 import numpy as np
 
 

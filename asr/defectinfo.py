@@ -6,7 +6,8 @@ from asr.defect_symmetry import DefectInfo
 from asr.setup.defects import return_distances_cell
 from pathlib import Path
 import typing
-from asr.database.browser import (create_table, describe_entry, href)
+from asr.webpages.browser import (create_table, describe_entry)
+from asr.webpages.appresources import HTMLStringFormat
 from asr.structureinfo import describe_crystaltype_entry, describe_pointgroup_entry
 
 
@@ -29,10 +30,11 @@ def get_concentration_row(conc_res, defect_name, q):
 
 
 def webpanel(result, row, key_descriptions):
-    spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
+    spglib = HTMLStringFormat.href('SpgLib',
+                                   'https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)
 
-    spg_list_link = href(
+    spg_list_link = HTMLStringFormat.href(
         'space group', 'https://en.wikipedia.org/wiki/List_of_space_groups')
     spacegroup = describe_entry(
         'Space group',
@@ -98,8 +100,8 @@ def webpanel(result, row, key_descriptions):
     if uid:
         basictable['rows'].extend(
             [[uidstring,
-              '<a href="https://cmrdb.fysik.dtu.dk/c2db/row/{uid}"'
-              '>{uid}</a>'.format(uid=uid)]])
+              HTMLStringFormat.href(f"https://cmrdb.fysik.dtu.dk/c2db/row"
+                                    f"/{uid}", uid)]])
 
     panel = {'title': 'Summary',
              'columns': [[basictable, defecttable], []],

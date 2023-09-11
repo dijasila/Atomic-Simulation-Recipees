@@ -11,22 +11,22 @@ So the web panel is not general.
 """
 
 from asr.core import command, option, ASRResult
+from asr.webpages.appresources import HTMLStringFormat
 
 
 def arxiv(identifier):
-    from asr.database.browser import href
     # (Avoid "browser"-imports at module level)
-    return href(f'arXiv:{identifier}',
+    return HTMLStringFormat.href(f'arXiv:{identifier}',
                 f'https://arxiv.org/abs/{identifier}')
 
 
 def doi(identifier):
-    from asr.database.browser import href
-    return href(f'doi:{identifier}', f'https://doi.org/{identifier}')
+    return HTMLStringFormat.href(f'doi:{identifier}',
+                                 f'https://doi.org/{identifier}')
 
 
 def get_label_tablerow(label):
-    from asr.database.browser import describe_entry
+    from asr.webpages.browser import describe_entry
 
     lyngby22_link = doi('10.1038/s41524-022-00923-3')
     lyngby22_description_CDVAE = """\

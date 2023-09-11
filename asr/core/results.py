@@ -211,7 +211,10 @@ def encode_object(obj: typing.Any):
 
 
 def decode_object(obj: typing.Any) -> typing.Any:
-    """Convert object representing an ASR result to corresponding result object."""
+    """
+    Convert an object representing an ASR result to a corresponding result
+    object.
+    """
     if isinstance(obj, dict):
         for key, value in obj.items():
             obj[key] = decode_object(value)

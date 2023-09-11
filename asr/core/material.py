@@ -116,7 +116,7 @@ def get_webpanels_from_material(material, recipe):
     panels : list
         List of panels and contents.
     """
-    from asr.database.app import create_key_descriptions
+    from asr.webpages.app import create_key_descriptions
     kd = create_key_descriptions()
     return recipe.format_as('ase_webpanel', material, kd)
 
