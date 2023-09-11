@@ -94,8 +94,7 @@
 {% endif %}
 {% endmacro %}
 
-
-{% macro atoms() %}
+{% macro new_atoms() %}
 {% if row.numbers|length %}
 <div class="row">
   <center>
@@ -104,6 +103,7 @@
   <div class="row">
     <div class="col-md-1"></div>
     <div class="col-md-4" id="structure-options">
+
       <!--Rotate Structure-->
       <div class="btn-group pull-right">
         <button type="button" class="btn btn-link btn-sm" data-toggle="dropdown">Rotate<span class="caret"></span>
@@ -114,6 +114,7 @@
           <li><a onclick="rotateStructure('z', 10)">Rotate Z</a></li>
         </ul>
       </div>
+
       <!--Zoom -->
       <div class="btn-group pull-right">
         <button type="button" class="btn btn-link btn-sm" data-toggle="dropdown">Zoom<span class="caret"></span>
@@ -123,6 +124,48 @@
           <li><a onclick="zoomStructure(0.8)">Zoom Out</a></li>
         </ul>
       </div>
+
+      <!-- BUTTON Unitcell repeatCell JS function-->
+      <div class="btn-group pull-right">
+        <button type="button" class="btn btn-link btn-sm" data-toggle="dropdown">
+          Unit cell <span class="caret"></span>
+        </button>
+        <!-- DROPDOWN Options -->
+        <ul class="dropdown-menu">
+          <li><a onclick="repeatCell(1, 1, 1);">1x1x1</a></li>
+          <li><a onclick="repeatCell(2, 2, 1);">2x2x1</a></li>
+          <li><a onclick="repeatCell(4, 4, 1);">4x4x1</a></li>
+        </ul>
+      </div>
+
+      <!--BUTTON Download dropdown for xyz/json-->
+      <div class="btn-group pull-right">
+        <button type="button" class="btn btn-link dropdown-toggle btn-sm" data-toggle="dropdown">
+          Download <span class="caret"></span>
+        </button>
+        <!-- DROPDOWN Options: app.route atoms function -->
+        <ul class="dropdown-menu">
+          <li><a href="/atoms/{{ project.name }}/{{ row.id }}/cif">cif</a></li>
+          <li><a href="/atoms/{{ project.name }}/{{ row.id }}/xyz">xyz</a></li>
+          <li><a href="/atoms/{{ project.name }}/{{ row.id }}/json">json</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-1"></div>
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro atoms() %}
+{% if row.numbers|length %}
+<div class="row">
+  <center>
+    <div id="appdiv"></div>
+  </center>
+  <div class="row">
+    <div class="col-md-1"></div>
+    <div class="col-md-4" id="structure-options">
       <!-- BUTTON Unitcell repeatCell JS function-->
       <div class="btn-group pull-right">
         <button type="button" class="btn btn-link btn-sm" data-toggle="dropdown">
@@ -142,6 +185,7 @@
         </button>
         <!-- DROPDOWN Options: app.route atoms function -->
         <ul class="dropdown-menu">
+          <li><a href="/atoms/{{ project.name }}/{{ row.id }}/cif">cif</a></li>
           <li><a href="/atoms/{{ project.name }}/{{ row.id }}/xyz">xyz</a></li>
           <li><a href="/atoms/{{ project.name }}/{{ row.id }}/json">json</a></li>
         </ul>
@@ -165,7 +209,6 @@
     Jmol._getElement(applet, "appletdiv").style.border = "1px solid lightgray";
     Jmol.script(jmolApplet0, "set displaycellparameters false;")
     Jmol.script(jmolApplet0,
-      <!--    "load /atoms/{{ project.name }}/{{ row.id }}/cif { {{ n1 }} {{ n2 }} {{ n3 }} };");-->
       "load /atoms/{{ project.name }}/{{ row.id }}/cif { 4 4 1 };");
   }
 </script>
