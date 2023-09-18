@@ -41,6 +41,15 @@ def findOrthoNN(kpts: List[float],
     return orthNN
 
 
+def kgrid_to_qgrid(k_qc):
+    # Choose q=2k and cutoff points at BZ edge
+    q_qc = 2 * k_qc
+    q_qc = q_qc[np.linalg.norm(q_qc, axis=-1) <= 0.5]
+    even_q = int(np.floor(len(q_qc) / 2) * 2)
+    q_qc = q_qc[:even_q]
+    return q_qc
+
+
 def find_neighbours_in_line(kpts, direction, indices, npoints):
     orthNN = []
     orthoDirs = [(direction + 1) % 3, (direction + 2) % 3]
@@ -76,11 +85,10 @@ def prepare_dmi(calculator: dict = {
         'experimental': {'soc': False},
         'symmetry': 'off',
         'parallel': {'domain': 1, 'band': 1},
-        'kpts': {'density': 22.0, 'gamma': True},
+        'kpts': {'size': (32, 32, 1), 'gamma': True},
         'occupations': {'name': 'fermi-dirac',
                         'width': 0.05},
         'convergence': {'bands': 'CBM+3.0'},
-        'nbands': '200%',
         'txt': 'gsq.txt',
         'charge': 0}, n: int = 2) -> ASRResult:
     from ase.io import read
@@ -92,17 +100,13 @@ def prepare_dmi(calculator: dict = {
 
     size, offsets = kpts2sizeandoffsets(atoms=atoms, **calculator['kpts'])
     kpts_kc = monkhorst_pack(size) + offsets
-    qpts_nqc = findOrthoNN(kpts_kc, atoms.pbc, npoints=n)
+    kpts_nqc = findOrthoNN(kpts_kc, atoms.pbc, npoints=n)
     en_nq = []
     q_nqc = []
-    for i, q_qc in enumerate(qpts_nqc):
+    for i, k_qc in enumerate(kpts_nqc):
         en_q = []
 
-        # Choose q=2k and cutoff points at BZ edge
-        q_qc *= 2
-        q_qc = q_qc[np.linalg.norm(q_qc, axis=-1) <= 0.5]
-        even_q = int(np.floor(len(q_qc) / 2) * 2)
-        q_qc = q_qc[:even_q]
+        q_qc = kgrid_to_qgrid(k_qc)
         for j, q_c in enumerate(q_qc):
             if not path.isfile(f'gsq{j}d{i}.gpw'):
                 calculator['name'] = 'gpaw'
@@ -121,7 +125,11 @@ def prepare_dmi(calculator: dict = {
 
 
 def webpanel(result, row, key_descriptions):
-    D_v = np.round(result.get('D_v'), 2) + 0.
+    D_nqv = result.get('D_nqv')
+    D_nv = []
+    for D_qv in D_nqv:
+        D_nv.append(D_qv[0])
+    D_nv = np.round(np.array(D_nv), 2) + 0.
 
     # Estimate error
     en_nq = result.get('en_nq')
@@ -144,8 +152,8 @@ def webpanel(result, row, key_descriptions):
 
     formatter = {'float': lambda x: f'{x:.2f}'}
     rows = [['D(q<sub>' + ['a1', 'a2', 'a3'][n] + '</sub>) (meV / Å<sup>-1</sup>)',
-             f"{np.array2string(D_v[n], formatter=formatter)}{error_marker[n]}"]
-            for n in range(len(D_v))]
+             f"{np.array2string(D_nv[n], formatter=formatter)}{error_marker[n]}"]
+            for n in range(len(D_nv))]
 
     dmi_table = {'type': 'table',
                  'header': ['Property', 'Value'],
@@ -159,14 +167,17 @@ def webpanel(result, row, key_descriptions):
 
 @prepare_result
 class Result(ASRResult):
-    qpts_nqc: List
     en_nq: List
-    dmi_nq: np.ndarray
-    D_v: List[float]
+    en_soc_nq: List
+    qpts_nqc: List
+    qpts_soc_nqc: List
+    D_nqv: List[np.ndarray]
     DMI: float
-    key_descriptions = {"qpts_nqc": "nearest neighbour orthogonal q-vectors",
-                        "en_nq": "energy of respective spin spiral groundstates",
-                        "dmi_nq": "Components of projected soc in orthogonal q-vectors",
+    key_descriptions = {"en_nq": "Energy of spin spiral groundstates",
+                        "en_soc_nq": "Antisymmetric Dzyaloshinskii moriya energy",
+                        "qpts_nqc": "q-vectors of spin spiral groundstates",
+                        "qpts_soc_nqc": "Sign corrected q-vectors of DM",
+                        "D_nqv": "Components of effective DM vector [meV Å]",
                         "DMI": 'Dzyaloshinskii Moriya interaction [meV Å]'}
     formats = {"ase_webpanel": webpanel}
 
@@ -189,11 +200,11 @@ def main() -> Result:
     width = 0.001
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
 
-    de_nq = []
-    dq_nqc = []
-    D_nv = []
+    E_nq = []
+    q_nqc = []
+    D_nqv = []
     for n, q_qc in enumerate(qpts_nqc):
-        en_q = []
+        Esoc_q = []
         for j, q_c in enumerate(q_qc):
             calc = f'gsq{j}d{n}.gpw'
             calc = GPAW(calc)
@@ -205,29 +216,30 @@ def main() -> Result:
                                              occcalc=occcalc, scale=0,
                                              theta=th, phi=phi).calculate_band_energy()
                              for th, phi in [(90, 0), (90, 90), (0, 0)])
-            en_q.append(np.array([Ex - E0x, Ey - E0y, Ez - E0z]))
-        en_q = np.array(en_q)
-        dq_qc = q_qc[::2] - q_qc[1::2]
-        de_q = en_q[::2] - en_q[1::2]
+            Esoc_q.append(np.array([Ex - E0x, Ey - E0y, Ez - E0z]))
+        Esoc_q = np.array(Esoc_q)
+        q_qc = (q_qc[::2] - q_qc[1::2]) / 2
+        E_q = (Esoc_q[::2] - Esoc_q[1::2]) / 2
 
         # Sign correction
-        sign_correction_q = np.sign(np.sum(dq_qc, axis=-1))
-        dq_qc = (dq_qc.T * sign_correction_q).T
-        de_q = (de_q.T * sign_correction_q).T
+        sign_correction_q = np.sign(np.sum(q_qc, axis=-1))
+        q_qc = (q_qc.T * sign_correction_q).T
+        E_q = (E_q.T * sign_correction_q).T
 
-        dq_qv = kpoint_convert(cell_cv=atoms.cell, skpts_kc=dq_qc)
+        dq_qv = kpoint_convert(cell_cv=atoms.cell, skpts_kc=q_qc)
         dq_q = np.linalg.norm(dq_qv, axis=-1)
-        D_v = np.divide(1000 * de_q[0].T, dq_q[0]).T
+        D_qv = np.divide(-2 * 1000 * E_q.T, dq_q).T
 
         # Append to data
-        de_nq.append(de_q)
-        dq_nqc.append(dq_qc)
-        D_nv.append(D_v)
+        E_nq.append(E_q)
+        q_nqc.append(q_qc)
+        D_nqv.append(D_qv)
 
-    D_nv = np.array(D_nv)
-    DMI = np.round(np.max(np.linalg.norm(D_nv[0], axis=-1)), 2)
+    # Sortable key-value pair
+    DMI = np.round(np.max(np.linalg.norm(D_nqv[0][0], axis=-1)), 2)
     return Result.fromdata(qpts_nqc=qpts_nqc, en_nq=en_nq,
-                           dmi_nq=de_nq, D_v=D_nv, DMI=DMI)
+                           qpts_soc_nqc=q_nqc, en_soc_nq=E_nq,
+                           D_nqv=D_nqv, DMI=DMI)
 
 
 if __name__ == '__main__':
