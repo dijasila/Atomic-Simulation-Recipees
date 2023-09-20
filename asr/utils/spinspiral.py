@@ -84,7 +84,7 @@ def nn(atoms, ref: int = 0):
     return R_a, npos_av
 
 
-def get_afms(atoms):
+def get_afms(atoms, moments=None):
     """
     Takes an atoms object
     and creates a list of non-equivalent antiferromagnetic structures.
@@ -95,7 +95,8 @@ def get_afms(atoms):
 
     import numpy as np
 
-    moments = get_magmoms(atoms)
+    if moments is None:
+        moments = get_magmoms(atoms)
     arg = true_magnetic_atoms(atoms)
 
     # Construct list with #up and downs
@@ -148,14 +149,17 @@ def spinspiral(calculator: dict = {
         'txt': 'gsq.txt',
         'charge': 0},
         write_gpw: bool = True,
-        return_calc: bool = False) -> dict:
+        return_calc: bool = False,
+        atoms = None) -> dict:
     """Calculate the groundstate of a given spin spiral vector q_c"""
-    from ase.io import read
     from ase.dft.kpoints import kpoint_convert
     from ase.dft.bandgap import bandgap
     from os import path
-    atoms = read('structure.json')
-    q_c = calculator['mode']['qspiral']  # spiral vector must be provided
+
+    if atoms is None:
+        from ase.io import read
+        atoms = read('structure.json')
+
     try:
         gpwfile = calculator['txt'].replace('.txt', '.gpw')
         restart = path.isfile(gpwfile)
@@ -171,6 +175,7 @@ def spinspiral(calculator: dict = {
         magmoms[:, 0] = magmomx
 
     R_iv, _ = nn(atoms, ref=0)
+    q_c = calculator['mode']['qspiral']  # spiral vector must be provided
     q_v = kpoint_convert(atoms.get_cell(), skpts_kc=[q_c])[0]
     xi = calc_tanEq(q_v, R_iv)  # Arctan Equation
     angles = [xi, 0]
@@ -194,7 +199,7 @@ def spinspiral(calculator: dict = {
     else:
         calc = get_calculator_class(name)(**calculator)
 
-    # atoms.center(vacuum=4.0, axis=2)
+    atoms.center(vacuum=4.0, axis=2)
     atoms.calc = calc
     energy = atoms.get_potential_energy()
     totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
