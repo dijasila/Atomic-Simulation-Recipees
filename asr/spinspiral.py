@@ -79,8 +79,8 @@ class Result(ASRResult):
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 @option('--q_path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
 @option('--qpts', help='Number of sample points', type=int)
-@option('--qdens', help='Density of sample points', type=int)
-@option('--rotation_model', help='Rotate initial magmoms by given model', type=bool)
+@option('--qdens', help='Density of sample points', type=float)
+@option('--rotation_model', help='Rotate initial magmoms by given model', type=str)
 @option('--clean_up', help='Remove gpw files after execution', type=bool)
 @option('--eps', help='Bandpath symmetry threshold', type=float)
 def main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
