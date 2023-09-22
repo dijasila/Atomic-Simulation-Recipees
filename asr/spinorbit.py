@@ -125,7 +125,7 @@ def _calculate(calc, distance: float,
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
-    rows = [['Spinorbit bandwidth', str(np.round(result.get('soc_bw'), 1))],
+    rows = [['Spinorbit bandwidth (meV)', str(np.round(result.get('soc_bw'), 1))],
             ['Spinorbit Minimum (&theta;, &phi;)', '('
              + str(np.round(result.get('theta_min'), 1))
              + ', ' + str(np.round(result.get('phi_min'), 1)) + ')']]

@@ -77,7 +77,7 @@ class PreResult(ASRResult):
          resources='40:1h',
          requires=['structure.json'])
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
-@option('-n', help='Number of points along ortho directions', type=DictStr())
+@option('-n', help='Number of points along orthogonal directions', type=int)
 def prepare_dmi(calculator: dict = {
         'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800, 'qspiral': [0, 0, 0]},
@@ -94,7 +94,7 @@ def prepare_dmi(calculator: dict = {
     from ase.io import read
     from ase.dft.kpoints import monkhorst_pack
     from ase.calculators.calculator import kpts2sizeandoffsets
-    from asr.utils.spinspiral import spinspiral
+    from asr.spinspiral import spinspiral
     from gpaw import GPAW
     atoms = read('structure.json')
 
@@ -112,13 +112,11 @@ def prepare_dmi(calculator: dict = {
                 calculator['name'] = 'gpaw'
                 calculator['txt'] = f'gsq{j}d{i}.txt'
                 calculator['mode']['qspiral'] = q_c
-                calc = spinspiral(calculator, write_gpw=True, return_calc=True)
-                en_q.append(calc.get_potential_energy())
-                del calc
+                result = spinspiral(calculator)
+                en_q.append(result['energy'])
             else:
-                calc = GPAW(f'gsq{j}d{i}.gpw')
-                en_q.append(calc.get_potential_energy())
-                del calc
+                result = GPAW(f'gsq{j}d{i}.gpw')
+                en_q.append(result['energy'])
         en_nq.append(en_q)
         q_nqc.append(q_qc)
     return PreResult.fromdata(qpts_nqc=q_nqc, en_nq=en_nq)

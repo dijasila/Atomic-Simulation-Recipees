@@ -1,4 +1,6 @@
 from asr.utils.magnetism import magnetic_atoms
+from asr.utils.symmetry import c2db_symmetry_eps
+from scipy.spatial.transform import Rotation as R
 import numpy as np
 
 
@@ -15,6 +17,41 @@ def get_magmoms(atoms):
     return moments
 
 
+def extract_magmoms(atoms, calculator):
+    try:
+        magmoms = calculator["experimental"]["magmoms"]
+    except KeyError:
+        magmomx = get_magmoms(atoms)
+        magmoms = np.zeros((len(atoms), 3))
+        magmoms[:, 0] = magmomx
+    return magmoms
+
+
+def rotate_magmoms(atoms, magmoms, q_c, model='q.a'):
+    from ase.dft.kpoints import kpoint_convert
+
+    q_v = kpoint_convert(atoms.get_cell(), skpts_kc=[q_c])[0]
+    if model == 'q.a':
+        pos_av = atoms.get_positions()
+        angles = np.dot(pos_av, q_v)
+        to_rotate = slice(None)
+    if model == 'tan':
+        # Automatic rotation of magnetic atoms require magnetic atoms
+        if sum(magnetic_atoms(atoms)) == 0 or len(atoms) == 1:
+            return np.array(magmoms)
+        R_iv, _ = nn(atoms, ref=0)
+        xi = calc_tanEq(q_v, R_iv)  # Arctan Equation
+        angles = [xi, 0]
+        to_rotate = true_magnetic_atoms(atoms)
+
+    moments_av = magmoms[to_rotate]
+    for i, (mom_v, angle) in enumerate(zip(moments_av, angles)):
+        Rz = R.from_euler('z', angle).as_matrix()
+        moments_av[i] = Rz @ mom_v
+    magmoms[to_rotate] = moments_av
+    return np.array(magmoms)
+
+
 def true_magnetic_atoms(atoms):
     arg = magnetic_atoms(atoms)
     moments = get_magmoms(atoms)
@@ -25,6 +62,7 @@ def true_magnetic_atoms(atoms):
         primary_magmom = magmoms[np.argmax(magmoms)]
     except ValueError:
         print(f'Skipping {atoms.symbols}, no d-orbital present')
+        return arg
 
     # Percentage of primary magnetic moment
     pmom = magmoms / primary_magmom
@@ -33,23 +71,6 @@ def true_magnetic_atoms(atoms):
     is_true_mag = pmom > 0.1
     arg[arg == 1] = is_true_mag
     return arg
-
-
-def rotation_matrix(axis, theta):
-    """
-    Return the rotation matrix associated with counterclockwise rotation about
-    the given axis by theta radians.
-    https://stackoverflow.com/questions/6802577/rotation-of-3d-vector
-    """
-    axis = np.asarray(axis)
-    axis = axis / np.sqrt(np.dot(axis, axis))
-    a = np.cos(theta / 2.0)
-    b, c, d = -axis * np.sin(theta / 2.0)
-    aa, bb, cc, dd = a * a, b * b, c * c, d * d
-    bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-    return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
-                     [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
-                     [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
 
 
 def calc_tanEq(q_v, R_iv):
@@ -86,7 +107,7 @@ def nn(atoms, ref: int = 0):
 
 def get_afms(atoms, moments=None):
     """
-    Takes an atoms object
+    Takes an atoms object, or optionally magnetic moments as a list of floats
     and creates a list of non-equivalent antiferromagnetic structures.
     Note can only take even number of moment such that the antiferromagnetic
     condition is sum(moments) = 0
@@ -134,85 +155,20 @@ def get_noncollinear_magmoms(atoms):
     return magmoms
 
 
-def spinspiral(calculator: dict = {
-        'name': 'gpaw',
-        'mode': {'name': 'pw', 'ecut': 800, 'qspiral': [0, 0, 0]},
-        'xc': 'LDA',
-        'experimental': {'soc': False},
-        'symmetry': 'off',
-        'parallel': {'domain': 1, 'band': 1},
-        'kpts': {'density': 12.0, 'gamma': True},
-        'occupations': {'name': 'fermi-dirac',
-                        'width': 0.05},
-        'convergence': {'bands': 'CBM+3.0'},
-        'nbands': '200%',
-        'txt': 'gsq.txt',
-        'charge': 0},
-        write_gpw: bool = True,
-        return_calc: bool = False,
-        atoms = None) -> dict:
-    """Calculate the groundstate of a given spin spiral vector q_c"""
-    from ase.dft.kpoints import kpoint_convert
-    from ase.dft.bandgap import bandgap
-    from os import path
+def get_spiral_bandpath(atoms, qdens=None, qpts=None,
+                        q_path=None, eps=None):
+    # default q-sampling
+    if qpts is None and qdens is None:
+        qdens = 6.0
+    if eps is None:
+        eps = c2db_symmetry_eps
 
-    if atoms is None:
-        from ase.io import read
-        atoms = read('structure.json')
-
-    try:
-        gpwfile = calculator['txt'].replace('.txt', '.gpw')
-        restart = path.isfile(gpwfile)
-    except KeyError:
-        gpwfile = 'gsq.gpw'
-        restart = False
-
-    try:
-        magmoms = calculator["experimental"]["magmoms"]
-    except KeyError:
-        magmomx = get_magmoms(atoms)
-        magmoms = np.zeros((len(atoms), 3))
-        magmoms[:, 0] = magmomx
-
-    R_iv, _ = nn(atoms, ref=0)
-    q_c = calculator['mode']['qspiral']  # spiral vector must be provided
-    q_v = kpoint_convert(atoms.get_cell(), skpts_kc=[q_c])[0]
-    xi = calc_tanEq(q_v, R_iv)  # Arctan Equation
-    angles = [xi, 0]
-    moments_av = magmoms[true_magnetic_atoms(atoms)]
-    for i, (mom_v, angle) in enumerate(zip(moments_av, angles)):
-        moments_av[i] = rotation_matrix([0, 0, 1], angle) @ mom_v
-    magmoms[true_magnetic_atoms(atoms)] = moments_av
-    calculator['experimental']['magmoms'] = magmoms
-
-    # Mandatory spin spiral parameters
-    assert calculator["xc"] == 'LDA'
-    assert not calculator["experimental"]['soc']
-    assert calculator["symmetry"] == 'off'
-    assert calculator["parallel"]['domain'] == 1
-    assert calculator["parallel"]['band'] == 1
-
-    from ase.calculators.calculator import get_calculator_class
-    name = calculator.pop('name')
-    if restart:
-        calc = get_calculator_class(name)(gpwfile)
+    if qdens is not None and qpts is not None:
+        raise ValueError("Both q-density and q-points are provided")
+    elif qpts is None:
+        path = atoms.cell.bandpath(q_path, density=qdens,
+                                   pbc=atoms.pbc, eps=eps)
     else:
-        calc = get_calculator_class(name)(**calculator)
-
-    atoms.center(vacuum=4.0, axis=2)
-    atoms.calc = calc
-    energy = atoms.get_potential_energy()
-    totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
-    gap, k1, k2 = bandgap(calc)
-
-    if write_gpw and not restart:
-        atoms.calc.write(gpwfile)
-    if return_calc:
-        return calc
-    else:
-        return {'energy': energy, 'totmom_v': totmom_v,
-                'magmom_av': magmom_av, 'gap': gap}
-
-
-if __name__ == '__main__':
-    spinspiral.cli()
+        path = atoms.cell.bandpath(q_path, npoints=qpts,
+                                   pbc=atoms.pbc, eps=eps)
+    return path

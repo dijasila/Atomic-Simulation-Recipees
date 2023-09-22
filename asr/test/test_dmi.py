@@ -6,7 +6,7 @@ from .materials import Agchain, Fe
 @pytest.mark.ci
 @pytest.mark.parametrize('test_material', [Agchain, Fe])
 @pytest.mark.parametrize('n', [2, [0, 0, 3], 13, [2, 0, 7]])
-def test_dmi(asr_tmpdir_w_params, mockgpaw, get_webcontent, test_material, n):
+def test_dmi_integration(asr_tmpdir, mockgpaw, get_webcontent, test_material, n):
     """Test of dmi recipe."""
     from asr.dmi import prepare_dmi, main
     from ase.parallel import world

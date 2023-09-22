@@ -35,7 +35,7 @@ def test_spinorbit(asr_tmpdir_w_params, mockgpaw, test_material, get_webcontent,
 
     if world.size == 1:
         content = get_webcontent()
-        assert "<td>Spinorbitbandwidth</td>" in content, content
+        assert "<td>Spinorbitbandwidth(meV)</td>" in content, content
         assert "<td>SpinorbitMinimum(&theta;,&phi;)</td>" in content, content
 
 

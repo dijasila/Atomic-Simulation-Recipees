@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from asr.core import command, option, ASRResult, prepare_result
-from typing import List
+from asr.utils.spinspiral import get_spiral_bandpath
+from typing import List, Union
 import numpy as np
 import json
 
@@ -89,8 +90,8 @@ def webpanel(result, row, key_descriptions):
     gap = result.gaps[bmin][qmin]
 
     rows = [['Q<sub>min</sub>', str(np.round(result.get('Qmin'), 3))],
-            ['Bandgap(Q<sub>min</sub>)', round(gap, 2)],
-            ['Spiral bandwidth', str(np.round(result.get('bandwidth'), 1))]]
+            ['Bandgap(Q<sub>min</sub>) (eV)', round(gap, 2)],
+            ['Spiral bandwidth (meV)', str(np.round(result.get('bandwidth'), 1))]]
     spiraltable = {'type': 'table',
                    'header': ['Property', 'Value'],
                    'rows': rows}
@@ -127,26 +128,26 @@ class Result(ASRResult):
 @command(module='asr.collect_spiral',
          requires=['structure.json'],
          returns=Result)
+@option('--q_path', help='Spin spiral high symmetry path eg. "GKMG"', type=str)
 @option('--qdens', help='Density of q-points used in calculations', type=float)
 @option('--qpts', help='Number of q-points used in calculations', type=int)
 @option('--eps', help='Precesion in determining ase bandpath', type=float)
-def main(qdens: float = None, qpts: int = None, eps: float = None) -> Result:
+def main(qpts: int = None, qdens: float = None,
+         q_path: Union[str, None] = None, eps: float = None) -> Result:
     from ase.io import read
+    from asr.core import read_json
     from glob import glob
     atoms = read('structure.json')
     jsons = glob('dat*.json')
-    c2db_eps = 0.1
-    eps = eps or c2db_eps
+    try:
+        qpts = len(read_json('results-asr.spinspiral.json')['path'].kpts)
+        qdens = None
+    except FileNotFoundError:
+        # Using input or default q-points
+        pass
 
-    if qdens is None and qpts is None:
-        raise ValueError("At least one q-input must be provided")
-    elif qdens is not None and qpts is not None:
-        raise ValueError("Both q-density and q-points are provided")
-    elif qpts is None:
-        path = atoms.cell.bandpath(density=qdens, pbc=atoms.pbc, eps=eps)
-    else:
-        path = atoms.cell.bandpath(npoints=qpts, pbc=atoms.pbc, eps=eps)
-
+    path = get_spiral_bandpath(atoms=atoms, qdens=qdens, qpts=qpts,
+                               q_path=q_path, eps=eps)
     sscalcs = SpinSpiralPathCalculation(path.kpts)
     for js in jsons:
         sscalc = SpinSpiralCalculation.load(js)
@@ -233,7 +234,7 @@ def plot_bandstructure(row, fname):
             energies_sq = np.split(e_q, splitarg)
             magmom_sq = np.split(m_q, splitarg, axis=0)
             q_s = np.split(Q, splitarg)
-        
+
         for q, energies_q, magmom_q in zip(q_s, energies_sq, magmom_sq):
             if len(q) == 0 or len(q[energies_q != 0]) == 0:
                 continue
@@ -297,7 +298,8 @@ def plot_energies(ax, q, energies, emin, emax, x, X):
 def add_wavelength_axis(ax, q, q_v, wavepointsfreq):
     # Add spin wavelength axis
     def tick_function(X):
-        lmda = 2 * np.pi / X
+        with np.errstate(divide='ignore'):
+            lmda = 2 * np.pi / X
         return [f"{z:.1f}" for z in lmda]
 
     ax.set_xticks(q[::wavepointsfreq])
