@@ -1,5 +1,4 @@
 import pytest
-from mock import patch
 
 
 @pytest.mark.ci
@@ -84,15 +83,15 @@ def test_spinspiral_main(asr_tmpdir, test_material, mockgpaw, get_webcontent,
 
 
 @pytest.mark.ci
-@patch('gpaw.GPAW._get_potential_energy')
-def test_spinspiral_integration(mock_get_potential_energy, asr_tmpdir,
+def test_spinspiral_integration(asr_tmpdir, mocker,
                                 test_material, mockgpaw, get_webcontent):
     from ase.parallel import world
     from asr.spinspiral import main
     from asr.collect_spiral import main as collect
     test_material.write('structure.json')
 
-    mock_get_potential_energy.return_value = 1.0
+    # Spin spiral plotting uses E=0 to determine failed calculations
+    mocker.patch('gpaw.GPAW._get_potential_energy', return_value=1.0)
     magmoms = [[1, 0, 0]] * len(test_material)
     calculator = {
         "mode": {
