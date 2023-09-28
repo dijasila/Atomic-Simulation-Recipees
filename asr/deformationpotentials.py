@@ -3,8 +3,6 @@ import numpy as np
 import typing
 from collections import OrderedDict
 
-from gpaw import GPAW
-
 from ase.io.jsonio import read_json
 
 from asr.core import command, option, ASRResult, prepare_result
@@ -102,21 +100,21 @@ def webpanel(result, row, key_descriptions):
     dp_table_vb = matrixtable(
         dp_list_vb,
         digits=2,
-        title=f'D<sub>VB</sub> (eV)',
+        title='D<sub>VB</sub> (eV)',
         columnlabels=columnlabels,
         rowlabels=dp_labels_vb
     )
     dp_table_cb = matrixtable(
         dp_list_cb,
         digits=2,
-        title=f'D<sub>CB</sub> (eV)',
+        title='D<sub>CB</sub> (eV)',
         columnlabels=columnlabels,
         rowlabels=dp_labels_cb
     )
     dp_table_gap = matrixtable(
         dp_list_gap,
         digits=2,
-        title=f'',
+        title='',
         columnlabels=columnlabels,
         rowlabels=['Band Gap']
     )
@@ -255,6 +253,8 @@ def gpaw_get_edges(folder, kpts, soc):
     the top eigenvalue of the valence band and
     the bottom eigenvalue of the conduction band."""
 
+    from gpaw import GPAW
+
     gpw = GPAW(f'{folder}/gs.gpw').fixed_density(
         kpts=kpts,
         symmetry='off',
@@ -354,6 +354,7 @@ def main(strain: float = 1.0) -> Result:
         Percent strain to apply, in both direction and for all
         the relevant strain components, to the current material.
     """
+    from gpaw import GPAW
 
     calc = GPAW('gs.gpw')
 
