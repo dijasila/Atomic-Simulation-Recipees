@@ -71,8 +71,8 @@ def all_the_keydescs():
         kvp('cbm', 'Conduction band minimum', 'Cond. band minimum', unit='eV'),
         kvp('gap_dir', 'Direct band gap', 'Dir. band gap', 'eV'),
         kvp('gap_dir_nosoc', 'Direct gap w/o soc.',
-            'Dir. gap wo. soc.', 'eV]'),
-        kvp('gap_nosoc', 'Gap w/o soc.', 'Gap wo. soc.', 'eV]'),
+            'Dir. gap wo. soc.', 'eV'),
+        kvp('gap_nosoc', 'Gap w/o soc.', 'Gap wo. soc.', 'eV'),
         kvp('workfunction', 'Work function (avg. if finite dipole)',
             unit='eV'),
     ],
@@ -128,7 +128,7 @@ def all_the_keydescs():
         kvp('dE_zx', 'Magnetic anisotropy (E<sub>z</sub> - E<sub>x</sub>)',
             unit='meV/unit cell'),
         kvp('dE_zy', 'Magnetic anisotropy (E<sub>z</sub> - E<sub>y</sub>)',
-            unit='meV/unit cell]'),
+            unit='meV/unit cell'),
     ]
     yield 'exchange', [
         kvp('J', 'Nearest neighbor exchange coupling', unit='meV'),
@@ -149,6 +149,10 @@ def all_the_keydescs():
     ]
     yield 'dmi', [
         kvp('DMI', 'Dzyaloshinskii Moriya interaction', unit='meV Å')
+    yield 'orbmag', [
+        kvp('orbmag_sum', 'Sum of local orbital magnetic moments', unit='μ_B'),
+        kvp('orbmag_max', 'Maximum norm of local orbital magnetic moments',
+            unit='μ_B'),
     ]
     yield 'pdos', [
         kd('pdos_nosoc', 'Projected density of states w/o soc.',

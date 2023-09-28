@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 from flask import render_template, send_file, Response, jsonify, redirect
+from flask.json.provider import JSONProvider
 import flask.json
 from jinja2 import UndefinedError
 from ase.db import connect
@@ -14,6 +15,7 @@ from ase.geometry import cell_to_cellpar
 from ase.formula import Formula
 from ase.db.app import new_app
 from ase.db.project import DatabaseProject
+from ase.io.jsonio import encode as ase_encode
 
 import asr
 from asr.core import (command, option, argument, ASRResult,
@@ -147,13 +149,17 @@ def setup_app(route_slash=True, tmpdir=None):
     return webapp
 
 
+class _ASEJsonProvider(JSONProvider):
+    def dumps(self, obj):
+        return ase_encode(obj)
+
+
 def setup_data_endpoints(webapp):
     """Set endpoints for downloading data."""
-    from ase.io.jsonio import MyEncoder
 
     projects = webapp.projects
     app = webapp.app
-    app.json_provider_class = MyEncoder
+    app.json = _ASEJsonProvider(app)
 
     @app.route('/<project_name>/row/<uid>/all_data')
     def get_all_data(project_name: str, uid: str):

@@ -82,6 +82,24 @@ def describe_crystaltype_entry(spglib):
     return crystal_type
 
 
+# XXX This string is used in CMR also in search.html also.
+# It should probably be imported from here instead.
+dynstab_description = """\
+Dynamically stable materials are stable against small perturbations of
+their structure (atom positions and unit cell shape). The structure
+thus represents a local minimum on the {PES}.
+
+DS materials are characterised by having only real, non-negative {phonon}
+frequencies and positive definite {stiffnesstensor}.
+""".format(
+    PES=href('potential energy surface',
+             'https://en.wikipedia.org/wiki/Potential_energy_surface'),
+    phonon=href('phonon', 'https://en.wikipedia.org/wiki/Phonon'),
+    stiffnesstensor=href(
+        'stiffness tensor',
+        'https://en.wikiversity.org/wiki/Elasticity/Constitutive_relations'))
+
+
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import describe_entry, href, table
 
@@ -171,12 +189,37 @@ def webpanel(result, row, key_descriptions):
             '</a>'.format(doi=doi)
         ])
 
+    # There should be a central place defining "summary" panel to take
+    # care of stuff that comes not from an individual "recipe" but
+    # from multiple ones.  Such as stability, or listing multiple band gaps
+    # next to each other, etc.
+    #
+    # For now we stick this in structureinfo but that is god-awful.
+    phonon_stability = row.get('dynamic_stability_phonons')
+    stiffness_stability = row.get('dynamic_stability_stiffness')
+
+    from asr.convex_hull import ehull_table_rows
+    ehull_table_rows = ehull_table_rows(row, key_descriptions)['rows']
+
+    if phonon_stability is not None and stiffness_stability is not None:
+        # XXX This will easily go wrong if 'high'/'low' strings are changed.
+        dynamically_stable = (
+            phonon_stability == 'high' and stiffness_stability == 'high')
+
+        yesno = ['No', 'Yes'][dynamically_stable]
+
+        dynstab_row = [describe_entry('Dynamically stable', dynstab_description), yesno]
+        dynstab_rows = [dynstab_row]
+    else:
+        dynstab_rows = []
+
     panel = {'title': 'Summary',
              'columns': [[basictable,
                           {'type': 'table', 'header': ['Stability', ''],
-                           'rows': []}],
+                           'rows': [*ehull_table_rows, *dynstab_rows]}],
                          [{'type': 'atoms'}, {'type': 'cell'}]],
              'sort': -1}
+
     return [panel]
 
 
@@ -230,6 +273,20 @@ def get_layer_group(atoms, symprec):
 
     assert atoms.pbc.sum() == 2
     aperiodic_dir = np.where(~atoms.pbc)[0][0]
+    # Prepare for spglib v3 API change to always have the aperiodic_dir == 2
+    # See: https://github.com/spglib/spglib/issues/314.
+    if aperiodic_dir != 2:
+        perm = np.array([0, 1, 2])
+        # Swap axes such that aperiodic is always 2
+        perm[2], perm[aperiodic_dir] = perm[aperiodic_dir], perm[2]
+        atoms = atoms.copy()
+        atoms.set_pbc(atoms.get_pbc()[perm])
+        # The atoms are stored in cartesian coordinates, therefore, we are
+        # free to permute the cell vectors and system remains invariant.
+        atoms.set_cell(atoms.get_cell()[perm], scale_atoms=False)
+        aperiodic_dir = 2
+
+    assert aperiodic_dir == 2
 
     lg_dct = get_symmetry_layerdataset(
         (atoms.get_cell(),

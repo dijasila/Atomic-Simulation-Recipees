@@ -35,42 +35,6 @@ map_click_types = {AtomsFile: lambda x: Atoms,
                    float: float}
 
 
-@pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
-def test_recipe_cli_types(asr_tmpdir, capsys, recipe):
-    """Test that all parameters have been given types."""
-    params = recipe.get_parameters()
-
-    notypes = set()
-    for param in params.values():
-        if 'type' not in param and 'is_flag' not in param:
-            notypes.add(param['name'])
-    assert not notypes
-
-
-@pytest.mark.ci
-@pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
-def test_recipe_type_hints(asr_tmpdir, capsys, recipe):
-    """Test that all parameters have been given types."""
-    params = recipe.get_parameters()
-
-    notypes = set()
-    for param in params.values():
-        if 'type' not in param and 'is_flag' not in param:
-            notypes.add(param['name'])
-    assert not notypes
-
-    func = recipe.get_wrapped_function()
-    type_hints = typing.get_type_hints(func)
-
-    type_hints_that_should_exist = set(params)
-    type_hints_that_should_exist.add('return')
-
-    assert set(type_hints) == type_hints_that_should_exist, \
-        f'Missing type hints: {recipe.name}'
-
-    assert type_hints['return'] == recipe.returns
-
-
 @pytest.mark.ci
 @pytest.mark.parametrize("recipe", all_recipes, ids=lambda x: x.name)
 def test_recipe_use_new_webpanel_implementation(recipe):

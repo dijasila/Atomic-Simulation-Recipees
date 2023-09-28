@@ -84,8 +84,8 @@ Ref: {link}
     # Materials added manually to C2DB. Apply to all materials in
     # the folder "adhoc_materials"
     ad_hoc_description = """\
-The material is not part of a systematic materials generation project,
- but was added manually.
+The structure was added manually based on previous
+experimental/theoretical results in the literature
 """
 
     descriptions = {
