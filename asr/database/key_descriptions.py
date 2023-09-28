@@ -149,6 +149,7 @@ def all_the_keydescs():
     ]
     yield 'dmi', [
         kvp('DMI', 'Dzyaloshinskii Moriya interaction', unit='meV Å')
+    ]
     yield 'orbmag', [
         kvp('orbmag_sum', 'Sum of local orbital magnetic moments', unit='μ_B'),
         kvp('orbmag_max', 'Maximum norm of local orbital magnetic moments',
