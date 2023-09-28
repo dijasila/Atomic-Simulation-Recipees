@@ -32,7 +32,7 @@ def test_dmi_integration(asr_tmpdir, mockgpaw, get_webcontent, test_material, n)
             number_of_D = sum(test_material.pbc)
 
         for i in range(number_of_D):
-            assert f"D(q<sub>a{i + 1}</sub>)(meV/Å<sup>-1</sup>)" in content
+            assert f"D(q<sub>a{i + 1}</sub>)(meV/Å<sup>-1</sup>)" in content, content
 
 
 @pytest.mark.ci

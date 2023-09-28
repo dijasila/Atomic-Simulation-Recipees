@@ -3,6 +3,7 @@ from asr.utils.spinspiral import extract_magmoms, rotate_magmoms, \
     get_noncollinear_magmoms, get_spiral_bandpath
 from asr.collect_spiral import SpinSpiralCalculation
 from ase.io import read
+from ase.parallel import world
 from typing import Union
 import numpy as np
 from os import path
@@ -121,18 +122,18 @@ def main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
                 energies.append(0.0)
                 sscalc = SpinSpiralCalculation([bidx, qidx], 0.0, [0, 0, 0],
                                                [[0, 0, 0]] * len(atoms), 0)
-            sscalc.save(f'datq{qidx}b{bidx}.json')
+            if world.rank == 0:
+                sscalc.save(f'datq{qidx}b{bidx}.json')
 
     energies = np.asarray(energies)
     emin_idx = np.argmin(energies)
     if clean_up:
-        from gpaw import mpi
         import os
         from glob import glob
         gpw_list = glob('*.gpw')
         for gpw in gpw_list:
             if int(gpw[3:-6]) != emin_idx:
-                if mpi.world.rank == 0:
+                if world.rank == 0:
                     os.remove(gpw)
 
     return Result.fromdata(path=q_path, energies=energies)

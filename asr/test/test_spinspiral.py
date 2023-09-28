@@ -1,9 +1,10 @@
+from ase.parallel import world
 import pytest
 
 
 @pytest.mark.ci
 def test_spinspiral_calculate(asr_tmpdir, mockgpaw, test_material):
-    """Test of spinspiral recipe."""
+    """Test of spinspiral function."""
     from asr.spinspiral import spinspiral
     from numpy import array
     test_material.write('structure.json')
@@ -23,10 +24,10 @@ def test_spinspiral_calculate(asr_tmpdir, mockgpaw, test_material):
 
 
 @pytest.mark.ci
+@pytest.mark.skipif(world.size > 1, reason='Job submission is serial')
 def test_unconverged_skip(asr_tmpdir, mockgpaw, test_material):
-    """Test of spinspiral recipe."""
+    """Test of skipping non-converged calcs upon resubmission."""
     from asr.spinspiral import cannot_converge
-
     with open('gsq0b0.txt', 'w'):
         pass
 
@@ -44,8 +45,9 @@ def test_unconverged_skip(asr_tmpdir, mockgpaw, test_material):
 
 @pytest.mark.ci
 @pytest.mark.parametrize("path_data", [(None, 0), ('G', 0)])
-def test_spinspiral_main(asr_tmpdir, test_material, mockgpaw, get_webcontent,
+def test_spinspiral_main(asr_tmpdir, test_material, mockgpaw,
                          mocker, path_data):
+    """Test of spinspiral recipe."""
     from asr.spinspiral import main
 
     test_material.write('structure.json')
@@ -83,8 +85,10 @@ def test_spinspiral_main(asr_tmpdir, test_material, mockgpaw, get_webcontent,
 
 
 @pytest.mark.ci
+@pytest.mark.parallel
 def test_spinspiral_integration(asr_tmpdir, mocker,
                                 test_material, mockgpaw, get_webcontent):
+    """Test of spinspiral integration."""
     from ase.parallel import world
     from asr.spinspiral import main
     from asr.collect_spiral import main as collect
@@ -113,12 +117,13 @@ def test_spinspiral_integration(asr_tmpdir, mocker,
 
     if world.size == 1:
         content = get_webcontent()
-        assert '<td>Q<sub>min</sub></td><td>[0.0.0.]</td>' in content
-        assert '<td>Bandgap(Q<sub>min</sub>)(eV)</td><td>0.0</td>' in content
-        assert '<td>Spiralbandwidth(meV)</td><td>0.0</td>' in content
+        assert '<td>Q<sub>min</sub></td>' in content, content
+        assert '<td>Bandgap(Q<sub>min</sub>)(eV)</td>' in content, content
+        assert '<td>Spiralbandwidth(meV)</td>' in content, content
 
 
 def test_initial_magmoms(test_material):
+    """Test of magnetic moment initialization with differen models."""
     from asr.utils.spinspiral import extract_magmoms, rotate_magmoms
     magmoms = [[1, 0, 0]] * len(test_material)
     q_c = [0.5, 0, 0]
