@@ -13,7 +13,8 @@ def make_property(name):
 
 class WebPanel:
 
-    def __init__(self, title, columns=None, plot_descriptions=None, sort=99, id=None):
+    def __init__(self, title, columns=None, plot_descriptions=None,
+                 subpanel=False, sort=99, id=None):
 
         if plot_descriptions is None:
             plot_descriptions = []
@@ -24,12 +25,16 @@ class WebPanel:
         if id is None:
             id = title
 
+        # check if the panel title belongs to the sub-panel group
+        self.subpanel = subpanel if subpanel else False
+
         self.data = dict(
             columns=columns,
             title=title,
             plot_descriptions=plot_descriptions,
             sort=sort,
             id=id,
+            subpanel=subpanel,
         )
 
     columns = make_property('columns')
@@ -37,6 +42,8 @@ class WebPanel:
     plot_descriptions = make_property('plot_descriptions')
     sort = make_property('sort')
     id = make_property('id')
+
+
 
     def __getitem__(self, item):  # noqa
         return self.data[item]
