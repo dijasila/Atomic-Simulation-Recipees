@@ -26,13 +26,23 @@ than the direct band gap.
 
 
 def webpanel(result, row, key_descriptions):
+    explanation = 'Static lattice polarizability along the'
+    alphax_lat = describe_entry('alphax_lat', description=explanation + " x-direction")
+    alphay_lat = describe_entry('alphay_lat', description=explanation + " y-direction")
+    alphaz_lat = describe_entry('alphaz_lat', description=explanation + " z-direction")
+
+    explanation = 'Total static polarizability along the'
+    alphax = describe_entry('alphax', description=explanation + " x-direction")
+    alphay = describe_entry('alphay', description=explanation + " y-direction")
+    alphaz = describe_entry('alphaz', description=explanation + " z-direction")
 
     opt = table(
-        row, "Property", ["alphax_lat", "alphay_lat", "alphaz_lat"], key_descriptions
+        row, "Property", [alphax_lat, alphay_lat, alphaz_lat, alphax,
+                          alphay, alphaz], key_descriptions
     )
 
     panel = {
-        "title": describe_entry("Infrared polarizability (RPA)",
+        "title": describe_entry("Infrared polarizability",
                                 panel_description),
         "columns": [[fig("infrax.png"), fig("infraz.png")], [fig("infray.png"), opt]],
         "plot_descriptions": [
@@ -41,6 +51,7 @@ def webpanel(result, row, key_descriptions):
                 "filenames": ["infrax.png", "infray.png", "infraz.png"],
             }
         ],
+        "subpanel": 'Polarizabilities',
         "sort": 21,
     }
 
@@ -93,8 +104,8 @@ def mkplot(a_w, axisname, fname, maxomega, omega_w, ylabel):
     import matplotlib.pyplot as plt
     fig = plt.figure()
     ax = fig.gca()
-    ax.plot(omega_w, a_w.real, label='real')
-    ax.plot(omega_w, a_w.imag, label='imag')
+    ax.plot(omega_w, a_w.real, c='C1', label='real')
+    ax.plot(omega_w, a_w.imag, c='C0', label='imag')
     ax.set_title(f'Polarization: {axisname}')
     ax.set_xlabel('Energy [meV]')
     ax.set_ylabel(ylabel)

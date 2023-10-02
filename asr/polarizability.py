@@ -8,7 +8,7 @@ from ase.io import read
 
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
-    table,
+    create_table,
     fig,
     describe_entry,
     make_panel_description)
@@ -26,28 +26,19 @@ polarisability) and may be visible at low frequencies.""",
 
 
 def webpanel(result, row, key_descriptions):
-    explanation = 'Static interband polarizability along the'
-    alphax_el = describe_entry('alphax_el', description=explanation + " x-direction")
-    alphay_el = describe_entry('alphay_el', description=explanation + " y-direction")
-    alphaz_el = describe_entry('alphaz_el', description=explanation + " z-direction")
+    explanation = 'Optical polarizability along the'
+    alphax_el = describe_entry('alphax_el',
+                               description=explanation + " x-direction")
+    alphay_el = describe_entry('alphay_el',
+                               description=explanation + " y-direction")
+    alphaz_el = describe_entry('alphaz_el',
+                               description=explanation + " z-direction")
 
-    explanation = 'Static lattice polarizability along the'
-    alphax_lat = describe_entry('alphax_lat', description=explanation + " x-direction")
-    alphay_lat = describe_entry('alphay_lat', description=explanation + " y-direction")
-    alphaz_lat = describe_entry('alphaz_lat', description=explanation + " z-direction")
+    opt = create_table(row=row, header=['Property', 'Value'],
+                       keys=[alphax_el, alphay_el, alphaz_el],
+                       key_descriptions=key_descriptions, digits=2)
 
-    explanation = 'Total static polarizability along the'
-    alphax = describe_entry('alphax', description=explanation + " x-direction")
-    alphay = describe_entry('alphay', description=explanation + " y-direction")
-    alphaz = describe_entry('alphaz', description=explanation + " z-direction")
-
-    opt = table(row, 'Property', [
-        alphax_el, alphay_el, alphaz_el,
-        alphax_lat, alphay_lat, alphaz_lat,
-        alphax, alphay, alphaz,
-    ], key_descriptions)
-
-    panel = {'title': describe_entry('Optical polarizability (RPA)',
+    panel = {'title': describe_entry('Optical polarizability',
                                      panel_description),
              'columns': [[fig('rpa-pol-x.png'), fig('rpa-pol-z.png')],
                          [fig('rpa-pol-y.png'), opt]],
@@ -56,6 +47,7 @@ def webpanel(result, row, key_descriptions):
                    'filenames': ['rpa-pol-x.png',
                                  'rpa-pol-y.png',
                                  'rpa-pol-z.png']}],
+             'subpanel': 'Polarizabilities',
              'sort': 20}
 
     return [panel]
@@ -66,25 +58,13 @@ class Result(ASRResult):
     alphax_el: typing.List[complex]
     alphay_el: typing.List[complex]
     alphaz_el: typing.List[complex]
-    alphax_w: typing.List[complex]
-    alphay_w: typing.List[complex]
-    alphaz_w: typing.List[complex]
-    alpha0x_w: typing.List[complex]
-    alpha0y_w: typing.List[complex]
-    alpha0z_w: typing.List[complex]
     plasmafreq_vv: typing.List[typing.List[float]]
     frequencies: typing.List[float]
 
     key_descriptions = {
-        "alphax_el": "Static interband polarizability (x) [Ang]",
-        "alphay_el": "Static interband polarizability (y) [Ang]",
-        "alphaz_el": "Static interband polarizability (z) [Ang]",
-        "alphax_w": "Interband polarizability (x) [Ang]",
-        "alphay_w": "Interband polarizability (y) [Ang]",
-        "alphaz_w": "Interband polarizability (z) [Ang]",
-        "alpha0x_w": "Interband polarizability without local field effects (x) [Ang]",
-        "alpha0y_w": "Interband polarizability without local field effects (y) [Ang]",
-        "alpha0z_w": "Interband polarizability without local field effects (z) [Ang]",
+        "alphax_el": "Optical polarizability (x) [Ang]",
+        "alphay_el": "Optical polarizability (y) [Ang]",
+        "alphaz_el": "Optical polarizability (z) [Ang]",
         "plasmafreq_vv": "Plasmafrequency tensor.",
         "frequencies": "Frequency grid [eV]."
     }
@@ -235,6 +215,25 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
 def polarizability(row, fx, fy, fz):
     import matplotlib.pyplot as plt
 
+    def ylims(ws, data, wstart=0.0):
+        i = abs(ws - wstart).argmin()
+        x = data[i:]
+        x1, x2 = x.real, x.imag
+        y1 = min(x1.min(), x2.min()) * 1.02
+        y2 = max(x1.max(), x2.max()) * 1.02
+        return y1, y2
+
+    def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
+        ax.set_title(f'Polarization: {direction}')
+        ax.set_xlabel('Energy [eV]')
+        ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
+        ax.set_ylim(ylims(ws=frequencies, data=alpha_w, wstart=0.5))
+        ax.legend()
+        ax.set_xlim((0, 10))
+        fig = ax.get_figure()
+        fig.tight_layout()
+        fig.savefig(filename)
+
     data = row.data.get('results-asr.polarizability.json')
 
     if data is None:
@@ -245,21 +244,6 @@ def polarizability(row, fx, fy, fz):
     alphax_w = data['alphax_w'][:i2]
     alphay_w = data['alphay_w'][:i2]
     alphaz_w = data['alphaz_w'][:i2]
-
-    infrared = row.data.get('results-asr.infraredpolarizability.json')
-    if infrared:
-        from scipy.interpolate import interp1d
-        omegatmp_w = infrared['omega_w']
-        alpha_wvv = infrared['alpha_wvv']
-        alphax = interp1d(omegatmp_w, alpha_wvv[:, 0, 0], fill_value=0,
-                          bounds_error=False)
-        alphax_w = (alphax_w + alphax(frequencies))
-        alphay = interp1d(omegatmp_w, alpha_wvv[:, 1, 1], fill_value=0,
-                          bounds_error=False)
-        alphay_w = (alphay_w + alphay(frequencies))
-        alphaz = interp1d(omegatmp_w, alpha_wvv[:, 2, 2], fill_value=0,
-                          bounds_error=False)
-        alphaz_w = (alphaz_w + alphaz(frequencies))
 
     ax = plt.figure().add_subplot(111)
     ax1 = ax
@@ -319,27 +303,6 @@ def polarizability(row, fx, fy, fz):
     plot_polarizability(ax3, frequencies, alphaz_w, filename=fz, direction='z')
 
     return ax1, ax2, ax3
-
-
-def ylims(ws, data, wstart=0.0):
-    i = abs(ws - wstart).argmin()
-    x = data[i:]
-    x1, x2 = x.real, x.imag
-    y1 = min(x1.min(), x2.min()) * 1.02
-    y2 = max(x1.max(), x2.max()) * 1.02
-    return y1, y2
-
-
-def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
-    ax.set_title(f'Polarization: {direction}')
-    ax.set_xlabel('Energy [eV]')
-    ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-    ax.set_ylim(ylims(ws=frequencies, data=alpha_w, wstart=0.5))
-    ax.legend()
-    ax.set_xlim((0, 10))
-    fig = ax.get_figure()
-    fig.tight_layout()
-    fig.savefig(filename)
 
 
 if __name__ == '__main__':
