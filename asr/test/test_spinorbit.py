@@ -25,7 +25,7 @@ def test_spinorbit(asr_tmpdir_w_params, mockgpaw, test_material, get_webcontent,
     calculate('gs.gpw', 100.0, None, 0.001)
     result = main()
 
-    if type(qspiral) == ndarray and all(qspiral == [0.11, 0.11, 0.11]) \
+    if isinstance(qspiral, ndarray) and all(qspiral == [0.11, 0.11, 0.11]) \
        or qspiral == [0.5, 0., 0.]:
         assert result.projected_soc is True
     elif qspiral is None or qspiral == [0., 0., 0.] or qspiral == (0, 0, 0):

@@ -13,7 +13,7 @@ from os import path
 def spinspiral(calculator: dict = {
         'mode': {'name': 'pw', 'ecut': 800, 'qspiral': [0, 0, 0]},
         'xc': 'LDA',
-        'experimental': {'soc': False},
+        'soc': False,
         'symmetry': 'off',
         'parallel': {'domain': 1, 'band': 1},
         'kpts': {'density': 12.0, 'gamma': True},
@@ -26,7 +26,7 @@ def spinspiral(calculator: dict = {
         atoms=None, rotation_model='q.a',
         write_gpw: bool = True) -> dict:
     """Calculate the groundstate of a given spin spiral vector q_c"""
-    from gpaw import GPAW
+    from gpaw.new.ase_interface import GPAW
     from ase.dft.bandgap import bandgap
 
     if atoms is None:
@@ -46,7 +46,8 @@ def spinspiral(calculator: dict = {
 
     # Mandatory spin spiral parameters
     calculator["xc"] = 'LDA'
-    calculator["experimental"] = {'magmoms': magmoms, 'soc': False}
+    calculator['soc'] = False
+    calculator['magmoms'] = magmoms
     calculator["symmetry"] = 'off'
     calculator["parallel"] = {'domain': 1, 'band': 1}
 
@@ -58,11 +59,11 @@ def spinspiral(calculator: dict = {
     # atoms.center(vacuum=6.0, axis=2)
     atoms.calc = calc
     energy = atoms.get_potential_energy()
-    totmom_v, magmom_av = calc.density.estimate_magnetic_moments()
-    gap, _, _ = bandgap(calc)
-
     if write_gpw and not restart:
         atoms.calc.write(gpwfile)
+    totmom_v, magmom_av = calc.calculation.state.density.calculate_magnetic_moments()
+    gap, _, _ = bandgap(calc)
+
     return {'energy': energy, 'totmom_v': totmom_v,
             'magmom_av': magmom_av, 'gap': gap}
 
@@ -98,7 +99,7 @@ def main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
                                  q_path=q_path, eps=eps)
 
     try:
-        magmoms_b = [calculator["experimental"]["magmoms"]]
+        magmoms_b = [calculator["magmoms"]]
     except KeyError:
         magmoms_b = get_noncollinear_magmoms(atoms)
 
@@ -107,7 +108,7 @@ def main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
         for qidx, qn_c in enumerate(q_path.kpts):
             calculator['mode']['qspiral'] = qn_c
             calculator['txt'] = f'gsq{qidx}b{bidx}.txt'
-            calculator['experimental']['magmoms'] = magmoms
+            calculator['magmoms'] = magmoms
 
             if cannot_converge(qidx, bidx):
                 continue

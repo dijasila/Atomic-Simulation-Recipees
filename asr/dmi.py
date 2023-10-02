@@ -79,10 +79,9 @@ class PreResult(ASRResult):
 @option('-c', '--calculator', help='Calculator params.', type=DictStr())
 @option('-n', help='Number of points along orthogonal directions', type=int)
 def prepare_dmi(calculator: dict = {
-        'name': 'gpaw',
         'mode': {'name': 'pw', 'ecut': 800, 'qspiral': [0, 0, 0]},
         'xc': 'LDA',
-        'experimental': {'soc': False},
+        'soc': False,
         'symmetry': 'off',
         'parallel': {'domain': 1, 'band': 1},
         'kpts': {'size': (32, 32, 1), 'gamma': True},
@@ -95,7 +94,7 @@ def prepare_dmi(calculator: dict = {
     from ase.dft.kpoints import monkhorst_pack
     from ase.calculators.calculator import kpts2sizeandoffsets
     from asr.spinspiral import spinspiral
-    from gpaw import GPAW
+    from gpaw.new.ase_interface import GPAW
     atoms = read('structure.json')
 
     size, offsets = kpts2sizeandoffsets(atoms=atoms, **calculator['kpts'])
@@ -109,7 +108,6 @@ def prepare_dmi(calculator: dict = {
         q_qc = kgrid_to_qgrid(k_qc)
         for j, q_c in enumerate(q_qc):
             if not path.isfile(f'gsq{j}d{i}.gpw'):
-                calculator['name'] = 'gpaw'
                 calculator['txt'] = f'gsq{j}d{i}.txt'
                 calculator['mode']['qspiral'] = q_c
                 result = spinspiral(calculator)
@@ -185,7 +183,7 @@ class Result(ASRResult):
          resources='1:1h',
          returns=Result)
 def main() -> Result:
-    from gpaw import GPAW
+    from gpaw.new.ase_interface import GPAW
     from gpaw.spinorbit import soc_eigenstates
     from gpaw.occupations import create_occ_calc
     from ase.dft.kpoints import kpoint_convert
