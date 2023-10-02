@@ -1,3 +1,4 @@
+from __future__ import annotations
 from asr.core import command, option, ASRResult, prepare_result, DictStr
 from asr.utils.spinspiral import extract_magmoms, rotate_magmoms, \
     get_noncollinear_magmoms, get_spiral_bandpath
@@ -96,11 +97,13 @@ def main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
     q_path = get_spiral_bandpath(atoms=atoms, qdens=qdens, qpts=qpts,
                                  q_path=q_path, eps=eps)
 
-    # Check if magmoms is in calculator and try to overwrite
-    # get_noncollinear_magmoms(atoms), can we still find the different bands?
+    try:
+        magmoms_b = [calculator["experimental"]["magmoms"]]
+    except KeyError:
+        magmoms_b = get_noncollinear_magmoms(atoms)
 
     energies = []
-    for bidx, magmoms in enumerate(get_noncollinear_magmoms(atoms)):
+    for bidx, magmoms in enumerate(magmoms_b):
         for qidx, qn_c in enumerate(q_path.kpts):
             calculator['mode']['qspiral'] = qn_c
             calculator['txt'] = f'gsq{qidx}b{bidx}.txt'
@@ -118,7 +121,8 @@ def main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
                                                result['totmom_v'].tolist(),
                                                result['magmom_av'].tolist(),
                                                result['gap'])
-            except Exception:
+            except Exception as e:
+                print(f'Caught exception {e}')
                 energies.append(0.0)
                 sscalc = SpinSpiralCalculation([bidx, qidx], 0.0, [0, 0, 0],
                                                [[0, 0, 0]] * len(atoms), 0)

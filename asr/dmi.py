@@ -4,17 +4,17 @@ import numpy as np
 from os import path
 
 
-def findOrthoNN(kpts: List[float],
-                pbc: List[bool],
-                npoints=[2, 2, 2],
-                eps: float = 0):
+def find_ortho_nn(kpts: List[float],
+                  pbc: List[bool],
+                  npoints=[2, 2, 2],
+                  eps: float = 0):
     '''
     Given a list of kpoints, we find the points along vectors [1,0,0], [0,1,0], [0,0,1]
     and search through them ordered on the distance to the origin. Vectors along the
     postive axis will appear first.
     '''
 
-    if type(npoints) == int:
+    if isinstance(npoints, int):
         npoints = [npoints] * 3
 
     # Warning, might not find inversion symmetric points if k-points are not symmetric
@@ -100,7 +100,7 @@ def prepare_dmi(calculator: dict = {
 
     size, offsets = kpts2sizeandoffsets(atoms=atoms, **calculator['kpts'])
     kpts_kc = monkhorst_pack(size) + offsets
-    kpts_nqc = findOrthoNN(kpts_kc, atoms.pbc, npoints=n)
+    kpts_nqc = find_ortho_nn(kpts_kc, atoms.pbc, npoints=n)
     en_nq = []
     q_nqc = []
     for i, k_qc in enumerate(kpts_nqc):

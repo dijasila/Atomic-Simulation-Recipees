@@ -38,17 +38,17 @@ def test_dmi_integration(asr_tmpdir, mockgpaw, get_webcontent, test_material, n)
 @pytest.mark.ci
 @pytest.mark.parametrize('n', [2, [0, 1, 3], 13, [2, 0, 7]])
 @pytest.mark.parametrize('density', [4.0, 22.0])
-def test_findOrthoNN(test_material, n, density):
+def test_find_ortho_nn(test_material, n, density):
     from ase.dft.kpoints import monkhorst_pack
     from ase.calculators.calculator import kpts2sizeandoffsets
-    from asr.dmi import findOrthoNN, kgrid_to_qgrid
+    from asr.dmi import find_ortho_nn, kgrid_to_qgrid
 
     sizes, offsets = kpts2sizeandoffsets(atoms=test_material,
                                          density=density,
                                          gamma=True)
 
     kpts_kc = monkhorst_pack(sizes) + offsets
-    kpts_nqc = findOrthoNN(kpts_kc, test_material.pbc, npoints=n)
+    kpts_nqc = find_ortho_nn(kpts_kc, test_material.pbc, npoints=n)
 
     for i, k_qc in enumerate(kpts_nqc):
         q_qc = kgrid_to_qgrid(k_qc)
