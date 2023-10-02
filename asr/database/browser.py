@@ -389,11 +389,39 @@ def matrixtable(M, digits=2, unit='',
     return table
 
 
+# check if there are subpanel to create in the list of webpanels
+# The band structures definitely need subpanels (PBE, HSE06, G0W0).
+# Now we will soon also have PBE+U for band structure and magnetic
+# properties (only for materials including any of the 3d magnetic
+# metals), so the Magnetic properties will also have a subpanel (PBE
+# and PBE+U)
+def group_strings(string, grouped_strings):
+    """
+    when given a string and a dictionary of lists, the function
+    searches the list and returns the key of the list in which the
+    string is contained within
+    """
+    for key, values in grouped_strings.items():
+        if any(val in string for val in values):
+            return key
+    return None
+
+
 def merge_panels(page):
     """Merge panels which have the same title.
 
     Also merge tables with same first entry in header.
     """
+    # Example predefined grouping structure as a dictionary
+    grouped_strings = {
+        'Band structures': ['Electronic band structure (HSE06@PBE)',
+                            'Electronic band structure (PBE)',
+                            'Electronic band structure (G0W0)'],
+        'Polarizability': ['Optical polarizability',
+                           'Infrared polarizability'],
+        'Magnetic properties': ['Basic magnetic properties (PBE)',
+                                'Basic magnetic properties (PBE+U)']
+    }
     # Update panels
     for title, panels in page.items():
         panels = sorted(panels, key=lambda x: x['sort'])
@@ -427,6 +455,12 @@ def merge_panels(page):
             panel['columns'][0].extend(columns[0])
             panel['columns'][1].extend(columns[1])
             panel['plot_descriptions'].extend(tmppanel['plot_descriptions'])
+
+        # check if the panel name is in the sub panel group
+        panel_is_subpanel = group_strings(panel['title'], grouped_strings)
+        if panel_is_subpanel:
+            panel['subpanel'] = panel_is_subpanel
+
         panel = WebPanel(**panel)
         page[title] = panel
 
@@ -613,6 +647,11 @@ def _layout(row, key_descriptions, prefix, pool):
     # Sort sections if they have a sort key
     page = [x for x in sorted(page, key=lambda x: x.get('sort', 99))]
 
+    # create subpanel code
+    subpanel = []
+    for panel in page:
+        subpanel.append(panel.subpanel)
+
     # add miscellaneous section
     misc_title, misc_columns = miscellaneous_section(row, key_descriptions,
                                                      exclude)
@@ -658,7 +697,7 @@ def _layout(row, key_descriptions, prefix, pool):
                    for column in columns]
         if any(columns):
             final_page.append((title, columns))
-    return final_page
+    return final_page, subpanel
 
 
 @command('asr.database.browser')
