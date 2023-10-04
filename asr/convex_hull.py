@@ -429,15 +429,15 @@ def plot(row, fname, thisrow):
 
     if len(count) == 2:
         xcoord, energy, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
-        hull = np.array(hull_energies) < 0.05
-        edgecolors = np.array(['C2' if hull_energy < 0.05 else 'C3'
+        hull = np.array(hull_energies) < 0.005
+        edgecolors = np.array(['C2' if hull_energy < 0.005 else 'C3'
                                for hull_energy in hull_energies])
         for i, j in simplices:
             ax.plot(xcoord[[i, j]], energy[[i, j]], '-', color='C0')
         names = [ref['label'] for ref in references]
 
         if row.hform < 0:
-            mask = energy < 0.05
+            mask = energy < 0.005
             energy = energy[mask]
             xcoord = xcoord[mask]
             edgecolors = edgecolors[mask]
@@ -490,7 +490,7 @@ def plot(row, fname, thisrow):
         x, y, _, hull, simplices = pd.plot2d3()
 
         hull = np.array(hull)
-        hull = np.array(hull_energies) < 0.05
+        hull = np.array(hull_energies) < 0.005
         names = [ref['label'] for ref in references]
         latexnames = [
             format(
@@ -501,7 +501,7 @@ def plot(row, fname, thisrow):
         ]
         for i, j, k in simplices:
             ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
-        edgecolors = ['C2' if hull_energy < 0.05 else 'C3'
+        edgecolors = ['C2' if hull_energy < 0.005 else 'C3'
                       for hull_energy in hull_energies]
         ax.scatter(
             x[~hull], y[~hull],
