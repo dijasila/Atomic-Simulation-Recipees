@@ -76,6 +76,7 @@ def test_hchain_integration(asr_tmpdir, get_webcontent):
     from ase import Atoms
     from asr.spinspiral import main
     from asr.collect_spiral import main as collect
+    from asr.core import read_json
     from numpy import array
     atoms = Atoms('H', cell=[3, 3, 3], pbc=[False, True, False])
     atoms.center()
@@ -92,6 +93,13 @@ def test_hchain_integration(asr_tmpdir, get_webcontent):
         assert '<td>Q<sub>min</sub></td>' in content, content
         assert '<td>Bandgap(Q<sub>min</sub>)(eV)</td>' in content, content
         assert '<td>Spiralbandwidth(meV)</td>' in content, content
+
+        result = read_json('results-asr.collect_spiral.json')
+        # Non-magnetic hchain is metallic.
+        assert (result['gaps'] > 0).all(), result['gaps']
+
+        # This ensure correct energy difference between q=0 and q=X
+        assert result['bandwidth'] == pytest.approx(81.2068999814044, abs=1e-6)
 
 
 @pytest.mark.ci
