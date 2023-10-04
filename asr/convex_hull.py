@@ -552,7 +552,7 @@ def plot_html(row, fname, thisrow):
     import plotly.express as px
     import pandas 
 
-    colors = px.colors.qualitative.Plotly
+    colors = px.colors.qualitative.D3
 
     data = row.data['results-asr.convex_hull.json']
 
@@ -564,42 +564,34 @@ def plot_html(row, fname, thisrow):
 
     df_ref = pandas.DataFrame(references)
 
+    # Why are we even using thisrow? Isn't it the same as row?
+    df_ref['thisrow']= df_ref.apply(lambda x: True if x['uid'] == thisrow.uid else False, axis=1)
+
+
+    names = [ref['label'] for ref in references]
+    latexnames = [
+        format(
+            Formula(name.split(' ')[0]).reduce()[0],
+            'latex'
+        )
+        for name in names
+    ]
+
+    latexnames = [r'{}'.format(s) for s in latexnames]
+    df_ref['latexname'] = latexnames
+
+    # Highlight this material by making it bold
+    name_coloumn_to_plot = 'latexname'
+    df_ref.loc[df_ref['thisrow'], name_coloumn_to_plot] = '<b>' +  df_ref[df_ref['thisrow']][name_coloumn_to_plot].values[0] + '</b>'
+
     pdrefs = []
-    legends = []
-    sizes = []
 
     for reference in references:
         h = reference['natoms'] * reference['hform']
         pdrefs.append((reference['formula'], h))
-        legend = reference.get('legend')
-        if legend and legend not in legends:
-            legends.append(legend)
-        if legend in legends:
-            idlegend = legends.index(reference['legend'])
-            size = (3 * idlegend + 3)**2
-        else:
-            size = 2
-        sizes.append(size)
-    sizes = np.array(sizes)
-
-    df_ref['sizes'] = sizes
+    
 
     pd = PhaseDiagram(pdrefs, verbose=False)
-
-    fig = plt.figure(figsize=(6, 5))
-    ax = fig.gca()
-
-    legendhandles = []
-
-    for it, label in enumerate(['On hull', 'off hull']):
-        handle = ax.fill_between([], [],
-                                 color=f'C{it + 2}', label=label)
-        legendhandles.append(handle)
-
-    for it, legend in enumerate(legends):
-        handle = ax.scatter([], [], facecolor='none', marker='o',
-                            edgecolor='k', label=legend, s=(3 + it * 3)**2)
-        legendhandles.append(handle)
 
     hull_energies = get_hull_energies(pd)
 
@@ -610,38 +602,22 @@ def plot_html(row, fname, thisrow):
         df_ref['energy'] = energy
         df_ref['hull'] = hull
 
-        hull = np.array(hull_energies) < 0.05
-        edgecolors = np.array(['C2' if hull_energy < 0.05 else 'C3'
-                               for hull_energy in hull_energies])
-        
+
+
         figs = []
 
         for i, j in simplices:
-            fig_temp = px.line(x=xcoord[[i, j]], y=energy[[i, j]])
+            fig_temp = px.line(x=xcoord[[i, j]], y=energy[[i, j]],color_discrete_sequence=colors)
             figs.append(fig_temp)
-        names = [ref['label'] for ref in references]
-
-        if row.hform < 0:
-            mask = energy < 0.05
-            energy = energy[mask]
-            xcoord = xcoord[mask]
-            edgecolors = edgecolors[mask]
-            hull = hull[mask]
-            names = [name for name, m in zip(names, mask) if m]
-            sizes = sizes[mask]
-
-        # Highlight this material by making it bold
-        df_ref.loc[df_ref['uid'] == thisrow.uid, 'name'] = '<b>' +  df_ref[df_ref.uid == row.uid]['name'].values[0] + '</b>'
-        
 
         fig_temp = px.scatter(df_ref,x='xcoord',y='energy',color='legend',hover_data=['link'], text='name',
                     labels={
                      "xcoord": xlabel_text,
                      "energy": '\u0394H [eV/atom]',
                      'legend': 'Crystal type',
-                 },)
+                    },
+                    color_discrete_sequence=colors)
         figs.append(fig_temp)
-
 
         delta = energy.ptp() / 30
         ymin = energy.min() - 2.5 * delta
@@ -676,7 +652,7 @@ def plot_html(row, fname, thisrow):
         fig.update_layout(yaxis=dict(zerolinecolor='lightgrey'),
                           xaxis=dict(zerolinecolor='lightgrey'))
         
-        fig.write_html("plot.html", include_mathjax='cdn')
+        fig.write_html(fname, include_mathjax='cdn')
         fig.show()
 
     else:
@@ -687,41 +663,47 @@ def plot_html(row, fname, thisrow):
         df_ref['e'] = e
 
         hull = np.array(pd.hull)
-        hull = np.array(hull_energies) < 0.05
-        names = [ref['label'] for ref in references]
-        latexnames = [
-            format(
-                Formula(name.split(' ')[0]).reduce()[0],
-                'latex'
-            )
-            for name in names
-        ]
-
+        df_ref['hull'] = hull
+        
         figs = []
         for i, j, k in pd.simplices:
             fig_temp = go.Figure(data=[go.Mesh3d(x=x[[i, j, k, i]],
                                                  y=y[[i, j, k, i]],
                                                  z=e[[i, j, k, i]], 
-                                                 color='lightblue', opacity=0.75)])
+                                                 color=colors[2], opacity=0.5),])
             fig_temp.update_traces(hoverinfo='skip')
             figs.append(fig_temp)
 
-        fig_temp = px.scatter_3d(df_ref, x='x', y='y', z='e', hover_data=['name'], color='legend',
-                    labels={"x": pd.symbols[1],
-                            "y": pd.symbols[2],
-                            "e": '\u0394H [eV/atom]',
-                            'legend': 'Crystal type',
-                        },)
+        # Plot materials on the hull with formula and thisrow
+        fig_temp = px.scatter_3d(df_ref[df_ref.hull | df_ref.thisrow], x='x', y='y', z='e', hover_data=['uid'], color='legend',
+                                text='latexname', color_discrete_sequence=colors,
+                                labels={"x": pd.symbols[1],
+                                        "y": pd.symbols[2],
+                                        "e": '\u0394H [eV/atom]',
+                                        'legend': 'Crystal type',
+                                    },)
         figs.append(fig_temp)
+
+        # plot the rest of the materials without formula
+        fig_temp = px.scatter_3d(df_ref[~df_ref.hull & ~df_ref.thisrow], x='x', y='y', z='e', hover_data=['uid'], color='legend',
+                        color_discrete_sequence=colors,
+                        labels={"x": pd.symbols[1],
+                                "y": pd.symbols[2],
+                                "e": '\u0394H [eV/atom]',
+                                'legend': 'Crystal type',
+                            },)
+        figs.append(fig_temp)
+
+
 
         delta = e.ptp() / 30
         ymin = e.min() - 2.5 * delta
-        fig = go.Figure(data=sum([fig.data for fig in figs], ()),layout_zaxis_range=[ymin,0.1])
+        fig = go.Figure(data=sum([fig.data for fig in figs], ()))
 
         fig.update_layout(
             legend={"title": "Crystal type"},
-            width=500, 
-            height=500,
+            width=800, 
+            height=800,
             scene=dict(
                 xaxis_title=pd.symbols[1],
                 yaxis_title=pd.symbols[2],
@@ -747,43 +729,15 @@ def plot_html(row, fname, thisrow):
             linecolor='black',
             gridcolor='lightgrey',
         )
-        fig.update_zaxes(
-            mirror=True,
-            ticks='outside',
-            showline=True,
-            linecolor='black',
-            gridcolor='lightgrey',
-        )
+
         fig.update_layout(yaxis=dict(zerolinecolor='lightgrey'),
                           xaxis=dict(zerolinecolor='lightgrey'),
-                          zaxis=dict(zerolinecolor='lightgrey'))
+                          )
 
 
-        printed_names = set()
-        thisformula = Formula(thisrow.formula)
-        thisname = format(thisformula, 'latex')
-        comps = thisformula.count().keys()
-        for a, b, name, on_hull, hull_energy in zip(
-                x, y, latexnames, hull, hull_energies):
-            if name in [
-                    thisname, *comps,
-            ] and name not in printed_names:
-                printed_names.add(name)
-                ax.text(a - 0.02, b, name, ha='right', va='top')
+    fig.write_html(fname, include_mathjax='cdn')
+    fig.show()
 
-        newlegendhandles = [(legendhandles[0], legendhandles[1]),
-                            *legendhandles[2:]]
-        plt.legend(
-            newlegendhandles,
-            [r'$E_\mathrm{h} {^</_>}\, 5 \mathrm{meV}$',
-             *legends], loc='upper right', handletextpad=0.5,
-            handler_map={tuple: ObjectHandler()},
-        )
-        plt.axis('off')
-
-    plt.tight_layout()
-    plt.savefig(fname)
-    plt.close()
 
 
 def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
