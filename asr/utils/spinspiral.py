@@ -19,10 +19,10 @@ def get_magmoms(atoms):
 
 def extract_magmoms(atoms, calculator):
     try:
-        magmoms = calculator["experimental"]["magmoms"]
+        magmoms = calculator["magmoms"].astype('float')
     except KeyError:
         magmomx = get_magmoms(atoms)
-        magmoms = np.zeros((len(atoms), 3))
+        magmoms = np.zeros((len(atoms), 3), dtype='float')
         magmoms[:, 0] = magmomx
     return magmoms
 
