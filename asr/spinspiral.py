@@ -1,4 +1,3 @@
-from __future__ import annotations
 from asr.core import command, option, ASRResult, prepare_result, DictStr
 from asr.utils.spinspiral import extract_magmoms, rotate_magmoms, \
     get_noncollinear_magmoms, get_spiral_bandpath

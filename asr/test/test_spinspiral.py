@@ -23,27 +23,8 @@ def get_calculator_default(qspiral=None, magmoms=None):
 
 
 @pytest.mark.ci
-@pytest.mark.skipif(True, reason='TODO: mockgpaw of new GPAW')
-def test_spinspiral_calculate(asr_tmpdir, mockgpaw, test_material):
-    """Test of spinspiral function."""
-    from asr.spinspiral import spinspiral
-    from numpy import array
-    test_material.write('structure.json')
-    calculator = get_calculator_default(qspiral=[0.5, 0, 0])
-
-    spinspiral(calculator)
-    spinspiral(calculator)  # test restart
-
-    calculator['txt'] = 'gsq1b0.txt'
-    res = spinspiral(calculator)
-
-    assert (res['totmom_v'] == array([1., 1., 1.])).all()
-    assert res['energy'] == 0.0
-
-
-@pytest.mark.ci
 @pytest.mark.skipif(world.size > 1, reason='Job submission is serial')
-def test_unconverged_skip(asr_tmpdir, mockgpaw, test_material):
+def test_unconverged_skip(asr_tmpdir, test_material):
     """Test of skipping non-converged calcs upon resubmission."""
     from asr.spinspiral import cannot_converge
     with open('gsq0b0.txt', 'w'):
@@ -63,8 +44,7 @@ def test_unconverged_skip(asr_tmpdir, mockgpaw, test_material):
 
 @pytest.mark.ci
 @pytest.mark.parametrize("path_data", [(None, 0), ('G', 0)])
-def test_spinspiral_main(asr_tmpdir, test_material, mockgpaw,
-                         mocker, path_data):
+def test_spinspiral_main(asr_tmpdir, test_material, mocker, path_data):
     """Test of spinspiral recipe."""
     from asr.spinspiral import main
 
@@ -87,32 +67,6 @@ def test_spinspiral_main(asr_tmpdir, test_material, mockgpaw,
          rotation_model='q.a',
          clean_up=True,
          eps=0.2)
-
-
-@pytest.mark.ci
-@pytest.mark.parallel
-@pytest.mark.skipif(True, reason='TODO: mockgpaw of new GPAW')
-def test_spinspiral_integration(asr_tmpdir, mocker, mockgpaw,
-                                test_material, get_webcontent):
-    """Test of spinspiral integration."""
-    from ase.parallel import world
-    from asr.spinspiral import main
-    from asr.collect_spiral import main as collect
-    test_material.write('structure.json')
-
-    # Spin spiral plotting uses E=0 to determine failed calculations
-    mocker.patch('gpaw.GPAW._get_potential_energy', return_value=1.0)
-    magmoms = [[1, 0, 0]] * len(test_material)
-    calculator = get_calculator_default(magmoms=magmoms)
-
-    main(calculator=calculator, qpts=3)
-    collect()
-
-    if world.size == 1:
-        content = get_webcontent()
-        assert '<td>Q<sub>min</sub></td>' in content, content
-        assert '<td>Bandgap(Q<sub>min</sub>)(eV)</td>' in content, content
-        assert '<td>Spiralbandwidth(meV)</td>' in content, content
 
 
 @pytest.mark.ci

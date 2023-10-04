@@ -1,38 +1,5 @@
 import pytest
 import numpy as np
-from .materials import Agchain, Fe
-
-
-@pytest.mark.ci
-@pytest.mark.parametrize('test_material', [Agchain, Fe])
-@pytest.mark.parametrize('n', [2, [0, 0, 3], 13, [2, 0, 7]])
-@pytest.mark.skipif(True, reason='TODO: mockgpaw of new GPAW')
-def test_dmi_mock(asr_tmpdir, get_webcontent, test_material, n):  # mockgpaw,
-    """Test of dmi recipe."""
-    from asr.dmi import prepare_dmi, main
-    from ase.parallel import world
-
-    test_material.write('structure.json')
-    calculator = {"mode": {"name": "pw", "ecut": 300},
-                  "xc": 'LDA',
-                  "symmetry": 'off',
-                  "soc": False,
-                  "parallel": {"domain": 1, 'band': 1},
-                  "kpts": {"density": 6, "gamma": True}}
-
-    prepare_dmi(calculator, n=n)
-    main()
-
-    if world.size == 1:
-        content = get_webcontent()
-        if type(n) is list:
-            number_of_D = sum(pbc for i, pbc in enumerate(test_material.pbc)
-                              if n[i] != 0)
-        else:
-            number_of_D = sum(test_material.pbc)
-
-        for i in range(number_of_D):
-            assert f"D(q<sub>a{i + 1}</sub>)(meV/Å<sup>-1</sup>)" in content, content
 
 
 @pytest.mark.ci
