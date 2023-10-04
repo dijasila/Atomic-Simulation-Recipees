@@ -39,7 +39,7 @@ def spinspiral(calculator: dict = {
         restart = False
 
     q_c = calculator['mode']['qspiral']  # spiral vector must be provided
-    magmoms = np.array(extract_magmoms(atoms, calculator), dtype=np.float)
+    magmoms = np.array(extract_magmoms(atoms, calculator), dtype=float)
     if rotation_model is not None:
         magmoms = rotate_magmoms(atoms, magmoms, q_c, model=rotation_model)
 
