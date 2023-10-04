@@ -48,7 +48,7 @@ The energy above the convex hull is the internal energy relative to the most
 stable (possibly mixed) phase of the constituent elements at T=0 K."""
 
 panel_description = make_panel_description(
-    '{eform_description}\n\n{ehull_description}',
+    f'{eform_description}\n\n{ehull_description}',
     articles=['C2DB'],
 )
 
