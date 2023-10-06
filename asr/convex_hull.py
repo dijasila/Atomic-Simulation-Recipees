@@ -62,11 +62,11 @@ def webpanel(result, row, key_descriptions):
     panel = {
         'title': describe_entry(
             'Thermodynamic stability', panel_description),
-        'columns': [[fig('convex-hull.png')],
+        'columns': [[fig('convex-hull.html')],
                     [hulltable1] + hulltables],
         'plot_descriptions': [{'function':
-                               functools.partial(plot, thisrow=row),
-                               'filenames': ['convex-hull.png']}],
+                               functools.partial(plot_html, thisrow=row),
+                               'filenames': ['convex-hull.html']}],
         'sort': 1,
     }
 
@@ -652,7 +652,7 @@ def plot_html(row, fname, thisrow):
             yaxis=dict(zerolinecolor='lightgrey'),
             xaxis=dict(zerolinecolor='lightgrey'),
             legend={"title":"Crystal type"},
-            width=700, height=500,
+            width=500, height=500,
             plot_bgcolor='white'
             )
 
@@ -670,9 +670,6 @@ def plot_html(row, fname, thisrow):
             linecolor='black',
             gridcolor='lightgrey',
         )
-        
-        fig.write_html(fname, include_mathjax='cdn')
-        fig.show()
 
     else:
         x, y, e = pd.points[:, 1:].T
@@ -729,8 +726,8 @@ def plot_html(row, fname, thisrow):
 
         fig.update_layout(
             legend={"title": "Crystal type"},
-            width=800, 
-            height=800,
+            width=500, 
+            height=500,
             scene=dict(
                 xaxis_title=pd.symbols[1],
                 yaxis_title=pd.symbols[2],
@@ -764,7 +761,7 @@ def plot_html(row, fname, thisrow):
 
 
     fig.write_html(fname, include_mathjax='cdn')
-    fig.show()
+    #fig.show()
 
 
 
