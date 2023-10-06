@@ -572,12 +572,11 @@ def plot_html(row, fname, thisrow):
     latexnames = [
         format(
             Formula(name.split(' ')[0]).reduce()[0],
-            'latex'
+            'html'
         )
         for name in names
     ]
 
-    latexnames = [r'{}'.format(s) for s in latexnames]
     df_ref['latexname'] = latexnames
 
     # Highlight this material by making it bold
@@ -607,34 +606,56 @@ def plot_html(row, fname, thisrow):
         figs = []
 
         for i, j in simplices:
-            fig_temp = px.line(x=xcoord[[i, j]], y=energy[[i, j]],color_discrete_sequence=colors)
+            fig_temp = px.line(x=xcoord[[i, j]], y=energy[[i, j]],color_discrete_sequence=[colors[2]])
             figs.append(fig_temp)
-
-        fig_temp = px.scatter(df_ref,x='xcoord',y='energy',color='legend',hover_data=['link'], text='name',
-                    labels={
-                     "xcoord": xlabel_text,
-                     "energy": '\u0394H [eV/atom]',
-                     'legend': 'Crystal type',
-                    },
-                    color_discrete_sequence=colors)
-        figs.append(fig_temp)
 
         delta = energy.ptp() / 30
         ymin = energy.min() - 2.5 * delta
         A, B = pd.symbols
-       
+
         xlabel_text = f'{A}<sub>1-x</sub>{B}<sub>x</sub>'
+
+        hover_data = {'xcoord': True, 'energy': ':.2f', 'legend': False, 'latexname': True, 'uid': True, 'name': True}
+        fig_temp = px.scatter(df_ref,x='xcoord',y='energy',color='legend',symbol='legend', hover_data=hover_data,
+                    labels={
+                     "xcoord": xlabel_text + ', x',
+                     "energy": '\u0394H [eV/atom]',
+                     'latexname': 'Formula',
+                     'legend': 'Crystal type',
+                    },
+                    color_discrete_sequence=colors,
+                    symbol_sequence=['circle', 'circle-open-dot'])
+        
+        figs.append(fig_temp)
+    
+
+       
         fig = go.Figure(data=sum([fig.data for fig in figs], ()), layout_yaxis_range=[ymin,0.1])
-        fig.update_traces(textposition='middle right')
+
+        #  Highlight materials on the hull with formula and thisrow
+        materials_with_text = df_ref[df_ref.hull | df_ref.thisrow]
+
+        for row in materials_with_text.itertuples(index=False):
+            fig.add_annotation(x=row.xcoord, y=row.energy,
+                                    text=row.latexname,
+                                    xanchor="left",
+                                    showarrow=False,
+                                    xshift=10,
+                                    )
+
+        fig.update_traces(textposition='middle right',
+                          marker={'size': 8},
+                          marker_line_width=2)
         fig.update_layout(
             xaxis_title=xlabel_text,
             yaxis_title='\u0394H [eV/atom]',
-            )
-        fig.update_layout(legend={"title":"Crystal type"},
-                            width=700, height=500) 
-        fig.update_layout(
+            yaxis=dict(zerolinecolor='lightgrey'),
+            xaxis=dict(zerolinecolor='lightgrey'),
+            legend={"title":"Crystal type"},
+            width=700, height=500,
             plot_bgcolor='white'
-        )
+            )
+
         fig.update_xaxes(
             mirror=True,
             ticks='outside',
@@ -649,14 +670,11 @@ def plot_html(row, fname, thisrow):
             linecolor='black',
             gridcolor='lightgrey',
         )
-        fig.update_layout(yaxis=dict(zerolinecolor='lightgrey'),
-                          xaxis=dict(zerolinecolor='lightgrey'))
         
         fig.write_html(fname, include_mathjax='cdn')
         fig.show()
 
     else:
-        #x, y, _, hull, simplices = pd.plot2d3()
         x, y, e = pd.points[:, 1:].T
         df_ref['x'] = x
         df_ref['y'] = y
@@ -674,31 +692,40 @@ def plot_html(row, fname, thisrow):
             fig_temp.update_traces(hoverinfo='skip')
             figs.append(fig_temp)
 
-        # Plot materials on the hull with formula and thisrow
-        fig_temp = px.scatter_3d(df_ref[df_ref.hull | df_ref.thisrow], x='x', y='y', z='e', hover_data=['uid'], color='legend',
-                                text='latexname', color_discrete_sequence=colors,
+        # Plot materials
+        hover_data = {'x': False, 'y': False, 'e': ':.2f', 'legend': False, 'latexname': True, 'uid': True, 'name': True}
+        fig_temp = px.scatter_3d(df_ref, x='x', y='y', z='e', hover_data=hover_data, color='legend',
+                                color_discrete_sequence=colors,
                                 labels={"x": pd.symbols[1],
                                         "y": pd.symbols[2],
                                         "e": '\u0394H [eV/atom]',
+                                        'latexname': 'Formula',
                                         'legend': 'Crystal type',
                                     },)
+        
         figs.append(fig_temp)
 
-        # plot the rest of the materials without formula
-        fig_temp = px.scatter_3d(df_ref[~df_ref.hull & ~df_ref.thisrow], x='x', y='y', z='e', hover_data=['uid'], color='legend',
-                        color_discrete_sequence=colors,
-                        labels={"x": pd.symbols[1],
-                                "y": pd.symbols[2],
-                                "e": '\u0394H [eV/atom]',
-                                'legend': 'Crystal type',
-                            },)
-        figs.append(fig_temp)
 
 
 
         delta = e.ptp() / 30
         ymin = e.min() - 2.5 * delta
         fig = go.Figure(data=sum([fig.data for fig in figs], ()))
+
+        #  Highlight materials on the hull with formula and thisrow
+        materials_with_text = df_ref[df_ref.hull | df_ref.thisrow]
+        annotations = []
+        for row in materials_with_text.itertuples(index=False):
+
+            annotations.append(dict(
+                showarrow=False,
+                x=row.x,
+                y=row.y,
+                z=row.e,
+                text=row.latexname,
+                xanchor="left",
+                xshift=10,
+                opacity=0.7))
 
         fig.update_layout(
             legend={"title": "Crystal type"},
@@ -708,9 +735,10 @@ def plot_html(row, fname, thisrow):
                 xaxis_title=pd.symbols[1],
                 yaxis_title=pd.symbols[2],
                 zaxis_title='\u0394H [eV/atom]',
-                zaxis=dict(range=[ymin, 0.1])
+                zaxis=dict(range=[ymin, 0.1]),
+                annotations=annotations,
             ),
-                )
+            )
         
         fig.update_layout(
             plot_bgcolor='white'
