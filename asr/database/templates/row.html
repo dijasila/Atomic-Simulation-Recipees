@@ -198,16 +198,20 @@ jmol_isReady = function(applet)
               {% endif %}
 		{% endif %}
 		{{ help(data) }}
-		<figure class="figure">
-            <a href="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}">
-              <img
-                src="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}"
-                width="100%">
-            </a>
-            {% if data.caption %}
-            <figcaption>{{ data.caption }}</figcaption>
-            {% endif %}
-	    </figure>
+    {% if data.filename == 'convex-hull.html' %}
+      <iframe src="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}" ></iframe> 
+    {% else %}
+      <figure class="figure">
+              <a href="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}">
+                <img
+                  src="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}"
+                  width="100%">
+              </a>
+              {% if data.caption %}
+              <figcaption>{{ data.caption }}</figcaption>
+              {% endif %}
+        </figure>
+    {% endif %}
 
           {% endif %}
         </div> <!--END ROW-->

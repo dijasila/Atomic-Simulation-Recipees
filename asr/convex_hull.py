@@ -616,16 +616,19 @@ def plot_html(row, fname, thisrow):
         xlabel_text = f'{A}<sub>1-x</sub>{B}<sub>x</sub>'
 
         hover_data = {'xcoord': True, 'energy': ':.2f', 'legend': False, 'latexname': True, 'uid': True, 'name': True}
-        fig_temp = px.scatter(df_ref,x='xcoord',y='energy',color='legend',symbol='legend', hover_data=hover_data,
+        fig_temp = px.scatter(df_ref,x='xcoord',y='energy',color='legend',symbol='legend', hover_data=hover_data, custom_data=['link'],
                     labels={
                      "xcoord": xlabel_text + ', x',
                      "energy": '\u0394H [eV/atom]',
                      'latexname': 'Formula',
-                     'legend': 'Crystal type',
                     },
                     color_discrete_sequence=colors,
-                    symbol_sequence=['circle', 'circle-open-dot'])
+                    symbol_sequence=['circle', 'circle-open'])
         
+        # Set edgecolor to same color as facecolor
+        fig_temp.data[0].marker.line.color= colors[0]
+        fig_temp.data[1].marker.line.color= colors[1]
+
         figs.append(fig_temp)
     
 
@@ -651,7 +654,15 @@ def plot_html(row, fname, thisrow):
             yaxis_title='\u0394H [eV/atom]',
             yaxis=dict(zerolinecolor='lightgrey'),
             xaxis=dict(zerolinecolor='lightgrey'),
-            legend={"title":"Crystal type"},
+            legend=dict(
+                    orientation="h",
+                    entrywidth=100,
+                    yanchor="bottom",
+                    y=1.1,
+                    xanchor="left",
+                    x=0.01,
+                    font = dict(size=14)
+                    ),
             width=500, height=500,
             plot_bgcolor='white'
             )
@@ -691,15 +702,14 @@ def plot_html(row, fname, thisrow):
 
         # Plot materials
         hover_data = {'x': False, 'y': False, 'e': ':.2f', 'legend': False, 'latexname': True, 'uid': True, 'name': True}
-        fig_temp = px.scatter_3d(df_ref, x='x', y='y', z='e', hover_data=hover_data, color='legend',
+        fig_temp = px.scatter_3d(df_ref, x='x', y='y', z='e', hover_data=hover_data, color='legend', custom_data=['link'], 
                                 color_discrete_sequence=colors,
                                 labels={"x": pd.symbols[1],
                                         "y": pd.symbols[2],
                                         "e": '\u0394H [eV/atom]',
                                         'latexname': 'Formula',
-                                        'legend': 'Crystal type',
                                     },)
-        
+        fig_temp.update_traces(marker={'size': 6})
         figs.append(fig_temp)
 
 
@@ -725,7 +735,6 @@ def plot_html(row, fname, thisrow):
                 opacity=0.7))
 
         fig.update_layout(
-            legend={"title": "Crystal type"},
             width=500, 
             height=500,
             scene=dict(
@@ -736,6 +745,10 @@ def plot_html(row, fname, thisrow):
                 annotations=annotations,
             ),
             )
+        
+        fig.layout.scene.aspectratio = {'x':1, 'y':1, 'z':1}
+        fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
+
         
         fig.update_layout(
             plot_bgcolor='white'
@@ -757,10 +770,63 @@ def plot_html(row, fname, thisrow):
 
         fig.update_layout(yaxis=dict(zerolinecolor='lightgrey'),
                           xaxis=dict(zerolinecolor='lightgrey'),
+                          legend=dict(
+                                    orientation="h",
+                                    entrywidth=100,
+                                    yanchor="bottom",
+                                    y=0.9,
+                                    xanchor="left",
+                                    x=0.01,
+                                    font = dict(size=14)
+                                    )
                           )
 
+    # Below would be enough if we didn't want to make the plot clickable
+    #fig.write_html(fname, include_mathjax='cdn', include_plotlyjs='cdn')
 
-    fig.write_html(fname, include_mathjax='cdn')
+
+    # Makes plots clickable to go to material page
+    from plotly.offline import plot
+    import re
+    # Get HTML representation of plotly.js and this figure
+    plot_div = plot(fig, output_type='div', include_mathjax='cdn', include_plotlyjs='cdn')
+
+    # Get id of html div element that looks like
+    # <div id="301d22ab-bfba-4621-8f5d-dc4fd855bb33" ... >
+    res = re.search('<div id="([^"]*)"', plot_div)
+    div_id = res.groups()[0]
+
+    # Build JavaScript callback for handling clicks
+    # and opening the URL in the trace's customdata 
+    js_callback = """
+    <script>
+    var plot_element = document.getElementById("{div_id}");
+    plot_element.on('plotly_click', function(data){{
+        console.log(data);
+        var point = data.points[0];
+        if (point) {{
+            console.log(point.customdata[0]);
+            window.open(point.customdata[0]);
+        }}
+    }})
+    </script>
+    """.format(div_id=div_id)
+
+    # Build HTML string
+    html_str = """
+    <html>
+    <body>
+    {plot_div}
+    {js_callback}
+    </body>
+    </html>
+    """.format(plot_div=plot_div, js_callback=js_callback)
+
+    # Write out HTML file
+    with open(fname, 'w') as f:
+        f.write(html_str)
+
+
     #fig.show()
 
 
