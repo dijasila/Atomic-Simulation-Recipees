@@ -551,6 +551,8 @@ def plot_html(row, fname, thisrow):
     import plotly.express as px
     import pandas
     import re
+    print(thisrow)
+    print(thisrow.uid)
 
     colors = px.colors.qualitative.D3
 
@@ -564,7 +566,7 @@ def plot_html(row, fname, thisrow):
 
     df_ref = pandas.DataFrame(references)
 
-    # Why are we even using thisrow? Isn't it the same as row?
+    # Why are we even using thisrow? Isn't it always the same as row?
     df_ref["thisrow"] = df_ref.apply(
         lambda x: True if x["uid"] == thisrow.uid else False, axis=1
     )
@@ -578,9 +580,12 @@ def plot_html(row, fname, thisrow):
 
     # Highlight this material by making it bold
     name_coloumn_to_plot = "latexname"
-    df_ref.loc[df_ref["thisrow"], name_coloumn_to_plot] = (
-        "<b>" + df_ref[df_ref["thisrow"]][name_coloumn_to_plot].values[0] + "</b>"
-    )
+    try:
+        df_ref.loc[df_ref["thisrow"], name_coloumn_to_plot] = (
+            "<b>" + df_ref[df_ref["thisrow"]][name_coloumn_to_plot].values[0] + "</b>"
+        )
+    except IndexError:
+        pass
 
     pdrefs = []
 
@@ -637,8 +642,8 @@ def plot_html(row, fname, thisrow):
         )
 
         # Set edgecolor to same color as facecolor
-        fig_temp.data[0].marker.line.color = colors[0]
-        fig_temp.data[1].marker.line.color = colors[1]
+        for data, color in zip(fig_temp.data, colors):
+            data.marker.line.color = color
 
         figs.append(fig_temp)
 
