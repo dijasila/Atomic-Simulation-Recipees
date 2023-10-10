@@ -19,7 +19,8 @@ requirements = ['Click>=8.0.3', 'ase', 'matplotlib',
 setup_requirements = []
 
 extras_require = {'docs': ['sphinx', 'sphinx-autoapi',
-                           'sphinxcontrib-programoutput']}
+                           'sphinxcontrib-programoutput',
+                           'sphinx-autodoc-typehints']}
 
 txt = Path('asr/__init__.py').read_text()
 version = re.search("__version__ = '(.*)'", txt).group(1)
