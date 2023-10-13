@@ -681,8 +681,7 @@ def plot_html(row, fname, thisrow):
                 x=0.01,
                 font=dict(size=14),
             ),
-            width=500,
-            height=500,
+            margin=dict(t=20, r=20),
             plot_bgcolor="white",
         )
 
@@ -777,8 +776,6 @@ def plot_html(row, fname, thisrow):
             )
 
         fig.update_layout(
-            width=500,
-            height=500,
             scene=dict(
                 xaxis_title=pd.symbols[1],
                 yaxis_title=pd.symbols[2],

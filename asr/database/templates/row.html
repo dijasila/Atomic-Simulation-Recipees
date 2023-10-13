@@ -198,7 +198,7 @@ jmol_isReady = function(applet)
               {% endif %}
 		{% endif %}
 		{{ help(data) }}
-		{% if data.filename == 'convex-hull.html' %}
+		{% if '.html' in data.filename %}
 		<div class="htmlplot" id="htmlplot">
 			<embed width="550px" height="550px" src="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}" frameborder="0" >
 		</div>
