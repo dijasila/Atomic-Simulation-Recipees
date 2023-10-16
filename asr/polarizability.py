@@ -141,10 +141,9 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             calc.get_potential_energy()
             calc.write('es.gpw', mode='all')
 
-        df = DielectricFunction('es.gpw', **dfkwargs)
-
         try:
-            df.chi0calc.check_high_symmetry_ibz_kpts()
+            df = DielectricFunction('es.gpw', **dfkwargs)
+            df.chi0calc.chi0_body_calc.check_high_symmetry_ibz_kpts()
         except ValueError:
             print('Ground state k-point grid does not include all vertices of'
                   ' the IBZ. Disabling symmetry and integrates the full'

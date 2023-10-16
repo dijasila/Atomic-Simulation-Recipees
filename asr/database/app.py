@@ -245,6 +245,12 @@ class ASRProject(DatabaseProject):
 def main(databases: List[str], host: str = "0.0.0.0",
          test: bool = False) -> ASRResult:
 
+    # We do not want the browser app to try to pop-up tk windows in
+    # the background. So we choose a matplotlib backend without popups.
+    # We rely on the pool implicitly inheriting this variable.
+    from matplotlib import use
+    use('Agg')
+
     # The app uses threads, and we cannot call matplotlib multithreadedly.
     # Therefore we use a multiprocessing pool for the plotting.
     # We could use more cores, but they tend to fail to close
