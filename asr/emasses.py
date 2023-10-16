@@ -964,8 +964,7 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                     if not pb:
                         k_kc[:, i] = 0
                 assert not (np.isnan(k_kc)).any()
-                calc = calc.new(kpts=k_kc, symmetry='off',
-                                txt=f'{identity}.txt')
+                calc.set(kpts=k_kc, symmetry='off', txt=f'{identity}.txt')
                 calc = calc.fixed_density()
                 atoms.get_potential_energy()
                 calc.write(name)
