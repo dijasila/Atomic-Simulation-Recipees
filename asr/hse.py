@@ -67,10 +67,10 @@ def hse(kptdensity, emptybands):
         kpts = get_kpts_size(atoms=atoms, kptdensity=kptdensity)
 
     calc.set(nbands=-emptybands,
-             fixdensity=True,
              kpts=kpts,
              convergence={'bands': -convbands},
              txt='hse.txt')
+    calc = calc.fixed_density()
     calc.get_potential_energy()
     calc.write('hse_nowfs.gpw')
     nb = calc.get_number_of_bands()

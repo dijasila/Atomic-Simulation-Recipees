@@ -113,11 +113,11 @@ def calculate(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
         calc = GPAW(
             gs,
             txt='gs_bse.txt',
-            fixdensity=True,
             nbands=int(nbands * 1.5),
             convergence={'bands': nbands},
             occupations=FermiDirac(width=1e-4),
             kpts=kpts)
+        calc = calc.fixed_density()
         calc.get_potential_energy()
         with file_barrier(['gs_bse.gpw']):
             calc.write('gs_bse.gpw', mode='all')

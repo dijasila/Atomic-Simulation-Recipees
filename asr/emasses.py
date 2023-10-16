@@ -135,8 +135,8 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
     fname = '_refined'
     calc.set(kpts=newk_kc,
              symmetry='off',
-             txt=fname + '.txt',
-             fixdensity=True)
+             txt=fname + '.txt')
+    calc = calc.fixed_density()
     atoms = calc.get_atoms()
     atoms.get_potential_energy()
     calc.write(fname + '.gpw')
@@ -225,8 +225,8 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
         name = get_name(soc=soc, bt=bt)
         calc.set(kpts=kcirc_kc + k_c,
                  symmetry='off',
-                 txt=name + '.txt',
-                 fixdensity=True)
+                 txt=name + '.txt')
+        calc = calc.fixed_density()
         atoms = calc.get_atoms()
         atoms.get_potential_energy()
         calc.write(name + '.gpw')
@@ -968,7 +968,8 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                         k_kc[:, i] = 0
                 assert not (np.isnan(k_kc)).any()
                 calc.set(kpts=k_kc, symmetry='off',
-                         txt=f'{identity}.txt', fixdensity=True)
+                         txt=f'{identity}.txt')
+                calc = calc.fixed_density()
                 atoms.get_potential_energy()
                 calc.write(name)
 

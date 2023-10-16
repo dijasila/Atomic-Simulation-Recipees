@@ -95,9 +95,9 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
     if nd == 2:
         calc = GPAW(gs,
                     kpts=(kperp, kpar, 1),
-                    fixdensity=True,
                     symmetry='off',
                     txt='gs_berry.txt')
+        calc = calc.fixed_density()
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
         phi_km, s_km = parallel_transport('gs_berry.gpw',
@@ -114,9 +114,9 @@ def calculate(gs: str = 'gs.gpw', kpar: int = 120,
         """kx = 0"""
         calc = GPAW(gs,
                     kpts=(1, kperp, kpar),
-                    fixdensity=True,
                     symmetry='off',
                     txt='gs_berry.txt')
+        calc = calc.fixed_density()
         calc.get_potential_energy()
         calc.write('gs_berry.gpw', mode='all')
         phi_km, s_km = parallel_transport('gs_berry.gpw',
