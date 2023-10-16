@@ -21,9 +21,21 @@
    src/contact
 
 
-Welcome to Atomic Simulation Recipes's documentation!
-=====================================================
+Atomic Simulation Recipes
+=========================
 
-Recipes for the Computational 2D Materials Database (C2DB_).
+ASR contains recipes for the Computational 2D Materials Database (C2DB_)
+web-page based on the GPAW_ electronic structure code.
+
+The source code can be found here:
+
+    https://gitlab.com/asr-dev/asr
+
+Install the code like this::
+
+  $ git clone git@gitlab.com:asr-dev/asr
+  $ pip install asr/
+
 
 _C2DB:: https://cmr.fysik.dtu.dk/c2db/c2db.html
+_GPAW:: https://wiki.fysik.dtu.dk/gpaw
