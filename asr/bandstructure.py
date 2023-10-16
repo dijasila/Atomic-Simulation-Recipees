@@ -203,12 +203,14 @@ def plot_bs_html(row, filename=bs_html):
         font=dict(size=14),
         legend=dict(
             orientation="h",
-            entrywidth=150,
+            entrywidthmode='fraction',
+            entrywidth=0.5,
             yanchor="bottom",
             y=1.01,
             xanchor="left",
             x=0.01,
             font=dict(size=14),
+            itemsizing='constant'
         ),
     )
 
