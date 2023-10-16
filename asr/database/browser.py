@@ -180,9 +180,9 @@ def get_recipe_href(asr_name, name=None):
         name = asr_name
     # ATM href only works to recipe main
     asr_name = asr_name.split('@')[0]
-    link_name = ('<a href="https://asr.readthedocs.io/en/latest/'
-                 f'src/generated/recipe_{asr_name}.html">{name}</a>')
-
+    py = f'{asr_name}.py'
+    url = 'https://gitlab.com/asr-dev/asr/-/blob/old-master/asr'
+    link_name = f'<a href="{url}"/{py}> {py} </a>'
     return link_name
 
 
