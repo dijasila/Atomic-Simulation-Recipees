@@ -501,6 +501,8 @@ def runplot_clean(plotfunction, *args):
 
 
 def generate_plots(row, prefix, plot_descriptions, pool):
+    from matplotlib import use
+    use('Agg')  # Set matplotlib backend to Agg in browser plots
     missing = set()
     for desc in plot_descriptions:
         function = desc['function']
