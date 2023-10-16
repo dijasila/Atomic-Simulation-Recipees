@@ -20,9 +20,7 @@ class Chi0Calculator:
 
     def __init__(self, *args, **kwargs):
         self.chi0_opt_ext_calc = Chi0OpticalExtensioneCalculator()
-
-    def check_high_symmetry_ibz_kpts(self):
-        pass
+        self.chi0_body_calc = Chi0BodyCalculator()
 
 
 class Chi0OpticalExtensioneCalculator:
@@ -30,6 +28,14 @@ class Chi0OpticalExtensioneCalculator:
         self.wd = wd
         self.rate = rate
         self.drude_calc = Chi0DrudeCalculator()
+
+
+class Chi0BodyCalculator:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def check_high_symmetry_ibz_kpts(self):
+        pass
 
 
 class Chi0DrudeCalculator:

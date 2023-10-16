@@ -419,6 +419,22 @@ class ASRCalculator(Calculator):
     def fixed_density(self, **kwargs):
         return self
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        # Write timings and close reader if necessary.
+        # If we crashed in the constructor (e.g. a bad keyword), we may not
+        # have the normally expected attributes:
+        if hasattr(self, 'timer') and not self.log.fd.closed:
+            self.timer.write(self.log.fd)
+
+        if hasattr(self, 'reader') and self.reader is not None:
+            self.reader.close()
+
 
 class DOSCalculator:
     def __init__(self, fermi_level):
