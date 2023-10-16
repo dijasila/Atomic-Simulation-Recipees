@@ -133,8 +133,8 @@ def preliminary_refine(gpw='gs.gpw', soc=True, bandtype=None, settings=None):
 
     # Calculate energies for new k-grid
     fname = '_refined'
-    calc = calc.fixed_density(kpts=newk_kc, symmetry='off',
-                              txt=fname + '.txt')
+    calc = GPAW(gpw, kpts=newk_kc, symmetry='off', txt=fname + '.txt')
+    calc = calc.fixed_density()
     atoms = calc.get_atoms()
     atoms.get_potential_energy()
     calc.write(fname + '.gpw')
@@ -221,9 +221,9 @@ def nonsc_sphere(gpw='gs.gpw', fallback='gs.gpw', soc=False,
 
     for bt, k_c in zip(bandtypes, ks):
         name = get_name(soc=soc, bt=bt)
-        calc = calc.fixed_density(kpts=kcirc_kc + k_c,
-                                  symmetry='off',
-                                  txt=name + '.txt')
+        calc = GPAW(gpw, kpts=kcirc_kc + k_c,
+                    symmetry='off', txt=name + '.txt')
+        calc = calc.fixed_density()
         atoms = calc.get_atoms()
         atoms.get_potential_energy()
         calc.write(name + '.gpw')
@@ -964,8 +964,9 @@ def calculate_bs_along_emass_vecs(masses_dict, soc,
                     if not pb:
                         k_kc[:, i] = 0
                 assert not (np.isnan(k_kc)).any()
-                calc = calc.fixed_density(kpts=k_kc, symmetry='off',
-                                          txt=f'{identity}.txt')
+                calc = calc.new(kpts=k_kc, symmetry='off',
+                                txt=f'{identity}.txt')
+                calc = calc.fixed_density()
                 atoms.get_potential_energy()
                 calc.write(name)
 
