@@ -192,12 +192,13 @@ def main(databases: List[str]) -> Result:
             groundstate()
 
     # TODO: Make separate recipe for calculating vdW correction to total energy
-    for filename in ['results-asr.relax.json', 'results-asr.gs.json']:
-        if Path(filename).is_file():
-            results = read_json(filename)
-            energy = results.get('etot')
-            usingd3 = results.metadata.params.get('d3', False)
-            break
+    if Path('results-asr.relax.json').is_file():
+        results = read_json('results-asr.relax.json')
+        energy = results.get('etot')
+        usingd3 = results.metadata.params.get('d3', False)
+    else:
+        energy = atoms.get_potential_energy()
+        usingd3 = False
 
     if usingd3:
         mymethod = 'DFT+D3'
