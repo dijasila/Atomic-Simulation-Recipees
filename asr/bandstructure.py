@@ -95,6 +95,7 @@ def plot_bs_html(row, filename=bs_html):
         name=f"{xcname} no SOC",
         showlegend=True,
         marker=dict(size=4, color="#999999"),
+        hovertemplate="%{y:.3f} eV"
     )
     traces.append(trace)
 
@@ -137,6 +138,7 @@ def plot_bs_html(row, filename=bs_html):
                 titleside="right",
             ),
         ),
+        hovertemplate="%{y:.3f} eV"
     )
     traces.append(trace)
 
@@ -203,14 +205,13 @@ def plot_bs_html(row, filename=bs_html):
         font=dict(size=14),
         legend=dict(
             orientation="h",
-            entrywidthmode='fraction',
-            entrywidth=0.5,
             yanchor="bottom",
             y=1.01,
             xanchor="left",
-            x=0.01,
+            x=0.0,
             font=dict(size=14),
-            itemsizing='constant'
+            itemsizing='constant',
+            itemwidth=35
         ),
     )
 
