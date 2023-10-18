@@ -60,6 +60,7 @@ class Summary:
         layout, subpanel = layout(row, key_descriptions, prefix)
         self.layout = layout
         self.subpanel = subpanel
+        self.reduce_subpanels()
 
         self.dipole = row.get('dipole')
         if self.dipole is not None:
@@ -73,6 +74,22 @@ class Summary:
         if self.constraints:
             self.constraints = ', '.join(c.__class__.__name__
                                          for c in self.constraints)
+
+    def reduce_subpanels(self):
+        """
+        After the ASR layout has returned a list of panels that are categorized
+        as subpanels, we remove subpanels with only one panel to be rendered
+        as a normal panel by the Jinja2 template under dct.subpanel passed by
+        app.py.
+        """
+        import numpy as np
+        panel_titles, idxs, counts = np.unique(self.subpanel,
+                                               return_counts=True,
+                                               return_index=True)
+
+        for panel_title, idx, count in zip(panel_titles, idxs, counts):
+            if isinstance(panel_title, str) and count == 1:
+                self.subpanel[idx] = False
 
 
 class WebApp:
