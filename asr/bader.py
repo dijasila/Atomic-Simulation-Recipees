@@ -2,63 +2,19 @@
 from __future__ import annotations
 import subprocess
 from pathlib import Path
-from typing import List
 
 import numpy as np
 from ase import Atoms
 from ase.io import write
 from ase.units import Bohr
 
-from asr.core import ASRResult, command, prepare_result
-from asr.database.browser import (describe_entry, entry_parameter_description,
-                                  href, make_panel_description)
-
-panel_description = make_panel_description(
-    """The Bader charge analysis ascribes a net charge to an atom
-by partitioning the electron density according to its zero-flux surfaces.""",
-    articles=[
-        href("""W. Tang et al. A grid-based Bader analysis algorithm
-without lattice bias. J. Phys.: Condens. Matter 21, 084204 (2009).""",
-             'https://doi.org/10.1088/0953-8984/21/8/084204')])
-
-
-def webpanel(result, row, key_descriptions):
-    rows = [[str(a), symbol, f'{charge:.2f}']
-            for a, (symbol, charge)
-            in enumerate(zip(result.sym_a, result.bader_charges))]
-    table = {'type': 'table',
-             'header': ['Atom index', 'Atom type', 'Charge (|e|)'],
-             'rows': rows}
-
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.bader')
-
-    title_description = panel_description + parameter_description
-
-    panel = {'title': describe_entry('Bader charges',
-                                     description=title_description),
-             'columns': [[table]]}
-
-    return [panel]
-
-
-@prepare_result
-class Result(ASRResult):
-
-    bader_charges: np.ndarray
-    sym_a: List[str]
-
-    key_descriptions = {'bader_charges': 'Array of charges [\\|e\\|].',
-                        'sym_a': 'Chemical symbols.'}
-
-    formats = {"ase_webpanel": webpanel}
-
+from asr.core import command
+from asr.paneldata import BaderResult
 
 @command('asr.bader',
          dependencies=['asr.gs'],
-         returns=Result)
-def main() -> Result:
+         returns=BaderResult)
+def main() -> BaderResult:
     """Calculate bader charges.
 
     To make Bader analysis we use another program. Download the executable
@@ -81,8 +37,7 @@ def main() -> Result:
     gs = GPAW('gs.gpw')
     atoms, charges = bader(gs)
     sym_a = atoms.get_chemical_symbols()
-    return Result(data=dict(bader_charges=charges,
-                            sym_a=sym_a))
+    return BaderResult(data=dict(bader_charges=charges, sym_a=sym_a))
 
 
 def bader(gs) -> tuple[Atoms, np.ndarray]:

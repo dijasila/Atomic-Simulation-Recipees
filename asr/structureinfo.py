@@ -202,7 +202,7 @@ def webpanel(result, row, key_descriptions):
     phonon_stability = row.get('dynamic_stability_phonons')
     stiffness_stability = row.get('dynamic_stability_stiffness')
 
-    from asr.convex_hull import ehull_table_rows
+    from asr.paneldata import ehull_table_rows
     ehull_table_rows = ehull_table_rows(row, key_descriptions)['rows']
 
     if phonon_stability is not None and stiffness_stability is not None:

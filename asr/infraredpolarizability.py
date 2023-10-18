@@ -1,145 +1,7 @@
 """Infrared polarizability."""
-import typing
-from asr.core import command, option, read_json, ASRResult, prepare_result
-from asr.database.browser import (
-    fig, table, href, make_panel_description, describe_entry)
-
+from asr.paneldata import InfraredResult
+from asr.core import command, option, read_json
 import numpy as np
-
-reference = """\
-M. N. Gjerding et al. Efficient Ab Initio Modeling of Dielectric Screening
-in 2D van der Waals Materials: Including Phonons, Substrates, and Doping,
-J. Phys. Chem. C 124 11609 (2020)"""
-
-panel_description = make_panel_description(
-    """The frequency-dependent polarisability in the infrared (IR) frequency regime
-calculated from a Lorentz oscillator equation involving the optical Gamma-point
-phonons and atomic Born charges. The contribution from electronic interband
-transitions is added, but is essentially constant for frequencies much smaller
-than the direct band gap.
-""",
-    articles=[
-        href(reference, 'https://doi.org/10.1021/acs.jpcc.0c01635'),
-    ]
-
-)
-
-
-def webpanel(result, row, key_descriptions):
-    explanation = 'Static lattice polarizability along the'
-    alphax_lat = describe_entry('alphax_lat', description=explanation + " x-direction")
-    alphay_lat = describe_entry('alphay_lat', description=explanation + " y-direction")
-    alphaz_lat = describe_entry('alphaz_lat', description=explanation + " z-direction")
-
-    explanation = 'Total static polarizability along the'
-    alphax = describe_entry('alphax', description=explanation + " x-direction")
-    alphay = describe_entry('alphay', description=explanation + " y-direction")
-    alphaz = describe_entry('alphaz', description=explanation + " z-direction")
-
-    opt = table(
-        row, "Property", [alphax_lat, alphay_lat, alphaz_lat, alphax,
-                          alphay, alphaz], key_descriptions
-    )
-
-    panel = {
-        "title": describe_entry("Infrared polarizability",
-                                panel_description),
-        "columns": [[fig("infrax.png"), fig("infraz.png")], [fig("infray.png"), opt]],
-        "plot_descriptions": [
-            {
-                "function": create_plot,
-                "filenames": ["infrax.png", "infray.png", "infraz.png"],
-            }
-        ],
-        "subpanel": 'Polarizabilities',
-        "sort": 21,
-    }
-
-    return [panel]
-
-
-def create_plot(row, *fnames):
-    infrareddct = row.data['results-asr.infraredpolarizability.json']
-    electrondct = row.data['results-asr.polarizability.json']
-    phonondata = row.data['results-asr.phonons.json']
-    maxphononfreq = phonondata['omega_kl'][0].max() * 1e3
-
-    assert len(fnames) == 3
-    for v, (axisname, fname) in enumerate(zip('xyz', fnames)):
-        alpha_w = electrondct[f'alpha{axisname}_w']
-
-        create_plot_simple(
-            ndim=sum(row.toatoms().pbc),
-            maxomega=maxphononfreq * 1.5,
-            omega_w=infrareddct["omega_w"] * 1e3,
-            alpha_w=alpha_w,
-            alphavv_w=infrareddct["alpha_wvv"][:, v, v],
-            omegatmp_w=electrondct["frequencies"] * 1e3,
-            axisname=axisname,
-            fname=fname)
-
-
-def create_plot_simple(*, ndim, omega_w, fname, maxomega, alpha_w,
-                       alphavv_w, axisname,
-                       omegatmp_w):
-    from scipy.interpolate import interp1d
-
-    re_alpha = interp1d(omegatmp_w, alpha_w.real)
-    im_alpha = interp1d(omegatmp_w, alpha_w.imag)
-    a_w = (re_alpha(omega_w) + 1j * im_alpha(omega_w) + alphavv_w)
-
-    if ndim == 3:
-        ylabel = r'Dielectric function'
-        yvalues = 1 + 4 * np.pi * a_w
-    else:
-        power_txt = {2: '', 1: '^2', 0: '^3'}[ndim]
-        unit = rf"$\mathrm{{\AA}}{power_txt}$"
-        ylabel = rf'Polarizability [{unit}]'
-        yvalues = a_w
-
-    return mkplot(yvalues, axisname, fname, maxomega, omega_w, ylabel)
-
-
-def mkplot(a_w, axisname, fname, maxomega, omega_w, ylabel):
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    ax = fig.gca()
-    ax.plot(omega_w, a_w.real, c='C1', label='real')
-    ax.plot(omega_w, a_w.imag, c='C0', label='imag')
-    ax.set_title(f'Polarization: {axisname}')
-    ax.set_xlabel('Energy [meV]')
-    ax.set_ylabel(ylabel)
-    ax.set_xlim(0, maxomega)
-    ax.legend()
-    plt.tight_layout()
-    plt.savefig(fname)
-    return fname
-
-
-@prepare_result
-class Result(ASRResult):
-
-    alpha_wvv: typing.List[typing.List[typing.List[complex]]]
-    omega_w: typing.List[float]
-    alphax_lat: complex
-    alphay_lat: complex
-    alphaz_lat: complex
-    alphax: complex
-    alphay: complex
-    alphaz: complex
-
-    key_descriptions = {
-        "alpha_wvv": "Lattice polarizability.",
-        "omega_w": "Frequency grid [eV].",
-        "alphax_lat": "Lattice polarizability at omega=0 (x-direction).",
-        "alphay_lat": "Lattice polarizability at omega=0 (y-direction).",
-        "alphaz_lat": "Lattice polarizability at omega=0 (z-direction).",
-        "alphax": "Lattice+electronic polarizability at omega=0 (x-direction).",
-        "alphay": "Lattice+electronic polarizability at omega=0 (y-direction).",
-        "alphaz": "Lattice+electronic polarizability at omega=0 (z-direction).",
-    }
-
-    formats = {"ase_webpanel": webpanel}
 
 
 @command(
@@ -151,11 +13,11 @@ class Result(ASRResult):
         "results-asr.borncharges.json",
         "results-asr.polarizability.json",
     ],
-    returns=Result,
+    returns=InfraredResult,
 )
 @option("--nfreq", help="Number of frequency points", type=int)
 @option("--eta", help="Relaxation rate", type=float)
-def main(nfreq: int = 300, eta: float = 1e-2) -> Result:
+def main(nfreq: int = 300, eta: float = 1e-2) -> InfraredResult:
     from ase.io import read
 
     # Get relevant atomic structure

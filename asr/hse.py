@@ -1,38 +1,7 @@
 """HSE06 band structure."""
-from asr.core import command, option, read_json, ASRResult, prepare_result
-import typing
-from ase.spectrum.band_structure import BandStructure
-from asr.bandstructure import legend_on_top
-from asr.database.browser import make_panel_description
-from asr.utils.gw_hse import GWHSEInfo
+from asr.core import command, option, read_json, ASRResult
+from asr.paneldata import HSEResult
 from asr.utils.kpts import get_kpts_size
-
-
-class HSEInfo(GWHSEInfo):
-    method_name = 'HSE06'
-    name = 'hse'
-    bs_filename = 'hse-bs.png'
-
-    panel_description = make_panel_description(
-        """\
-The single-particle band structure calculated with the HSE06
-xc-functional. The calculations are performed non-self-consistently with the
-wave functions from a GGA calculation. Spin–orbit interactions are included
-in post-process.""",
-        articles=['C2DB'],
-    )
-
-    band_gap_adjectives = 'electronic single-particle'
-    summary_sort = 11
-
-    @staticmethod
-    def plot_bs(row, filename):
-        data = row.data['results-asr.hse.json']
-        return plot_bs(row, filename=filename, bs_label='HSE06',
-                       data=data,
-                       efermi=data['efermi_hse_soc'],
-                       vbm=row.get('vbm_hse'),
-                       cbm=row.get('cbm_hse'))
 
 
 @command(module='asr.hse',
@@ -148,124 +117,6 @@ def MP_interpolate(calc, delta_skn, lb, ub):
     return results
 
 
-def plot_bs(row,
-            filename,
-            *,
-            bs_label,
-            efermi,
-            data,
-            vbm,
-            cbm):
-    import matplotlib.pyplot as plt
-    import matplotlib.patheffects as path_effects
-
-    figsize = (5.5, 5)
-    fontsize = 10
-
-    path = data['bandstructure']['path']
-
-    reference = row.get('evac')
-    if reference is None:
-        reference = efermi
-        label = r'$E - E_\mathrm{F}$ [eV]'
-    else:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-
-    emin_offset = efermi if vbm is None else vbm
-    emax_offset = efermi if cbm is None else cbm
-    emin = emin_offset - 3 - reference
-    emax = emax_offset + 3 - reference
-
-    e_mk = data['bandstructure']['e_int_mk'] - reference
-    x, X, labels = path.get_linear_kpoint_axis()
-
-    # with soc
-    style = dict(
-        color='C1',
-        ls='-',
-        lw=1.0,
-        zorder=0)
-    ax = plt.figure(figsize=figsize).add_subplot(111)
-    for e_m in e_mk:
-        ax.plot(x, e_m, **style)
-    ax.set_ylim([emin, emax])
-    ax.set_xlim([x[0], x[-1]])
-    ax.set_ylabel(label)
-    ax.set_xticks(X)
-    ax.set_xticklabels([lab.replace('G', r'$\Gamma$') for lab in labels])
-
-    xlim = ax.get_xlim()
-    x0 = xlim[1] * 0.01
-    ax.axhline(efermi - reference, c='C1', ls=':')
-    text = ax.annotate(
-        r'$E_\mathrm{F}$',
-        xy=(x0, efermi - reference),
-        ha='left',
-        va='bottom',
-        fontsize=fontsize * 1.3)
-    text.set_path_effects([
-        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
-        path_effects.Normal()
-    ])
-
-    # add KS band structure with soc
-    from asr.bandstructure import add_bs_ks
-    if 'results-asr.bandstructure.json' in row.data:
-        ax = add_bs_ks(row, ax, reference=row.get('evac', row.get('efermi')),
-                       color=[0.8, 0.8, 0.8])
-
-    for Xi in X:
-        ax.axvline(Xi, ls='-', c='0.5', zorder=-20)
-
-    ax.plot([], [], **style, label=bs_label)
-    legend_on_top(ax, ncol=2)
-    plt.savefig(filename, bbox_inches='tight')
-
-
-def webpanel(result, row, key_descriptions):
-    from asr.utils.gw_hse import gw_hse_webpanel
-    return gw_hse_webpanel(result, row, key_descriptions, HSEInfo(row),
-                           sort=12.5)
-
-
-@prepare_result
-class Result(ASRResult):
-    vbm_hse_nosoc: float
-    cbm_hse_nosoc: float
-    gap_dir_hse_nosoc: float
-    gap_hse_nosoc: float
-    kvbm_nosoc: typing.List[float]
-    kcbm_nosoc: typing.List[float]
-    vbm_hse: float
-    cbm_hse: float
-    gap_dir_hse: float
-    gap_hse: float
-    kvbm: typing.List[float]
-    kcbm: typing.List[float]
-    efermi_hse_nosoc: float
-    efermi_hse_soc: float
-    bandstructure: BandStructure
-
-    key_descriptions = {
-        "vbm_hse_nosoc": "Valence band maximum w/o soc. (HSE06) [eV]",
-        "cbm_hse_nosoc": "Conduction band minimum w/o soc. (HSE06) [eV]",
-        "gap_dir_hse_nosoc": "Direct gap w/o soc. (HSE06) [eV]",
-        "gap_hse_nosoc": "Band gap w/o soc. (HSE06) [eV]",
-        "kvbm_nosoc": "k-point of HSE06 valence band maximum w/o soc",
-        "kcbm_nosoc": "k-point of HSE06 conduction band minimum w/o soc",
-        "vbm_hse": "KVP: Valence band maximum (HSE06) [eV]",
-        "cbm_hse": "KVP: Conduction band minimum (HSE06) [eV]",
-        "gap_dir_hse": "KVP: Direct band gap (HSE06) [eV]",
-        "gap_hse": "KVP: Band gap (HSE06) [eV]",
-        "kvbm": "k-point of HSE06 valence band maximum",
-        "kcbm": "k-point of HSE06 conduction band minimum",
-        "efermi_hse_nosoc": "Fermi level w/o soc. (HSE06) [eV]",
-        "efermi_hse_soc": "Fermi level (HSE06) [eV]",
-        "bandstructure": "HSE06 bandstructure."
-    }
-    formats = {"ase_webpanel": webpanel}
-
-
 @command(module='asr.hse',
          dependencies=['asr.hse@calculate', 'asr.bandstructure'],
          requires=['bs.gpw',
@@ -273,8 +124,8 @@ class Result(ASRResult):
                    'results-asr.bandstructure.json',
                    'results-asr.hse@calculate.json'],
          resources='1:10m',
-         returns=Result)
-def main() -> Result:
+         returns=HSEResult)
+def main() -> HSEResult:
     """Interpolate HSE06 band structure along a given path."""
     import numpy as np
     from gpaw import GPAW

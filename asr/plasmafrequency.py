@@ -1,43 +1,15 @@
 """Plasma frequency."""
-from asr.core import command, ASRResult, prepare_result, read_json
-import typing
+from asr.core import command, read_json
+from asr.paneldata import PlasmaResult
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table
-
-    if row.get('gap', 1) > 0.01:
-        return []
-
-    plasmatable = table(row, 'Property', [
-        'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
-
-    panel = {'title': 'Optical polarizability',
-             'columns': [[], [plasmatable]]}
-    return [panel]
-
-
-@prepare_result
-class Result(ASRResult):
-
-    plasmafreq_vv: typing.List[typing.List[float]]
-    plasmafrequency_x: float
-    plasmafrequency_y: float
-
-    key_descriptions = {
-        "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
-        "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
-        "[`eV/Å^0.5`]",
-        "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
-        "[`eV/Å^0.5`]",
-    }
-    formats = {"ase_webpanel": webpanel}
-
-
+# XXX Why is this even a separate file from polarizability? it doesn't do
+# any extra calculation only extra post-processing, which could be a flag
+# instead of a whole separate file.
 @command('asr.plasmafrequency',
-         returns=Result,
+         returns=PlasmaResult,
          dependencies=['asr.polarizability'])
-def main() -> Result:
+def main() -> PlasmaResult:
     """Calculate polarizability."""
     from ase.io import read
     import numpy as np
