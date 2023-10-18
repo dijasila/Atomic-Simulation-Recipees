@@ -52,7 +52,7 @@ def webpanel(result, row, key_descriptions):
             }
         ],
         "subpanel": 'Polarizabilities',
-        "sort": 21,
+        "sort": 20,
     }
 
     return [panel]
