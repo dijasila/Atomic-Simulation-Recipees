@@ -166,11 +166,67 @@ def get_object_matching_obj_id(asr_obj_id):
         )
 
     assert asr_obj_id.startswith('asr.'), f'Invalid object id {asr_obj_id}'
-    mod = importlib.import_module(module)
-    cls = getattr(mod, name)
-
-    return cls
-
+    try:
+        # Import the module dynamically
+        mod = importlib.import_module(module)
+        # Get the class or function from the module
+        result_handler = getattr(mod, name)
+        return result_handler
+    except AttributeError:
+        moved_module = "asr.paneldata"
+        panel_names = {'asr.polarizability': 'OpticalResult',
+                       'asr.plasmafrequency': 'PlasmaResult',
+                       'asr.infraredpolarizability': 'InfraredResult',
+                       'asr.bader': 'BaderResult',
+                       'asr.bandstructure': 'BandStructureResult',
+                       'asr.berry': 'BerryResult',
+                       'asr.borncharges': 'BornChargesResult',
+                       'asr.bse': 'BSEResult',
+                       'asr.charge_neutrality': 'ChargeNeutralityResult',
+                       'asr.chc': 'CHCResult',
+                       'asr.convex_hull': 'ConvexHullResult',
+                       'asr.defect_symmetry': 'DefectSymmetryResult',
+                       'asr.defectformation': 'Result',
+                       'asr.defectinfo': 'Result',
+                       'asr.defectlinks': 'Result',
+                       'asr.deformationpotentials': 'Result',
+                       'asr.dimensionality': 'Result',
+                       'asr.dos': 'Result',
+                       'asr.emasses': 'Result',
+                       'asr.exchange': 'Result',
+                       'asr.fere': 'Result',
+                       'asr.fermisurface': 'Result',
+                       'asr.formalpolarization': 'Result',
+                       'asr.get_wfs': 'Result',
+                       'asr.gs': 'Result',
+                       'asr.gw': 'Result',
+                       'asr.hyperfine': 'Result',
+                       'asr.hse': 'HSEResult',
+                       'asr.magnetic_aniostropy': 'Result',
+                       'asr.magstate': 'Result',
+                       'asr.orbmag': 'Result',
+                       'asr.pdos': 'Result',
+                       'asr.phonons': 'Result',
+                       'asr.phonopy': 'Result',
+                       'asr.piezoelectrictensor': 'Result',
+                       'asr.projected_bandstructure': 'Result',
+                       'asr.push': 'Result',
+                       'asr.raman': 'Result',
+                       'asr.relax': 'Result',
+                       'asr.setinfo': 'Result',
+                       'asr.shg': 'Result',
+                       'asr.shift': 'Result',
+                       'asr.sj_analyze': 'Result',
+                       'asr.stiffness': 'Result',
+                       'asr.structureinfo': 'Result',
+                       'asr.tdm': 'Result',
+                       'asr.workflow': 'Result',
+                       'asr.zfs': 'Result',
+                       }
+        name = panel_names[module]
+        mod = importlib.import_module(moved_module)
+        result_handler = getattr(mod, name)
+        return result_handler
 
 def object_description_to_object(object_description: 'ObjectDescription'):
     """Instantiate object description."""

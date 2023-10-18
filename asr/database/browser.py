@@ -319,18 +319,6 @@ def entry_parameter_description(data, name, exclude_keys: set = set()):
     return description
 
 
-def val2str(row, key: str, digits=2) -> str:
-    value = row.get(key)
-    if value is not None:
-        if isinstance(value, float):
-            value = '{:.{}f}'.format(value, digits)
-        elif not isinstance(value, str):
-            value = str(value)
-    else:
-        value = ''
-    return value
-
-
 def fig(filename: str, link: str = None,
         caption: str = None) -> 'Dict[str, Any]':
     """Shortcut for figure dict."""
