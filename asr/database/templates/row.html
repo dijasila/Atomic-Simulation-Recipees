@@ -181,27 +181,25 @@
         {% set close_subpanel = False %}
         {% for panel_title, panel_info in dct.layout %}
             {% if dct.subpanel[loop.index0] and not dct.subpanel[loop.index0 - 1] %}
-              {% if dct.subpanel[loop.index0 + 1] %}
-                <!-- START SUBPANEL GROUP-->
-                <div class="panel-group" id="nestedAccordion">
-                  <div class="panel panel-default">
-                    <!-- Subpanel Heading -->
-                    <div class="panel-heading">
-                      <h4 class="panel-title">
-                          <a class="btn-lg" data-toggle="collapse"
-                             data-parent="#nestedAccordion"
-                             href="#collapseNested{{ loop.index0 }}">
-                              {{ dct.subpanel[loop.index0] }}
-                          </a>
-                        </h4>
-                    </div>
-                    <!-- START Subpanel COLLAPSE -->
-                    <div id="collapseNested{{ loop.index0 }}"
-                         class="panel-collapse collapse">
-                      <div class="panel-body">
-                        <div class="col-md-12">
-                          <div class="row">
-              {% endif %}
+              <!-- START SUBPANEL GROUP-->
+              <div class="panel-group" id="nestedAccordion">
+                <div class="panel panel-default">
+                  <!-- Subpanel Heading -->
+                  <div class="panel-heading">
+                    <h4 class="panel-title">
+                        <a class="btn-lg" data-toggle="collapse"
+                           data-parent="#nestedAccordion"
+                           href="#collapseNested{{ loop.index0 }}">
+                            {{ dct.subpanel[loop.index0] }}
+                        </a>
+                      </h4>
+                  </div>
+                  <!-- START Subpanel COLLAPSE -->
+                  <div id="collapseNested{{ loop.index0 }}"
+                       class="panel-collapse collapse">
+                    <div class="panel-body">
+                      <div class="col-md-12">
+                        <div class="row">
             {% elif dct.subpanel[loop.index0] and not dct.subpanel[loop.index0 + 1] %}
               {% set close_subpanel = True %}
             {% endif %}
