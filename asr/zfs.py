@@ -1,60 +1,13 @@
-from asr.core import command, ASRResult, prepare_result
-from asr.database.browser import WebPanel
-import numpy as np
-
-
-def get_zfs_table(result):
-    zfs_array = np.zeros((2, 3))
-    rowlabels = ['Spin 0', 'Spin 1']
-    for i, element in enumerate(zfs_array):
-        for j in range(3):
-            zfs_array[i, j] = result['D_vv'][i][j]
-
-    rows = []
-    for i in range(len(zfs_array)):
-        rows.append((rowlabels[i],
-                     f'{zfs_array[i][0]:.2f} MHz',
-                     f'{zfs_array[i][1]:.2f} MHz',
-                     f'{zfs_array[i][2]:.2f} MHz'))
-
-    zfs_table = {'type': 'table',
-                 'header': ['Spin channel',
-                            'D<sub>xx</sub>',
-                            'D<sub>yy</sub>',
-                            'D<sub>zz</sub>']}
-    zfs_table['rows'] = rows
-
-    return zfs_table
-
-
-def webpanel(result, row, key_description):
-    zfs_table = get_zfs_table(result)
-    zfs = WebPanel('Zero field splitting (ZFS)',
-                   columns=[[], [zfs_table]],
-                   sort=41)
-
-    return [zfs]
-
-
-@prepare_result
-class Result(ASRResult):
-    """Container for zero-field-splitting results."""
-
-    D_vv: np.ndarray
-
-    key_descriptions = dict(
-        D_vv='Zero-field-splitting components for each spin channel '
-             'and each direction (x, y, z) [MHz].')
-
-    formats = {'ase_webpanel': webpanel}
+from asr.core import command
+from asr.paneldata import ZfsResult
 
 
 @command(module='asr.zfs',
          requires=['gs.gpw', 'structure.json'],
          dependencies=['asr.gs'],
          resources='1:1h',
-         returns=Result)
-def main() -> Result:
+         returns=ZfsResult)
+def main() -> ZfsResult:
     """Calculate zero-field-splitting."""
     from gpaw import restart
 
@@ -70,7 +23,7 @@ def main() -> Result:
     # evaluate zero field splitting components for both spin channels
     D_vv = get_zfs_components(calc)
 
-    return Result.fromdata(
+    return ZfsResult.fromdata(
         D_vv=D_vv)
 
 

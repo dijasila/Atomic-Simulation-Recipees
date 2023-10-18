@@ -1,31 +1,16 @@
-from asr.core import command, ASRResult, prepare_result, option
+from pathlib import Path
+from asr.core import command, option
 from asr.defect_symmetry import (return_defect_coordinates,
                                  check_and_return_input,
                                  DefectInfo, WFCubeFile)
-from pathlib import Path
-import numpy as np
-import typing
-
-
-@prepare_result
-class Result(ASRResult):
-    """Container for transition dipole moment results."""
-
-    d_snnv: typing.List[np.ndarray]
-    n1: int
-    n2: int
-
-    key_descriptions = dict(
-        d_snnv='transition dipole matrix elements.',
-        n1='staterange minimum.',
-        n2='staterange maximum.')
+from asr.paneldata import TdmResult
 
 
 @command(module='asr.tdm',
          requires=['gs.gpw', 'structure.json'],
          dependencies=['asr.gs@calculate'],
          resources='1:1h',
-         returns=Result)
+         returns=TdmResult)
 @option('--primitivefile', help='Path to the primitive structure file.',
         type=str)
 @option('--pristinefile', help='Path to the pristine supercell file'
@@ -37,7 +22,7 @@ class Result(ASRResult):
 def main(primitivefile: str = 'primitive.json',
          pristinefile: str = 'pristine.json',
          unrelaxedfile: str = None,
-         defect: bool = False) -> Result:
+         defect: bool = False) -> TdmResult:
     """Calculate HOMO-LUMO transition dipole moment for a given structure."""
     from gpaw import GPAW
     from gpaw.utilities.dipole import dipole_matrix_elements_from_calc
@@ -67,7 +52,7 @@ def main(primitivefile: str = 'primitive.json',
 
     d_snnv = dipole_matrix_elements_from_calc(calc, n1, n2, center)
 
-    return Result.fromdata(
+    return TdmResult.fromdata(
         d_snnv=d_snnv,
         n1=n1,
         n2=n2)

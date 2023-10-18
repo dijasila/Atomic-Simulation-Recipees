@@ -3,92 +3,14 @@ import typing
 import numpy as np
 from pathlib import Path
 import ase.units as units
-from ase.geometry import get_distances
-from asr.core import (command, ASRResult, prepare_result,
-                      read_json, option)
-from asr.database.browser import make_panel_description, href
 
+from asr.core import command, read_json, option
+from asr.paneldata import (HyperfineResult, HFResult, GyromagneticResult,
+                           gyromagnetic_ratios)
 
-panel_description = make_panel_description(
-    """
-Analysis of hyperfine coupling and spin coherence time.
-""",
-    articles=[
-        href("""G. D. Cheng et al. Optical and spin coherence properties of NV
- center in diamond and 3C-SiC, Comp. Mat. Sc. 154, 60 (2018)""",
-             'https://doi.org/10.1016/j.commatsci.2018.07.039'),
-    ],
-)
 
 # From http://triton.iqfr.csic.es/guide/eNMR/chem/NMRnuclei.html
 # Units: MHz/T
-gyromagnetic_ratios = {
-    'H': (1, 42.577478),
-    'He': (3, -32.434),
-    'Li': (7, 16.546),
-    'Be': (9, -6.298211),
-    'B': (11, 13.6611),
-    'C': (13, 10.7084),
-    'N': (14, 3.077),
-    'O': (17, -5.772),
-    'F': (19, 40.052),
-    'Ne': (21, -3.36275),
-    'Na': (23, 11.262),
-    'Mg': (25, -2.6084),
-    'Al': (27, 11.103),
-    'Si': (29, -8.465),
-    'P': (31, 17.235),
-    'S': (33, 3.27045),
-    'Cl': (35, 4.17631),
-    'K': (39, 1.98900),
-    'Ca': (43, -2.86861),
-    'Sc': (45, 10.35739),
-    'Ti': (47, -2.40390),
-    'V' : (51, 11.21232),
-    'Cr': (53, -2.406290),
-    'Mn': (55, 10.5163),
-    'Fe': (57, 1.382),
-    'Co': (59, 10.0532),
-    'Ni': (61, -3.809960),
-    'Cu': (63, 11.2952439),
-    'Zn': (67, 2.668563),
-    'Ga': (69, 10.23676),
-    'Ge': (73, -1.48913),
-    'As': (75, 7.312768),
-    'Se': (77, 8.14828655),
-    'Br': (79, 10.69908),
-    'Kr': (83, -1.64398047),
-    'Rb': (85, 4.1233194),
-    'Sr': (89, -1.850870),
-    'Y': (89, -2.0935685),
-    'Zr': (91, -3.97213054),
-    'Nb': (93, 10.44635),
-    'Mo': (95, 2.7850588),
-    'Ru': (101, -2.20099224),
-    'Rh': (103, -1.34637703),
-    'Ag': (107, -1.7299194),
-    'Cd': (111, -9.0595),
-    'In': (115, 9.3749856),
-    'Sn': (119, -15.9365),
-    'Sb': (121, 10.2418),
-    'Te': (125, -13.5242),
-    'I' : (127, 8.56477221),
-    'Xe': (129, -11.8420),
-    'Cs': (133, 5.614201),
-    'Ba': (137, 4.755289),
-    'Hf': (179, -1.08060),
-    'Ta': (181, 5.1245083),
-    'W': (183, 1.78243),
-    'Re': (187, 9.76839),
-    'Os': (189, 1.348764),
-    'Ir': (193, 0.804325),
-    'Pt': (195, 9.17955),
-    'Au': (197, 0.73605),
-    'Hg': (199, 7.66352),
-    'Tl': (205, 24.8093),
-    'Pb': (207, 8.8167),
-    'Bi': (209, 6.91012),
-    'La': (139, 6.049147)}
 nuclear_abundance = {
     'H': (99.98, 0.5),
     'He': (1.3e-4, 0.5),
@@ -172,154 +94,11 @@ class HyperfineNotCalculatedError(Error):
     pass
 
 
-def get_atoms_close_to_center(center, atoms):
-    """
-    Return ordered list of the atoms closest to the defect.
-
-    Note, that this is the case only if a previous defect calculation is present.
-    Return list of atoms closest to the origin otherwise.
-    """
-    _, distances = get_distances(center, atoms.positions, cell=atoms.cell,
-                                 pbc=atoms.pbc)
-    args = np.argsort(distances[0])
-
-    return args, distances[0][args]
-
-
-def get_hf_table(hf_results, ordered_args):
-    hf_array = np.zeros((10, 4))
-    hf_atoms = []
-    for i, arg in enumerate(ordered_args[:10]):
-        hf_result = hf_results[arg]
-        hf_atoms.append(hf_result['kind'] + ' (' + str(hf_result['index']) + ')')
-        for j, value in enumerate([hf_result['magmom'], *hf_result['eigenvalues']]):
-            hf_array[i, j] = f"{value:.2f}"
-
-    rows = []
-    for i, hf_tuple in enumerate(hf_array):
-        rows.append((hf_atoms[i],
-                     f'{hf_array[i][0]:.2f}',
-                     f'{hf_array[i][1]:.2f} MHz',
-                     f'{hf_array[i][2]:.2f} MHz',
-                     f'{hf_array[i][3]:.2f} MHz',
-                     ))
-
-    table = {'type': 'table',
-             'header': ['Nucleus (index)',
-                        'Magn. moment',
-                        'A<sub>1</sub>',
-                        'A<sub>2</sub>',
-                        'A<sub>3</sub>',
-                        ]}
-
-    table['rows'] = rows
-
-    return table
-
-
-def get_gyro_table(row, result):
-    """Return table with gyromagnetic ratios for each chemical element."""
-    gyro_table = {'type': 'table',
-                  'header': ['Nucleus', 'Isotope', 'Gyromagnetic ratio']}
-
-    rows = []
-    for i, g in enumerate(result.gfactors):
-        rows.append((g['symbol'], gyromagnetic_ratios[g['symbol']][0],
-                     f"{g['g']:.2f}"))
-    gyro_table['rows'] = rows
-
-    return gyro_table
-
-
-def webpanel(result, row, key_description):
-    from asr.database.browser import (WebPanel,
-                                      describe_entry)
-
-    hf_results = result.hyperfine
-    center = result.center
-    if center[0] is None:
-        center = [0, 0, 0]
-
-    atoms = row.toatoms()
-    args, distances = get_atoms_close_to_center(center, atoms)
-
-    hf_table = get_hf_table(hf_results, args)
-    gyro_table = get_gyro_table(row, result)
-
-    hyperfine = WebPanel(describe_entry('Hyperfine (HF) parameters',
-                                        panel_description),
-                         columns=[[hf_table], [gyro_table]],
-                         sort=42)
-
-    return [hyperfine]
-
-
-@prepare_result
-class HyperfineResult(ASRResult):
-    """Container for hyperfine coupling results."""
-
-    index: int
-    kind: str
-    magmom: float
-    eigenvalues: typing.Tuple[float, float, float]
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        index='Atom index.',
-        kind='Atom type.',
-        magmom='Magnetic moment.',
-        eigenvalues='Tuple of the three main HF components [MHz].'
-    )
-
-
-@prepare_result
-class GyromagneticResult(ASRResult):
-    """Container for gyromagnetic factor results."""
-
-    symbol: str
-    g: float
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        symbol='Atomic species.',
-        g='g-factor for the isotope.'
-    )
-
-    @classmethod
-    def fromdict(cls, dct):
-        gyro_results = []
-        for symbol, g in dct.items():
-            gyro_result = GyromagneticResult.fromdata(
-                symbol=symbol,
-                g=g)
-        gyro_results.append(gyro_result)
-
-        return gyro_results
-
-
-@prepare_result
-class Result(ASRResult):
-    """Container for asr.hyperfine results."""
-
-    hyperfine: typing.List[HyperfineResult]
-    gfactors: typing.List[GyromagneticResult]
-    center: typing.Tuple[float, float, float]
-    delta_E_hyp: float
-    sc_time: float
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        hyperfine='List of HyperfineResult objects for all atoms.',
-        gfactors='List of GyromagneticResult objects for each atom species.',
-        center='Center to show values on webpanel (only relevant for defects).',
-        delta_E_hyp='Hyperfine interaction energy [eV].',
-        sc_time='Spin coherence time [s].')
-
-    formats = {'ase_webpanel': webpanel}
-
-
 @command(module='asr.hyperfine',
          requires=['structure.json', 'gs.gpw'],
          dependencies=['asr.gs@calculate'],
          resources='1:1h',
-         returns=Result)
+         returns=HFResult)
 @option('--center', nargs=3, type=click.Tuple([float, float, float]),
         help='Tuple of three spatial coordinates that should be considered '
         'as the center (defaults to [0, 0, 0]).')
@@ -327,7 +106,7 @@ class Result(ASRResult):
         'calculated for a defect. If so, the recipe will automatically extract the '
         'defect position from asr.defect_symmetry.', is_flag=True)
 def main(center: typing.Sequence[float] = (0, 0, 0),
-         defect: bool = False) -> Result:
+         defect: bool = False) -> HFResult:
     """Calculate hyperfine splitting."""
     from gpaw import GPAW
     from ase.io import read
@@ -344,7 +123,7 @@ def main(center: typing.Sequence[float] = (0, 0, 0),
         def_res = read_json(symmetryresults)
         center = def_res['defect_center']
 
-    return Result.fromdata(
+    return HFResult.fromdata(
         hyperfine=hf_results,
         gfactors=gfactor_results,
         center=center,

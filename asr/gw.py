@@ -1,55 +1,8 @@
 """DFT GW."""
-from asr.core import command, option, read_json, ASRResult, prepare_result
-from ase.spectrum.band_structure import BandStructure
+from asr.core import command, option, read_json, ASRResult
 from click import Choice
-import typing
-from asr.database.browser import href, make_panel_description
-from asr.utils.gw_hse import GWHSEInfo
+from asr.paneldata import GwResult
 from asr.utils.kpts import get_kpts_size
-
-
-class GWInfo(GWHSEInfo):
-    method_name = 'G₀W₀'
-    name = 'gw'
-    bs_filename = 'gw-bs.png'
-
-    panel_description = make_panel_description(
-        """The quasiparticle (QP) band structure calculated within the G₀W₀
-approximation from a GGA starting point.
-The treatment of frequency dependence is numerically exact. For
-low-dimensional materials, a truncated Coulomb interaction is used to decouple
-periodic images. The QP energies are extrapolated as 1/N to the infinite plane
-wave basis set limit. Spin–orbit interactions are included
-in post-process.""",
-        articles=[
-            'C2DB',
-            href(
-                """F. Rasmussen et al. Efficient many-body calculations for
-two-dimensional materials using exact limits for the screened potential: Band gaps
-of MoS2, h-BN, and phosphorene, Phys. Rev. B 94, 155406 (2016)""",
-                'https://doi.org/10.1103/PhysRevB.94.155406',
-            ),
-            href(
-                """A. Rasmussen et al. Towards fully automatized GW band structure
-calculations: What we can learn from 60.000 self-energy evaluations,
-arXiv:2009.00314""",
-                'https://arxiv.org/abs/2009.00314v1'
-            ),
-        ]
-    )
-
-    band_gap_adjectives = 'quasi-particle'
-    summary_sort = 12
-
-    @staticmethod
-    def plot_bs(row, filename):
-        from asr.hse import plot_bs
-        data = row.data['results-asr.gw.json']
-        return plot_bs(row, filename=filename, bs_label='G₀W₀',
-                       data=data,
-                       efermi=data['efermi_gw_soc'],
-                       cbm=row.get('cbm_gw'),
-                       vbm=row.get('vbm_gw'))
 
 
 @command(requires=['gs.gpw'],
@@ -207,56 +160,12 @@ def empirical_mean_z(correctgw: bool = True,
     return results
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.utils.gw_hse import gw_hse_webpanel
-    return gw_hse_webpanel(result, row, key_descriptions, GWInfo(row),
-                           sort=16)
-
-
-@prepare_result
-class Result(ASRResult):
-
-    vbm_gw_nosoc: float
-    cbm_gw_nosoc: float
-    gap_dir_gw_nosoc: float
-    gap_gw_nosoc: float
-    kvbm_nosoc: typing.List[float]
-    kcbm_nosoc: typing.List[float]
-    vbm_gw: float
-    cbm_gw: float
-    gap_dir_gw: float
-    gap_gw: float
-    kvbm: typing.List[float]
-    kcbm: typing.List[float]
-    efermi_gw_nosoc: float
-    efermi_gw_soc: float
-    bandstructure: BandStructure
-    key_descriptions = {
-        "vbm_gw_nosoc": "Valence band maximum w/o soc. (G₀W₀) [eV]",
-        "cbm_gw_nosoc": "Conduction band minimum w/o soc. (G₀W₀) [eV]",
-        "gap_dir_gw_nosoc": "Direct gap w/o soc. (G₀W₀) [eV]",
-        "gap_gw_nosoc": "Gap w/o soc. (G₀W₀) [eV]",
-        "kvbm_nosoc": "k-point of G₀W₀ valence band maximum w/o soc",
-        "kcbm_nosoc": "k-point of G₀W₀ conduction band minimum w/o soc",
-        "vbm_gw": "Valence band maximum (G₀W₀) [eV]",
-        "cbm_gw": "Conduction band minimum (G₀W₀) [eV]",
-        "gap_dir_gw": "Direct band gap (G₀W₀) [eV]",
-        "gap_gw": "Band gap (G₀W₀) [eV]",
-        "kvbm": "k-point of G₀W₀ valence band maximum",
-        "kcbm": "k-point of G₀W₀ conduction band minimum",
-        "efermi_gw_nosoc": "Fermi level w/o soc. (G₀W₀) [eV]",
-        "efermi_gw_soc": "Fermi level (G₀W₀) [eV]",
-        "bandstructure": "GW bandstructure."
-    }
-    formats = {"ase_webpanel": webpanel}
-
-
 @command(requires=['gs_gw_nowfs.gpw',
                    'results-asr.gw@empirical_mean_z.json',
                    'results-asr.bandstructure.json'],
          dependencies=['asr.bandstructure', 'asr.gw@empirical_mean_z'],
-         returns=Result)
-def main() -> Result:
+         returns=GwResult)
+def main() -> GwResult:
     import numpy as np
     from gpaw import GPAW
     from asr.utils import fermi_level
@@ -346,7 +255,7 @@ def main() -> Result:
     results.update({'efermi_gw_nosoc': efermi_nosoc,
                     'efermi_gw_soc': efermi_soc})
 
-    return Result(data=results)
+    return GwResult(data=results)
 
 
 if __name__ == '__main__':

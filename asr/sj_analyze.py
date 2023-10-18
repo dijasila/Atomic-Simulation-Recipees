@@ -1,22 +1,10 @@
-from asr.core import command, ASRResult, prepare_result, option
-from asr.database.browser import make_panel_description, href
+import numpy as np
 from pathlib import Path
 from ase.io import Trajectory
-import numpy as np
-import typing
-
-
-panel_description = make_panel_description(
-    """
-Analysis of the thermodynamic stability of the defect using Slater-Janak
- transition state theory.
-""",
-    articles=[
-        href("""M. Pandey et al. Defect-tolerant monolayer transition metal
-dichalcogenides, Nano Letters, 16 (4) 2234 (2016)""",
-             'https://doi.org/10.1021/acs.nanolett.5b04513'),
-    ],
-)
+from asr.core import command, option
+from asr.paneldata import (
+    SJAnalyzeResult, PristineResults, StandardStateResult,
+    TransitionResults, TransitionValues, f)
 
 
 def get_transition_table(result, defstr):
@@ -82,157 +70,15 @@ def get_summary_table(result):
     return summary_table
 
 
-def get_formation_table(result, defstr):
-    from asr.database.browser import table, describe_entry
-
-    formation_table = table(result, 'Defect formation energy', [])
-    for element in result.eform:
-        formation_table['rows'].extend(
-            [[describe_entry(f'{defstr} (q = {element[1]:1d} @ VBM)',
-                             description='Formation energy for charge state q '
-                                         'at the valence band maximum [eV].'),
-              f'{element[0]:.2f} eV']])
-
-    return formation_table
-
-
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig, WebPanel,
-                                      describe_entry)
-
-    explained_keys = []
-    for key in ['eform']:
-        if key in result.key_descriptions:
-            key_description = result.key_descriptions[key]
-            explanation = key_description
-            explained_key = describe_entry(key, description=explanation)
-        else:
-            explained_key = key
-        explained_keys.append(explained_key)
-
-    defname = row.defect_name
-    defstr = f"{defname.split('_')[0]}<sub>{defname.split('_')[1]}</sub>"
-    formation_table_sum = get_summary_table(result)
-    formation_table = get_formation_table(result, defstr)
-    # defectinfo = row.data.get('asr.defectinfo.json')
-    transition_table = get_transition_table(result, defstr)
-
-    panel = WebPanel(
-        describe_entry('Formation energies and charge transition levels (Slater-Janak)',
-                       panel_description),
-        columns=[[describe_entry(fig('sj_transitions.png'),
-                                 'Slater-Janak calculated charge transition levels.'),
-                  transition_table],
-                 [describe_entry(fig('formation.png'),
-                                 'Formation energy diagram.'),
-                  formation_table]],
-        plot_descriptions=[{'function': plot_charge_transitions,
-                            'filenames': ['sj_transitions.png']},
-                           {'function': plot_formation_energies,
-                            'filenames': ['formation.png']}],
-        sort=29)
-
-    summary = {'title': 'Summary',
-               'columns': [[formation_table_sum],
-                           []],
-               'sort': 0}
-
-    return [panel, summary]
-
-
-@prepare_result
-class PristineResults(ASRResult):
-    """Container for pristine band gap results."""
-
-    vbm: float
-    cbm: float
-    evac: float
-
-    key_descriptions = dict(
-        vbm='Pristine valence band maximum [eV].',
-        cbm='Pristine conduction band minimum [eV]',
-        evac='Pristine vacuum level [eV]')
-
-
-@prepare_result
-class TransitionValues(ASRResult):
-    """Container for values of a specific charge transition level."""
-
-    transition: float
-    erelax: float
-    evac: float
-
-    key_descriptions = dict(
-        transition='Charge transition level [eV]',
-        erelax='Reorganization contribution  to the transition level [eV]',
-        evac='Vacuum level for halfinteger calculation [eV]')
-
-
-@prepare_result
-class TransitionResults(ASRResult):
-    """Container for charge transition level results."""
-
-    transition_name: str
-    transition_values: TransitionValues
-
-    key_descriptions = dict(
-        transition_name='Name of the charge transition (Initial State/Final State)',
-        transition_values='Container for values of a specific charge transition level.')
-
-
-@prepare_result
-class TransitionListResults(ASRResult):
-    """Container for all charge transition level results."""
-
-    transition_list: typing.List[TransitionResults]
-
-    key_descriptions = dict(
-        transition_list='List of TransitionResults objects.')
-
-
-@prepare_result
-class StandardStateResult(ASRResult):
-    """Container for results related to the standard state of the present defect."""
-
-    element: str
-    eref: float
-
-    key_descriptions = dict(
-        element='Atomic species.',
-        eref='Reference energy extracted from OQMD [eV].')
-
-
-@prepare_result
-class Result(ASRResult):
-    """Container for Slater Janak results."""
-
-    transitions: typing.List[TransitionResults]
-    pristine: PristineResults
-    eform: typing.List[typing.Tuple[float, int]]
-    standard_states: typing.List[StandardStateResult]
-    hof: float
-
-    key_descriptions = dict(
-        transitions='Charge transition levels with [transition energy, '
-                    'relax correction, reference energy] eV',
-        pristine='Container for pristine band gap results.',
-        eform='List of formation energy tuples (eform wrt. standard states [eV], '
-              'charge state)',
-        standard_states='List of StandardStateResult objects for each species.',
-        hof='Heat of formation for the pristine monolayer [eV]')
-
-    formats = {"ase_webpanel": webpanel}
-
-
 @command(module='asr.sj_analyze',
          requires=['sj_+0.5/gs.gpw', 'sj_-0.5/gs.gpw',
                    '../../unrelaxed.json', 'gs.gpw'],
          resources='24:2h',
-         returns=Result)
+         returns=SJAnalyzeResult)
 @option('--index', help='Specify index of the atom in the pristine supercell '
         'that you want to use as a potential reference. Will be chosen '
         'automatically if nothing is set.', type=int)
-def main(index: int = None) -> Result:
+def main(index: int = None) -> SJAnalyzeResult:
     """Calculate charge transition levels for defect systems.
 
     This recipe uses SJ theory to calculate charge transition levels for defect systems.
@@ -279,7 +125,7 @@ def main(index: int = None) -> Result:
     vbm = pristine['vbm']
     eform = calculate_formation_energies(eform, transition_list, vbm)
 
-    return Result.fromdata(eform=eform,
+    return SJAnalyzeResult.fromdata(eform=eform,
                            transitions=transition_list,
                            pristine=pristine,
                            standard_states=standard_states,
@@ -600,157 +446,6 @@ def order_transitions(transitions):
 
 def get_b(x, y, a):
     return y - a * x
-
-
-def f(x, a, b):
-    return a * x + b
-
-
-def plot_formation_energies(row, fname):
-    """Plot formation energies and transition levels within the gap."""
-    import matplotlib.pyplot as plt
-
-    colors = {'0': 'C0',
-              '1': 'C1',
-              '2': 'C2',
-              '3': 'C3',
-              '-1': 'C4',
-              '-2': 'C5',
-              '-3': 'C6',
-              '-4': 'C7',
-              '4': 'C8'}
-
-    data = row.data.get('results-asr.sj_analyze.json')
-
-    vbm = data['pristine']['vbm']
-    cbm = data['pristine']['cbm']
-    gap = abs(cbm - vbm)
-    eform = data['eform']
-    transitions = data['transitions']
-
-    fig, ax1 = plt.subplots()
-
-    ax1.axvspan(-20, 0, color='grey', alpha=0.5)
-    ax1.axvspan(gap, 20, color='grey', alpha=0.5)
-    ax1.axhline(0, color='black', linestyle='dotted')
-    ax1.axvline(gap, color='black', linestyle='solid')
-    ax1.axvline(0, color='black', linestyle='solid')
-    for element in eform:
-        ax1.plot([0, gap], [f(0, element[1], element[0]),
-                            f(gap, element[1], element[0])],
-                 color=colors[str(element[1])],
-                 label=element[1])
-
-    ax1.set_xlim(-0.2 * gap, gap + 0.2 * gap)
-    yrange = ax1.get_ylim()[1] - ax1.get_ylim()[0]
-    ax1.text(-0.1 * gap, 0.5 * yrange, 'VBM', ha='center',
-             va='center', rotation=90, weight='bold', color='white',
-             fontsize=12)
-    ax1.text(gap + 0.1 * gap, 0.5 * yrange, 'CBM', ha='center',
-             va='center', rotation=90, weight='bold', color='white',
-             fontsize=12)
-
-    tickslist = []
-    labellist = []
-    energies = []
-    for i, element in enumerate(transitions):
-        name = element['transition_name']
-        q = int(name.split('/')[-1])
-        if q < 0:
-            energy = (element['transition_values']['transition']
-                      - element['transition_values']['erelax']
-                      - element['transition_values']['evac'] - vbm)
-        elif q > 0:
-            energy = (element['transition_values']['transition']
-                      + element['transition_values']['erelax']
-                      - element['transition_values']['evac'] - vbm)
-        energies.append(energy)
-        if energy > 0 and energy < (gap):
-            tickslist.append(energy)
-            labellist.append(name)
-            ax1.axvline(energy, color='grey', linestyle='dotted')
-    energies.append(100)
-
-    ax2 = ax1.twiny()
-    ax2.set_xlim(ax1.get_xlim())
-    ax2.set_xticks([])
-    ax1.set_xlabel(r'$E_\mathrm{F} - E_\mathrm{VBM}}$ [eV]')
-    ax1.set_ylabel(r'$E^f$ (wrt. standard states) [eV]')
-    ax1.legend()
-
-    plt.tight_layout()
-
-    plt.savefig(fname)
-    plt.close()
-
-
-def plot_charge_transitions(row, fname):
-    """Plot calculated CTL along with the pristine bandgap."""
-    import matplotlib.pyplot as plt
-
-    colors = {'0': 'C0',
-              '1': 'C1',
-              '2': 'C2',
-              '3': 'C3',
-              '-1': 'C4',
-              '-2': 'C5',
-              '-3': 'C6',
-              '-4': 'C7',
-              '4': 'C8'}
-
-    data = row.data.get('results-asr.sj_analyze.json')
-
-    vbm = data['pristine']['vbm']
-    cbm = data['pristine']['cbm']
-
-    gap = abs(cbm - vbm)
-
-    transitions = data['transitions']
-
-    plt.xlim(-1, 1)
-    plt.ylim(-0.2 * gap, gap + 0.2 * gap)
-    plt.xticks([], [])
-
-    plt.axhspan(-5, 0, color='grey', alpha=0.5)
-    plt.axhspan(gap, gap + 5, color='grey', alpha=0.5)
-    plt.axhline(0, color='black', linestyle='solid')
-    plt.axhline(gap, color='black', linestyle='solid')
-    plt.text(0, -0.1 * gap, 'VBM', color='white',
-             ha='center', va='center', weight='bold',
-             fontsize=12)
-    plt.text(0, gap + 0.1 * gap, 'CBM', color='white',
-             ha='center', va='center', weight='bold',
-             fontsize=12)
-
-    i = 1
-    for trans in transitions:
-        name = trans['transition_name']
-        q = int(name.split('/')[-1])
-        q_new = int(name.split('/')[0])
-        if q > 0:
-            y = (trans['transition_values']['transition']
-                 + trans['transition_values']['erelax']
-                 - trans['transition_values']['evac'])
-            color1 = colors[str(q)]
-            color2 = colors[str(q_new)]
-        elif q < 0:
-            y = (trans['transition_values']['transition']
-                 - trans['transition_values']['erelax']
-                 - trans['transition_values']['evac'])
-            color1 = colors[str(q)]
-            color2 = colors[str(q_new)]
-        if y <= (cbm + 0.2 * gap) and y >= (vbm - 0.2 * gap):
-            plt.plot(np.linspace(-0.9, 0.5, 20), 20 * [y - vbm],
-                     label=trans['transition_name'],
-                     color=color1, mec=color2, mfc=color2, marker='s', markersize=3)
-            i += 1
-
-    plt.legend(loc='center right')
-    plt.ylabel(r'$E - E_{\mathrm{VBM}}$ [eV]')
-    plt.yticks()
-    plt.tight_layout()
-    plt.savefig(fname)
-    plt.close()
 
 
 if __name__ == '__main__':

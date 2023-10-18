@@ -3,25 +3,7 @@ from pathlib import Path
 from ase import Atoms
 from ase.db.row import AtomsRow
 import numpy as np
-
-
-def get_dimtypes():
-    """Create a list of all dimensionality types."""
-    from itertools import product
-    s = set(product([0, 1], repeat=4))
-    s2 = sorted(s, key=lambda x: (sum(x), *[-t for t in x]))[1:]
-    string = "0123"
-    return ["".join(x for x, y in zip(string, s3) if y) + "D" for s3 in s2]
-
-
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
-    dimtable = table(row, 'Dimensionality scores',
-                     [f'dim_score_{dimtype}' for dimtype in get_dimtypes()],
-                     key_descriptions, 2)
-    panel = {'title': 'Dimensionality analysis',
-             'columns': [[dimtable], [fig('dimensionality-histogram.png')]]}
-    return [panel]
+from asr.paneldata import get_dimtypes
 
 
 def plot_dimensionality_histogram(row: AtomsRow, path: Path) -> None:

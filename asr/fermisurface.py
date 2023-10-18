@@ -1,16 +1,6 @@
 """Fermi surfaces."""
-from asr.core import command, ASRResult, prepare_result, option
-from asr.database.browser import fig, make_panel_description, describe_entry
-
-
-panel_description = make_panel_description(
-    """The Fermi surface calculated with spin–orbit interactions. The expectation
-value of S_i (where i=z for non-magnetic materials and otherwise is the
-magnetic easy axis) indicated by the color code.""",
-    articles=[
-        'C2DB',
-    ],
-)
+from asr.core import command, option
+from asr.paneldata import FermiSurfaceResult
 
 
 def bz_vertices(cell):
@@ -68,62 +58,12 @@ def find_contours(eigs_nk, bzk_kv, s_nk=None):
     return contours
 
 
-def webpanel(result, row, key_descriptions):
-
-    panel = {'title': describe_entry('Fermi surface', panel_description),
-             'columns': [[fig('fermi_surface.png')]],
-             'plot_descriptions': [{'function': plot_fermi,
-                                    'filenames': ['fermi_surface.png']}],
-             'sort': 13}
-
-    return [panel]
-
-
-def plot_fermi(row, fname, sfs=1, dpi=200):
-    from ase.geometry.cell import Cell
-    from matplotlib import pyplot as plt
-    from asr.utils.symmetry import c2db_symmetry_eps
-    cell = Cell(row.cell)
-    lat = cell.get_bravais_lattice(pbc=row.pbc, eps=c2db_symmetry_eps)
-    plt.figure(figsize=(5, 4))
-    ax = lat.plot_bz(vectors=False, pointstyle={'c': 'k', 'marker': '.'})
-    add_fermi(row, ax=ax, s=sfs)
-    plt.tight_layout()
-    plt.savefig(fname, dpi=dpi)
-
-
-def add_fermi(row, ax, s=0.25):
-    from matplotlib import pyplot as plt
-    import matplotlib.colors as colors
-    import numpy as np
-    verts = row.data['results-asr.fermisurface.json']['contours'].copy()
-    normalize = colors.Normalize(vmin=-1, vmax=1)
-    verts[:, :2] /= (2 * np.pi)
-    im = ax.scatter(verts[:, 0], verts[:, 1], c=verts[:, -1],
-                    s=s, cmap='viridis', marker=',',
-                    norm=normalize, alpha=1, zorder=2)
-
-    sdir = row.get('spin_axis', 'z')
-    cbar = plt.colorbar(im, ticks=[-1, -0.5, 0, 0.5, 1])
-    cbar.ax.tick_params()
-    cbar.set_label(r'$\langle S_{} \rangle $'.format(sdir))
-
-
-@prepare_result
-class Result(ASRResult):
-
-    contours: list
-    key_descriptions = {'contours': 'List of Fermi surface contours.'}
-
-    formats = {"ase_webpanel": webpanel}
-
-
 @command('asr.fermisurface',
-         returns=Result,
+         returns=FermiSurfaceResult,
          requires=['gs.gpw', 'results-asr.structureinfo.json'],
          dependencies=['asr.gs', 'asr.structureinfo'])
 @option('--shift', help='Shift of Fermi level in eV.', type=float)
-def main(shift: float = 0.0) -> Result:
+def main(shift: float = 0.0) -> FermiSurfaceResult:
     import numpy as np
     from gpaw import GPAW
     from asr.utils.gpw2eigs import gpw2eigs

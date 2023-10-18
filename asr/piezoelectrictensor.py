@@ -5,98 +5,12 @@ tensor. The central recipe of this module is
 :func:`asr.piezoelectrictensor.main`.
 
 """
-
-import itertools
-import typing
-from asr.core import command, option, DictStr, ASRResult, prepare_result
-from asr.database.browser import matrixtable, make_panel_description, describe_entry
-
-
-panel_description = make_panel_description("""
-The piezoelectric tensor, c, is a rank-3 tensor relating the macroscopic
-polarization to an applied strain. In Voigt notation, c is expressed as a 3xN
-matrix relating the (x,y,z) components of the polarizability to the N
-independent components of the strain tensor. The polarization in a periodic
-direction is calculated as an integral over Berry phases. The polarization in a
-non-periodic direction is obtained by direct evaluation of the first moment of
-the electron density.
-""")
-
-
-all_voigt_labels = ['xx', 'yy', 'zz', 'yz', 'xz', 'xy']
-all_voigt_indices = [[0, 1, 2, 1, 0, 0],
-                     [0, 1, 2, 2, 2, 1]]
-
-
-def get_voigt_mask(pbc_c: typing.List[bool]):
-    non_pbc_axes = set(char for char, pbc in zip('xyz', pbc_c) if not pbc)
-
-    mask = [False
-            if set(voigt_label).intersection(non_pbc_axes)
-            else True
-            for voigt_label in all_voigt_labels]
-    return mask
-
-
-def get_voigt_indices(pbc: typing.List[bool]):
-    mask = get_voigt_mask(pbc)
-    return [list(itertools.compress(indices, mask)) for indices in all_voigt_indices]
-
-
-def get_voigt_labels(pbc: typing.List[bool]):
-    mask = get_voigt_mask(pbc)
-    return list(itertools.compress(all_voigt_labels, mask))
-
-
-def webpanel(result, row, key_descriptions):
-
-    piezodata = row.data['results-asr.piezoelectrictensor.json']
-    e_vvv = piezodata['eps_vvv']
-    e0_vvv = piezodata['eps_clamped_vvv']
-
-    voigt_indices = get_voigt_indices(row.pbc)
-    voigt_labels = get_voigt_labels(row.pbc)
-
-    e_ij = e_vvv[:,
-                 voigt_indices[0],
-                 voigt_indices[1]]
-    e0_ij = e0_vvv[:,
-                   voigt_indices[0],
-                   voigt_indices[1]]
-
-    etable = matrixtable(e_ij,
-                         columnlabels=voigt_labels,
-                         rowlabels=['x', 'y', 'z'],
-                         title='c<sub>ij</sub> (e/Å<sup>dim-1</sup>)')
-
-    e0table = matrixtable(
-        e0_ij,
-        columnlabels=voigt_labels,
-        rowlabels=['x', 'y', 'z'],
-        title='c<sup>clamped</sup><sub>ij</sub> (e/Å<sup>dim-1</sup>)')
-
-    columns = [[etable], [e0table]]
-
-    panel = {'title': describe_entry('Piezoelectric tensor',
-                                     panel_description),
-             'columns': columns}
-
-    return [panel]
-
-
-@prepare_result
-class Result(ASRResult):
-
-    eps_vvv: typing.List[typing.List[typing.List[float]]]
-    eps_clamped_vvv: typing.List[typing.List[typing.List[float]]]
-
-    key_descriptions = {'eps_vvv': 'Piezoelectric tensor.',
-                        'eps_clamped_vvv': 'Piezoelectric tensor.'}
-    formats = {"ase_webpanel": webpanel}
+from asr.core import command, option, DictStr
+from asr.paneldata import PiezoEleTenResult
 
 
 @command(module="asr.piezoelectrictensor",
-         returns=Result)
+         returns=PiezoEleTenResult)
 @option('--strain-percent', help='Strain fraction.', type=float)
 @option('--calculator', help='Calculator parameters.', type=DictStr())
 def main(strain_percent: float = 1,
@@ -113,7 +27,7 @@ def main(strain_percent: float = 1,
              'symmetry': 'off',
              'txt': 'formalpol.txt',
              'charge': 0
-         }) -> Result:
+         }) -> PiezoEleTenResult:
     """Calculate piezoelectric tensor.
 
     This recipe calculates the clamped and full piezoelectric

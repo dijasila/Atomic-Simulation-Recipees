@@ -1,36 +1,8 @@
 import typing
 import click
 from pathlib import Path
-from asr.core import command, option, ASRResult, prepare_result
-
-
-@prepare_result
-class WaveFunctionResult(ASRResult):
-    """Container for results of specific wavefunction for one spin channel."""
-
-    state: int
-    spin: int
-    energy: float
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        state='State index.',
-        spin='Spin index (0 or 1).',
-        energy='Energy of the state (ref. to the vacuum level in 2D) [eV].')
-
-
-@prepare_result
-class Result(ASRResult):
-    """Container for asr.get_wfs results."""
-
-    wfs: typing.List[WaveFunctionResult]
-    above_below: typing.Tuple[bool, bool]
-    eref: float
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        wfs='List of WaveFunctionResult objects for all states.',
-        above_below='States within the gap above and below EF? '
-                    '(ONLY for defect systems).',
-        eref='Energy reference (vacuum level in 2D, 0 otherwise) [eV].')
+from asr.core import command, option
+from asr.paneldata import WaveFunctionResult, WfsResult
 
 
 @command(module='asr.get_wfs',
@@ -38,7 +10,7 @@ class Result(ASRResult):
                    'results-asr.gs.json'],
          dependencies=['asr.gs@calculate', 'asr.gs'],
          resources='1:10m',
-         returns=Result)
+         returns=WfsResult)
 @option('--state', help='Specify state index that you want to '
         'write out. This option will not be used when '
         '"--get-gapstates" is used.', type=int)
@@ -53,7 +25,7 @@ class Result(ASRResult):
         'with asr.setup.defects).', is_flag=True)
 def main(state: int = 0,
          erange: typing.Tuple[float, float] = (0, 0),
-         get_gapstates: bool = False) -> Result:
+         get_gapstates: bool = False) -> WfsResult:
     """
     Perform fixed density calculation and write out wavefunctions.
 
@@ -111,7 +83,7 @@ def main(state: int = 0,
             wfcubefile = WFCubeFile(spin=spin, band=state, wf_data=wf, calc=calc)
             wfcubefile.write_to_cubefile()
 
-    return Result.fromdata(
+    return WfsResult.fromdata(
         wfs=wfs_results,
         above_below=above_below,
         eref=eref)

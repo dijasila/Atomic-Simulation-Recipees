@@ -4,31 +4,15 @@ Deprecated: Please use the more efficient and optimized asr.phonopy
 recipe for calculating phonon properties instead.
 
 """
-import typing
-
 import numpy as np
 
 from ase.io import read
 from ase.phonons import Phonons
-from ase.dft.kpoints import BandPath
 from ase.parallel import paropen
 
 from asr.utils.symmetry import c2db_symmetry_eps
-from asr.core import command, option, ASRResult, prepare_result
-from asr.database.browser import (
-    table, fig, describe_entry, make_panel_description)
-
-panel_description = make_panel_description(
-    """
-The Gamma-point phonons of a supercell containing the primitive unit cell
-repeated 2 times along each periodic direction. In the Brillouin zone (BZ) of
-the primitive cell, this yields the phonons at the Gamma-point and
-high-symmetry points at the BZ boundary. A negative eigenvalue of the Hessian
-matrix (the second derivative of the energy w.r.t. to atomic displacements)
-indicates a dynamical instability.
-""",
-    articles=['C2DB'],
-)
+from asr.core import command, option, ASRResult
+from asr.paneldata import PhononResult
 
 
 @command('asr.phonons',
@@ -84,48 +68,13 @@ def requires():
     return ['results-asr.phonons@calculate.json']
 
 
-def webpanel(result, row, key_descriptions):
-    phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
-
-    panel = {'title': describe_entry('Phonons', panel_description),
-             'columns': [[fig('phonon_bs.png')], [phonontable]],
-             'plot_descriptions': [{'function': plot_bandstructure,
-                                    'filenames': ['phonon_bs.png']}],
-             'sort': 3}
-
-    return [panel]
-
-
-@prepare_result
-class Result(ASRResult):
-
-    minhessianeig: float
-    dynamic_stability_phonons: str
-    q_qc: typing.List[typing.Tuple[float, float, float]]
-    omega_kl: typing.List[typing.List[float]]
-    path: BandPath
-    modes_kl: typing.List[typing.List[float]]
-    interp_freqs_kl: typing.List[typing.List[float]]
-
-    key_descriptions = {
-        "minhessianeig": "Minimum eigenvalue of Hessian [eV/Å²]",
-        "dynamic_stability_phonons": "Phonon dynamic stability (low/high)",
-        "q_qc": "List of momenta consistent with supercell.",
-        "omega_kl": "Phonon frequencies.",
-        "modes_kl": "Phonon modes.",
-        "interp_freqs_kl": "Interpolated phonon frequencies.",
-        "path": "Interpolated phonon bandstructure path.",
-    }
-    formats = {"ase_webpanel": webpanel}
-
-
 @command('asr.phonons',
          requires=requires,
-         returns=Result,
+         returns=PhononResult,
          dependencies=['asr.phonons@calculate'])
 @option('--mingo/--no-mingo', is_flag=True,
         help='Perform Mingo correction of force constant matrix')
-def main(mingo: bool = True) -> Result:
+def main(mingo: bool = True) -> PhononResult:
     from asr.core import read_json
     calculateresult = read_json('results-asr.phonons@calculate.json')
     atoms = read('structure.json')
@@ -212,32 +161,6 @@ def plot_phonons(row, fname):
     plt.tight_layout()
     plt.savefig(fname)
     plt.close()
-
-
-def plot_bandstructure(row, fname):
-    from matplotlib import pyplot as plt
-    from ase.spectrum.band_structure import BandStructure
-    data = row.data.get('results-asr.phonons.json')
-    path = data['path']
-    energies = data['interp_freqs_kl'] * 1e3
-    exact_indices = []
-    for q_c in data['q_qc']:
-        diff_kc = path.kpts - q_c
-        diff_kc -= np.round(diff_kc)
-        inds = np.argwhere(np.all(np.abs(diff_kc) < 1e-3, 1))
-        exact_indices.extend(inds.tolist())
-
-    en_exact = np.zeros_like(energies) + np.nan
-    for ind in exact_indices:
-        en_exact[ind] = energies[ind]
-
-    bs = BandStructure(path=path, energies=en_exact[None])
-    bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C1'],
-            emin=np.min(energies * 1.1), emax=np.max([np.max(energies * 1.15),
-                                                      0.0001]),
-            ylabel='Phonon frequencies [meV]')
-    plt.tight_layout()
-    plt.savefig(fname)
 
 
 def mingocorrection(Cin_NVV, atoms, supercell):

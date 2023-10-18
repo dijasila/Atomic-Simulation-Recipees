@@ -1,75 +1,17 @@
+from pathlib import Path
 from ase.formula import Formula
-from asr.core import (command, ASRResult, prepare_result, chdir, read_json)
-from asr.database.browser import WebPanel, table
+from asr.core import (command, chdir, read_json)
 from asr.database.material_fingerprint import main as material_fingerprint
 from asr.defect_symmetry import DefectInfo
-from pathlib import Path
-import typing
-
-
-def webpanel(result, row, key_description):
-    baselink = 'https://cmrdb.fysik.dtu.dk/qpod/row/'
-
-    # initialize table for charged and neutral systems
-    charged_table = table(row, 'Other charge states', [])
-    neutral_table = table(row, 'Other defects', [])
-    # fill in values for the two tables from the result object
-    charged_table = extend_table(charged_table, result, 'charged', baselink)
-    neutral_table = extend_table(neutral_table, result, 'neutral', baselink)
-    neutral_table = extend_table(neutral_table, result, 'pristine', baselink)
-
-    # define webpanel
-    panel = WebPanel('Other defects',
-                     columns=[[charged_table], [neutral_table]],
-                     sort=45)
-
-    return [panel]
-
-
-def extend_table(table, result, resulttype, baselink):
-    if resulttype == 'pristine':
-        tmpresult = result.pristinelinks
-    elif resulttype == 'neutral':
-        tmpresult = result.neutrallinks
-    elif resulttype == 'charged':
-        tmpresult = result.chargedlinks
-    else:
-        raise RuntimeError('did not find {resulttype} results!')
-
-    for element in tmpresult:
-        if element[1].startswith('V'):
-            linkstring = element[1].replace('V', 'v', 1)
-        else:
-            linkstring = element[1]
-        table['rows'].extend(
-            [[f'{linkstring}',
-              f'<a href="{baselink}{element[0]}">link</a>']])
-
-    return table
-
-
-@prepare_result
-class Result(ASRResult):
-    """Container for defectlinks results."""
-
-    chargedlinks: typing.List
-    neutrallinks: typing.List
-    pristinelinks: typing.List
-
-    key_descriptions = dict(
-        chargedlinks='Links tuple for the charged states of the same defect.',
-        neutrallinks='Links tuple for other defects within the same material.',
-        pristinelinks='Link tuple for pristine material.')
-
-    formats = {'ase_webpanel': webpanel}
+from asr.paneldata import DefectLinksResult
 
 
 @command(module='asr.defectlinks',
          # requires=['structure.json'],
          # dependencies=['asr.relax'],
          resources='1:1h',
-         returns=Result)
-def main() -> Result:
+         returns=DefectLinksResult)
+def main() -> DefectLinksResult:
     """Generate QPOD database links for the defect project.
 
     This recipe is dependent on the folder structure created by
@@ -101,7 +43,7 @@ def main() -> Result:
         uid = get_uid_from_fingerprint(pristine)
         pristinelinks.append((uid, 'pristine material'))
 
-    return Result.fromdata(
+    return DefectLinksResult.fromdata(
         chargedlinks=chargedlinks,
         neutrallinks=neutrallinks,
         pristinelinks=pristinelinks)

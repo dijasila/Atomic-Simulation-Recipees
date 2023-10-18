@@ -1,12 +1,10 @@
 """Projected density of states."""
-from asr.core import command, option, read_json, ASRResult, prepare_result
-from collections import defaultdict
-import typing
-
 import numpy as np
+from collections import defaultdict
 from ase import Atoms
-
 from asr.utils import magnetic_atoms
+from asr.core import command, option, read_json, ASRResult
+from asr.paneldata import PDResult, PdosResult
 
 
 # Recipe tests:
@@ -54,51 +52,6 @@ tests.append({'description': 'Test the pdos of Si (cores=2)',
                       'asr run "database.browser --only-figures"']})
 
 
-# ---------- Webpanel ---------- #
-
-
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (fig,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
-    from asr.utils.hacks import gs_xcname_from_row
-
-    # PDOS figure
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.pdos@calculate')
-    dependencies_parameter_descriptions = ''
-    for dependency, exclude_keys in zip(
-            ['asr.gs@calculate'],
-            [set(['txt', 'fixdensity', 'verbose', 'symmetry',
-                  'idiotproof', 'maxiter', 'hund', 'random',
-                  'experimental', 'basis', 'setups'])]
-    ):
-        epd = entry_parameter_description(
-            row.data,
-            dependency,
-            exclude_keys=exclude_keys)
-        dependencies_parameter_descriptions += f'\n{epd}'
-    explanation = ('Orbital projected density of states without spin–orbit coupling\n\n'
-                   + parameter_description
-                   + dependencies_parameter_descriptions)
-
-    xcname = gs_xcname_from_row(row)
-    # Projected band structure and DOS panel
-    panel = WebPanel(
-        title=f'Projected band structure and DOS ({xcname})',
-        columns=[[],
-                 [describe_entry(fig(pdos_figfile, link='empty'),
-                                 description=explanation)]],
-        plot_descriptions=[{'function': plot_pdos_nosoc,
-                            'filenames': [pdos_figfile]}],
-        sort=13)
-
-    return [panel]
-
-
-pdos_figfile = 'scf-pdos_nosoc.png'
-
 # ---------- Main functionality ---------- #
 
 
@@ -122,48 +75,12 @@ def calculate(kptdensity: float = 20.0, emptybands: int = 20) -> ASRResult:
 # ----- Fast steps ----- #
 
 
-@prepare_result
-class PdosResult(ASRResult):
-
-    efermi: float
-    symbols: typing.List[str]
-    energies: typing.List[float]
-    pdos_syl: typing.List[float]
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        efermi="Fermi level [eV] of ground state with dense k-mesh.",
-        symbols="Chemical symbols.",
-        energies="Energy mesh of pdos results.",
-        pdos_syl=("Projected density of states [states / eV] for every set of keys "
-                  "'s,y,l', that is spin, symbol and orbital l-quantum number.")
-    )
-
-
-@prepare_result
-class Result(ASRResult):
-
-    dos_at_ef_nosoc: float
-    dos_at_ef_soc: float
-    pdos_nosoc: PdosResult
-    pdos_soc: PdosResult
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        dos_at_ef_nosoc=("Density of states at the Fermi "
-                         "level w/o soc [states / (unit cell * eV)]"),
-        dos_at_ef_soc=("Density of states at the Fermi "
-                       "level [states / (unit cell * eV)])"),
-        pdos_nosoc="Projected density of states w/o soc.",
-        pdos_soc="Projected density of states"
-    )
-    formats = {"ase_webpanel": webpanel}
-
-
 @command(module='asr.pdos',
          requires=['results-asr.gs.json', 'pdos.gpw'],
          tests=tests,
          dependencies=['asr.gs', 'asr.pdos@calculate'],
-         returns=Result)
-def main() -> Result:
+         returns=PDResult)
+def main() -> PDResult:
     from gpaw import GPAW
     from ase.parallel import parprint
     from asr.magnetic_anisotropy import get_spin_axis
@@ -304,195 +221,6 @@ def get_l_a(zs):
         else:
             l_a[a] = 'spd' if mag else 'sp'
     return l_a
-
-
-# ---------- Plotting ---------- #
-
-
-def get_ordered_syl_dict(dct_syl, symbols):
-    """Order a dictionary with syl keys.
-
-    Parameters
-    ----------
-    dct_syl : dict
-        Dictionary with keys f'{s},{y},{l}'
-        (spin (s), chemical symbol (y), angular momentum (l))
-    symbols : list
-        Sort symbols after index in this list
-
-    Returns
-    -------
-    outdct_syl : OrderedDict
-        Sorted dct_syl
-
-    """
-    from collections import OrderedDict
-
-    # Setup ssili (spin, symbol index, angular momentum index) key
-    def ssili(syl):
-        s, y, L = syl.split(',')
-        # Symbols list can have multiple entries of the same symbol
-        # ex. ['O', 'Fe', 'O']. In this case 'O' will have index 0 and
-        # 'Fe' will have index 1.
-        si = symbols.index(y)
-        li = ['s', 'p', 'd', 'f'].index(L)
-        return f'{s}{si}{li}'
-
-    return OrderedDict(sorted(dct_syl.items(), key=lambda t: ssili(t[0])))
-
-
-def get_yl_colors(dct_syl):
-    """Get the color indices corresponding to each symbol and angular momentum.
-
-    Parameters
-    ----------
-    dct_syl : OrderedDict
-        Ordered dictionary with keys f'{s},{y},{l}'
-        (spin (s), chemical symbol (y), angular momentum (l))
-
-    Returns
-    -------
-    color_yl : OrderedDict
-        Color strings for each symbol and angular momentum
-
-    """
-    from collections import OrderedDict
-
-    color_yl = OrderedDict()
-    c = 0
-    for key in dct_syl:
-        # Do not differentiate spin by color
-        if int(key[0]) == 0:  # if spin is 0
-            color_yl[key[2:]] = 'C{}'.format(c)
-            c += 1
-            c = c % 10  # only 10 colors available in cycler
-
-    return color_yl
-
-
-def plot_pdos_nosoc(*args, **kwargs):
-    return plot_pdos(*args, soc=False, **kwargs)
-
-
-def plot_pdos_soc(*args, **kwargs):
-    return plot_pdos(*args, soc=True, **kwargs)
-
-
-def plot_pdos(row, filename, soc=True,
-              figsize=(5.5, 5), lw=1):
-
-    def smooth(y, npts=3):
-        return np.convolve(y, np.ones(npts) / npts, mode='same')
-
-    # Check if pdos data is stored in row
-    results = 'results-asr.pdos.json'
-    pdos = 'pdos_soc' if soc else 'pdos_nosoc'
-    if results in row.data and pdos in row.data[results]:
-        data = row.data[results][pdos]
-    else:
-        return
-
-    import matplotlib.pyplot as plt
-    from matplotlib import rcParams
-    import matplotlib.patheffects as path_effects
-
-    # Extract raw data
-    symbols = data['symbols']
-    pdos_syl = get_ordered_syl_dict(data['pdos_syl'], symbols)
-    e_e = data['energies'].copy() - row.get('evac', 0)
-    ef = data['efermi']
-
-    # Find energy range to plot in
-    if soc:
-        emin = row.get('vbm', ef) - 3 - row.get('evac', 0)
-        emax = row.get('cbm', ef) + 3 - row.get('evac', 0)
-    else:
-        nosoc_data = row.data['results-asr.gs.json']['gaps_nosoc']
-        vbmnosoc = nosoc_data.get('vbm', ef)
-        cbmnosoc = nosoc_data.get('cbm', ef)
-
-        if vbmnosoc is None:
-            vbmnosoc = ef
-
-        if cbmnosoc is None:
-            cbmnosoc = ef
-
-        emin = vbmnosoc - 3 - row.get('evac', 0)
-        emax = cbmnosoc + 3 - row.get('evac', 0)
-
-    # Set up energy range to plot in
-    i1, i2 = abs(e_e - emin).argmin(), abs(e_e - emax).argmin()
-
-    # Get color code
-    color_yl = get_yl_colors(pdos_syl)
-
-    # Figure out if pdos has been calculated for more than one spin channel
-    spinpol = False
-    for k in pdos_syl.keys():
-        if int(k[0]) == 1:
-            spinpol = True
-            break
-
-    # Set up plot
-    plt.figure(figsize=figsize)
-    ax = plt.gca()
-
-    # Plot pdos
-    pdosint_s = defaultdict(float)
-    for key in pdos_syl:
-        pdos = pdos_syl[key]
-        spin, symbol, lstr = key.split(',')
-        spin = int(spin)
-        sign = 1 if spin == 0 else -1
-
-        # Integrate pdos to find suiting pdos range
-        pdosint_s[spin] += np.trapz(y=pdos[i1:i2], x=e_e[i1:i2])
-
-        # Label atomic symbol and angular momentum
-        if spin == 0:
-            label = '{} ({})'.format(symbol, lstr)
-        else:
-            label = None
-
-        ax.plot(smooth(pdos) * sign, e_e,
-                label=label, color=color_yl[key[2:]])
-
-    ax.axhline(ef - row.get('evac', 0), color='k', ls=':')
-
-    # Set up axis limits
-    ax.set_ylim(emin, emax)
-    if spinpol:  # Use symmetric limits
-        xmax = max(pdosint_s.values())
-        ax.set_xlim(-xmax * 0.5, xmax * 0.5)
-    else:
-        ax.set_xlim(0, pdosint_s[0] * 0.5)
-
-    # Annotate E_F
-    xlim = ax.get_xlim()
-    x0 = xlim[0] + (xlim[1] - xlim[0]) * 0.99
-    text = plt.text(x0, ef - row.get('evac', 0),
-                    r'$E_\mathrm{F}$',
-                    fontsize=rcParams['font.size'] * 1.25,
-                    ha='right',
-                    va='bottom')
-
-    text.set_path_effects([
-        path_effects.Stroke(linewidth=3, foreground='white', alpha=0.5),
-        path_effects.Normal()
-    ])
-
-    ax.set_xlabel('Projected DOS [states / eV]')
-    if row.get('evac') is not None:
-        ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
-    else:
-        ax.set_ylabel(r'$E$ [eV]')
-
-    # Set up legend
-    plt.legend(bbox_to_anchor=(0., 1.02, 1., 0.), loc='lower left',
-               ncol=3, mode="expand", borderaxespad=0.)
-
-    plt.savefig(filename, bbox_inches='tight')
-    plt.close()
 
 
 if __name__ == '__main__':

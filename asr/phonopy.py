@@ -1,16 +1,15 @@
 """Phonopy phonon band structure."""
 import typing
+import numpy as np
 from pathlib import Path
 
-import numpy as np
-
-from ase.parallel import world
 from ase.io import read
-from ase.dft.kpoints import BandPath
+from ase.parallel import world
 
 from asr.utils.symmetry import c2db_symmetry_eps
 from asr.core import (command, option, DictStr, ASRResult,
-                      read_json, write_json, prepare_result)
+                      read_json, write_json)
+from asr.paneldata import PhonopyResult
 
 
 def lattice_vectors(N_c):
@@ -181,83 +180,14 @@ def requires():
     return ["results-asr.phonopy@calculate.json"]
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import table, fig
-
-    phonontable = table(row, "Property", ["minhessianeig"], key_descriptions)
-
-    panel = {
-        "title": "Phonon bandstructure",
-        "columns": [[fig("phonon_bs.png")], [phonontable]],
-        "plot_descriptions": [
-            {"function": plot_bandstructure, "filenames": ["phonon_bs.png"]}
-        ],
-        "sort": 3,
-    }
-
-    dynstab = row.get("dynamic_stability_level")
-    stabilities = {1: "low", 2: "medium", 3: "high"}
-    high = "Minimum eigenvalue of Hessian > -0.01 meV/Å² AND elastic const. > 0"
-    medium = "Minimum eigenvalue of Hessian > -2 eV/Å² AND elastic const. > 0"
-    low = "Minimum eigenvalue of Hessian < -2 eV/Å² OR elastic const. < 0"
-    row = [
-        "Phonons",
-        '<a href="#" data-toggle="tooltip" data-html="true" '
-        + 'title="LOW: {}&#13;MEDIUM: {}&#13;HIGH: {}">{}</a>'.format(
-            low, medium, high, stabilities[dynstab].upper()
-        ),
-    ]
-
-    summary = {
-        "title": "Summary",
-        "columns": [
-            [
-                {
-                    "type": "table",
-                    "header": ["Stability", "Category"],
-                    "rows": [row],
-                }
-            ]
-        ],
-    }
-    return [panel, summary]
-
-
-@prepare_result
-class Result(ASRResult):
-    omega_kl: typing.List[typing.List[float]]
-    minhessianeig: float
-    eigs_kl: typing.List[typing.List[complex]]
-    q_qc: typing.List[typing.Tuple[float, float, float]]
-    phi_anv: typing.List[typing.List[typing.List[float]]]
-    u_klav: typing.List[typing.List[float]]
-    irr_l: typing.List[str]
-    path: BandPath
-    dynamic_stability_level: int
-
-    key_descriptions = {
-        "omega_kl": "Phonon frequencies.",
-        "minhessianeig": "Minimum eigenvalue of Hessian [eV/Å²]",
-        "eigs_kl": "Dynamical matrix eigenvalues.",
-        "q_qc": "List of momenta consistent with supercell.",
-        "phi_anv": "Force constants.",
-        "u_klav": "Phonon modes.",
-        "irr_l": "Phonon irreducible representations.",
-        "path": "Phonon bandstructure path.",
-        "dynamic_stability_level": "Phonon dynamic stability (1,2,3)",
-    }
-
-    formats = {"ase_webpanel": webpanel}
-
-
 @command(
     "asr.phonopy",
     requires=requires,
-    returns=Result,
+    returns=PhonopyResult,
     dependencies=["asr.phonopy@calculate"],
 )
 @option("--rc", type=float, help="Cutoff force constants matrix")
-def main(rc: float = None) -> Result:
+def main(rc: float = None) -> PhonopyResult:
     from phonopy import Phonopy
     from phonopy.structure.atoms import PhonopyAtoms
     from phonopy.units import THzToEv

@@ -1,5 +1,6 @@
 import numpy as np
-from asr.core import command, option, ASRResult, prepare_result
+from asr.core import command, option, ASRResult
+from asr.paneldata import ExchangeResult
 
 
 @command(module='asr.exchange',
@@ -196,68 +197,11 @@ def get_parameters(gs, exchange, txt=False,
     return J, A, B, S, N
 
 
-def webpanel(result, row, key_descriptions):
-    from asr.database.browser import (table,
-                                      entry_parameter_description,
-                                      describe_entry, WebPanel)
-    if row.get('magstate', 'NM') == 'NM':
-        return []
-
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.exchange@calculate')
-    explanation_J = ('The nearest neighbor exchange coupling\n\n'
-                     + parameter_description)
-    explanation_lam = ('The nearest neighbor isotropic exchange coupling\n\n'
-                       + parameter_description)
-    explanation_A = ('The single ion anisotropy\n\n'
-                     + parameter_description)
-    explanation_spin = ('The spin of magnetic atoms\n\n'
-                        + parameter_description)
-    explanation_N = ('The number of nearest neighbors\n\n'
-                     + parameter_description)
-    J = describe_entry('J', description=explanation_J)
-    lam = describe_entry('lam', description=explanation_lam)
-    A = describe_entry('A', description=explanation_A)
-    spin = describe_entry('spin', description=explanation_spin)
-    N_nn = describe_entry('N_nn', description=explanation_N)
-
-    heisenberg_table = table(row, 'Heisenberg model',
-                             [J, lam, A, spin, N_nn],
-                             kd=key_descriptions)
-    from asr.utils.hacks import gs_xcname_from_row
-    xcname = gs_xcname_from_row(row)
-    panel = WebPanel(title=f'Basic magnetic properties ({xcname})',
-                     columns=[[heisenberg_table], []],
-                     sort=11)
-    return [panel]
-
-
-@prepare_result
-class Result(ASRResult):
-
-    J: float
-    A: float
-    lam: float
-    spin: float
-    N_nn: int
-
-    key_descriptions = {
-        'J': "Nearest neighbor exchange coupling [meV]",
-        'A': "Single-ion anisotropy (out-of-plane) [meV]",
-        'lam': "Anisotropic exchange (out-of-plane) [meV]",
-        'spin': "Maximum value of S_z at magnetic sites",
-        'N_nn': "Number of nearest neighbors",
-    }
-
-    formats = {"ase_webpanel": webpanel}
-
-
 @command(module='asr.exchange',
          dependencies=['asr.exchange@calculate'],
          requires=['gs_2mag.gpw', 'exchange.gpw'],
-         returns=Result)
-def main() -> Result:
+         returns=ExchangeResult)
+def main() -> ExchangeResult:
     """Extract Heisenberg parameters."""
     from ase.io import read
 
@@ -276,7 +220,7 @@ def main() -> Result:
                'spin': S,
                'N_nn': N}
 
-    return Result(data=results)
+    return ExchangeResult(data=results)
 
 
 if __name__ == '__main__':

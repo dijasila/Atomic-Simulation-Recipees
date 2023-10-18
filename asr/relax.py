@@ -44,18 +44,18 @@ Relax using the LDA exchange-correlation functional
 """
 import time
 import typing
+import numpy as np
 from math import sqrt
 from pathlib import Path
 
-import numpy as np
 from ase import Atoms
 from ase.io import Trajectory, write
 from ase.optimize.bfgs import BFGS
 from ase.utils import IOContext
 from ase.calculators.calculator import PropertyNotImplementedError
 
-from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
-                      prepare_result)
+from asr.core import AtomsFile, DictStr, command, option
+from asr.paneldata import RelaxResult
 
 
 class BrokenSymmetryError(Exception):
@@ -278,42 +278,9 @@ def set_initial_magnetic_moments(atoms):
     atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
 
 
-@prepare_result
-class Result(ASRResult):
-    """Result class for :py:func:`asr.relax.main`."""
-
-    version: int = 0
-
-    atoms: Atoms
-    images: typing.List[Atoms]
-    etot: float
-    edft: float
-    spos: np.ndarray
-    symbols: typing.List[str]
-    a: float
-    b: float
-    c: float
-    alpha: float
-    beta: float
-    gamma: float
-    key_descriptions = \
-        {'atoms': 'Relaxed atomic structure.',
-         'images': 'Path taken when relaxing structure.',
-         'etot': 'Total energy [eV]',
-         'edft': 'DFT total energy [eV]',
-         'spos': 'Array: Scaled positions',
-         'symbols': 'Array: Chemical symbols',
-         'a': 'Cell parameter a [Å]',
-         'b': 'Cell parameter b [Å]',
-         'c': 'Cell parameter c [Å]',
-         'alpha': 'Cell parameter alpha [deg]',
-         'beta': 'Cell parameter beta [deg]',
-         'gamma': 'Cell parameter gamma [deg]'}
-
-
 @command('asr.relax',
          creates=['structure.json'],
-         returns=Result)
+         returns=RelaxResult)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='unrelaxed.json')
 @option('--tmp-atoms', help='File containing recent progress.',
@@ -350,7 +317,7 @@ def main(atoms: Atoms,
          fixcell: bool = False,
          allow_symmetry_breaking: bool = False,
          fmax: float = 0.01,
-         enforce_symmetry: bool = True) -> Result:
+         enforce_symmetry: bool = True) -> RelaxResult:
     """Relax atomic positions and unit cell.
 
     The relaxed structure is saved to `structure.json` which can be processed
@@ -500,7 +467,7 @@ def main(atoms: Atoms,
     with Trajectory(tmp_atoms_file, 'r') as trajectory:
         images = list(trajectory)
 
-    return Result.fromdata(
+    return RelaxResult.fromdata(
         atoms=atoms.copy(),
         etot=etot,
         edft=edft,
