@@ -74,46 +74,38 @@ def main(databases: List[str]) -> ConvexHullResult:
         List of filenames of databases.
 
     """
-    from asr.relax import main as relax
-    from asr.gs import main as groundstate
     from asr.core import read_json
+
     atoms = read('structure.json')
 
-    if not relax.done:
-        if not groundstate.done:
-            groundstate()
-
     # TODO: Make separate recipe for calculating vdW correction to total energy
+    energy = atoms.get_potential_energy()
+
     for filename in ['results-asr.relax.json', 'results-asr.gs.json']:
         if Path(filename).is_file():
             results = read_json(filename)
-            energy = results.get('etot')
+            energy_asr = results.get('etot')
             usingd3 = results.metadata.params.get('d3', False)
-            break
-
-    if usingd3:
-        mymethod = 'DFT+D3'
-    else:
-        mymethod = 'DFT'
+            if usingd3:
+                print(f'Detected vdW dispersion corrections (D3) in {filename}.',
+                      'Make sure you are using a DFT+D3 reference database if the',
+                      'the energy in structure.json was calculated with D3.')
+            if np.abs(energy_asr - energy) / len(atoms) > 0.01:
+                print(f'WARNING: The energy in structure.json ({energy})',
+                      f'is significantly different from the energy in {filename}',
+                      f'({energy_asr}).')
 
     formula = atoms.get_chemical_formula()
     count = Counter(atoms.get_chemical_symbols())
 
     dbdata = {}
-    reqkeys = {'title', 'legend', 'name', 'link', 'label', 'method'}
+    reqkeys = {'title', 'legend', 'name', 'link', 'label'}
     for database in databases:
         # Connect to databases and save relevant rows
         refdb = connect(database)
         metadata = refdb.metadata
         assert not (reqkeys - set(metadata)), \
             'Missing some essential metadata keys.'
-
-        dbmethod = metadata['method']
-        assert dbmethod in known_methods, f'Unknown method: {dbmethod}'
-        assert dbmethod == mymethod, \
-            ('You are using a reference database with '
-             f'inconsistent methods: {mymethod} (this material) != '
-             f'{dbmethod} ({database})')
 
         rows = []
         # Select only references which contain relevant elements
