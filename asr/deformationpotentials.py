@@ -58,7 +58,7 @@ def webpanel(result, row, key_descriptions):
             return kpt
 
     description = describe_entry('Deformation potentials', panel_description)
-    defpots = result['defpots_soc'].copy()
+    defpots = result['deformation_potentials_soc'].copy()
     columnlabels = ['xx', 'yy', 'xy']
 
     dp_gap = defpots.pop('gap')
