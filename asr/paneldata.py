@@ -12,7 +12,7 @@ from ase.dft.kpoints import labels_from_kpts
 from asr.core import ASRResult, prepare_result
 from asr.database.browser import (
     WebPanel,
-    create_table, table, matrixtable,
+    table, matrixtable,
     fig,
     href, dl, code, bold, br, div,
     describe_entry,
@@ -21,43 +21,19 @@ from asr.database.browser import (
 from asr.utils.hacks import gs_xcname_from_row
 from matplotlib import patches
 
+from asr.createwebpanel import (
+    OpticalWebpanel, PlasmaWebpanel, InfraredWebpanel, BSEWebpanel,
+    BaderWebpanel, BornChargesWebpanel, ChargeNeutralityWebpanel,
+    BandstructureWebpanel,
+    BerryWebpanel,
+)
+from asr.extra_result_plotting import (
+    gaps_from_row, _absorption,
+    create_plot_simple, plot_with_colors, add_bs_ks, legend_on_top,
+)
 
-######### Optical Panel #########
-def OpticalWebpanel(result, row, key_descriptions):
-    panel_description = make_panel_description(
-        """The frequency-dependent polarisability in the long wave length limit (q=0)
-    calculated in the random phase approximation (RPA) without spin–orbit
-    interactions. For metals a Drude term accounts for intraband transitions. The
-    contribution from polar lattice vibrations is added (see infrared
-    polarisability) and may be visible at low frequencies.""",
-        articles=['C2DB'])
 
-    explanation = 'Optical polarizability along the'
-    alphax_el = describe_entry('alphax_el',
-                               description=explanation + " x-direction")
-    alphay_el = describe_entry('alphay_el',
-                               description=explanation + " y-direction")
-    alphaz_el = describe_entry('alphaz_el',
-                               description=explanation + " z-direction")
-
-    opt = create_table(row=row, header=['Property', 'Value'],
-                       keys=[alphax_el, alphay_el, alphaz_el],
-                       key_descriptions=key_descriptions, digits=2)
-
-    panel = {'title': describe_entry('Optical polarizability',
-                                     panel_description),
-             'columns': [[fig('rpa-pol-x.png'), fig('rpa-pol-z.png')],
-                         [fig('rpa-pol-y.png'), opt]],
-             'plot_descriptions':
-                 [{'function': polarizability,
-                   'filenames': ['rpa-pol-x.png',
-                                 'rpa-pol-y.png',
-                                 'rpa-pol-z.png']}],
-             'subpanel': 'Polarizabilities',
-             'sort': 20}
-
-    return [panel]
-
+# Optical Panel
 @prepare_result
 class OpticalResult(ASRResult):
     alphax_el: typing.List[complex]
@@ -76,115 +52,99 @@ class OpticalResult(ASRResult):
 
     formats = {"ase_webpanel": OpticalWebpanel}
 
+    @staticmethod
+    def polarizability(row, fx, fy, fz):
+        import matplotlib.pyplot as plt
 
-def polarizability(row, fx, fy, fz):
-    import matplotlib.pyplot as plt
+        def ylims(ws, data, wstart=0.0):
+            i = abs(ws - wstart).argmin()
+            x = data[i:]
+            x1, x2 = x.real, x.imag
+            y1 = min(x1.min(), x2.min()) * 1.02
+            y2 = max(x1.max(), x2.max()) * 1.02
+            return y1, y2
 
-    def ylims(ws, data, wstart=0.0):
-        i = abs(ws - wstart).argmin()
-        x = data[i:]
-        x1, x2 = x.real, x.imag
-        y1 = min(x1.min(), x2.min()) * 1.02
-        y2 = max(x1.max(), x2.max()) * 1.02
-        return y1, y2
+        def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
+            ax.set_title(f'Polarization: {direction}')
+            ax.set_xlabel('Energy [eV]')
+            ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
+            ax.set_ylim(ylims(ws=frequencies, data=alpha_w, wstart=0.5))
+            ax.legend()
+            ax.set_xlim((0, 10))
+            fig = ax.get_figure()
+            fig.tight_layout()
+            fig.savefig(filename)
 
-    def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
-        ax.set_title(f'Polarization: {direction}')
-        ax.set_xlabel('Energy [eV]')
-        ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
-        ax.set_ylim(ylims(ws=frequencies, data=alpha_w, wstart=0.5))
-        ax.legend()
-        ax.set_xlim((0, 10))
-        fig = ax.get_figure()
-        fig.tight_layout()
-        fig.savefig(filename)
+        data = row.data.get('results-asr.polarizability.json')
 
-    data = row.data.get('results-asr.polarizability.json')
+        if data is None:
+            return
+        frequencies = data['frequencies']
+        i2 = abs(frequencies - 50.0).argmin()
+        frequencies = frequencies[:i2]
+        alphax_w = data['alphax_w'][:i2]
+        alphay_w = data['alphay_w'][:i2]
+        alphaz_w = data['alphaz_w'][:i2]
 
-    if data is None:
-        return
-    frequencies = data['frequencies']
-    i2 = abs(frequencies - 50.0).argmin()
-    frequencies = frequencies[:i2]
-    alphax_w = data['alphax_w'][:i2]
-    alphay_w = data['alphay_w'][:i2]
-    alphaz_w = data['alphaz_w'][:i2]
-
-    ax = plt.figure().add_subplot(111)
-    ax1 = ax
-    try:
-        wpx = row.plasmafrequency_x
-        if wpx > 0.01:
-            alphaxfull_w = alphax_w - wpx**2 / (2 * np.pi * (frequencies + 1e-9)**2)
-            ax.plot(
-                frequencies,
-                np.real(alphaxfull_w),
-                '-',
-                c='C1',
-                label='real')
-            ax.plot(
-                frequencies,
-                np.real(alphax_w),
-                '--',
-                c='C1',
-                label='real (interband)')
-        else:
+        ax = plt.figure().add_subplot(111)
+        ax1 = ax
+        try:
+            wpx = row.plasmafrequency_x
+            if wpx > 0.01:
+                alphaxfull_w = alphax_w - wpx**2 / (2 * np.pi * (frequencies + 1e-9)**2)
+                ax.plot(
+                    frequencies,
+                    np.real(alphaxfull_w),
+                    '-',
+                    c='C1',
+                    label='real')
+                ax.plot(
+                    frequencies,
+                    np.real(alphax_w),
+                    '--',
+                    c='C1',
+                    label='real (interband)')
+            else:
+                ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
+        except AttributeError:
             ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
-    except AttributeError:
-        ax.plot(frequencies, np.real(alphax_w), c='C1', label='real')
-    ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
+        ax.plot(frequencies, np.imag(alphax_w), c='C0', label='imag')
 
-    plot_polarizability(ax, frequencies, alphax_w, filename=fx, direction='x')
+        plot_polarizability(ax, frequencies, alphax_w, filename=fx, direction='x')
 
-    ax = plt.figure().add_subplot(111)
-    ax2 = ax
-    try:
-        wpy = row.plasmafrequency_y
-        if wpy > 0.01:
-            alphayfull_w = alphay_w - wpy**2 / (2 * np.pi * (frequencies + 1e-9)**2)
-            ax.plot(
-                frequencies,
-                np.real(alphayfull_w),
-                '-',
-                c='C1',
-                label='real')
-            ax.plot(
-                frequencies,
-                np.real(alphay_w),
-                '--',
-                c='C1',
-                label='real (interband)')
-        else:
+        ax = plt.figure().add_subplot(111)
+        ax2 = ax
+        try:
+            wpy = row.plasmafrequency_y
+            if wpy > 0.01:
+                alphayfull_w = alphay_w - wpy**2 / (2 * np.pi * (frequencies + 1e-9)**2)
+                ax.plot(
+                    frequencies,
+                    np.real(alphayfull_w),
+                    '-',
+                    c='C1',
+                    label='real')
+                ax.plot(
+                    frequencies,
+                    np.real(alphay_w),
+                    '--',
+                    c='C1',
+                    label='real (interband)')
+            else:
+                ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
+        except AttributeError:
             ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
-    except AttributeError:
-        ax.plot(frequencies, np.real(alphay_w), c='C1', label='real')
 
-    ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
-    plot_polarizability(ax, frequencies, alphay_w, filename=fy, direction='y')
+        ax.plot(frequencies, np.imag(alphay_w), c='C0', label='imag')
+        plot_polarizability(ax, frequencies, alphay_w, filename=fy, direction='y')
 
-    ax3 = plt.figure().add_subplot(111)
-    ax3.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
-    ax3.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
-    plot_polarizability(ax3, frequencies, alphaz_w, filename=fz, direction='z')
+        ax3 = plt.figure().add_subplot(111)
+        ax3.plot(frequencies, np.real(alphaz_w), c='C1', label='real')
+        ax3.plot(frequencies, np.imag(alphaz_w), c='C0', label='imag')
+        plot_polarizability(ax3, frequencies, alphaz_w, filename=fz, direction='z')
 
-    return ax1, ax2, ax3
-
-
-######### Plasma Panel #########
-def PlasmaWebpanel(result, row, key_descriptions):
-    from asr.database.browser import table
-
-    if row.get('gap', 1) > 0.01:
-        return []
-
-    plasmatable = table(row, 'Property', [
-        'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
-
-    panel = {'title': 'Optical polarizability',
-             'columns': [[], [plasmatable]]}
-    return [panel]
-
-
+        return ax1, ax2, ax3
+# Plasma Panel
 @prepare_result
 class PlasmaResult(ASRResult):
 
@@ -200,117 +160,9 @@ class PlasmaResult(ASRResult):
         "[`eV/Å^0.5`]",
     }
     formats = {"ase_webpanel": PlasmaWebpanel}
-
-
-######### Infrared Panel #########
-def InfraredWebpanel(result, row, key_descriptions):
-    panel_description = make_panel_description(
-        """The frequency-dependent polarisability in the infrared (IR) frequency regime
-    calculated from a Lorentz oscillator equation involving the optical Gamma-point
-    phonons and atomic Born charges. The contribution from electronic interband
-    transitions is added, but is essentially constant for frequencies much smaller
-    than the direct band gap.
-    """,
-        articles=[
-            href("""\
-    M. N. Gjerding et al. Efficient Ab Initio Modeling of Dielectric Screening
-    in 2D van der Waals Materials: Including Phonons, Substrates, and Doping,
-    J. Phys. Chem. C 124 11609 (2020)""",
-                 'https://doi.org/10.1021/acs.jpcc.0c01635'),
-        ])
-    explanation = 'Static lattice polarizability along the'
-    alphax_lat = describe_entry('alphax_lat', description=explanation + " x-direction")
-    alphay_lat = describe_entry('alphay_lat', description=explanation + " y-direction")
-    alphaz_lat = describe_entry('alphaz_lat', description=explanation + " z-direction")
-
-    explanation = 'Total static polarizability along the'
-    alphax = describe_entry('alphax', description=explanation + " x-direction")
-    alphay = describe_entry('alphay', description=explanation + " y-direction")
-    alphaz = describe_entry('alphaz', description=explanation + " z-direction")
-
-    opt = table(
-        row, "Property", [alphax_lat, alphay_lat, alphaz_lat, alphax,
-                          alphay, alphaz], key_descriptions
-    )
-
-    panel = {
-        "title": describe_entry("Infrared polarizability",
-                                panel_description),
-        "columns": [[fig("infrax.png"), fig("infraz.png")], [fig("infray.png"), opt]],
-        "plot_descriptions": [
-            {
-                "function": create_plot,
-                "filenames": ["infrax.png", "infray.png", "infraz.png"],
-            }
-        ],
-        "subpanel": 'Polarizabilities',
-        "sort": 21,
-    }
-
-    return [panel]
-
-
-def create_plot(row, *fnames):
-    infrareddct = row.data['results-asr.infraredpolarizability.json']
-    electrondct = row.data['results-asr.polarizability.json']
-    phonondata = row.data['results-asr.phonons.json']
-    maxphononfreq = phonondata['omega_kl'][0].max() * 1e3
-
-    assert len(fnames) == 3
-    for v, (axisname, fname) in enumerate(zip('xyz', fnames)):
-        alpha_w = electrondct[f'alpha{axisname}_w']
-
-        create_plot_simple(
-            ndim=sum(row.toatoms().pbc),
-            maxomega=maxphononfreq * 1.5,
-            omega_w=infrareddct["omega_w"] * 1e3,
-            alpha_w=alpha_w,
-            alphavv_w=infrareddct["alpha_wvv"][:, v, v],
-            omegatmp_w=electrondct["frequencies"] * 1e3,
-            axisname=axisname,
-            fname=fname)
-
-
-def create_plot_simple(*, ndim, omega_w, fname, maxomega, alpha_w,
-                       alphavv_w, axisname,
-                       omegatmp_w):
-    from scipy.interpolate import interp1d
-
-    re_alpha = interp1d(omegatmp_w, alpha_w.real)
-    im_alpha = interp1d(omegatmp_w, alpha_w.imag)
-    a_w = (re_alpha(omega_w) + 1j * im_alpha(omega_w) + alphavv_w)
-
-    if ndim == 3:
-        ylabel = r'Dielectric function'
-        yvalues = 1 + 4 * np.pi * a_w
-    else:
-        power_txt = {2: '', 1: '^2', 0: '^3'}[ndim]
-        unit = rf"$\mathrm{{\AA}}{power_txt}$"
-        ylabel = rf'Polarizability [{unit}]'
-        yvalues = a_w
-
-    return mkplot(yvalues, axisname, fname, maxomega, omega_w, ylabel)
-
-
-def mkplot(a_w, axisname, fname, maxomega, omega_w, ylabel):
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    ax = fig.gca()
-    ax.plot(omega_w, a_w.real, c='C1', label='real')
-    ax.plot(omega_w, a_w.imag, c='C0', label='imag')
-    ax.set_title(f'Polarization: {axisname}')
-    ax.set_xlabel('Energy [meV]')
-    ax.set_ylabel(ylabel)
-    ax.set_xlim(0, maxomega)
-    ax.legend()
-    plt.tight_layout()
-    plt.savefig(fname)
-    return fname
-
-
+# Infrared Panel
 @prepare_result
 class InfraredResult(ASRResult):
-
     alpha_wvv: typing.List[typing.List[typing.List[complex]]]
     omega_w: typing.List[float]
     alphax_lat: complex
@@ -333,36 +185,61 @@ class InfraredResult(ASRResult):
 
     formats = {"ase_webpanel": InfraredWebpanel}
 
+    @staticmethod
+    def create_plot(row, *fnames):
+        infrareddct = row.data['results-asr.infraredpolarizability.json']
+        electrondct = row.data['results-asr.polarizability.json']
+        phonondata = row.data['results-asr.phonons.json']
+        maxphononfreq = phonondata['omega_kl'][0].max() * 1e3
 
-######### Bader #########
-def BaderWebpanel(result, row, key_descriptions):
-    panel_description = make_panel_description(
-        """The Bader charge analysis ascribes a net charge to an atom
-    by partitioning the electron density according to its zero-flux surfaces.""",
-        articles=[
-            href("""W. Tang et al. A grid-based Bader analysis algorithm
-    without lattice bias. J. Phys.: Condens. Matter 21, 084204 (2009).""",
-                 'https://doi.org/10.1088/0953-8984/21/8/084204')])
-    rows = [[str(a), symbol, f'{charge:.2f}']
-            for a, (symbol, charge)
-            in enumerate(zip(result.sym_a, result.bader_charges))]
-    table = {'type': 'table',
-             'header': ['Atom index', 'Atom type', 'Charge (|e|)'],
-             'rows': rows}
+        assert len(fnames) == 3
+        for v, (axisname, fname) in enumerate(zip('xyz', fnames)):
+            alpha_w = electrondct[f'alpha{axisname}_w']
 
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.bader')
+            create_plot_simple(
+                ndim=sum(row.toatoms().pbc),
+                maxomega=maxphononfreq * 1.5,
+                omega_w=infrareddct["omega_w"] * 1e3,
+                alpha_w=alpha_w,
+                alphavv_w=infrareddct["alpha_wvv"][:, v, v],
+                omegatmp_w=electrondct["frequencies"] * 1e3,
+                axisname=axisname,
+                fname=fname)
+# BSE
+@prepare_result
+class BSEResult(ASRResult):
+    E_B: float
+    bse_alphax_w: typing.List[float]
+    bse_alphay_w: typing.List[float]
+    bse_alphaz_w: typing.List[float]
+    key_descriptions = {
+        "E_B": ('The exciton binding energy from the Bethe–Salpeter '
+                'equation (BSE) [eV].'),
+        'bse_alphax_w': 'BSE polarizability x-direction.',
+                        'bse_alphay_w': 'BSE polarizability y-direction.',
+                        'bse_alphaz_w': 'BSE polarizability z-direction.'}
 
-    title_description = panel_description + parameter_description
+    formats = {"ase_webpanel": BSEWebpanel}
 
-    panel = {'title': describe_entry('Bader charges',
-                                     description=title_description),
-             'columns': [[table]]}
+    @staticmethod
+    def absorption(row, filename, direction='x'):
+        delta_bse, delta_rpa = gaps_from_row(row)
+        return _absorption(
+            dim=sum(row.toatoms().pbc),
+            magstate=row.magstate,
+            gap_dir=row.gap_dir,
+            gap_dir_nosoc=row.gap_dir_nosoc,
+            bse_data=np.array(
+                row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']),
+            pol_data=row.data.get('results-asr.polarizability.json'),
+            delta_bse=delta_bse,
+            delta_rpa=delta_rpa,
+            direction=direction,
+            filename=filename)
 
-    return [panel]
 
-
+######### Charge Analysis #########
+# Bader
 @prepare_result
 class BaderResult(ASRResult):
 
@@ -373,648 +250,7 @@ class BaderResult(ASRResult):
                         'sym_a': 'Chemical symbols.'}
 
     formats = {"ase_webpanel": BaderWebpanel}
-
-
-######### Bandstructure #########
-bs_png = 'bs.png'
-bs_html = 'bs.html'
-
-
-def plot_bs_html(row,
-                 filename=bs_html,
-                 figsize=(6.4, 6.4),
-                 s=2):
-    import plotly
-    import plotly.graph_objs as go
-
-    traces = []
-    d = row.data.get('results-asr.bandstructure.json')
-    xcname = gs_xcname_from_row(row)
-
-    path = d['bs_nosoc']['path']
-    kpts = path.kpts
-    ef = d['bs_nosoc']['efermi']
-
-    if row.get('evac') is not None:
-        label = '<i>E</i> - <i>E</i><sub>vac</sub> [eV]'
-        reference = row.get('evac')
-    else:
-        label = '<i>E</i> - <i>E</i><sub>F</sub> [eV]'
-        reference = ef
-
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
-    if gaps.get('vbm'):
-        emin = gaps.get('vbm', ef) - 3
-    else:
-        emin = ef - 3
-    if gaps.get('cbm'):
-        emax = gaps.get('cbm', ef) + 3
-    else:
-        emax = ef + 3
-    e_skn = d['bs_nosoc']['energies']
-    shape = e_skn.shape
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
-    xcoords = np.vstack([xcoords] * shape[0] * shape[2])
-    # colors_s = plt.get_cmap('viridis')([0, 1])  # color for sz = 0
-    e_kn = np.hstack([e_skn[x] for x in range(shape[0])])
-    trace = go.Scattergl(
-        x=xcoords.ravel(),
-        y=e_kn.T.ravel() - reference,
-        mode='markers',
-        name=f'{xcname} no SOC',
-        showlegend=True,
-        marker=dict(size=4, color='#999999'))
-    traces.append(trace)
-
-    e_mk = d['bs_soc']['energies']
-    path = d['bs_soc']['path']
-    kpts = path.kpts
-    ef = d['bs_soc']['efermi']
-    sz_mk = d['bs_soc']['sz_mk']
-
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
-
-    shape = e_mk.shape
-    perm = (-sz_mk).argsort(axis=None)
-    e_mk = e_mk.ravel()[perm].reshape(shape)
-    sz_mk = sz_mk.ravel()[perm].reshape(shape)
-    xcoords = np.vstack([xcoords] * shape[0])
-    xcoords = xcoords.ravel()[perm].reshape(shape)
-
-    # Unicode for <S_z>
-    sdir = row.get('spin_axis', 'z')
-    cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
-    trace = go.Scattergl(
-        x=xcoords.ravel(),
-        y=e_mk.ravel() - reference,
-        mode='markers',
-        name=xcname,
-        showlegend=True,
-        marker=dict(
-            size=4,
-            color=sz_mk.ravel(),
-            colorscale='Viridis',
-            showscale=True,
-            colorbar=dict(
-                tickmode='array',
-                tickvals=[-1, 0, 1],
-                ticktext=['-1', '0', '1'],
-                title=cbtitle,
-                titleside='right')))
-    traces.append(trace)
-
-    linetrace = go.Scatter(
-        x=[np.min(xcoords), np.max(xcoords)],
-        y=[ef - reference, ef - reference],
-        mode='lines',
-        line=dict(color=('rgb(0, 0, 0)'), width=2, dash='dash'),
-        name='Fermi level')
-    traces.append(linetrace)
-
-    def pretty(kpt):
-        if kpt == 'G':
-            kpt = '&#x393;'  # Gamma in unicode
-        elif len(kpt) == 2:
-            kpt = kpt[0] + '$_' + kpt[1] + '$'
-        return kpt
-
-    labels = [pretty(name) for name in orig_labels]
-    i = 1
-    while i < len(labels):
-        if label_xcoords[i - 1] == label_xcoords[i]:
-            labels[i - 1] = labels[i - 1][:-1] + ',' + labels[i][1:]
-            labels[i] = ''
-        i += 1
-
-    bandxaxis = go.layout.XAxis(
-        title="k-points",
-        range=[0, np.max(xcoords)],
-        showgrid=True,
-        showline=True,
-        ticks="",
-        showticklabels=True,
-        mirror=True,
-        linewidth=2,
-        ticktext=labels,
-        tickvals=label_xcoords,
-    )
-
-    bandyaxis = go.layout.YAxis(
-        title=label,
-        range=[emin - reference, emax - reference],
-        showgrid=True,
-        showline=True,
-        zeroline=False,
-        mirror="ticks",
-        ticks="inside",
-        linewidth=2,
-        tickwidth=2,
-        zerolinewidth=2,
-    )
-
-    bandlayout = go.Layout(
-        xaxis=bandxaxis,
-        yaxis=bandyaxis,
-        legend=dict(x=0, y=1),
-        hovermode='closest',
-        margin=dict(t=40, r=100),
-        font=dict(size=18))
-
-    fig = {'data': traces, 'layout': bandlayout}
-    # fig['layout']['margin'] = {'t': 40, 'r': 100}
-    # fig['layout']['hovermode'] = 'closest'
-    # fig['layout']['legend'] =
-
-    plot_html = plotly.offline.plot(
-        fig, include_plotlyjs=False, output_type='div')
-    # plot_html = ''.join(['<div style="width: 1000px;',
-    #                      'height=1000px;">',
-    #                      plot_html,
-    #                      '</div>'])
-
-    inds = []
-    for i, c in enumerate(plot_html):
-        if c == '"':
-            inds.append(i)
-    plotdivid = plot_html[inds[0] + 1:inds[1]]
-
-    resize_script = (
-        ''
-        '<script type="text/javascript">'
-        'window.addEventListener("resize", function(){{'
-        'Plotly.Plots.resize(document.getElementById("{id}"));}});'
-        '</script>').format(id=plotdivid)
-
-    # Insert plotly.js
-    plotlyjs = '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
-
-    html = ''.join([
-        '<html>', '<head><meta charset="utf-8" /></head>', '<body>', plotlyjs,
-        plot_html, resize_script, '</body>', '</html>'
-    ])
-
-    with open(filename, 'w') as fd:
-        fd.write(html)
-
-
-def add_bs_ks(row, ax, reference=0, color='C1'):
-    """Plot with soc on ax."""
-    d = row.data.get('results-asr.bandstructure.json')
-    path = d['bs_soc']['path']
-    e_mk = d['bs_soc']['energies']
-    xcname = gs_xcname_from_row(row)
-    xcoords, label_xcoords, labels = labels_from_kpts(path.kpts, row.cell)
-    for e_k in e_mk[:-1]:
-        ax.plot(xcoords, e_k - reference, color=color, zorder=-2)
-    ax.lines[-1].set_label(xcname)
-    ef = d['bs_soc']['efermi']
-    ax.axhline(ef - reference, ls=':', zorder=-2, color=color)
-    return ax
-
-
-def plot_with_colors(bs,
-                     ax=None,
-                     emin=-10,
-                     emax=5,
-                     filename=None,
-                     show=None,
-                     energies=None,
-                     colors=None,
-                     colorbar=True,
-                     ylabel=None,
-                     clabel='$s_z$',
-                     cmin=-1.0,
-                     cmax=1.0,
-                     sortcolors=False,
-                     loc=None,
-                     s=2):
-    """Plot band-structure with colors."""
-    import matplotlib.pyplot as plt
-
-    # if bs.ax is None:
-    #     ax = bs.prepare_plot(ax, emin, emax, ylabel)
-    # trying to find vertical lines and putt them in the back
-
-    def vlines2back(lines):
-        zmin = min([l.get_zorder() for l in lines])
-        for l in lines:
-            x = l.get_xdata()
-            if len(x) > 0 and np.allclose(x, x[0]):
-                l.set_zorder(zmin - 1)
-
-    vlines2back(ax.lines)
-    shape = energies.shape
-    xcoords = np.vstack([bs.xcoords] * shape[0])
-    if sortcolors:
-        perm = (-colors).argsort(axis=None)
-        energies = energies.ravel()[perm].reshape(shape)
-        colors = colors.ravel()[perm].reshape(shape)
-        xcoords = xcoords.ravel()[perm].reshape(shape)
-
-    for e_k, c_k, x_k in zip(energies, colors, xcoords):
-        things = ax.scatter(x_k, e_k, c=c_k, s=s, vmin=cmin, vmax=cmax)
-
-    if colorbar:
-        cbar = plt.colorbar(things)
-        cbar.set_label(clabel)
-    else:
-        cbar = None
-
-    bs.finish_plot(filename, show, loc)
-
-    return ax, cbar
-
-
-def legend_on_top(ax, **kwargs):
-    ax.legend(loc='lower left', bbox_to_anchor=(0, 1, 1, 0),
-              mode='expand', **kwargs)
-
-
-def plot_bs_png(row,
-                filename=bs_png,
-                figsize=(5.5, 5),
-                s=0.5):
-
-    import matplotlib.pyplot as plt
-    from matplotlib import rcParams
-    import matplotlib.patheffects as path_effects
-    from ase.spectrum.band_structure import BandStructure, BandStructurePlot
-    d = row.data.get('results-asr.bandstructure.json')
-    xcname = gs_xcname_from_row(row)
-
-    path = d['bs_nosoc']['path']
-    ef_nosoc = d['bs_nosoc']['efermi']
-    ef_soc = d['bs_soc']['efermi']
-    ref_nosoc = row.get('evac', d.get('bs_nosoc').get('efermi'))
-    ref_soc = row.get('evac', d.get('bs_soc').get('efermi'))
-    if row.get('evac') is not None:
-        label = r'$E - E_\mathrm{vac}$ [eV]'
-    else:
-        label = r'$E - E_\mathrm{F}$ [eV]'
-
-    e_skn = d['bs_nosoc']['energies']
-    nspins = e_skn.shape[0]
-    e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
-
-    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
-    if gaps.get('vbm'):
-        emin = gaps.get('vbm') - 3
-    else:
-        emin = ef_nosoc - 3
-    if gaps.get('cbm'):
-        emax = gaps.get('cbm') + 3
-    else:
-        emax = ef_nosoc + 3
-    bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
-    # without soc
-    nosoc_style = dict(
-        colors=['0.8'] * e_skn.shape[0],
-        label=f'{xcname} no SOC',
-        ls='-',
-        lw=1.0,
-        zorder=0)
-    plt.figure(figsize=figsize)
-    ax = plt.gca()
-    bsp = BandStructurePlot(bs)
-    bsp.plot(
-        ax=ax,
-        show=False,
-        emin=emin - ref_nosoc,
-        emax=emax - ref_nosoc,
-        ylabel=label,
-        **nosoc_style)
-    # with soc
-    e_mk = d['bs_soc']['energies']
-    sz_mk = d['bs_soc']['sz_mk']
-    sdir = row.get('spin_axis', 'z')
-    colorbar = not (row.magstate == 'NM' and row.has_inversion_symmetry)
-    ax, cbar = plot_with_colors(
-        bsp,
-        ax=ax,
-        energies=e_mk - ref_soc,
-        colors=sz_mk,
-        colorbar=colorbar,
-        filename=filename,
-        show=False,
-        emin=emin - ref_soc,
-        emax=emax - ref_soc,
-        sortcolors=True,
-        loc='upper right',
-        clabel=r'$\langle S_{} \rangle $'.format(sdir),
-        s=s)
-
-    if cbar:
-        cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
-        cbar.update_ticks()
-    csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
-    ax.plot([], [], label=xcname, color=csz0)
-
-    xlim = ax.get_xlim()
-    x0 = xlim[1] * 0.01
-    text = ax.annotate(
-        r'$E_\mathrm{F}$',
-        xy=(x0, ef_soc - ref_soc),
-        fontsize=rcParams['font.size'] * 1.25,
-        ha='left',
-        va='bottom')
-
-    text.set_path_effects([
-        path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
-        path_effects.Normal()
-    ])
-    legend_on_top(ax, ncol=2)
-    plt.savefig(filename, bbox_inches='tight')
-
-
-def BandstructureWebpanel(result, row, key_descriptions):
-    panel_description = make_panel_description(
-        """The band structure with spin–orbit interactions is shown with the
-    expectation value of S_i (where i=z for non-magnetic materials and otherwise is
-    the magnetic easy axis) indicated by the color code.""",
-        articles=['C2DB'],
-    )
-
-    from typing import Tuple, List
-    from asr.utils.hacks import gs_xcname_from_row
-
-    def rmxclabel(d: 'Tuple[str, str, str]',
-                  xcs: List) -> 'Tuple[str, str, str]':
-        def rm(s: str) -> str:
-            for xc in xcs:
-                s = s.replace('({})'.format(xc), '')
-            return s.rstrip()
-
-        return tuple(rm(s) for s in d)
-
-    xcname = gs_xcname_from_row(row)
-
-    panel = {'title': describe_entry(f'Electronic band structure ({xcname})',
-                                     panel_description),
-             'columns': [
-                 [
-                     fig(bs_png, link=bs_html),
-                 ],
-                 [fig('bz-with-gaps.png')]],
-             'plot_descriptions': [{'function': plot_bs_png,
-                                    'filenames': [bs_png]},
-                                   {'function': plot_bs_html,
-                                    'filenames': [bs_html]}],
-             'sort': 12}
-
-    return [panel]
-
-
-@prepare_result
-class BandStructureResult(ASRResult):
-
-    version: int = 0
-
-    bs_soc: dict
-    bs_nosoc: dict
-
-    key_descriptions = \
-        {
-            'bs_soc': 'Bandstructure data with spin–orbit coupling.',
-            'bs_nosoc': 'Bandstructure data without spin–orbit coupling.'
-        }
-
-    formats = {"ase_webpanel": BandstructureWebpanel}
-
-
-######### Berry #########
-olsen_title = ('T. Olsen et al. Discovering two-dimensional topological '
-               'insulators from high-throughput computations. '
-               'Phys. Rev. Mater. 3 024005.')
-olsen_doi = 'https://doi.org/10.1103/PhysRevMaterials.3.024005'
-
-panel_description = make_panel_description(
-    """\
-The spectrum was calculated by diagonalizing the Berry phase matrix
-obtained by parallel transporting the occupied Bloch states along the
-k₀-direction for each value of k₁. The eigenvalues can be interpreted
-as the charge centers of hybrid Wannier functions localised in the
-0-direction and the colours show the expectation values of spin for
-the corresponding Wannier functions. A gapless spectrum is a minimal
-requirement for non-trivial topological invariants.
-""",
-    articles=[href(olsen_title, olsen_doi)],
-)
-
-
-@prepare_result
-class CalculateResult(ASRResult):
-
-    phi0_km: np.ndarray
-    phi1_km: np.ndarray
-    phi2_km: np.ndarray
-    phi0_pi_km: np.ndarray
-    s0_km: np.ndarray
-    s1_km: np.ndarray
-    s2_km: np.ndarray
-    s0_pi_km: np.ndarray
-
-    key_descriptions = {
-        'phi0_km': ('Berry phase spectrum at k_2=0, '
-                    'localized along the k_0 direction'),
-        'phi1_km': ('Berry phase spectrum at k_0=0, '
-                    'localized along the k_1 direction'),
-        'phi2_km': ('Berry phase spectrum at k_1=0, '
-                    'localized along the k_2 direction'),
-        'phi0_pi_km': ('Berry phase spectrum at k_2=pi, '
-                       'localized along the k_0 direction'),
-        's0_km': ('Expectation value of spin in the easy-axis direction '
-                  'for the Berry phases at k_2=0'),
-        's1_km': ('Expectation value of spin in the easy-axis direction '
-                  'for the Berry phases at k_0=0'),
-        's2_km': ('Expectation value of spin in the easy-axis direction '
-                  'for the Berry phases at k_1=0'),
-        's0_pi_km': ('Expectation value of spin in the easy-axis direction '
-                     'for the Berry phases at k_2=pi'),
-    }
-
-
-def plot_phases(row, f0, f1, f2, fpi):
-    import pylab as plt
-
-    results = row.data['results-asr.berry@calculate.json']
-    for f, label in [(f0, 0), (f1, 1), (f2, 2), (fpi, '0_pi')]:
-        phit_km = results.get(f'phi{label}_km')
-        if phit_km is None:
-            continue
-        St_km = results.get(f's{label}_km')
-        if St_km is None:
-            continue
-        Nk = len(St_km)
-
-        phi_km = np.zeros((len(phit_km) + 1, len(phit_km[0])), float)
-        phi_km[1:] = phit_km
-        phi_km[0] = phit_km[-1]
-        S_km = np.zeros((len(phit_km) + 1, len(phit_km[0])), float)
-        S_km[1:] = St_km
-        S_km[0] = St_km[-1]
-        S_km /= 2
-
-        Nm = len(phi_km[0])
-        phi_km = np.tile(phi_km, (1, 2))
-        phi_km[:, Nm:] += 2 * np.pi
-        S_km = np.tile(S_km, (1, 2))
-        Nk = len(S_km)
-        Nm = len(phi_km[0])
-
-        shape = S_km.T.shape
-        perm = np.argsort(S_km.T, axis=None)
-        phi_km = phi_km.T.ravel()[perm].reshape(shape).T
-        S_km = S_km.T.ravel()[perm].reshape(shape).T
-
-        plt.figure()
-        plt.scatter(np.tile(np.arange(Nk), Nm)[perm],
-                    phi_km.T.reshape(-1),
-                    cmap=plt.get_cmap('viridis'),
-                    c=S_km.T.reshape(-1),
-                    s=5,
-                    marker='o')
-
-        if 'results-asr.magnetic_anisotropy.json' in row.data:
-            anis = row.data['results-asr.magnetic_anisotropy.json']
-            dir = anis['spin_axis']
-        else:
-            dir = 'z'
-
-        cbar = plt.colorbar()
-        cbar.set_label(rf'$\langle S_{dir}\rangle/\hbar$', size=16)
-
-        if f == f0:
-            plt.title(r'$\tilde k_2=0$', size=22)
-            plt.xlabel(r'$\tilde k_1$', size=20)
-            plt.ylabel(r'$\gamma_0$', size=20)
-        elif f == f1:
-            plt.title(r'$\tilde k_0=0$', size=22)
-            plt.xlabel(r'$\tilde k_2$', size=20)
-            plt.ylabel(r'$\gamma_1$', size=20)
-        if f == f2:
-            plt.title(r'$\tilde k_1=0$', size=22)
-            plt.xlabel(r'$\tilde k_0$', size=20)
-            plt.ylabel(r'$\gamma_2$', size=20)
-        if f == fpi:
-            plt.title(r'$\tilde k_2=\pi$', size=22)
-            plt.xlabel(r'$\tilde k_1$', size=20)
-            plt.ylabel(r'$\gamma_0$', size=20)
-        plt.xticks([0, Nk / 2, Nk],
-                   [r'$-\pi$', r'$0$', r'$\pi$'], size=16)
-        plt.yticks([0, np.pi, 2 * np.pi], [r'$0$', r'$\pi$', r'$2\pi$'], size=16)
-        plt.axis([0, Nk, 0, 2 * np.pi])
-        plt.tight_layout()
-        plt.savefig(f)
-
-
-def BerryWebpanel(result, row, key_descriptions):
-    from asr.utils.hacks import gs_xcname_from_row
-
-    xcname = gs_xcname_from_row(row)
-    parameter_description = entry_parameter_description(
-        row.data,
-        'asr.gs@calculate')
-    description = ('Topological invariant characterizing the occupied bands \n\n'
-                   + parameter_description)
-    datarow = [describe_entry('Band topology', description), result.Topology]
-
-    summary = WebPanel(title='Summary',
-                       columns=[[{'type': 'table',
-                                  'header': ['Basic properties', ''],
-                                  'rows': [datarow]}]])
-
-    basicelec = WebPanel(title=f'Basic electronic properties ({xcname})',
-                         columns=[[{'type': 'table',
-                                    'header': ['Property', ''],
-                                    'rows': [datarow]}]],
-                         sort=15)
-
-    berry_phases = WebPanel(
-        title=describe_entry('Berry phase', panel_description),
-        columns=[[fig('berry-phases0.png'),
-                  fig('berry-phases0_pi.png')],
-                 [fig('berry-phases1.png'),
-                  fig('berry-phases2.png')]],
-        plot_descriptions=[{'function': plot_phases,
-                            'filenames': ['berry-phases0.png',
-                                          'berry-phases1.png',
-                                          'berry-phases2.png',
-                                          'berry-phases0_pi.png']}])
-
-    return [summary, basicelec, berry_phases]
-
-
-@prepare_result
-class BerryResult(ASRResult):
-
-    Topology: str
-
-    key_descriptions = {'Topology': 'Band topology.'}
-    formats = {"ase_webpanel": BerryWebpanel}
-
-
-######### born charges #########
-reference = """\
-M. N. Gjerding et al. Efficient Ab Initio Modeling of Dielectric Screening
-in 2D van der Waals Materials: Including Phonons, Substrates, and Doping,
-J. Phys. Chem. C 124 11609 (2020)"""
-
-
-def BornChargesWebpanel(result, row, key_descriptions):
-    panel_description = make_panel_description(
-        """The Born charge of an atom is defined as the derivative of the static
-    macroscopic polarization w.r.t. its displacements u_i (i=x,y,z). The
-    polarization in a periodic direction is calculated as an integral over Berry
-    phases. The polarization in a non-periodic direction is obtained by direct
-    evaluation of the first moment of the electron density. The Born charge is
-    obtained as a finite difference of the polarization for displaced atomic
-    configurations.  """,
-        articles=[
-            href(reference, 'https://doi.org/10.1021/acs.jpcc.0c01635')
-        ]
-    )
-    import numpy as np
-
-    def matrixtable(M, digits=2, unit='', skiprow=0, skipcolumn=0):
-        table = M.tolist()
-        shape = M.shape
-
-        for i in range(skiprow, shape[0]):
-            for j in range(skipcolumn, shape[1]):
-                value = table[i][j]
-                table[i][j] = '{:.{}f}{}'.format(value, digits, unit)
-        return table
-
-    columns = [[], []]
-    for a, Z_vv in enumerate(
-            row.data['results-asr.borncharges.json']['Z_avv']):
-        table = np.zeros((4, 4))
-        table[1:, 1:] = Z_vv
-        rows = matrixtable(table, skiprow=1, skipcolumn=1)
-        sym = row.symbols[a]
-        rows[0] = [f'Z<sup>{sym}</sup><sub>ij</sub>', 'u<sub>x</sub>',
-                   'u<sub>y</sub>', 'u<sub>z</sub>']
-        rows[1][0] = 'P<sub>x</sub>'
-        rows[2][0] = 'P<sub>y</sub>'
-        rows[3][0] = 'P<sub>z</sub>'
-
-        for ir, tmprow in enumerate(rows):
-            for ic, item in enumerate(tmprow):
-                if ir == 0 or ic == 0:
-                    rows[ir][ic] = '<b>' + rows[ir][ic] + '</b>'
-
-        Ztable = dict(
-            type='table',
-            rows=rows)
-
-        columns[a % 2].append(Ztable)
-
-    panel = {'title': describe_entry('Born charges', panel_description),
-             'columns': columns,
-             'sort': 17}
-    return [panel]
-
-
+# born charges
 @prepare_result
 class BornChargesResult(ASRResult):
 
@@ -1025,532 +261,11 @@ class BornChargesResult(ASRResult):
                         'sym_a': 'Chemical symbols.'}
 
     formats = {"ase_webpanel": BornChargesWebpanel}
-
-
-######### bse #########
-def absorption(row, filename, direction='x'):
-    delta_bse, delta_rpa = gaps_from_row(row)
-    return _absorption(
-        dim=sum(row.toatoms().pbc),
-        magstate=row.magstate,
-        gap_dir=row.gap_dir,
-        gap_dir_nosoc=row.gap_dir_nosoc,
-        bse_data=np.array(
-            row.data['results-asr.bse.json'][f'bse_alpha{direction}_w']),
-        pol_data=row.data.get('results-asr.polarizability.json'),
-        delta_bse=delta_bse,
-        delta_rpa=delta_rpa,
-        direction=direction,
-        filename=filename)
-
-
-def gaps_from_row(row):
-    for method in ['_gw', '_hse', '_gllbsc', '']:
-        gapkey = f'gap_dir{method}'
-        if gapkey in row:
-            gap_dir_x = row[gapkey]
-            delta_bse = gap_dir_x - row.gap_dir
-            delta_rpa = gap_dir_x - row.gap_dir_nosoc
-            return delta_bse, delta_rpa
-
-
-def _absorption(*, dim, magstate, gap_dir, gap_dir_nosoc,
-                bse_data, pol_data,
-                delta_bse, delta_rpa, filename, direction):
-    import matplotlib.pyplot as plt
-    from ase.units import alpha, Ha, Bohr
-
-    qp_gap = gap_dir + delta_bse
-
-    if magstate != 'NM':
-        qp_gap = gap_dir_nosoc + delta_rpa
-        delta_bse = delta_rpa
-
-    ax = plt.figure().add_subplot(111)
-
-    wbse_w = bse_data[:, 0] + delta_bse
-    if dim == 2:
-        sigma_w = -1j * 4 * np.pi * (bse_data[:, 1] + 1j * bse_data[:, 2])
-        sigma_w *= wbse_w * alpha / Ha / Bohr
-        absbse_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
-    else:
-        absbse_w = 4 * np.pi * bse_data[:, 2]
-    ax.plot(wbse_w, absbse_w, '-', c='0.0', label='BSE')
-    xmax = wbse_w[-1]
-
-    # TODO: Sometimes RPA pol doesn't exist, what to do?
-    if pol_data:
-        wrpa_w = pol_data['frequencies'] + delta_rpa
-        wrpa_w = pol_data['frequencies'] + delta_rpa
-        if dim == 2:
-            sigma_w = -1j * 4 * np.pi * pol_data[f'alpha{direction}_w']
-            sigma_w *= wrpa_w * alpha / Ha / Bohr
-            absrpa_w = np.real(sigma_w) * np.abs(2 / (2 + sigma_w))**2 * 100
-        else:
-            absrpa_w = 4 * np.pi * np.imag(pol_data[f'alpha{direction}_w'])
-        ax.plot(wrpa_w, absrpa_w, '-', c='C0', label='RPA')
-        ymax = max(np.concatenate([absbse_w[wbse_w < xmax],
-                                   absrpa_w[wrpa_w < xmax]])) * 1.05
-    else:
-        ymax = max(absbse_w[wbse_w < xmax]) * 1.05
-
-    ax.plot([qp_gap, qp_gap], [0, ymax], '--', c='0.5',
-            label='Direct QP gap')
-
-    ax.set_xlim(0.0, xmax)
-    ax.set_ylim(0.0, ymax)
-    ax.set_title(f'Polarization: {direction}')
-    ax.set_xlabel('Energy [eV]')
-    if dim == 2:
-        ax.set_ylabel('Absorbance [%]')
-    else:
-        ax.set_ylabel(r'$\varepsilon(\omega)$')
-    ax.legend()
-    plt.tight_layout()
-    plt.savefig(filename)
-
-    return ax
-
-
-def BSEWebpanel(result, row, key_descriptions):
-    panel_description = make_panel_description(
-        """The optical absorption calculated from the Bethe–Salpeter Equation
-    (BSE). The BSE two-particle Hamiltonian is constructed using the wave functions
-    from a DFT calculation with the direct band gap adjusted to match the direct
-    band gap from a G0W0 calculation. Spin–orbit interactions are included.  The
-    result of the random phase approximation (RPA) with the same direct band gap
-    adjustment as used for BSE but without spin–orbit interactions, is also shown.
-    """,
-        articles=['C2DB'],
-    )
-
-    import numpy as np
-    from functools import partial
-
-    E_B = table(row, 'Property', ['E_B'], key_descriptions)
-
-    atoms = row.toatoms()
-    pbc = atoms.pbc.tolist()
-    dim = np.sum(pbc)
-
-    if dim == 2:
-        funcx = partial(absorption, direction='x')
-        funcz = partial(absorption, direction='z')
-
-        panel = {'title': describe_entry('Optical absorption (BSE and RPA)',
-                                         panel_description),
-                 'columns': [[fig('absx.png'), E_B],
-                             [fig('absz.png')]],
-                 'plot_descriptions': [{'function': funcx,
-                                        'filenames': ['absx.png']},
-                                       {'function': funcz,
-                                        'filenames': ['absz.png']}]}
-    else:
-        funcx = partial(absorption, direction='x')
-        funcy = partial(absorption, direction='y')
-        funcz = partial(absorption, direction='z')
-
-        panel = {'title': 'Optical absorption (BSE and RPA)',
-                 'columns': [[fig('absx.png'), fig('absz.png')],
-                             [fig('absy.png'), E_B]],
-                 'plot_descriptions': [{'function': funcx,
-                                        'filenames': ['absx.png']},
-                                       {'function': funcy,
-                                        'filenames': ['absy.png']},
-                                       {'function': funcz,
-                                        'filenames': ['absz.png']}]}
-    return [panel]
-
-
-@prepare_result
-class BSEResult(ASRResult):
-
-    E_B: float
-    bse_alphax_w: typing.List[float]
-    bse_alphay_w: typing.List[float]
-    bse_alphaz_w: typing.List[float]
-
-    key_descriptions = {
-        "E_B": ('The exciton binding energy from the Bethe–Salpeter '
-                'equation (BSE) [eV].'),
-        'bse_alphax_w': 'BSE polarizability x-direction.',
-                        'bse_alphay_w': 'BSE polarizability y-direction.',
-                        'bse_alphaz_w': 'BSE polarizability z-direction.'}
-
-    formats = {"ase_webpanel": BSEWebpanel}
-
-
-######### charge_neutrality #########
-def plot_formation_scf(row, fname):
-    """Plot formation energy diagram and SC Fermi level wrt. VBM."""
-    import matplotlib.pyplot as plt
-
-    data = row.data.get('results-asr.charge_neutrality.json')
-    gap = data['gap']
-    comparison = fname.split('neutrality-')[-1].split('.png')[0]
-    fig, ax = plt.subplots()
-    for j, condition in enumerate(data['scresults']):
-        if comparison == condition['condition']:
-            ef = condition['efermi_sc']
-            for i, defect in enumerate(condition['defect_concentrations']):
-                name = defect['defect_name']
-                def_type = name.split('_')[0]
-                def_name = name.split('_')[-1]
-                namestring = f"{def_type}$_\\{'mathrm{'}{def_name}{'}'}$"
-                array = np.zeros((len(defect['concentrations']), 2))
-                for num, conc_tuple in enumerate(defect['concentrations']):
-                    q = conc_tuple[1]
-                    eform = conc_tuple[2]
-                    array[num, 0] = eform + q * (-ef)
-                    array[num, 1] = q
-                array = array[array[:, 1].argsort()[::-1]]
-                # plot_background(ax, array)
-                plot_lowest_lying(ax, array, ef, gap, name=namestring, color=f'C{i}')
-            draw_band_edges(ax, gap)
-            set_limits(ax, gap)
-            draw_ef(ax, ef)
-            set_labels_and_legend(ax, comparison)
-
-    plt.tight_layout()
-    plt.savefig(fname)
-# all the following are just plotting functionalities
-
-def set_labels_and_legend(ax, title):
-    ax.set_xlabel(r'$E_\mathrm{F} - E_{\mathrm{VBM}}$ [eV]')
-    ax.set_ylabel(f'$E^f$ [eV]')
-    ax.set_title(title)
-    ax.legend(bbox_to_anchor=(0.5, 1.1), ncol=5, loc='lower center')
-
-
-def draw_ef(ax, ef):
-    ax.axvline(ef, color='red', linestyle='dotted',
-               label=r'$E_\mathrm{F}^{\mathrm{sc}}$')
-
-
-def set_limits(ax, gap):
-    ax.set_xlim(0 - gap / 10., gap + gap / 10.)
-
-
-def get_min_el(array):
-    elements = []
-    for i in range(len(array)):
-        elements.append(array[i, 0])
-    for i, el in enumerate(elements):
-        if el == min(elements):
-            return i
-
-
-def get_crossing_point(y1, y2, q1, q2):
-    """
-    Calculate the crossing point between two charge states.
-
-    f1 = y1 + x * q1
-    f2 = y2 + x * q2
-    x * (q1 - q2) = y2 - y1
-    x = (y2 - y1) / (q1 - q2)
-    """
-    return (y2 - y1) / float(q1 - q2)
-
-
-def clean_array(array):
-    index = get_min_el(array)
-
-    return array[index:, :]
-
-
-def get_y(x, array, index):
-    q = array[index, 1]
-
-    return q * x + array[index, 0]
-
-
-def get_last_element(array, x_axis, y_axis, gap):
-    y_cbms = []
-    for i in range(len(array)):
-        q = array[i, 1]
-        eform = array[i, 0]
-        y_cbms.append(q * gap + eform)
-
-    x_axis.append(gap)
-    y_axis.append(min(y_cbms))
-
-    return x_axis, y_axis
-
-
-def get_line_segment(array, index, x_axis, y_axis, gap):
-    xs = []
-    ys = []
-    for i in range(len(array)):
-        if i > index:
-            y1 = array[index, 0]
-            q1 = array[index, 1]
-            y2 = array[i, 0]
-            q2 = array[i, 1]
-            crossing = get_crossing_point(y1, y2, q1, q2)
-            xs.append(crossing)
-            ys.append(q1 * crossing + y1)
-        else:
-            crossing = 1000
-            xs.append(gap + 10)
-            ys.append(crossing)
-    min_index = index + 1
-    for i, x in enumerate(xs):
-        q1 = array[index, 1]
-        y1 = array[index, 0]
-        if x == min(xs) and x > 0 and x < gap:
-            min_index = i
-            x_axis.append(xs[min_index])
-            y_axis.append(q1 * xs[min_index] + y1)
-
-    return min_index, x_axis, y_axis
-
-
-def plot_background(ax, array_in, gap):
-    for i in range(len(array_in)):
-        q = array_in[i, 1]
-        eform = array_in[i, 0]
-        y0 = eform
-        y1 = eform + q * gap
-        ax.plot([0, gap], [y0, y1], color='grey',
-                alpha=0.2)
-
-
-def plot_lowest_lying(ax, array_in, ef, gap, name, color):
-    array_tmp = array_in.copy()
-    array_tmp = clean_array(array_tmp)
-    xs = [0]
-    ys = [array_tmp[0, 0]]
-    index, xs, ys = get_line_segment(array_tmp, 0, xs, ys, gap)
-    for i in range(len(array_tmp)):
-        if len(array_tmp[:, 0]) <= 1:
-            break
-        index, xs, ys = get_line_segment(array_tmp, index, xs, ys, gap)
-        if index == len(array_tmp):
-            break
-    xs, ys = get_last_element(array_tmp, xs, ys, gap)
-    ax.plot(xs, ys, color=color, label=name)
-    ax.set_xlabel(r'$E_\mathrm{F}$ [eV]')
-
-
-def draw_band_edges(ax, gap):
-    ax.axvline(0, color='black')
-    ax.axvline(gap, color='black')
-    ax.axvspan(-100, 0, alpha=0.5, color='grey')
-    ax.axvspan(gap, 100, alpha=0.5, color='grey')
-
-
-def get_overview_tables(scresult, result, unitstring):
-    ef = scresult.efermi_sc
-    gap = result.gap
-    if ef < (gap / 4.):
-        dopability = '<b style="color:red;">p-type</b>'
-    elif ef > (3 * gap / 4.):
-        dopability = '<b style="color:blue;">n-type</b>'
-    else:
-        dopability = 'intrinsic'
-
-    # get strength of p-/n-type dopability
-    if ef < 0:
-        ptype_val = '100+'
-        ntype_val = '0'
-    elif ef > gap:
-        ptype_val = '0'
-        ntype_val = '100+'
-    else:
-        ptype_val = int((1 - ef / gap) * 100)
-        ntype_val = int((100 - ptype_val))
-    pn_strength = f'{ptype_val:3}% / {ntype_val:3}%'
-    pn = describe_entry(
-        'p-type / n-type balance',
-        'Balance of p-/n-type dopability in percent '
-        f'(normalized wrt. band gap) at T = {int(result.temperature):d} K.'
-        + dl(
-            [
-                [
-                    '100/0',
-                    code('if E<sub>F</sub> at VBM')
-                ],
-                [
-                    '0/100',
-                    code('if E<sub>F</sub> at CBM')
-                ],
-                [
-                    '50/50',
-                    code('if E<sub>F</sub> at E<sub>gap</sub> * 0.5')
-                ]
-            ],
-        )
-    )
-
-    is_dopable = describe_entry(
-        'Intrinsic doping type',
-        'Is the material intrinsically n-type, p-type or intrinsic at '
-        f'T = {int(result.temperature):d} K?'
-        + dl(
-            [
-                [
-                    'p-type',
-                    code('if E<sub>F</sub> < 0.25 * E<sub>gap</sub>')
-                ],
-                [
-                    'n-type',
-                    code('if E<sub>F</sub> 0.75 * E<sub>gap</sub>')
-                ],
-                [
-                    'intrinsic',
-                    code('if 0.25 * E<sub>gap</sub> < E<sub>F</sub> < '
-                         '0.75 * E<sub>gap</sub>')
-                ],
-            ],
-        )
-    )
-
-    scf_fermi = describe_entry(
-        'Fermi level position',
-        'Self-consistent Fermi level wrt. VBM at which charge neutrality condition is '
-        f'fulfilled at T = {int(result.temperature):d} K [eV].')
-
-    scf_summary = table(result, 'Charge neutrality', [])
-    scf_summary['rows'].extend([[is_dopable, dopability]])
-    scf_summary['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
-    scf_summary['rows'].extend([[pn, pn_strength]])
-
-    scf_overview = table(result,
-                         f'Equilibrium properties @ {int(result.temperature):d} K', [])
-    scf_overview['rows'].extend([[is_dopable, dopability]])
-    scf_overview['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
-    scf_overview['rows'].extend([[pn, pn_strength]])
-    if scresult.n0 > 1e-5:
-        n0 = scresult.n0
-    else:
-        n0 = 0
-    scf_overview['rows'].extend(
-        [[describe_entry('Electron carrier concentration',
-                         'Equilibrium electron carrier concentration at '
-                         f'T = {int(result.temperature):d} K.'),
-          f'{n0:.1e} {unitstring}']])
-    if scresult.p0 > 1e-5:
-        p0 = scresult.p0
-    else:
-        p0 = 0
-    scf_overview['rows'].extend(
-        [[describe_entry('Hole carrier concentration',
-                         'Equilibrium hole carrier concentration at '
-                         f'T = {int(result.temperature):d} K.'),
-          f'{p0:.1e} {unitstring}']])
-
-    return scf_overview, scf_summary
-
-
-def get_conc_table(result, element, unitstring):
-    from asr.database.browser import table, describe_entry
-    from asr.defectlinks import get_defectstring_from_defectinfo
-
-    token = element['defect_name']
-    from asr.defect_symmetry import DefectInfo
-    defectinfo = DefectInfo(defecttoken=token)
-    defectstring = get_defectstring_from_defectinfo(
-        defectinfo, charge=0)  # charge is only a dummy parameter here
-    # remove the charge string from the defectstring again
-    clean_defectstring = defectstring.split('(charge')[0]
-    scf_table = table(result, f'Eq. concentrations of '
-                              f'{clean_defectstring} [{unitstring}]', [])
-    for altel in element['concentrations']:
-        if altel[0] > 1e1:
-            scf_table['rows'].extend(
-                [[describe_entry(f'<b>Charge {altel[1]:1d}</b>',
-                                 description='Equilibrium concentration '
-                                             'in charge state q at T = '
-                                             f'{int(result.temperature):d} K.'),
-                  f'<b>{altel[0]:.1e}</b>']])
-        else:
-            scf_table['rows'].extend(
-                [[describe_entry(f'Charge {altel[1]:1d}',
-                                 description='Equilibrium concentration '
-                                             'in charge state q at T = '
-                                             f'{int(result.temperature):d} K.'),
-                  f'{altel[0]:.1e}']])
-
-    return scf_table
-
-
-def ChargeNeutralityWebpanel(result, row, key_descriptions):
-    panel_description = make_panel_description(
-        """
-    Equilibrium defect energetics evaluated by solving E<sub>F</sub> self-consistently
-    until charge neutrality is achieved.
-    """,
-        articles=[
-            href("""J. Buckeridge, Equilibrium point defect and charge carrier
-     concentrations in a meterial determined through calculation of the self-consistent
-     Fermi energy, Comp. Phys. Comm. 244 329 (2019)""",
-                 'https://doi.org/10.1016/j.cpc.2019.06.017'),
-        ],
-    )
-
-    unit = result.conc_unit
-    unitstring = f"cm<sup>{unit.split('^')[-1]}</sup>"
-    panels = []
-    for i, scresult in enumerate(result.scresults):
-        condition = scresult.condition
-        tables = []
-        for element in scresult.defect_concentrations:
-            conc_table = get_conc_table(result, element, unitstring)
-            tables.append(conc_table)
-        scf_overview, scf_summary = get_overview_tables(scresult, result, unitstring)
-        plotname = f'neutrality-{condition}.png'
-        panel = WebPanel(
-            describe_entry(f'Equilibrium energetics: all defects ({condition})',
-                           panel_description),
-            columns=[[fig(f'{plotname}'), scf_overview], tables],
-            plot_descriptions=[{'function': plot_formation_scf,
-                                'filenames': [plotname]}],
-            sort=25 + i)
-        panels.append(panel)
-
-    return panels
-
-
-@prepare_result
-class ConcentrationResult(ASRResult):
-    """Container for concentration results of a specific defect."""
-
-    defect_name: str
-    concentrations: typing.List[typing.Tuple[float, float, int]]
-
-    key_descriptions = dict(
-        defect_name='Name of the defect (see "defecttoken" of DefectInfo).',
-        concentrations='List of concentration tuples containing (conc., eform @ SCEF, '
-                       'chargestate).')
-
-
-@prepare_result
-class SelfConsistentResult(ASRResult):
-    """Container for results under certain chem. pot. condition."""
-
-    condition: str
-    efermi_sc: float
-    n0: float
-    p0: float
-    defect_concentrations: typing.List[ConcentrationResult]
-    dopability: str
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        condition='Chemical potential condition, e.g. A-poor. '
-                  'If one is poor, all other potentials are in '
-                  'rich conditions.',
-        efermi_sc='Self-consistent Fermi level at which charge '
-                  'neutrality condition is fulfilled [eV].',
-        n0='Electron carrier concentration at SC Fermi level.',
-        p0='Hole carrier concentration at SC Fermi level.',
-        defect_concentrations='List of ConcentrationResult containers.',
-        dopability='p-/n-type or intrinsic nature of material.')
-
-
+# charge_neutrality
 @prepare_result
 class ChargeNeutralityResult(ASRResult):
     """Container for asr.charge_neutrality results."""
-
+    from asr.randomresults import SelfConsistentResult
     scresults: typing.List[SelfConsistentResult]
     temperature: float
     gap: float
@@ -1564,6 +279,546 @@ class ChargeNeutralityResult(ASRResult):
         conc_unit='Unit of calculated concentrations.')
 
     formats = {"ase_webpanel": ChargeNeutralityWebpanel}
+
+    @staticmethod
+    def get_overview_tables(scresult, result, unitstring):
+        ef = scresult.efermi_sc
+        gap = result.gap
+        if ef < (gap / 4.):
+            dopability = '<b style="color:red;">p-type</b>'
+        elif ef > (3 * gap / 4.):
+            dopability = '<b style="color:blue;">n-type</b>'
+        else:
+            dopability = 'intrinsic'
+
+        # get strength of p-/n-type dopability
+        if ef < 0:
+            ptype_val = '100+'
+            ntype_val = '0'
+        elif ef > gap:
+            ptype_val = '0'
+            ntype_val = '100+'
+        else:
+            ptype_val = int((1 - ef / gap) * 100)
+            ntype_val = int((100 - ptype_val))
+        pn_strength = f'{ptype_val:3}% / {ntype_val:3}%'
+        pn = describe_entry(
+            'p-type / n-type balance',
+            'Balance of p-/n-type dopability in percent '
+            f'(normalized wrt. band gap) at T = {int(result.temperature):d} K.'
+            + dl(
+                [
+                    [
+                        '100/0',
+                        code('if E<sub>F</sub> at VBM')
+                    ],
+                    [
+                        '0/100',
+                        code('if E<sub>F</sub> at CBM')
+                    ],
+                    [
+                        '50/50',
+                        code('if E<sub>F</sub> at E<sub>gap</sub> * 0.5')
+                    ]
+                ],
+            )
+        )
+
+        is_dopable = describe_entry(
+            'Intrinsic doping type',
+            'Is the material intrinsically n-type, p-type or intrinsic at '
+            f'T = {int(result.temperature):d} K?'
+            + dl(
+                [
+                    [
+                        'p-type',
+                        code('if E<sub>F</sub> < 0.25 * E<sub>gap</sub>')
+                    ],
+                    [
+                        'n-type',
+                        code('if E<sub>F</sub> 0.75 * E<sub>gap</sub>')
+                    ],
+                    [
+                        'intrinsic',
+                        code('if 0.25 * E<sub>gap</sub> < E<sub>F</sub> < '
+                             '0.75 * E<sub>gap</sub>')
+                    ],
+                ],
+            )
+        )
+
+        scf_fermi = describe_entry(
+            'Fermi level position',
+            'Self-consistent Fermi level wrt. VBM at which charge neutrality condition is '
+            f'fulfilled at T = {int(result.temperature):d} K [eV].')
+
+        scf_summary = table(result, 'Charge neutrality', [])
+        scf_summary['rows'].extend([[is_dopable, dopability]])
+        scf_summary['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
+        scf_summary['rows'].extend([[pn, pn_strength]])
+
+        scf_overview = table(result,
+                             f'Equilibrium properties @ {int(result.temperature):d} K', [])
+        scf_overview['rows'].extend([[is_dopable, dopability]])
+        scf_overview['rows'].extend([[scf_fermi, f'{ef:.2f} eV']])
+        scf_overview['rows'].extend([[pn, pn_strength]])
+        if scresult.n0 > 1e-5:
+            n0 = scresult.n0
+        else:
+            n0 = 0
+        scf_overview['rows'].extend(
+            [[describe_entry('Electron carrier concentration',
+                             'Equilibrium electron carrier concentration at '
+                             f'T = {int(result.temperature):d} K.'),
+              f'{n0:.1e} {unitstring}']])
+        if scresult.p0 > 1e-5:
+            p0 = scresult.p0
+        else:
+            p0 = 0
+        scf_overview['rows'].extend(
+            [[describe_entry('Hole carrier concentration',
+                             'Equilibrium hole carrier concentration at '
+                             f'T = {int(result.temperature):d} K.'),
+              f'{p0:.1e} {unitstring}']])
+
+        return scf_overview, scf_summary
+
+    @staticmethod
+    def get_conc_table(result, element, unitstring):
+        from asr.database.browser import table, describe_entry
+        from asr.defectlinks import get_defectstring_from_defectinfo
+
+        token = element['defect_name']
+        from asr.defect_symmetry import DefectInfo
+        defectinfo = DefectInfo(defecttoken=token)
+        defectstring = get_defectstring_from_defectinfo(
+            defectinfo, charge=0)  # charge is only a dummy parameter here
+        # remove the charge string from the defectstring again
+        clean_defectstring = defectstring.split('(charge')[0]
+        scf_table = table(result, f'Eq. concentrations of '
+                                  f'{clean_defectstring} [{unitstring}]', [])
+        for altel in element['concentrations']:
+            if altel[0] > 1e1:
+                scf_table['rows'].extend(
+                    [[describe_entry(f'<b>Charge {altel[1]:1d}</b>',
+                                     description='Equilibrium concentration '
+                                                 'in charge state q at T = '
+                                                 f'{int(result.temperature):d} K.'),
+                      f'<b>{altel[0]:.1e}</b>']])
+            else:
+                scf_table['rows'].extend(
+                    [[describe_entry(f'Charge {altel[1]:1d}',
+                                     description='Equilibrium concentration '
+                                                 'in charge state q at T = '
+                                                 f'{int(result.temperature):d} K.'),
+                      f'{altel[0]:.1e}']])
+
+        return scf_table
+
+    @staticmethod
+    def plot_formation_scf(row, fname):
+        """Plot formation energy diagram and SC Fermi level wrt. VBM."""
+        import matplotlib.pyplot as plt
+        from asr.extra_result_plotting import (
+            plot_lowest_lying, draw_band_edges, draw_ef, set_limits,
+            set_labels_and_legend
+        )
+
+        data = row.data.get('results-asr.charge_neutrality.json')
+        gap = data['gap']
+        comparison = fname.split('neutrality-')[-1].split('.png')[0]
+        fig, ax = plt.subplots()
+        for j, condition in enumerate(data['scresults']):
+            if comparison == condition['condition']:
+                ef = condition['efermi_sc']
+                for i, defect in enumerate(condition['defect_concentrations']):
+                    name = defect['defect_name']
+                    def_type = name.split('_')[0]
+                    def_name = name.split('_')[-1]
+                    namestring = f"{def_type}$_\\{'mathrm{'}{def_name}{'}'}$"
+                    array = np.zeros((len(defect['concentrations']), 2))
+                    for num, conc_tuple in enumerate(defect['concentrations']):
+                        q = conc_tuple[1]
+                        eform = conc_tuple[2]
+                        array[num, 0] = eform + q * (-ef)
+                        array[num, 1] = q
+                    array = array[array[:, 1].argsort()[::-1]]
+                    # plot_background(ax, array)
+                    plot_lowest_lying(ax, array, ef, gap, name=namestring, color=f'C{i}')
+                draw_band_edges(ax, gap)
+                set_limits(ax, gap)
+                draw_ef(ax, ef)
+                set_labels_and_legend(ax, comparison)
+
+        plt.tight_layout()
+        plt.savefig(fname)
+
+
+
+######### Bandstructure #########
+@prepare_result
+class BandStructureResult(ASRResult):
+    version: int = 0
+    bs_soc: dict
+    bs_nosoc: dict
+
+    key_descriptions = \
+        {
+            'bs_soc': 'Bandstructure data with spin–orbit coupling.',
+            'bs_nosoc': 'Bandstructure data without spin–orbit coupling.'
+        }
+
+    formats = {"ase_webpanel": BandstructureWebpanel}
+
+    @staticmethod
+    def plot_bs_html(row, filename='bs.html'):
+        import plotly
+        import plotly.graph_objs as go
+
+        traces = []
+        d = row.data.get('results-asr.bandstructure.json')
+        xcname = gs_xcname_from_row(row)
+
+        path = d['bs_nosoc']['path']
+        kpts = path.kpts
+        ef = d['bs_nosoc']['efermi']
+
+        if row.get('evac') is not None:
+            label = '<i>E</i> - <i>E</i><sub>vac</sub> [eV]'
+            reference = row.get('evac')
+        else:
+            label = '<i>E</i> - <i>E</i><sub>F</sub> [eV]'
+            reference = ef
+
+        gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+        if gaps.get('vbm'):
+            emin = gaps.get('vbm', ef) - 3
+        else:
+            emin = ef - 3
+        if gaps.get('cbm'):
+            emax = gaps.get('cbm', ef) + 3
+        else:
+            emax = ef + 3
+        e_skn = d['bs_nosoc']['energies']
+        shape = e_skn.shape
+        xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+        xcoords = np.vstack([xcoords] * shape[0] * shape[2])
+
+        e_kn = np.hstack([e_skn[x] for x in range(shape[0])])
+        trace = go.Scattergl(
+            x=xcoords.ravel(),
+            y=e_kn.T.ravel() - reference,
+            mode='markers',
+            name=f'{xcname} no SOC',
+            showlegend=True,
+            marker=dict(size=4, color='#999999'))
+        traces.append(trace)
+
+        e_mk = d['bs_soc']['energies']
+        path = d['bs_soc']['path']
+        kpts = path.kpts
+        ef = d['bs_soc']['efermi']
+        sz_mk = d['bs_soc']['sz_mk']
+
+        xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+
+        shape = e_mk.shape
+        perm = (-sz_mk).argsort(axis=None)
+        e_mk = e_mk.ravel()[perm].reshape(shape)
+        sz_mk = sz_mk.ravel()[perm].reshape(shape)
+        xcoords = np.vstack([xcoords] * shape[0])
+        xcoords = xcoords.ravel()[perm].reshape(shape)
+
+        # Unicode for <S_z>
+        sdir = row.get('spin_axis', 'z')
+        cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
+        trace = go.Scattergl(
+            x=xcoords.ravel(),
+            y=e_mk.ravel() - reference,
+            mode='markers',
+            name=xcname,
+            showlegend=True,
+            marker=dict(
+                size=4,
+                color=sz_mk.ravel(),
+                colorscale='Viridis',
+                showscale=True,
+                colorbar=dict(
+                    tickmode='array',
+                    tickvals=[-1, 0, 1],
+                    ticktext=['-1', '0', '1'],
+                    title=cbtitle,
+                    titleside='right')))
+        traces.append(trace)
+
+        linetrace = go.Scatter(
+            x=[np.min(xcoords), np.max(xcoords)],
+            y=[ef - reference, ef - reference],
+            mode='lines',
+            line=dict(color=('rgb(0, 0, 0)'), width=2, dash='dash'),
+            name='Fermi level')
+        traces.append(linetrace)
+
+        def pretty(kpt):
+            if kpt == 'G':
+                kpt = '&#x393;'  # Gamma in unicode
+            elif len(kpt) == 2:
+                kpt = kpt[0] + '$_' + kpt[1] + '$'
+            return kpt
+
+        labels = [pretty(name) for name in orig_labels]
+        i = 1
+        while i < len(labels):
+            if label_xcoords[i - 1] == label_xcoords[i]:
+                labels[i - 1] = labels[i - 1][:-1] + ',' + labels[i][1:]
+                labels[i] = ''
+            i += 1
+
+        bandxaxis = go.layout.XAxis(
+            title="k-points",
+            range=[0, np.max(xcoords)],
+            showgrid=True,
+            showline=True,
+            ticks="",
+            showticklabels=True,
+            mirror=True,
+            linewidth=2,
+            ticktext=labels,
+            tickvals=label_xcoords,
+        )
+
+        bandyaxis = go.layout.YAxis(
+            title=label,
+            range=[emin - reference, emax - reference],
+            showgrid=True,
+            showline=True,
+            zeroline=False,
+            mirror="ticks",
+            ticks="inside",
+            linewidth=2,
+            tickwidth=2,
+            zerolinewidth=2,
+        )
+
+        bandlayout = go.Layout(
+            xaxis=bandxaxis,
+            yaxis=bandyaxis,
+            legend=dict(x=0, y=1),
+            hovermode='closest',
+            margin=dict(t=40, r=100),
+            font=dict(size=18))
+
+        fig = {'data': traces, 'layout': bandlayout}
+        # fig['layout']['margin'] = {'t': 40, 'r': 100}
+        # fig['layout']['hovermode'] = 'closest'
+        # fig['layout']['legend'] =
+
+        plot_html = plotly.offline.plot(
+            fig, include_plotlyjs=False, output_type='div')
+        # plot_html = ''.join(['<div style="width: 1000px;',
+        #                      'height=1000px;">',
+        #                      plot_html,
+        #                      '</div>'])
+
+        inds = []
+        for i, c in enumerate(plot_html):
+            if c == '"':
+                inds.append(i)
+        plotdivid = plot_html[inds[0] + 1:inds[1]]
+
+        resize_script = (
+            ''
+            '<script type="text/javascript">'
+            'window.addEventListener("resize", function(){{'
+            'Plotly.Plots.resize(document.getElementById("{id}"));}});'
+            '</script>').format(id=plotdivid)
+
+        # Insert plotly.js
+        plotlyjs = '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
+
+        html = ''.join([
+            '<html>', '<head><meta charset="utf-8" /></head>', '<body>', plotlyjs,
+            plot_html, resize_script, '</body>', '</html>'
+        ])
+
+        with open(filename, 'w') as fd:
+            fd.write(html)
+
+    @staticmethod
+    def plot_bs_png(row, filename='bs.png', figsize=(5.5, 5), s=0.5):
+
+        import matplotlib.pyplot as plt
+        from matplotlib import rcParams
+        import matplotlib.patheffects as path_effects
+        from ase.spectrum.band_structure import BandStructure, BandStructurePlot
+        d = row.data.get('results-asr.bandstructure.json')
+        xcname = gs_xcname_from_row(row)
+
+        path = d['bs_nosoc']['path']
+        ef_nosoc = d['bs_nosoc']['efermi']
+        ef_soc = d['bs_soc']['efermi']
+        ref_nosoc = row.get('evac', d.get('bs_nosoc').get('efermi'))
+        ref_soc = row.get('evac', d.get('bs_soc').get('efermi'))
+        if row.get('evac') is not None:
+            label = r'$E - E_\mathrm{vac}$ [eV]'
+        else:
+            label = r'$E - E_\mathrm{F}$ [eV]'
+
+        e_skn = d['bs_nosoc']['energies']
+        nspins = e_skn.shape[0]
+        e_kn = np.hstack([e_skn[x] for x in range(nspins)])[np.newaxis]
+
+        gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+        if gaps.get('vbm'):
+            emin = gaps.get('vbm') - 3
+        else:
+            emin = ef_nosoc - 3
+        if gaps.get('cbm'):
+            emax = gaps.get('cbm') + 3
+        else:
+            emax = ef_nosoc + 3
+        bs = BandStructure(path, e_kn - ref_nosoc, ef_soc - ref_soc)
+        # without soc
+        nosoc_style = dict(
+            colors=['0.8'] * e_skn.shape[0],
+            label=f'{xcname} no SOC',
+            ls='-',
+            lw=1.0,
+            zorder=0)
+        plt.figure(figsize=figsize)
+        ax = plt.gca()
+        bsp = BandStructurePlot(bs)
+        bsp.plot(
+            ax=ax,
+            show=False,
+            emin=emin - ref_nosoc,
+            emax=emax - ref_nosoc,
+            ylabel=label,
+            **nosoc_style)
+        # with soc
+        e_mk = d['bs_soc']['energies']
+        sz_mk = d['bs_soc']['sz_mk']
+        sdir = row.get('spin_axis', 'z')
+        colorbar = not (row.magstate == 'NM' and row.has_inversion_symmetry)
+        ax, cbar = plot_with_colors(
+            bsp,
+            ax=ax,
+            energies=e_mk - ref_soc,
+            colors=sz_mk,
+            colorbar=colorbar,
+            filename=filename,
+            show=False,
+            emin=emin - ref_soc,
+            emax=emax - ref_soc,
+            sortcolors=True,
+            loc='upper right',
+            clabel=r'$\langle S_{} \rangle $'.format(sdir),
+            s=s)
+
+        if cbar:
+            cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
+            cbar.update_ticks()
+        csz0 = plt.get_cmap('viridis')(0.5)  # color for sz = 0
+        ax.plot([], [], label=xcname, color=csz0)
+
+        xlim = ax.get_xlim()
+        x0 = xlim[1] * 0.01
+        text = ax.annotate(
+            r'$E_\mathrm{F}$',
+            xy=(x0, ef_soc - ref_soc),
+            fontsize=rcParams['font.size'] * 1.25,
+            ha='left',
+            va='bottom')
+
+        text.set_path_effects([
+            path_effects.Stroke(linewidth=2, foreground='white', alpha=0.5),
+            path_effects.Normal()
+        ])
+        legend_on_top(ax, ncol=2)
+        plt.savefig(filename, bbox_inches='tight')
+
+
+######## Magnetic Properties ########
+# Berry
+@prepare_result
+class BerryResult(ASRResult):
+    Topology: str
+    key_descriptions = {'Topology': 'Band topology.'}
+    formats = {"ase_webpanel": BerryWebpanel}
+
+    @staticmethod
+    def plot_phases(row, f0, f1, f2, fpi):
+        import pylab as plt
+
+        results = row.data['results-asr.berry@calculate.json']
+        for f, label in [(f0, 0), (f1, 1), (f2, 2), (fpi, '0_pi')]:
+            phit_km = results.get(f'phi{label}_km')
+            if phit_km is None:
+                continue
+            St_km = results.get(f's{label}_km')
+            if St_km is None:
+                continue
+            Nk = len(St_km)
+
+            phi_km = np.zeros((len(phit_km) + 1, len(phit_km[0])), float)
+            phi_km[1:] = phit_km
+            phi_km[0] = phit_km[-1]
+            S_km = np.zeros((len(phit_km) + 1, len(phit_km[0])), float)
+            S_km[1:] = St_km
+            S_km[0] = St_km[-1]
+            S_km /= 2
+
+            Nm = len(phi_km[0])
+            phi_km = np.tile(phi_km, (1, 2))
+            phi_km[:, Nm:] += 2 * np.pi
+            S_km = np.tile(S_km, (1, 2))
+            Nk = len(S_km)
+            Nm = len(phi_km[0])
+
+            shape = S_km.T.shape
+            perm = np.argsort(S_km.T, axis=None)
+            phi_km = phi_km.T.ravel()[perm].reshape(shape).T
+            S_km = S_km.T.ravel()[perm].reshape(shape).T
+
+            plt.figure()
+            plt.scatter(np.tile(np.arange(Nk), Nm)[perm],
+                        phi_km.T.reshape(-1),
+                        cmap=plt.get_cmap('viridis'),
+                        c=S_km.T.reshape(-1),
+                        s=5,
+                        marker='o')
+
+            if 'results-asr.magnetic_anisotropy.json' in row.data:
+                anis = row.data['results-asr.magnetic_anisotropy.json']
+                dir = anis['spin_axis']
+            else:
+                dir = 'z'
+
+            cbar = plt.colorbar()
+            cbar.set_label(rf'$\langle S_{dir}\rangle/\hbar$', size=16)
+
+            if f == f0:
+                plt.title(r'$\tilde k_2=0$', size=22)
+                plt.xlabel(r'$\tilde k_1$', size=20)
+                plt.ylabel(r'$\gamma_0$', size=20)
+            elif f == f1:
+                plt.title(r'$\tilde k_0=0$', size=22)
+                plt.xlabel(r'$\tilde k_2$', size=20)
+                plt.ylabel(r'$\gamma_1$', size=20)
+            if f == f2:
+                plt.title(r'$\tilde k_1=0$', size=22)
+                plt.xlabel(r'$\tilde k_0$', size=20)
+                plt.ylabel(r'$\gamma_2$', size=20)
+            if f == fpi:
+                plt.title(r'$\tilde k_2=\pi$', size=22)
+                plt.xlabel(r'$\tilde k_1$', size=20)
+                plt.ylabel(r'$\gamma_0$', size=20)
+            plt.xticks([0, Nk / 2, Nk],
+                       [r'$-\pi$', r'$0$', r'$\pi$'], size=16)
+            plt.yticks([0, np.pi, 2 * np.pi], [r'$0$', r'$\pi$', r'$2\pi$'], size=16)
+            plt.axis([0, Nk, 0, 2 * np.pi])
+            plt.tight_layout()
+            plt.savefig(f)
 
 
 ######### chc #########
