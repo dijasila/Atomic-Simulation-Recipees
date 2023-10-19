@@ -579,10 +579,10 @@ def plot_html(row, fname, thisrow):
     df_ref["latexname"] = latexnames
 
     # Highlight this material by making it bold
-    name_coloumn_to_plot = "latexname"
+    name_column_to_plot = "latexname"
     try:
-        df_ref.loc[df_ref["thisrow"], name_coloumn_to_plot] = (
-            "<b>" + df_ref[df_ref["thisrow"]][name_coloumn_to_plot].values[0] + "</b>"
+        df_ref.loc[df_ref["thisrow"], name_column_to_plot] = (
+            "<b>" + df_ref[df_ref["thisrow"]][name_column_to_plot].values[0] + "</b>"
         )
     except IndexError:
         pass
@@ -795,9 +795,6 @@ def plot_html(row, fname, thisrow):
                 font=dict(size=14),
             ),
         )
-
-    # Below would be enough if we didn't want to make the plot clickable
-    # fig.write_html(fname, include_mathjax='cdn', include_plotlyjs='cdn')
 
     # Make plots clickable to go to material page
     # Get HTML representation of plotly.js and this figure
