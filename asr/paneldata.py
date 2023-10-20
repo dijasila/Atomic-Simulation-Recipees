@@ -1,12 +1,9 @@
-import functools
-import warnings
 import itertools
 import numpy as np
 import typing
 from typing import List, Tuple, Optional, Dict, Any
 from ase.formula import Formula
 from ase.db.row import AtomsRow
-from ase.phasediagram import PhaseDiagram
 from ase.dft.kpoints import BandPath
 from ase.dft.kpoints import labels_from_kpts
 from asr.core import ASRResult, prepare_result
@@ -19,13 +16,14 @@ from asr.database.browser import (
     entry_parameter_description,
     make_panel_description)
 from asr.utils.hacks import gs_xcname_from_row
-from matplotlib import patches
 
 from asr.createwebpanel import (
     OpticalWebpanel, PlasmaWebpanel, InfraredWebpanel, BSEWebpanel,
     BaderWebpanel, BornChargesWebpanel, ChargeNeutralityWebpanel,
     BandstructureWebpanel,
     BerryWebpanel,
+    CHCWebpanel, ConvexHullWebpanel,
+    DefectSymmetryWebpanel,
 )
 from asr.extra_result_plotting import (
     gaps_from_row, _absorption,
@@ -238,7 +236,6 @@ class BSEResult(ASRResult):
             filename=filename)
 
 
-######### Charge Analysis #########
 # Bader
 @prepare_result
 class BaderResult(ASRResult):
@@ -455,7 +452,7 @@ class ChargeNeutralityResult(ASRResult):
 
 
 
-######### Bandstructure #########
+# Bandstructure
 @prepare_result
 class BandStructureResult(ASRResult):
     version: int = 0
@@ -555,7 +552,7 @@ class BandStructureResult(ASRResult):
             x=[np.min(xcoords), np.max(xcoords)],
             y=[ef - reference, ef - reference],
             mode='lines',
-            line=dict(color=('rgb(0, 0, 0)'), width=2, dash='dash'),
+            line=dict(color='rgb(0, 0, 0)', width=2, dash='dash'),
             name='Fermi level')
         traces.append(linetrace)
 
@@ -700,6 +697,8 @@ class BandStructureResult(ASRResult):
         sz_mk = d['bs_soc']['sz_mk']
         sdir = row.get('spin_axis', 'z')
         colorbar = not (row.magstate == 'NM' and row.has_inversion_symmetry)
+        # XXX plot_with_colors never uses emin and emax. this input is
+        # useless to pass.
         ax, cbar = plot_with_colors(
             bsp,
             ax=ax,
@@ -708,8 +707,8 @@ class BandStructureResult(ASRResult):
             colorbar=colorbar,
             filename=filename,
             show=False,
-            emin=emin - ref_soc,
-            emax=emax - ref_soc,
+            # emin=emin - ref_soc,
+            # emax=emax - ref_soc,
             sortcolors=True,
             loc='upper right',
             clabel=r'$\langle S_{} \rangle $'.format(sdir),
@@ -790,12 +789,12 @@ class BerryResult(ASRResult):
 
             if 'results-asr.magnetic_anisotropy.json' in row.data:
                 anis = row.data['results-asr.magnetic_anisotropy.json']
-                dir = anis['spin_axis']
+                direction = anis['spin_axis']
             else:
-                dir = 'z'
+                direction = 'z'
 
             cbar = plt.colorbar()
-            cbar.set_label(rf'$\langle S_{dir}\rangle/\hbar$', size=16)
+            cbar.set_label(rf'$\langle S_{direction}\rangle/\hbar$', size=16)
 
             if f == f0:
                 plt.title(r'$\tilde k_2=0$', size=22)
@@ -821,7 +820,8 @@ class BerryResult(ASRResult):
             plt.savefig(f)
 
 
-######### chc #########
+## Convex Hull
+# chc
 class Reference:
     def __init__(self, formula, hform):
         from collections import defaultdict
@@ -853,7 +853,6 @@ class Reference:
         """
         if type(other) != Reference:
             raise ValueError("Dont compare Reference to non-Reference")
-            return False
         else:
             import numpy as np
             from asr.fere import formulas_eq
@@ -887,8 +886,6 @@ class Reference:
     @property
     def natoms(self):
         return sum(self.Formula.count().values())
-
-
 class Intermediate:
     def __init__(self, references, mat_reference, reactant_reference):
         self.references = references
@@ -908,6 +905,8 @@ class Intermediate:
                'reactdct': reactdct}
         return dct
 
+    # XXX is this actually accessing self?? why is this called dct if it is
+    # self
     def from_dict(dct):
         if 'refdcts' not in dct:
             return LeanIntermediate.from_dict(dct)
@@ -998,8 +997,6 @@ class Intermediate:
         total_matrefs = 1
 
         return total_reactants / (total_reactants + total_matrefs)
-
-
 class LeanIntermediate:
     def __init__(self, mat_reference, reactant_reference,
                  reference):
@@ -1029,100 +1026,14 @@ class LeanIntermediate:
 
         return dct
 
+    # XXX is this actually accessing self?? why is this called dct if it is
+    # self
     def from_dict(dct):
         mat_ref = Reference.from_dict(dct["mat_ref"])
         react_ref = Reference.from_dict(dct["react_ref"])
         ref = Reference.from_dict(dct["ref"])
 
         return LeanIntermediate(mat_ref, react_ref, ref)
-
-
-def CHCWebpanel(result, row, key_descriptions):
-    from asr.database.browser import fig as asrfig
-
-    fname = 'convexhullcut.png'
-
-    panel = {'title': 'Convex Hull Cut',
-             'columns': [[asrfig(fname)]],
-             'plot_descriptions':
-             [{'function': chcut_plot,
-               'filenames': [fname]}]}
-
-    return [panel]
-
-
-def filrefs(refs):
-    from asr.fere import formulas_eq
-    nrefs = []
-    visited = []
-    for (form, v) in refs:
-        seen = False
-        for x in visited:
-            if formulas_eq(form, x):
-                seen = True
-                break
-
-        if seen:
-            continue
-        visited.append(form)
-
-        vals = list(filter(lambda t: formulas_eq(t[0], form), refs))
-
-        minref = min(vals, key=lambda t: t[1])
-
-        nrefs.append(minref)
-
-    return nrefs
-
-
-def chcut_plot(row, fname):
-    import matplotlib.pyplot as plt
-    from ase import Atoms
-
-    data = row.data.get('results-asr.chc.json')
-    mat_ref = Reference.from_dict(data['_matref'])
-
-    if len(mat_ref.symbols) <= 2:
-        refs = filrefs(data.get('_refs'))
-        nrefs = []
-
-        for (form, v) in refs:
-            atoms = Atoms(form)
-            e = v * len(atoms)
-            nrefs.append((form, e))
-
-        from ase.phasediagram import PhaseDiagram
-        pd = PhaseDiagram(nrefs, verbose=False)
-        plt.figure(figsize=(4, 3), dpi=150)
-        pd.plot(ax=plt.gca(), dims=2, show=False)
-        plt.savefig("./chcconvexhull.png")
-        plt.close()
-
-    mat_ref = Reference.from_dict(data['_matref'])
-    reactant_ref = Reference.from_dict(data['_reactant_ref'])
-    intermediates = [Intermediate.from_dict(im)
-                     for im in data['_intermediates']]
-    xs = list(map(lambda im: im.reactant_content, intermediates))
-    es = list(map(lambda im: im.hform, intermediates))
-    xs_es_ims = list(zip(xs, es, intermediates))
-    xs_es_ims = sorted(xs_es_ims, key=lambda t: t[0])
-    xs, es, ims = [list(x) for x in zip(*xs_es_ims)]
-    labels = list(map(lambda im: im.label, ims))
-
-    labels = [mat_ref.formula] + labels + [reactant_ref.formula]
-    allxs = [0.0] + xs + [1.0]
-    allxs = [round(x, 2) for x in allxs]
-    labels = ['\n' + l if i % 2 == 1 else l for i, l in enumerate(labels)]
-    labels = [f'{allxs[i]}\n' + l for i, l in enumerate(labels)]
-    plt.plot([mat_ref.hform] + es + [0.0])
-    plt.gca().set_xticks(range(len(labels)))
-    plt.gca().set_xticklabels(labels)
-    plt.xlabel(f'{reactant_ref.formula} content')
-    plt.ylabel(f"Heat of formation")
-    plt.tight_layout()
-    plt.savefig(fname, bbox_inches='tight')
-
-
 @prepare_result
 class CHCResult(ASRResult):
     intermediates: List[Intermediate]
@@ -1147,309 +1058,75 @@ class CHCResult(ASRResult):
 
     formats = {'ase_webpanel': CHCWebpanel}
 
+    @staticmethod
+    def chcut_plot(row, fname):
+        import matplotlib.pyplot as plt
+        from asr.extra_result_plotting import filrefs
+        from ase import Atoms
 
-######### convex_hull #########
-eform_description = """\
-The heat of formation (ΔH) is the internal energy of a compound relative to
-the standard states of the constituent elements at T=0 K."""
+        data = row.data.get('results-asr.chc.json')
+        mat_ref = Reference.from_dict(data['_matref'])
 
+        if len(mat_ref.symbols) <= 2:
+            refs = filrefs(data.get('_refs'))
+            nrefs = []
 
-ehull_description = """\
-The energy above the convex hull is the internal energy relative to the most
-stable (possibly mixed) phase of the constituent elements at T=0 K."""
+            for (form, v) in refs:
+                atoms = Atoms(form)
+                e = v * len(atoms)
+                nrefs.append((form, e))
 
+            from ase.phasediagram import PhaseDiagram
+            pd = PhaseDiagram(nrefs, verbose=False)
+            plt.figure(figsize=(4, 3), dpi=150)
+            pd.plot(ax=plt.gca(), dims=2, show=False)
+            plt.savefig("./chcconvexhull.png")
+            plt.close()
 
-# This is for the c2db Summary panel.  We actually define most of that panel
-# in the structureinfo.py
-def ehull_table_rows(row, key_descriptions):
-    ehull_table = table(row, 'Stability', ['ehull', 'hform'], key_descriptions)
+        mat_ref = Reference.from_dict(data['_matref'])
+        reactant_ref = Reference.from_dict(data['_reactant_ref'])
+        intermediates = [Intermediate.from_dict(im)
+                         for im in data['_intermediates']]
+        xs = list(map(lambda im: im.reactant_content, intermediates))
+        es = list(map(lambda im: im.hform, intermediates))
+        xs_es_ims = list(zip(xs, es, intermediates))
+        xs_es_ims = sorted(xs_es_ims, key=lambda t: t[0])
+        xs, es, ims = [list(x) for x in zip(*xs_es_ims)]
+        labels = list(map(lambda im: im.label, ims))
 
-    # We have to magically hack a description into the arbitrarily
-    # nested "table" *grumble*:
-    rows = ehull_table['rows']
-    if len(rows) == 2:
-        # ehull and/or hform may be missing if we run tests.
-        # Dangerous and hacky, as always.
-        rows[0][0] = describe_entry(rows[0][0], ehull_long_description)
-        rows[1][0] = describe_entry(rows[1][0], eform_description)
-    return ehull_table
-
-
-def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
-    data = row.data['results-asr.convex_hull.json']
-
-    references = data.get('references', [])
-    tables = {}
-    for reference in references:
-        tables[reference['title']] = []
-
-    for reference in sorted(references, reverse=True,
-                            key=lambda x: x['hform']):
-        name = reference['name']
-        matlink = reference['link']
-        if reference['uid'] != row.uid:
-            name = f'<a href="{matlink}">{name}</a>'
-        e = reference['hform']
-        tables[reference['title']].append([name, '{:.2f} eV/atom'.format(e)])
-
-    final_tables = []
-    for title, rows in tables.items():
-        final_tables.append({'type': 'table',
-                             'header': [title, ''],
-                             'rows': rows})
-    return final_tables
-
-
-def get_hull_energies(pd: PhaseDiagram):
-    hull_energies = []
-    for ref in pd.references:
-        count = ref[0]
-        refenergy = ref[1]
-        natoms = ref[3]
-        decomp_energy, indices, coefs = pd.decompose(**count)
-        ehull = (refenergy - decomp_energy) / natoms
-        hull_energies.append(ehull)
-
-    return hull_energies
-
-
-class ObjectHandler:
-    def legend_artist(self, legend, orig_handle, fontsize, handlebox):
-        x0, y0 = handlebox.xdescent, handlebox.ydescent
-        width, height = handlebox.width, handlebox.height
-        patch = patches.Polygon(
-            [
-                [x0, y0],
-                [x0, y0 + height],
-                [x0 + 3 / 4 * width, y0 + height],
-                [x0 + 1 / 4 * width, y0],
-            ],
-            closed=True, facecolor='C2',
-            edgecolor='none', lw=3,
-            transform=handlebox.get_transform())
-        handlebox.add_artist(patch)
-        patch = patches.Polygon(
-            [
-                [x0 + width, y0],
-                [x0 + 1 / 4 * width, y0],
-                [x0 + 3 / 4 * width, y0 + height],
-                [x0 + width, y0 + height],
-            ],
-            closed=True, facecolor='C3',
-            edgecolor='none', lw=3,
-            transform=handlebox.get_transform())
-        handlebox.add_artist(patch)
-        return patch
-
-
-def convex_plot(row, fname, thisrow):
-    from ase.phasediagram import PhaseDiagram
-    import matplotlib.pyplot as plt
-
-    data = row.data['results-asr.convex_hull.json']
-
-    count = row.count_atoms()
-    if not (2 <= len(count) <= 3):
-        return
-
-    references = data['references']
-
-    pdrefs = []
-    legends = []
-    sizes = []
-
-    for reference in references:
-        h = reference['natoms'] * reference['hform']
-        pdrefs.append((reference['formula'], h))
-        legend = reference.get('legend')
-        if legend and legend not in legends:
-            legends.append(legend)
-        if legend in legends:
-            idlegend = legends.index(reference['legend'])
-            size = (3 * idlegend + 3)**2
-        else:
-            size = 2
-        sizes.append(size)
-    sizes = np.array(sizes)
-
-    pd = PhaseDiagram(pdrefs, verbose=False)
-
-    fig = plt.figure(figsize=(6, 5))
-    ax = fig.gca()
-
-    legendhandles = []
-
-    for it, label in enumerate(['On hull', 'off hull']):
-        handle = ax.fill_between([], [],
-                                 color=f'C{it + 2}', label=label)
-        legendhandles.append(handle)
-
-    for it, legend in enumerate(legends):
-        handle = ax.scatter([], [], facecolor='none', marker='o',
-                            edgecolor='k', label=legend, s=(3 + it * 3)**2)
-        legendhandles.append(handle)
-
-    hull_energies = get_hull_energies(pd)
-
-    if len(count) == 2:
-        xcoord, energy, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
-        hull = np.array(hull_energies) < 0.005
-        edgecolors = np.array(['C2' if hull_energy < 0.005 else 'C3'
-                               for hull_energy in hull_energies])
-        for i, j in simplices:
-            ax.plot(xcoord[[i, j]], energy[[i, j]], '-', color='C0')
-        names = [ref['label'] for ref in references]
-
-        if row.hform < 0:
-            mask = energy < 0.005
-            energy = energy[mask]
-            xcoord = xcoord[mask]
-            edgecolors = edgecolors[mask]
-            hull = hull[mask]
-            names = [name for name, m in zip(names, mask) if m]
-            sizes = sizes[mask]
-
-        xcoord0 = xcoord[~hull]
-        energy0 = energy[~hull]
-        ax.scatter(
-            xcoord0, energy0,
-            # x[~hull], e[~hull],
-            facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
-            zorder=9)
-
-        ax.scatter(
-            xcoord[hull], energy[hull],
-            facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
-            zorder=10)
-
-        # ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
-
-        delta = energy.ptp() / 30
-        for a, b, name, on_hull in zip(xcoord, energy, names, hull):
-            va = 'center'
-            ha = 'left'
-            dy = 0
-            dx = 0.02
-            ax.text(a + dx, b + dy, name, ha=ha, va=va)
-
-        A, B = pd.symbols
-        ax.set_xlabel('{}$_{{1-x}}${}$_x$'.format(A, B))
-        ax.set_ylabel(r'$\Delta H$ [eV/atom]')
-
-        # Circle this material
-        ymin = energy.min()
-        ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
-        newlegendhandles = [(legendhandles[0], legendhandles[1]),
-                            *legendhandles[2:]]
-
-        plt.legend(
-            newlegendhandles,
-            [r'$E_\mathrm{h} {^</_>}\, 5 \mathrm{meV}$',
-             *legends], loc='lower left', handletextpad=0.5,
-            handler_map={tuple: ObjectHandler()},
-        )
-    else:
-        x, y, _, hull, simplices = pd.plot2d3()
-
-        hull = np.array(hull)
-        hull = np.array(hull_energies) < 0.005
-        names = [ref['label'] for ref in references]
-        latexnames = [
-            format(
-                Formula(name.split(' ')[0]).reduce()[0],
-                'latex'
-            )
-            for name in names
-        ]
-        for i, j, k in simplices:
-            ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-', color='lightblue')
-        edgecolors = ['C2' if hull_energy < 0.005 else 'C3'
-                      for hull_energy in hull_energies]
-        ax.scatter(
-            x[~hull], y[~hull],
-            facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
-            zorder=9,
-        )
-
-        ax.scatter(
-            x[hull], y[hull],
-            facecolor='none', marker='o',
-            edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
-            zorder=10,
-        )
-
-        printed_names = set()
-        thisformula = Formula(thisrow.formula)
-        thisname = format(thisformula, 'latex')
-        comps = thisformula.count().keys()
-        for a, b, name, on_hull, hull_energy in zip(
-                x, y, latexnames, hull, hull_energies):
-            if name in [
-                    thisname, *comps,
-            ] and name not in printed_names:
-                printed_names.add(name)
-                ax.text(a - 0.02, b, name, ha='right', va='top')
-
-        newlegendhandles = [(legendhandles[0], legendhandles[1]),
-                            *legendhandles[2:]]
-        plt.legend(
-            newlegendhandles,
-            [r'$E_\mathrm{h} {^</_>}\, 5 \mathrm{meV}$',
-             *legends], loc='upper right', handletextpad=0.5,
-            handler_map={tuple: ObjectHandler()},
-        )
-        plt.axis('off')
-
-    plt.tight_layout()
-    plt.savefig(fname)
-    plt.close()
-
-
-def ConvexHullWebpanel(result, row, key_descriptions):
-    panel_description = make_panel_description(
-        f'{eform_description}\n\n{ehull_description}',
-        articles=['C2DB'],
-    )
-    hulltable1 = table(row,
-                       'Stability',
-                       ['hform', 'ehull'],
-                       key_descriptions)
-    hulltables = convex_hull_tables(row)
-    panel = {
-        'title': describe_entry(
-            'Thermodynamic stability', panel_description),
-        'columns': [[fig('convex-hull.png')],
-                    [hulltable1] + hulltables],
-        'plot_descriptions': [{'function':
-                               functools.partial(convex_plot, thisrow=row),
-                               'filenames': ['convex-hull.png']}],
-        'sort': 1,
-    }
-
-    return [panel]
-
-
-# XXX This string is hardcoded also in c2db's search html file in cmr
-# repository (with different formatting).
-# cmr could probably import the string from here instead.
-ehull_long_description = """\
-The energy above the convex hull (or the decomposition energy) is the main
-descriptor for thermodynamic stability. It represents the energy/atom of the
-material relative to the most stable, possibly mixed phase of the material.
-The latter is evaluated using a \
-<a href="https://cmrdb.fysik.dtu.dk/oqmd123/">reference database of bulk \
-materials</a>.
-For more information see Sec. 2.3 in \
-<a href="https://iopscience.iop.org/article/10.1088/2053-1583/aacfc1"> \
-Haastrup <i>et al</i>.</a>
-"""
-
-
+        labels = [mat_ref.formula] + labels + [reactant_ref.formula]
+        allxs = [0.0] + xs + [1.0]
+        allxs = [round(x, 2) for x in allxs]
+        labels = ['\n' + l if i % 2 == 1 else l for i, l in enumerate(labels)]
+        labels = [f'{allxs[i]}\n' + l for i, l in enumerate(labels)]
+        plt.plot([mat_ref.hform] + es + [0.0])
+        plt.gca().set_xticks(range(len(labels)))
+        plt.gca().set_xticklabels(labels)
+        plt.xlabel(f'{reactant_ref.formula} content')
+        plt.ylabel(f"Heat of formation")
+        plt.tight_layout()
+        plt.savefig(fname, bbox_inches='tight')
+# convex_hull
+from extra_result_plotting import (get_hull_energies, ObjectHandler)
 @prepare_result
 class ConvexHullResult(ASRResult):
+    ehull_long_description = """\
+    The energy above the convex hull (or the decomposition energy) is the main
+    descriptor for thermodynamic stability. It represents the energy/atom of the
+    material relative to the most stable, possibly mixed phase of the material.
+    The latter is evaluated using a \
+    <a href="https://cmrdb.fysik.dtu.dk/oqmd123/">reference database of bulk \
+    materials</a>.
+    For more information see Sec. 2.3 in \
+    <a href="https://iopscience.iop.org/article/10.1088/2053-1583/aacfc1"> \
+    Haastrup <i>et al</i>.</a>
+    """
+    ehull_description = """\
+        The energy above the convex hull is the internal energy relative to the most
+        stable (possibly mixed) phase of the constituent elements at T=0 K."""
+    eform_description = """\
+    The heat of formation (ΔH) is the internal energy of a compound relative to
+    the standard states of the constituent elements at T=0 K."""
 
     ehull: float
     hform: float
@@ -1469,8 +1146,221 @@ class ConvexHullResult(ASRResult):
 
     formats = {"ase_webpanel": ConvexHullWebpanel}
 
+    @staticmethod
+    def convex_hull_tables(row: AtomsRow) -> List[Dict[str, Any]]:
+        data = row.data['results-asr.convex_hull.json']
 
-######### defect symmetry #########
+        references = data.get('references', [])
+        tables = {}
+        for reference in references:
+            tables[reference['title']] = []
+
+        for reference in sorted(references, reverse=True,
+                                key=lambda x: x['hform']):
+            name = reference['name']
+            matlink = reference['link']
+            if reference['uid'] != row.uid:
+                name = f'<a href="{matlink}">{name}</a>'
+            e = reference['hform']
+            tables[reference['title']].append(
+                [name, '{:.2f} eV/atom'.format(e)])
+
+        final_tables = []
+        for title, rows in tables.items():
+            final_tables.append({'type': 'table',
+                                 'header': [title, ''],
+                                 'rows': rows})
+        return final_tables
+
+    @staticmethod
+    def convex_plot(row, fname, thisrow):
+        from ase.phasediagram import PhaseDiagram
+        import matplotlib.pyplot as plt
+
+        data = row.data['results-asr.convex_hull.json']
+
+        count = row.count_atoms()
+        if not (2 <= len(count) <= 3):
+            return
+
+        references = data['references']
+
+        pdrefs = []
+        legends = []
+        sizes = []
+
+        for reference in references:
+            h = reference['natoms'] * reference['hform']
+            pdrefs.append((reference['formula'], h))
+            legend = reference.get('legend')
+            if legend and legend not in legends:
+                legends.append(legend)
+            if legend in legends:
+                idlegend = legends.index(reference['legend'])
+                size = (3 * idlegend + 3)**2
+            else:
+                size = 2
+            sizes.append(size)
+        sizes = np.array(sizes)
+
+        pd = PhaseDiagram(pdrefs, verbose=False)
+
+        fig = plt.figure(figsize=(6, 5))
+        ax = fig.gca()
+
+        legendhandles = []
+
+        for it, label in enumerate(['On hull', 'off hull']):
+            handle = ax.fill_between([], [],
+                                     color=f'C{it + 2}', label=label)
+            legendhandles.append(handle)
+
+        for it, legend in enumerate(legends):
+            handle = ax.scatter([], [], facecolor='none', marker='o',
+                                edgecolor='k', label=legend, s=(3 + it * 3)**2)
+            legendhandles.append(handle)
+
+        hull_energies = get_hull_energies(pd)
+
+        if len(count) == 2:
+            xcoord, energy, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
+            hull = np.array(hull_energies) < 0.005
+            edgecolors = np.array(['C2' if hull_energy < 0.005 else 'C3'
+                                   for hull_energy in hull_energies])
+            for i, j in simplices:
+                ax.plot(xcoord[[i, j]], energy[[i, j]], '-', color='C0')
+            names = [ref['label'] for ref in references]
+
+            if row.hform < 0:
+                mask = energy < 0.005
+                energy = energy[mask]
+                xcoord = xcoord[mask]
+                edgecolors = edgecolors[mask]
+                hull = hull[mask]
+                names = [name for name, m in zip(names, mask) if m]
+                sizes = sizes[mask]
+
+            xcoord0 = xcoord[~hull]
+            energy0 = energy[~hull]
+            ax.scatter(
+                xcoord0, energy0,
+                # x[~hull], e[~hull],
+                facecolor='none', marker='o',
+                edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
+                zorder=9)
+
+            ax.scatter(
+                xcoord[hull], energy[hull],
+                facecolor='none', marker='o',
+                edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
+                zorder=10)
+
+            # ax.scatter(x, e, facecolor='none', marker='o', edgecolor=colors)
+
+            delta = energy.ptp() / 30
+            for a, b, name, on_hull in zip(xcoord, energy, names, hull):
+                va = 'center'
+                ha = 'left'
+                dy = 0
+                dx = 0.02
+                ax.text(a + dx, b + dy, name, ha=ha, va=va)
+
+            A, B = pd.symbols
+            ax.set_xlabel('{}$_{{1-x}}${}$_x$'.format(A, B))
+            ax.set_ylabel(r'$\Delta H$ [eV/atom]')
+
+            # Circle this material
+            ymin = energy.min()
+            ax.axis(xmin=-0.1, xmax=1.1, ymin=ymin - 2.5 * delta)
+            newlegendhandles = [(legendhandles[0], legendhandles[1]),
+                                *legendhandles[2:]]
+
+            plt.legend(
+                newlegendhandles,
+                [r'$E_\mathrm{h} {^</_>}\, 5 \mathrm{meV}$',
+                 *legends], loc='lower left', handletextpad=0.5,
+                handler_map={tuple: ObjectHandler()},
+            )
+        else:
+            x, y, _, hull, simplices = pd.plot2d3()
+
+            hull = np.array(hull)
+            hull = np.array(hull_energies) < 0.005
+            names = [ref['label'] for ref in references]
+            latexnames = [
+                format(
+                    Formula(name.split(' ')[0]).reduce()[0],
+                    'latex'
+                )
+                for name in names
+            ]
+            for i, j, k in simplices:
+                ax.plot(x[[i, j, k, i]], y[[i, j, k, i]], '-',
+                        color='lightblue')
+            edgecolors = ['C2' if hull_energy < 0.005 else 'C3'
+                          for hull_energy in hull_energies]
+            ax.scatter(
+                x[~hull], y[~hull],
+                facecolor='none', marker='o',
+                edgecolor=np.array(edgecolors)[~hull], s=sizes[~hull],
+                zorder=9,
+            )
+
+            ax.scatter(
+                x[hull], y[hull],
+                facecolor='none', marker='o',
+                edgecolor=np.array(edgecolors)[hull], s=sizes[hull],
+                zorder=10,
+            )
+
+            printed_names = set()
+            thisformula = Formula(thisrow.formula)
+            thisname = format(thisformula, 'latex')
+            comps = thisformula.count().keys()
+            for a, b, name, on_hull, hull_energy in zip(
+                x, y, latexnames, hull, hull_energies):
+                if name in [
+                    thisname, *comps,
+                ] and name not in printed_names:
+                    printed_names.add(name)
+                    ax.text(a - 0.02, b, name, ha='right', va='top')
+
+            newlegendhandles = [(legendhandles[0], legendhandles[1]),
+                                *legendhandles[2:]]
+            plt.legend(
+                newlegendhandles,
+                [r'$E_\mathrm{h} {^</_>}\, 5 \mathrm{meV}$',
+                 *legends], loc='upper right', handletextpad=0.5,
+                handler_map={tuple: ObjectHandler()},
+            )
+            plt.axis('off')
+
+        plt.tight_layout()
+        plt.savefig(fname)
+        plt.close()
+    @staticmethod
+    def ehull_table_rows(row, key_descriptions):
+        ehull_table = table(row, 'Stability', ['ehull', 'hform'],
+                            key_descriptions)
+
+        # We have to magically hack a description into the arbitrarily
+        # nested "table" *grumble*:
+        rows = ehull_table['rows']
+        if len(rows) == 2:
+            # ehull and/or hform may be missing if we run tests.
+            # Dangerous and hacky, as always.
+            rows[0][0] = describe_entry(rows[0][0],
+                                        ConvexHullResult.ehull_long_description)
+            rows[1][0] = describe_entry(rows[1][0],
+                                        ConvexHullResult.eform_description)
+        return ehull_table
+
+## Defects
+# defect symmetry
+from asr.extra_result_plotting import (
+    draw_band_edge, get_spin_data, draw_levels_occupations_labels,
+    get_matrixtable_array, get_transition_table)
+from asr.randomresults import SymmetryResult, PristineResult
 class Level:
     """Class to draw a single defect state level in the gap."""
 
@@ -1523,16 +1413,16 @@ class Level:
         else:
             labelstr = 'a'
 
-        if (self.off == 0 and self.spin == 0):
+        if self.off == 0 and self.spin == 0:
             xpos = self.relpos - self.size - shift
             ha = 'right'
-        if (self.off == 0 and self.spin == 1):
+        if self.off == 0 and self.spin == 1:
             xpos = self.relpos + self.size + shift
             ha = 'left'
-        if (self.off == 1 and self.spin == 0):
+        if self.off == 1 and self.spin == 0:
             xpos = self.relpos - self.size - shift
             ha = 'right'
-        if (self.off == 1 and self.spin == 1):
+        if self.off == 1 and self.spin == 1:
             xpos = self.relpos + self.size + shift
             ha = 'left'
         self.ax.text(xpos,
@@ -1541,382 +1431,6 @@ class Level:
                      va='center', ha=ha,
                      size=12,
                      color=labelcolor)
-
-
-reference = """\
-S. Kaappa et al. Point group symmetry analysis of the electronic structure
-of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)"""
-
-
-panel_description = make_panel_description(
-    """
-Analysis of defect states localized inside the pristine bandgap (energetics and
- symmetry).
-""",
-    articles=[
-        href(reference, 'https://doi.org/10.1021/acs.jpca.8b07923'),
-    ],
-)
-
-def get_summary_table(result, row):
-    spglib = get_spg_href('https://spglib.github.io/spglib/')
-    basictable = table(row, 'Defect properties', [])
-    pg_string = result.defect_pointgroup
-    pg_strlist = list(pg_string)
-    sub = ''.join(pg_strlist[1:])
-    pg_string = f'{pg_strlist[0]}<sub>{sub}</sub>'
-    pointgroup = describe_pointgroup_entry(spglib)
-    basictable['rows'].extend(
-        [[pointgroup, pg_string]])
-
-    return basictable
-
-
-def get_number_of_rows(res, spin, vbm, cbm):
-    counter = 0
-    for i in range(len(res)):
-        if (int(res[i]['spin']) == spin
-           and res[i]['energy'] < cbm
-           and res[i]['energy'] > vbm):
-            counter += 1
-
-    return counter
-
-
-def get_matrixtable_array(state_results, vbm, cbm, ef,
-                          spin, style):
-    Nrows = get_number_of_rows(state_results, spin, vbm, cbm)
-    state_array = np.empty((Nrows, 5), dtype='object')
-    rowlabels = []
-    spins = []
-    energies = []
-    symlabels = []
-    accuracies = []
-    loc_ratios = []
-    for i, row in enumerate(state_results):
-        rowname = f"{int(state_results[i]['state']):.0f}"
-        label = str(state_results[i]['best'])
-        labelstr = label.lower()
-        splitstr = list(labelstr)
-        if len(splitstr) == 2:
-            labelstr = f'{splitstr[0]}<sub>{splitstr[1]}</sub>'
-        if state_results[i]['energy'] < cbm and state_results[i]['energy'] > vbm:
-            if int(state_results[i]['spin']) == spin:
-                rowlabels.append(rowname)
-                spins.append(f"{int(state_results[i]['spin']):.0f}")
-                energies.append(f"{state_results[i]['energy']:.2f}")
-                if style == 'symmetry':
-                    symlabels.append(labelstr)
-                    accuracies.append(f"{state_results[i]['error']:.2f}")
-                    loc_ratios.append(f"{state_results[i]['loc_ratio']:.2f}")
-    state_array = np.empty((Nrows, 5), dtype='object')
-    rowlabels.sort(reverse=True)
-
-    for i in range(Nrows):
-        state_array[i, 1] = spins[i]
-        if style == 'symmetry':
-            state_array[i, 0] = symlabels[i]
-            state_array[i, 2] = accuracies[i]
-            state_array[i, 3] = loc_ratios[i]
-        state_array[i, 4] = energies[i]
-    state_array = state_array[state_array[:, -1].argsort()]
-
-    return state_array, rowlabels
-
-
-def get_symmetry_tables(state_results, vbm, cbm, row, style):
-    state_tables = []
-    gsdata = row.data.get('results-asr.gs.json')
-    eref = row.data.get('results-asr.get_wfs.json')['eref']
-    ef = gsdata['efermi'] - eref
-
-    E_hls = []
-    for spin in range(2):
-        state_array, rowlabels = get_matrixtable_array(
-            state_results, vbm, cbm, ef, spin, style)
-        if style == 'symmetry':
-            delete = [2]
-            columnlabels = ['Symmetry',
-                            # 'Spin',
-                            'Localization ratio',
-                            'Energy']
-        elif style == 'state':
-            delete = [0, 2, 3]
-            columnlabels = [  # 'Spin',
-                'Energy']
-
-        N_homo = 0
-        N_lumo = 0
-        for i in range(len(state_array)):
-            if float(state_array[i, 4]) > ef:
-                N_lumo += 1
-
-        E_homo = vbm
-        E_lumo = cbm
-        for i in range(len(state_array)):
-            if float(state_array[i, 4]) > ef:
-                rowlabels[i] = f'LUMO + {N_lumo - 1}'
-                N_lumo = N_lumo - 1
-                if N_lumo == 0:
-                    rowlabels[i] = 'LUMO'
-                    E_lumo = float(state_array[i, 4])
-            elif float(state_array[i, 4]) <= ef:
-                rowlabels[i] = f'HOMO — {N_homo}'
-                if N_homo == 0:
-                    rowlabels[i] = 'HOMO'
-                    E_homo = float(state_array[i, 4])
-                N_homo = N_homo + 1
-        E_hl = E_lumo - E_homo
-        E_hls.append(E_hl)
-
-        state_array = np.delete(state_array, delete, 1)
-        headerlabels = [f'Orbitals in spin channel {spin}',
-                        *columnlabels]
-
-        rows = []
-        state_table = {'type': 'table',
-                       'header': headerlabels}
-        for i in range(len(state_array)):
-            if style == 'symmetry':
-                rows.append((rowlabels[i],
-                             # state_array[i, 0],
-                             state_array[i, 1],
-                             describe_entry(state_array[i, 2],
-                                            'The localization ratio is defined as the '
-                                            'volume of the cell divided by the integral'
-                                            ' of the fourth power of the '
-                                            'wavefunction.'),
-                             f'{state_array[i, 3]} eV'))
-            elif style == 'state':
-                rows.append((rowlabels[i],
-                             # state_array[i, 0],
-                             f'{state_array[i, 1]} eV'))
-
-        state_table['rows'] = rows
-        state_tables.append(state_table)
-
-    transition_table = get_transition_table(row, E_hls)
-
-    return state_tables, transition_table
-
-
-def get_transition_table(row, E_hls):
-    """Create table for HOMO-LUMO transition in both spin channels."""
-
-    transition_table = table(row, 'Kohn—Sham HOMO—LUMO gap', [])
-    for i, element in enumerate(E_hls):
-        transition_table['rows'].extend(
-            [[describe_entry(f'Spin {i}',
-                             f'KS HOMO—LUMO gap for spin {i} channel.'),
-              f'{element:.2f} eV']])
-
-    return transition_table
-
-
-def get_spin_data(data, spin):
-    """Create symmetry result only containing entries for one spin channel."""
-    spin_data = []
-    for sym in data.data['symmetries']:
-        if int(sym.spin) == spin:
-            spin_data.append(sym)
-
-    return spin_data
-
-
-def draw_levels_occupations_labels(ax, spin, spin_data, ecbm, evbm, ef,
-                                   gap, levelflag):
-    """Loop over all states in the gap and plot the levels.
-
-    This function loops over all states in the gap of a given spin
-    channel, and dravs the states with labels. If there are
-    degenerate states, it makes use of the degeneracy_counter, i.e. if two
-    degenerate states follow after each other, one of them will be drawn
-    on the left side (degoffset=0, degeneracy_counter=0), the degeneracy
-    counter will be increased by one and the next degenerate state will be
-    drawn on the right side (degoffset=1, degeneracy_counter=1). Since we
-    only deal with doubly degenerate states here, the degeneracy counter
-    will be set to zero again after drawing the second degenerate state.
-
-    For non degenerate states, i.e. deg = 1, all states will be drawn
-    in the middle and the counter logic is not needed.
-    """
-    # initialize degeneracy counter and offset
-    degeneracy_counter = 0
-    degoffset = 0
-    for sym in spin_data:
-        energy = sym.energy
-        is_inside_gap = evbm < energy < ecbm
-        if is_inside_gap:
-            spin = int(sym.spin)
-            irrep = sym.best
-            # only do drawing left and right if levelflag, i.e.
-            # if there is a symmetry analysis to evaluate degeneracies
-            if levelflag:
-                deg = [1, 2]['E' in irrep]
-            else:
-                deg = 1
-                degoffset = 1
-            # draw draw state on the left hand side
-            if deg == 2 and degeneracy_counter == 0:
-                degoffset = 0
-                degeneracy_counter = 1
-            # draw state on the right hand side, set counter to zero again
-            elif deg == 2 and degeneracy_counter == 1:
-                degoffset = 1
-                degeneracy_counter = 0
-            # intitialize and draw the energy level
-            lev = Level(energy, ax=ax, spin=spin, deg=deg,
-                        off=degoffset)
-            lev.draw()
-            # add occupation arrow if level is below E_F
-            if energy <= ef:
-                lev.add_occupation(length=gap / 15.)
-            # draw label based on irrep
-            if levelflag:
-                static = None
-            else:
-                static = 'A'
-            lev.add_label(irrep, static=static)
-
-
-def draw_band_edge(energy, edge, color, *, offset=2, ax):
-    if edge == 'vbm':
-        eoffset = energy - offset
-        elabel = energy - offset / 2
-    elif edge == 'cbm':
-        eoffset = energy + offset
-        elabel = energy + offset / 2
-
-    ax.plot([0, 1], [energy] * 2, color='black', zorder=1)
-    ax.fill_between([0, 1], [energy] * 2, [eoffset] * 2, color='grey', alpha=0.5)
-    ax.text(0.5, elabel, edge.upper(), color='w', weight='bold', ha='center',
-            va='center', fontsize=12)
-
-
-def plot_gapstates(row, fname):
-    from matplotlib import pyplot as plt
-
-    data = row.data.get('results-asr.defect_symmetry.json')
-    gsdata = row.data.get('results-asr.gs.json')
-
-    fig, ax = plt.subplots()
-
-    # extract pristine data
-    evbm = data.pristine.vbm
-    ecbm = data.pristine.cbm
-    gap = data.pristine.gap
-    eref = row.data.get('results-asr.get_wfs.json')['eref']
-    ef = gsdata['efermi'] - eref
-
-    # Draw band edges
-    draw_band_edge(evbm, 'vbm', 'C0', offset=gap / 5, ax=ax)
-    draw_band_edge(ecbm, 'cbm', 'C1', offset=gap / 5, ax=ax)
-
-    levelflag = data.symmetries[0].best is not None
-    # draw the levels with occupations, and labels for both spins
-    for spin in [0, 1]:
-        spin_data = get_spin_data(data, spin)
-        draw_levels_occupations_labels(ax, spin, spin_data, ecbm, evbm,
-                                       ef, gap, levelflag)
-
-    ax1 = ax.twinx()
-    ax.set_xlim(0, 1)
-    ax.set_ylim(evbm - gap / 5, ecbm + gap / 5)
-    ax1.set_ylim(evbm - gap / 5, ecbm + gap / 5)
-    ax1.plot([0, 1], [ef] * 2, '--k')
-    ax1.set_yticks([ef])
-    ax1.set_yticklabels([r'$E_\mathrm{F}$'])
-    ax.set_xticks([])
-    ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
-
-    plt.tight_layout()
-    plt.savefig(fname)
-    plt.close()
-
-
-def DefectSymmetryWebpanel(result, row, key_descriptions):
-    from asr.database.browser import (WebPanel,
-                                      describe_entry,
-                                      fig)
-
-    description = describe_entry('One-electron states', panel_description)
-    basictable = get_summary_table(result, row)
-
-    vbm = result.pristine['vbm']
-    cbm = result.pristine['cbm']
-    if result.symmetries[0]['best'] is None:
-        warnings.warn("no symmetry analysis present for this defect. "
-                      "Only plot gapstates!", UserWarning)
-        style = 'state'
-    else:
-        style = 'symmetry'
-
-    state_tables, transition_table = get_symmetry_tables(
-        result.symmetries, vbm, cbm, row, style=style)
-    panel = WebPanel(description,
-                     columns=[[state_tables[0],
-                               fig('ks_gap.png')],
-                              [state_tables[1], transition_table]],
-                     plot_descriptions=[{'function': plot_gapstates,
-                                         'filenames': ['ks_gap.png']}],
-                     sort=30)
-
-    summary = {'title': 'Summary',
-               'columns': [[basictable, transition_table], []],
-               'sort': 2}
-
-    return [panel, summary]
-
-
-@prepare_result
-class IrrepResult(ASRResult):
-    """Container for results of an individual irreproducible representation."""
-
-    sym_name: str
-    sym_score: float
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        sym_name='Name of the irreproducible representation.',
-        sym_score='Score of the respective representation.')
-
-
-@prepare_result
-class SymmetryResult(ASRResult):
-    """Container for symmetry results for a given state."""
-
-    irreps: typing.List[IrrepResult]
-    best: str
-    error: float
-    loc_ratio: float
-    state: int
-    spin: int
-    energy: float
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        irreps='List of irreproducible representations and respective scores.',
-        best='Irreproducible representation with the best score.',
-        error='Error of identification of the best irreproducible representation.',
-        loc_ratio='Localization ratio for a given state.',
-        state='Index of the analyzed state.',
-        spin='Spin of the analyzed state (0 or 1).',
-        energy='Energy of specific state aligned to pristine semi-core state [eV].'
-    )
-
-
-@prepare_result
-class PristineResult(ASRResult):
-    """Container for pristine band edge results."""
-
-    vbm: float
-    cbm: float
-    gap: float
-
-    key_descriptions: typing.Dict[str, str] = dict(
-        vbm='Energy of the VBM (ref. to the vacuum level in 2D) [eV].',
-        cbm='Energy of the CBM (ref. to the vacuum level in 2D) [eV].',
-        gap='Energy of the bandgap [eV].')
-
-
 @prepare_result
 class DefectSymmetryResult(ASRResult):
     """Container for main results for asr.analyze_state."""
@@ -1937,12 +1451,137 @@ class DefectSymmetryResult(ASRResult):
 
     formats = {'ase_webpanel': DefectSymmetryWebpanel}
 
+    @staticmethod
+    def plot_gapstates(row, fname):
+        from matplotlib import pyplot as plt
 
-######### defectformation #########
-# skip because it doesnt make a webpanel
+        data = row.data.get('results-asr.defect_symmetry.json')
+        gsdata = row.data.get('results-asr.gs.json')
 
+        fig, ax = plt.subplots()
 
-######### defect info #########
+        # extract pristine data
+        evbm = data.pristine.vbm
+        ecbm = data.pristine.cbm
+        gap = data.pristine.gap
+        eref = row.data.get('results-asr.get_wfs.json')['eref']
+        ef = gsdata['efermi'] - eref
+
+        # Draw band edges
+        draw_band_edge(evbm, 'vbm', 'C0', offset=gap / 5, ax=ax)
+        draw_band_edge(ecbm, 'cbm', 'C1', offset=gap / 5, ax=ax)
+
+        levelflag = data.symmetries[0].best is not None
+        # draw the levels with occupations, and labels for both spins
+        for spin in [0, 1]:
+            spin_data = get_spin_data(data, spin)
+            draw_levels_occupations_labels(ax, spin, spin_data, ecbm, evbm,
+                                           ef, gap, levelflag)
+
+        ax1 = ax.twinx()
+        ax.set_xlim(0, 1)
+        ax.set_ylim(evbm - gap / 5, ecbm + gap / 5)
+        ax1.set_ylim(evbm - gap / 5, ecbm + gap / 5)
+        ax1.plot([0, 1], [ef] * 2, '--k')
+        ax1.set_yticks([ef])
+        ax1.set_yticklabels([r'$E_\mathrm{F}$'])
+        ax.set_xticks([])
+        ax.set_ylabel(r'$E-E_\mathrm{vac}$ [eV]')
+
+        plt.tight_layout()
+        plt.savefig(fname)
+        plt.close()
+
+    @staticmethod
+    def get_symmetry_tables(state_results, vbm, cbm, row, style):
+        state_tables = []
+        gsdata = row.data.get('results-asr.gs.json')
+        eref = row.data.get('results-asr.get_wfs.json')['eref']
+        ef = gsdata['efermi'] - eref
+
+        E_hls = []
+        for spin in range(2):
+            state_array, rowlabels = get_matrixtable_array(
+                state_results, vbm, cbm, ef, spin, style)
+            if style == 'symmetry':
+                delete = [2]
+                columnlabels = ['Symmetry',
+                                # 'Spin',
+                                'Localization ratio',
+                                'Energy']
+            elif style == 'state':
+                delete = [0, 2, 3]
+                columnlabels = [  # 'Spin',
+                    'Energy']
+
+            N_homo = 0
+            N_lumo = 0
+            for i in range(len(state_array)):
+                if float(state_array[i, 4]) > ef:
+                    N_lumo += 1
+
+            E_homo = vbm
+            E_lumo = cbm
+            for i in range(len(state_array)):
+                if float(state_array[i, 4]) > ef:
+                    rowlabels[i] = f'LUMO + {N_lumo - 1}'
+                    N_lumo = N_lumo - 1
+                    if N_lumo == 0:
+                        rowlabels[i] = 'LUMO'
+                        E_lumo = float(state_array[i, 4])
+                elif float(state_array[i, 4]) <= ef:
+                    rowlabels[i] = f'HOMO — {N_homo}'
+                    if N_homo == 0:
+                        rowlabels[i] = 'HOMO'
+                        E_homo = float(state_array[i, 4])
+                    N_homo = N_homo + 1
+            E_hl = E_lumo - E_homo
+            E_hls.append(E_hl)
+
+            state_array = np.delete(state_array, delete, 1)
+            headerlabels = [f'Orbitals in spin channel {spin}',
+                            *columnlabels]
+
+            rows = []
+            state_table = {'type': 'table',
+                           'header': headerlabels}
+            for i in range(len(state_array)):
+                if style == 'symmetry':
+                    rows.append((rowlabels[i],
+                                 # state_array[i, 0],
+                                 state_array[i, 1],
+                                 describe_entry(state_array[i, 2],
+                                                'The localization ratio is defined as the '
+                                                'volume of the cell divided by the integral'
+                                                ' of the fourth power of the '
+                                                'wavefunction.'),
+                                 f'{state_array[i, 3]} eV'))
+                elif style == 'state':
+                    rows.append((rowlabels[i],
+                                 # state_array[i, 0],
+                                 f'{state_array[i, 1]} eV'))
+
+            state_table['rows'] = rows
+            state_tables.append(state_table)
+
+        transition_table = get_transition_table(row, E_hls)
+
+        return state_tables, transition_table
+
+    @staticmethod
+    def get_summary_table(result, row):
+        spglib = get_spg_href('https://spglib.github.io/spglib/')
+        basictable = table(row, 'Defect properties', [])
+        pg_string = result.defect_pointgroup
+        pg_strlist = list(pg_string)
+        sub = ''.join(pg_strlist[1:])
+        pg_string = f'{pg_strlist[0]}<sub>{sub}</sub>'
+        pointgroup = describe_pointgroup_entry(spglib)
+        basictable['rows'].extend(
+            [[pointgroup, pg_string]])
+
+        return basictable
+# defect info
 def DefectInfoWebpanel(result, row, key_descriptions):
     spglib = href('SpgLib', 'https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)
@@ -2017,8 +1656,6 @@ def DefectInfoWebpanel(result, row, key_descriptions):
              'sort': -1}
 
     return [panel]
-
-
 @prepare_result
 class DefectInfoResult(ASRResult):
     """Container for asr.defectinfo results."""
@@ -2049,8 +1686,6 @@ class DefectInfoResult(ASRResult):
         R_nn='Nearest neighbor distance of repeated defects [Å].')
 
     formats = {"ase_webpanel": DefectInfoWebpanel}
-
-
 def get_concentration_row(conc_res, defect_name, q):
     rowlist = []
     for scresult in conc_res.scresults:
@@ -2067,8 +1702,6 @@ def get_concentration_row(conc_res, defect_name, q):
                                         f'{concentration:.1e} cm<sup>-2</sup>'])
 
     return rowlist
-
-
 ######### DefectLinks #########
 def DefectLinksWebpanel(result, row, key_description):
     baselink = 'https://cmrdb.fysik.dtu.dk/qpod/row/'
@@ -2128,36 +1761,6 @@ class DefectLinksResult(ASRResult):
 
 
 ######### deformationpotentials #########
-description_text = """\
-The deformation potentials represent the energy shifts of the
-bottom of the conduction band (CB) and the top of the valence band
-(VB) at a given k-point, under an applied strain.
-
-The two tables at the top show the deformation potentials for the
-valence band (D<sub>VB</sub>) and conduction band (D<sub>CB</sub>)
-at the high-symmetry k-points, subdivided into the different strain
-components. At the bottom of each table are shown the
-deformation potentials at the k-points where the VBM and CBM are found
-(k<sub>VBM</sub> and k<sub>CBM</sub>, respectively).
-Note that the latter may coincide with any of the high-symmetry k-points.
-The table at the bottom shows the band gap deformation potentials.
-
-All the values shown are calculated with spin-orbit coupling (SOC).
-Values obtained without SOC can be found in the material raw data.
-"""
-
-
-panel_description = make_panel_description(
-    description_text,
-    articles=[
-        href("""Wiktor, J. and Pasquarello, A., 2016. Absolute deformation potentials
-of two-dimensional materials. Physical Review B, 94(24), p.245411""",
-             "https://doi.org/10.1103/PhysRevB.94.245411")
-    ],
-)
-
-
-
 def get_table_row(kpt, band, data):
     row = []
     for comp in ['xx', 'yy', 'xy']:
@@ -2166,6 +1769,32 @@ def get_table_row(kpt, band, data):
 
 
 def DefPotsWebpanel(result, row, key_descriptions):
+    description_text = """\
+    The deformation potentials represent the energy shifts of the
+    bottom of the conduction band (CB) and the top of the valence band
+    (VB) at a given k-point, under an applied strain.
+
+    The two tables at the top show the deformation potentials for the
+    valence band (D<sub>VB</sub>) and conduction band (D<sub>CB</sub>)
+    at the high-symmetry k-points, subdivided into the different strain
+    components. At the bottom of each table are shown the
+    deformation potentials at the k-points where the VBM and CBM are found
+    (k<sub>VBM</sub> and k<sub>CBM</sub>, respectively).
+    Note that the latter may coincide with any of the high-symmetry k-points.
+    The table at the bottom shows the band gap deformation potentials.
+
+    All the values shown are calculated with spin-orbit coupling (SOC).
+    Values obtained without SOC can be found in the material raw data.
+    """
+    panel_description = make_panel_description(
+        description_text,
+        articles=[
+            href("""Wiktor, J. and Pasquarello, A., 2016. Absolute deformation potentials
+    of two-dimensional materials. Physical Review B, 94(24), p.245411""",
+                 "https://doi.org/10.1103/PhysRevB.94.245411")
+        ],
+    )
+
     from asr.database.browser import matrixtable, describe_entry, WebPanel
 
     def get_basename(kpt):
@@ -2293,13 +1922,12 @@ def DimWebpanel(result, row, key_descriptions):
     return [panel]
 
 
-######### dos #########
-panel_description = make_panel_description(
-    """Density of States
-""")
-
-
+######### dos
 def DOSWebpanel(result: ASRResult, row, key_descriptions: dict) -> list:
+    panel_description = make_panel_description(
+        """Density of States
+    """)
+
     parameter_description = entry_parameter_description(
         row.data,
         'asr.dos')
@@ -2356,29 +1984,9 @@ def dos_plot(row, filename: str):
     return [ax]
 
 
-######### Emasses #########
+######### Emasses
 MAXMASS = 10  # More that 90% of masses are less than this
 # This mass is only used to limit bandstructure plots
-
-
-panel_description = make_panel_description(
-    """
-The effective mass tensor represents the second derivative of the band energy
-w.r.t. wave vector at a band extremum. The effective masses of the valence
-bands (VB) and conduction bands (CB) are obtained as the eigenvalues of the
-mass tensor. The latter is determined by fitting a 2nd order polynomium to the
-band energies on a fine k-point mesh around the band extrema. Spin–orbit
-interactions are included. The fit curve is shown for the highest VB and
-lowest CB. The “parabolicity” of the band is quantified by the
-mean absolute relative error (MARE) of the fit to the band energy in an energy
-range of 25 meV.
-""",
-    articles=[
-        'C2DB',
-    ],
-)
-
-
 def mareformat(mare):
     return str(round(mare, 3)) + " %"
 
@@ -2572,6 +2180,22 @@ def create_columns_fnames(row):
 
 
 def EmassesWebpanel(result, row, key_descriptions):
+    panel_description = make_panel_description(
+        """
+    The effective mass tensor represents the second derivative of the band energy
+    w.r.t. wave vector at a band extremum. The effective masses of the valence
+    bands (VB) and conduction bands (CB) are obtained as the eigenvalues of the
+    mass tensor. The latter is determined by fitting a 2nd order polynomium to the
+    band energies on a fine k-point mesh around the band extrema. Spin–orbit
+    interactions are included. The fit curve is shown for the highest VB and
+    lowest CB. The “parabolicity” of the band is quantified by the
+    mean absolute relative error (MARE) of the fit to the band energy in an energy
+    range of 25 meV.
+    """,
+        articles=[
+            'C2DB',
+        ],
+    )
     has_mae = 'results-asr.emasses@validate.json' in row.data
     columns, fnames = create_columns_fnames(row)
 
@@ -2967,16 +2591,6 @@ class ExchangeResult(ASRResult):
 
 
 ######### fermisurface #########
-panel_description = make_panel_description(
-    """The Fermi surface calculated with spin–orbit interactions. The expectation
-value of S_i (where i=z for non-magnetic materials and otherwise is the
-magnetic easy axis) indicated by the color code.""",
-    articles=[
-        'C2DB',
-    ],
-)
-
-
 def plot_fermi(row, fname, sfs=1, dpi=200):
     from ase.geometry.cell import Cell
     from matplotlib import pyplot as plt
@@ -3008,7 +2622,14 @@ def add_fermi(row, ax, s=0.25):
 
 
 def FermiWebpanel(result, row, key_descriptions):
-
+    panel_description = make_panel_description(
+        """The Fermi surface calculated with spin–orbit interactions. The expectation
+    value of S_i (where i=z for non-magnetic materials and otherwise is the
+    magnetic easy axis) indicated by the color code.""",
+        articles=[
+            'C2DB',
+        ],
+    )
     panel = {'title': describe_entry('Fermi surface', panel_description),
              'columns': [[fig('fermi_surface.png')]],
              'plot_descriptions': [{'function': plot_fermi,
@@ -3058,15 +2679,6 @@ class WfsResult(ASRResult):
 
 
 ######### gs #########
-panel_description = make_panel_description(
-    """
-Electronic properties derived from a ground state density functional theory
-calculation.
-""",
-    articles=['C2DB'],
-)
-
-
 def _explain_bandgap(row, gap_name):
     parameter_description = _get_parameter_description(row)
 
@@ -3161,6 +2773,14 @@ def bz_with_band_extremums(row, fname):
 
 
 def GsWebpanel(result, row, key_descriptions):
+    panel_description = make_panel_description(
+        """
+    Electronic properties derived from a ground state density functional theory
+    calculation.
+    """,
+        articles=['C2DB'],
+    )
+
     # for defect systems we don't want to show this panel
     if row.get('defect_name') is not None:
         return []
@@ -3614,18 +3234,6 @@ class HSEResult(ASRResult):
 
 ######### hyperfine #########
 from ase.geometry import get_distances
-panel_description = make_panel_description(
-    """
-Analysis of hyperfine coupling and spin coherence time.
-""",
-    articles=[
-        href("""G. D. Cheng et al. Optical and spin coherence properties of NV
- center in diamond and 3C-SiC, Comp. Mat. Sc. 154, 60 (2018)""",
-             'https://doi.org/10.1016/j.commatsci.2018.07.039'),
-    ],
-)
-
-
 def get_atoms_close_to_center(center, atoms):
     """
     Return ordered list of the atoms closest to the defect.
@@ -3753,6 +3361,16 @@ def get_gyro_table(row, result):
 
 
 def HFWebpanel(result, row, key_description):
+    panel_description = make_panel_description(
+        """
+    Analysis of hyperfine coupling and spin coherence time.
+    """,
+        articles=[
+            href("""G. D. Cheng et al. Optical and spin coherence properties of NV
+     center in diamond and 3C-SiC, Comp. Mat. Sc. 154, 60 (2018)""",
+                 'https://doi.org/10.1016/j.commatsci.2018.07.039'),
+        ],
+    )
     from asr.database.browser import (WebPanel,
                                       describe_entry)
 
@@ -3851,34 +3469,30 @@ def equation():
 
 # This panel description actually assumes that we also have results for the
 # exchange recipe.
-
-
-panel_description = make_panel_description(
-    """
-Heisenberg parameters, magnetic anisotropy and local magnetic
-moments. The Heisenberg parameters were calculated assuming that the
-magnetic energy of atom i can be represented as
-
-  {equation},
-
-where J is the exchange coupling, B is anisotropic exchange, A is
-single-ion anisotropy and the sums run over nearest neighbours. The
-magnetic anisotropy was obtained from non-selfconsistent spin-orbit
-calculations where the exchange-correlation magnetic field from a
-scalar calculation was aligned with the x, y and z directions.
-
-""".format(equation=equation()),
-    articles=[
-        'C2DB',
-        href("""D. Torelli et al. High throughput computational screening for 2D
-ferromagnetic materials: the critical role of anisotropy and local
-correlations, 2D Mater. 6 045018 (2019)""",
-             'https://doi.org/10.1088/2053-1583/ab2c43'),
-    ],
-)
-
-
 def MagAniWebpanel(result, row, key_descriptions):
+    panel_description = make_panel_description(
+        """
+    Heisenberg parameters, magnetic anisotropy and local magnetic
+    moments. The Heisenberg parameters were calculated assuming that the
+    magnetic energy of atom i can be represented as
+
+      {equation},
+
+    where J is the exchange coupling, B is anisotropic exchange, A is
+    single-ion anisotropy and the sums run over nearest neighbours. The
+    magnetic anisotropy was obtained from non-selfconsistent spin-orbit
+    calculations where the exchange-correlation magnetic field from a
+    scalar calculation was aligned with the x, y and z directions.
+
+    """.format(equation=equation()),
+        articles=[
+            'C2DB',
+            href("""D. Torelli et al. High throughput computational screening for 2D
+    ferromagnetic materials: the critical role of anisotropy and local
+    correlations, 2D Mater. 6 045018 (2019)""",
+                 'https://doi.org/10.1088/2053-1583/ab2c43'),
+        ],
+    )
     if row.get('magstate', 'NM') == 'NM':
         return []
 
@@ -4301,19 +3915,6 @@ def plot_pdos(row, filename, soc=True,
 
 
 ######### phonons #########
-panel_description = make_panel_description(
-    """
-The Gamma-point phonons of a supercell containing the primitive unit cell
-repeated 2 times along each periodic direction. In the Brillouin zone (BZ) of
-the primitive cell, this yields the phonons at the Gamma-point and
-high-symmetry points at the BZ boundary. A negative eigenvalue of the Hessian
-matrix (the second derivative of the energy w.r.t. to atomic displacements)
-indicates a dynamical instability.
-""",
-    articles=['C2DB'],
-)
-
-
 def plot_bandstructure(row, fname):
     from matplotlib import pyplot as plt
     from ase.spectrum.band_structure import BandStructure
@@ -4341,6 +3942,17 @@ def plot_bandstructure(row, fname):
 
 
 def PhononWebpanel(result, row, key_descriptions):
+    panel_description = make_panel_description(
+        """
+    The Gamma-point phonons of a supercell containing the primitive unit cell
+    repeated 2 times along each periodic direction. In the Brillouin zone (BZ) of
+    the primitive cell, this yields the phonons at the Gamma-point and
+    high-symmetry points at the BZ boundary. A negative eigenvalue of the Hessian
+    matrix (the second derivative of the energy w.r.t. to atomic displacements)
+    indicates a dynamical instability.
+    """,
+        articles=['C2DB'],
+    )
     phonontable = table(row, 'Property', ['minhessianeig'], key_descriptions)
 
     panel = {'title': describe_entry('Phonons', panel_description),
@@ -4445,15 +4057,7 @@ class PhonopyResult(ASRResult):
 
 
 ######### piezoelectrictensor #########
-panel_description = make_panel_description("""
-The piezoelectric tensor, c, is a rank-3 tensor relating the macroscopic
-polarization to an applied strain. In Voigt notation, c is expressed as a 3xN
-matrix relating the (x,y,z) components of the polarizability to the N
-independent components of the strain tensor. The polarization in a periodic
-direction is calculated as an integral over Berry phases. The polarization in a
-non-periodic direction is obtained by direct evaluation of the first moment of
-the electron density.
-""")
+
 
 all_voigt_labels = ['xx', 'yy', 'zz', 'yz', 'xz', 'xy']
 all_voigt_indices = [[0, 1, 2, 1, 0, 0],
@@ -4480,6 +4084,15 @@ def get_voigt_labels(pbc: typing.List[bool]):
 
 
 def PiezoEleTenWebpanel(result, row, key_descriptions):
+    panel_description = make_panel_description("""
+    The piezoelectric tensor, c, is a rank-3 tensor relating the macroscopic
+    polarization to an applied strain. In Voigt notation, c is expressed as a 3xN
+    matrix relating the (x,y,z) components of the polarizability to the N
+    independent components of the strain tensor. The polarization in a periodic
+    direction is calculated as an integral over Berry phases. The polarization in a
+    non-periodic direction is obtained by direct evaluation of the first moment of
+    the electron density.
+    """)
 
     piezodata = row.data['results-asr.piezoelectrictensor.json']
     e_vvv = piezodata['eps_vvv']
@@ -4527,16 +4140,6 @@ class PiezoEleTenResult(ASRResult):
 
 
 ######### projected_bandstructure #########
-panel_description = make_panel_description(
-    """The single-particle band structure and density of states projected onto
-atomic orbitals (s,p,d). Spin–orbit interactions are not included in these
-plots.""",
-    articles=[
-        'C2DB',
-    ],
-)
-
-
 scf_projected_bs_filename = 'scf-projected-bs.png'
 
 
@@ -4843,6 +4446,14 @@ def projected_bs_scf(row, filename,
 
 
 def ProjBSWebpanel(result, row, key_descriptions):
+    panel_description = make_panel_description(
+        """The single-particle band structure and density of states projected onto
+    atomic orbitals (s,p,d). Spin–orbit interactions are not included in these
+    plots.""",
+        articles=[
+            'C2DB',
+        ],
+    )
     xcname = gs_xcname_from_row(row)
 
     # Projected band structure figure
@@ -4896,17 +4507,7 @@ class ProjBSResult(ASRResult):
 
 
 ######### raman #########
-panel_description = make_panel_description(
-    """Raman spectroscopy relies on inelastic scattering of photons by optical
-phonons. The Stokes part of the Raman spectrum, corresponding to emission of a
-single Gamma-point phonon is calculated for different incoming/outgoing photon
-polarizations using third order perturbation theory.""",
-    articles=[
-        href("""A. Taghizadeh et al.  A library of ab initio Raman spectra for automated
-identification of 2D materials. Nat Commun 11, 3011 (2020).""",
-             'https://doi.org/10.1038/s41467-020-16529-6'),
-    ],
-)
+
 
 # Count the modes and their degeneracy factors
 
@@ -4949,7 +4550,7 @@ def raman(row, filename):
 
     # Lorentzian function definition
     def lor(w, g):
-        lor = 0.5 * g / (np.pi * ((w.real)**2 + 0.25 * g**2))
+        lor = 0.5 * g / (np.pi * (w.real**2 + 0.25 * g**2))
         return lor
     from math import pi, sqrt
     # Gaussian function definition
@@ -5047,7 +4648,17 @@ def raman(row, filename):
 
 
 def RamanWebpanel(result, row, key_descriptions):
-
+    panel_description = make_panel_description(
+        """Raman spectroscopy relies on inelastic scattering of photons by optical
+    phonons. The Stokes part of the Raman spectrum, corresponding to emission of a
+    single Gamma-point phonon is calculated for different incoming/outgoing photon
+    polarizations using third order perturbation theory.""",
+        articles=[
+            href("""A. Taghizadeh et al.  A library of ab initio Raman spectra for automated
+    identification of 2D materials. Nat Commun 11, 3011 (2020).""",
+                 'https://doi.org/10.1038/s41467-020-16529-6'),
+        ],
+    )
     # Make a table from the phonon modes
     data = row.data.get('results-asr.raman.json')
     if data:
@@ -5155,7 +4766,7 @@ def make_full_chi(sym_chi, chi_dict):
             if relation != '':
                 for zpol in relation.split('='):
                     ind = ['xyz'.index(zpol[ii]) for ii in range(3)]
-                    chi_vvvl[ind[0], ind[1], ind[2]] = np.zeros((nw), complex)
+                    chi_vvvl[ind[0], ind[1], ind[2]] = np.zeros(nw, complex)
         else:
             chidata = chi_dict[pol]
             chidata = chidata[1]
@@ -5185,7 +4796,7 @@ def plot_shg(row, *filename):
 
     # Remove the files if it is already exist
     for fname in filename:
-        if (Path(fname).is_file()):
+        if Path(fname).is_file():
             os.remove(fname)
 
     # Plot the data and add the axis labels
@@ -5250,7 +4861,7 @@ def plot_shg(row, *filename):
     psi = np.linspace(0, 2 * np.pi, 201)
     selw = 0
     wind = np.argmin(np.abs(w_l - selw))
-    if (Path('shgpol.npy').is_file()):
+    if Path('shgpol.npy').is_file():
         os.remove('shgpol.npy')
     chipol = calc_polarized_shg(
         sym_chi, chi,
@@ -5318,7 +4929,7 @@ def calc_polarized_shg(sym_chi, chi_dict, wind=[1], theta=0.0, phi=0.0,
 
     # Check the E0
     if len(E0) == 1:
-        E0 = E0 * np.ones((nw))
+        E0 = E0 * np.ones(nw)
 
     # in xyz coordinate
     Einc = np.zeros((3, npsi), dtype=complex)
@@ -5372,7 +4983,7 @@ def ShgWebpanel(result, row, key_descriptions):
             else:
                 continue
 
-        if (len(relation) == 3):
+        if len(relation) == 3:
             relation_new = ''
         else:
             # relation_new = '$'+'$\n$'.join(wrap(relation, 40))+'$'
@@ -5439,7 +5050,7 @@ def ShiftWebpanel(result, row, key_descriptions):
             else:
                 continue
 
-        if (len(relation) == 3):
+        if len(relation) == 3:
             relation_new = ''
         else:
             # relation_new = '$'+'$\n$'.join(wrap(relation, 40))+'$'
@@ -5503,7 +5114,7 @@ def plot_shift(row, *filename):
 
     # Remove the files if it is already exist
     for fname in filename:
-        if (Path(fname).is_file()):
+        if Path(fname).is_file():
             os.remove(fname)
 
     # Plot the data and add the axis labels
@@ -5556,20 +5167,20 @@ def plot_shift(row, *filename):
 
 
 ######### sj_analyze #########
-panel_description = make_panel_description(
-    """
-Analysis of the thermodynamic stability of the defect using Slater-Janak
- transition state theory.
-""",
-    articles=[
-        href("""M. Pandey et al. Defect-tolerant monolayer transition metal
-dichalcogenides, Nano Letters, 16 (4) 2234 (2016)""",
-             'https://doi.org/10.1021/acs.nanolett.5b04513'),
-    ],
-)
+
 
 def SJAnalyzeWebpanel(result, row, key_descriptions):
-
+    panel_description = make_panel_description(
+        """
+    Analysis of the thermodynamic stability of the defect using Slater-Janak
+     transition state theory.
+    """,
+        articles=[
+            href("""M. Pandey et al. Defect-tolerant monolayer transition metal
+    dichalcogenides, Nano Letters, 16 (4) 2234 (2016)""",
+                 'https://doi.org/10.1021/acs.nanolett.5b04513'),
+        ],
+    )
     explained_keys = []
     for key in ['eform']:
         if key in result.key_descriptions:
@@ -5771,7 +5382,7 @@ def plot_formation_energies(row, fname):
                       + element['transition_values']['erelax']
                       - element['transition_values']['evac'] - vbm)
         energies.append(energy)
-        if energy > 0 and energy < (gap):
+        if energy > 0 and energy < gap:
             tickslist.append(energy)
             labellist.append(name)
             ax1.axvline(energy, color='grey', linestyle='dotted')
@@ -5860,20 +5471,18 @@ def plot_charge_transitions(row, fname):
 
 
 ######### stiffness #########
-panel_description = make_panel_description(
-    """
-The stiffness tensor (C) is a rank-4 tensor that relates the stress of a
-material to the applied strain. In Voigt notation, C is expressed as a NxN
-matrix relating the N independent components of the stress and strain
-tensors. C is calculated as a finite difference of the stress under an applied
-strain with full relaxation of atomic coordinates. A negative eigenvalue of C
-indicates a dynamical instability.
-""",
-    articles=['C2DB'],
-)
-
-
 def StiffnessWebpanel(result, row, key_descriptions):
+    panel_description = make_panel_description(
+        """
+    The stiffness tensor (C) is a rank-4 tensor that relates the stress of a
+    material to the applied strain. In Voigt notation, C is expressed as a NxN
+    matrix relating the N independent components of the stress and strain
+    tensors. C is calculated as a finite difference of the stress under an applied
+    strain with full relaxation of atomic coordinates. A negative eigenvalue of C
+    indicates a dynamical instability.
+    """,
+        articles=['C2DB'],
+    )
     import numpy as np
 
     stiffnessdata = row.data['results-asr.stiffness.json']
@@ -6043,8 +5652,6 @@ frequencies and positive definite {stiffnesstensor}.
 
 
 def StructureInfoWebpanel(result, row, key_descriptions):
-    from asr.database.browser import describe_entry, href, table
-
     spglib = get_spg_href('https://spglib.github.io/spglib/')
     crystal_type = describe_crystaltype_entry(spglib)
 
@@ -6144,8 +5751,8 @@ def StructureInfoWebpanel(result, row, key_descriptions):
     phonon_stability = row.get('dynamic_stability_phonons')
     stiffness_stability = row.get('dynamic_stability_stiffness')
 
-    from asr.paneldata import ehull_table_rows
-    ehull_table_rows = ehull_table_rows(row, key_descriptions)['rows']
+    ehull_table_rows = ConvexHullResult.ehull_table_rows(row,
+                                                         key_descriptions)['rows']
 
     if phonon_stability is not None and stiffness_stability is not None:
         # XXX This will easily go wrong if 'high'/'low' strings are changed.
