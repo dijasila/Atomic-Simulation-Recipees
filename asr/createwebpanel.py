@@ -1,3 +1,5 @@
+import warnings
+import functools
 from asr.database.browser import (
     WebPanel,
     create_table, table, matrixtable,
@@ -374,4 +376,90 @@ def BerryWebpanel(result, row, key_descriptions):
 
 ## Topological
 
+
+## Convex Hull
+# chc
+def CHCWebpanel(result, row, key_descriptions):
+    from asr.database.browser import fig as asrfig
+
+    fname = 'convexhullcut.png'
+
+    panel = {'title': 'Convex Hull Cut',
+             'columns': [[asrfig(fname)]],
+             'plot_descriptions':
+             [{'function': result.chcut_plot,
+               'filenames': [fname]}]}
+
+    return [panel]
+# convex_hull
+def ConvexHullWebpanel(result, row, key_descriptions):
+    panel_description = make_panel_description(
+        f'{result.eform_description}\n\n{result.ehull_description}',
+        articles=['C2DB'],
+    )
+    hulltable1 = table(row,
+                       'Stability',
+                       ['hform', 'ehull'],
+                       key_descriptions)
+    hulltables = result.convex_hull_tables(row)
+    panel = {
+        'title': describe_entry(
+            'Thermodynamic stability', panel_description),
+        'columns': [[fig('convex-hull.png')],
+                    [hulltable1] + hulltables],
+        'plot_descriptions': [{'function':
+                               functools.partial(result.convex_plot,
+                                                 thisrow=row),
+                               'filenames': ['convex-hull.png']}],
+        'sort': 1,
+    }
+
+    return [panel]
+
+
+## Defects
+# defect symmetry
+def DefectSymmetryWebpanel(result, row, key_descriptions):
+    reference = """\
+    S. Kaappa et al. Point group symmetry analysis of the electronic structure
+    of bare and protected nanocrystals, J. Phys. Chem. A, 122, 43, 8576 (2018)"""
+
+    panel_description = make_panel_description(
+        """
+    Analysis of defect states localized inside the pristine bandgap (energetics and
+     symmetry).
+    """,
+        articles=[
+            href(reference, 'https://doi.org/10.1021/acs.jpca.8b07923'),
+        ],
+    )
+
+    description = describe_entry('One-electron states', panel_description)
+    basictable = result.get_summary_table(result, row)
+
+    vbm = result.pristine['vbm']
+    cbm = result.pristine['cbm']
+    if result.symmetries[0]['best'] is None:
+        warnings.warn("no symmetry analysis present for this defect. "
+                      "Only plot gapstates!", UserWarning)
+        style = 'state'
+    else:
+        style = 'symmetry'
+
+    state_tables, transition_table = result.get_symmetry_tables(
+        result.symmetries, vbm, cbm, row, style=style)
+    panel = WebPanel(description,
+                     columns=[[state_tables[0],
+                               fig('ks_gap.png')],
+                              [state_tables[1], transition_table]],
+                     plot_descriptions=[{'function': result.plot_gapstates,
+                                         'filenames': ['ks_gap.png']}],
+                     sort=30)
+
+    summary = {'title': 'Summary',
+               'columns': [[basictable, transition_table], []],
+               'sort': 2}
+
+    return [panel, summary]
+# defect info
 
