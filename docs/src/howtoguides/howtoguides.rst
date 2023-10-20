@@ -125,5 +125,5 @@ results of the ``asr.bandstructure`` recipe. Then do
 
 .. literalinclude:: retrieve_results_from_database.py
 
-    
+
 >
