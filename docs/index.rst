@@ -37,5 +37,5 @@ Install the code like this::
   $ pip install asr/
 
 
-_C2DB:: https://cmr.fysik.dtu.dk/c2db/c2db.html
-_GPAW:: https://wiki.fysik.dtu.dk/gpaw
+.. _C2DB: https://cmr.fysik.dtu.dk/c2db/c2db.html
+.. _GPAW: https://wiki.fysik.dtu.dk/gpaw
