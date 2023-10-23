@@ -56,6 +56,8 @@ from ase.calculators.calculator import PropertyNotImplementedError
 
 from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
                       prepare_result)
+import spglib
+from ase.utils import atoms_to_spglib_cell
 
 
 class BrokenSymmetryError(Exception):
@@ -87,26 +89,46 @@ def is_relax_done(atoms, fmax=0.01, smax=0.002,
     return done
 
 
+def spg_consistent_symprec(atoms):
+    symmetries = []
+    atoms_list = []
+    for symprec in np.logspace(1, -5, 13):
+        symmetric_atoms = SpgAtoms.from_atoms(atoms, symprec)
+        if symmetric_atoms.symmetry not in symmetries:
+            symmetries.append(symmetric_atoms.symmetry)
+            atoms_list.append(symmetric_atoms)
+    return atoms_list
+
+
 class SpgAtoms(Atoms):
 
     @classmethod
-    def from_atoms(cls, atoms):
+    def from_atoms(cls, atoms, symprec):
+        from ase.spacegroup import refine_symmetry
         # Due to technicalities we cannot mess with the __init__ constructor
         # -> therefore we make our own
         a = cls(atoms)
-        a.set_symmetries([np.eye(3)], [[0, 0, 0]])
+        refine_symmetry(a, symprec=symprec)
+        dataset = spglib.get_symmetry_dataset(atoms_to_spglib_cell(a),
+                                              symprec=symprec)
+        a.dataset = dataset
+        a.set_symmetries(dataset['translation'], dataset['rotations'])
         return a
 
-    def set_symmetries(self, symmetries, translations):
-        self.t_sc = translations
+    @property
+    def symmetry(self):
+        return (self.dataset['number'], self.dataset['wyckoff'],
+                self.dataset['equivalent_atoms'])
+
+    def set_symmetries(self, t_sc, op_scc):
         self.op_svv = [np.linalg.inv(self.cell).dot(op_cc.T).dot(self.cell) for
-                       op_cc in symmetries]
-        self.nsym = len(symmetries)
+                       op_cc in op_scc]
+        self.nsym = len(op_scc)
         tolerance = 1e-4
         spos_ac = self.get_scaled_positions()
         a_sa = []
 
-        for op_cc, t_c in zip(symmetries, self.t_sc):
+        for op_cc, t_c in zip(op_scc, self.t_sc):
             symspos_ac = np.dot(spos_ac, op_cc.T) + t_c
 
             a_a = []
@@ -187,91 +209,85 @@ class myBFGS(BFGS):
             self.logfile.flush()
 
 
-def relax(atoms, tmp_atoms_file,
-          logfile, trajectory, emin=-np.inf, smask=None, dftd3=True,
-          fixcell=False, allow_symmetry_breaking=False, dft=None,
-          fmax=0.01, enforce_symmetry=False):
-
-    if dftd3:
-        from ase.calculators.dftd3 import DFTD3
-
-    nd = sum(atoms.pbc)
-    if smask is None:
-        if fixcell:
-            smask = [0, 0, 0, 0, 0, 0]
-        elif nd == 3:
-            smask = [1, 1, 1, 1, 1, 1]
-        elif nd == 2:
-            smask = [1, 1, 0, 0, 0, 1]
-        else:
-            assert atoms.pbc[2], "1D periodic axis should be the last one."
-            smask = [0, 0, 1, 0, 0, 0]
-
-    from asr.utils.symmetry import atoms2symmetry
-    dataset = atoms2symmetry(atoms,
-                             tolerance=1e-3,
-                             angle_tolerance=0.1).dataset
-    spgname = dataset['international']
-    number = dataset['number']
-    nsym = len(dataset['rotations'])
-    atoms = SpgAtoms.from_atoms(atoms)
-    if enforce_symmetry:
-        atoms.set_symmetries(symmetries=dataset['rotations'],
-                             translations=dataset['translations'])
-    if dftd3:
-        calc = DFTD3(dft=dft)
-    else:
-        calc = dft
-    atoms.calc = calc
-
-    # We are fixing atom=0 to reduce computational effort
-    from ase.constraints import ExpCellFilter
+def get_smask(pbc, fixcell):
+    nd = sum(pbc)
     if fixcell:
-        cellfilter = atoms
+        smask = [0, 0, 0, 0, 0, 0]
+    elif nd == 3:
+        smask = [1, 1, 1, 1, 1, 1]
+    elif nd == 2:
+        smask = [1, 1, 0, 0, 0, 1]
     else:
-        cellfilter = ExpCellFilter(atoms, mask=smask)
+        assert pbc[2], "1D periodic axis should be the last one."
+        smask = [0, 0, 1, 0, 0, 0]
+    return smask
 
-    with myBFGS(cellfilter,
-                logfile=logfile,
-                trajectory=trajectory) as opt:
 
-        # fmax=0 here because we have implemented our own convergence criteria
-        for _ in opt.irun(fmax=0):
-            # Check that the symmetry has not been broken
-            newdataset = atoms2symmetry(atoms,
-                                        tolerance=1e-3,
-                                        angle_tolerance=0.1).dataset
+def relax(atoms, calculator, dftd3, txt, logfile, open_mode,
+          Calculator, tmp_atoms_file, calculatorname, fixcell):
+    with IOContext() as io:
+        # XXX Not so nice to have special cases
+        if calculatorname == 'gpaw':
+            calculator['txt'] = io.openfile(txt, mode=open_mode)
+        logfile = io.openfile(logfile, mode=open_mode)
+        trajectory = io.closelater(Trajectory(tmp_atoms_file, mode=open_mode))
 
-            spgname2 = newdataset['international']
-            number2 = newdataset['number']
-            nsym2 = len(newdataset['rotations'])
-            msg = (f'The initial spacegroup was {spgname} {number} '
-                   f'but it changed to {spgname2} {number2} during '
-                   'the relaxation.')
-            if (not allow_symmetry_breaking
-               and number != number2 and nsym > nsym2):
-                # Log the last step
-                opt.log()
-                opt.call_observers()
-                errmsg = 'The symmetry was broken during the relaxation! ' + msg
-                raise BrokenSymmetryError(errmsg)
-            elif number != number2:
-                print('Not an error: The spacegroup has changed during relaxation. '
-                      + msg)
-                spgname = spgname2
-                number = number2
-                nsym = nsym2
-                if enforce_symmetry:
-                    atoms.set_symmetries(
-                        symmetries=newdataset['rotations'],
-                        translations=newdataset['translations'])
+        # TODO: Perform actual GPAW computations in a separate process.
+        # This should simplify the hacky IO handling here by forcing
+        # proper GC, flushing and closing in that process.
 
+        calc = Calculator(**calculator)
+        smask = get_smask(atoms.pbc, fixcell)
+
+        # We are fixing atom=0 to reduce computational effort
+        from ase.constraints import ExpCellFilter
+        if fixcell:
+            cellfilter = atoms
+        else:
+            cellfilter = ExpCellFilter(atoms, mask=smask)
+
+        if dftd3:
+            assert calc is None
+            from ase.calculators.dftd3 import DFTD3
+            calc = DFTD3(dft=calculator)
+
+        atoms.calc = calc
+
+        with myBFGS(cellfilter,
+                    logfile=logfile,
+                    trajectory=trajectory) as opt:
+
+            # fmax=0 here because we have implemented our own convergence criteria
+            opt.irun(fmax=0)
             if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
                 opt.log()
                 opt.call_observers()
                 break
 
-    return atoms
+        edft = calc.get_potential_energy(atoms)
+        etot = atoms.get_potential_energy()
+
+        # If stress is provided by the calculator (e.g. PW mode) and we
+        # didn't use stress, then nevertheless we want to calculate it because
+        # the stiffness recipe wants it.  Also, all the existing results
+        # have stress.
+        try:
+            atoms.get_stress()
+        except PropertyNotImplementedError:
+            pass
+
+        if calculatorname == 'gpaw':
+            # GPAW will have calc.close() soon.
+            # Until then, we abuse __del__() which happens to
+            # be the same currently.
+            # If we didn't do this, then the txt file will be closed
+            # before timings are written which is bad.
+            #
+            # (Also, when testing we do not always have __del__.)
+            if hasattr(calc, '__del__'):
+                calc.__del__()
+
+    return atoms, etot, edft
 
 
 def set_initial_magnetic_moments(atoms):
@@ -348,9 +364,7 @@ def main(atoms: Atoms,
          tmp_atoms_file: str = 'relax.traj',
          d3: bool = False,
          fixcell: bool = False,
-         allow_symmetry_breaking: bool = False,
-         fmax: float = 0.01,
-         enforce_symmetry: bool = True) -> Result:
+         fmax: float = 0.01) -> Result:
     """Relax atomic positions and unit cell.
 
     The relaxed structure is saved to `structure.json` which can be processed
@@ -385,12 +399,7 @@ def main(atoms: Atoms,
         atoms = tmp_atoms
 
     atoms = atoms.copy()
-    if atoms.has('initial_magmoms'):
-        initially_spinpol = any(atoms.get_initial_magnetic_moments())
-    else:
-        # We don't know whether the system is spin polarized,
-        # so we must assume it is.
-        initially_spinpol = True
+    if not atoms.has('initial_magmoms'):
         set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
@@ -409,14 +418,6 @@ def main(atoms: Atoms,
                 ('The third unit cell axis should be aperiodic for '
                  'a 2D material!')
             calculator['poissonsolver'] = {'dipolelayer': 'xy'}
-
-    def do_relax():
-        return relax(atoms, tmp_atoms_file=tmp_atoms_file, dftd3=d3,
-                     fixcell=fixcell,
-                     logfile=logfile,
-                     trajectory=trajectory,
-                     allow_symmetry_breaking=allow_symmetry_breaking,
-                     dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
 
     # Previously the relax recipe would open the text file twice and
     # overwrite itself, except the files wouldn't be flushed at the
@@ -439,60 +440,20 @@ def main(atoms: Atoms,
 
     logfile = Path(tmp_atoms_file).with_suffix('.log')
 
-    with IOContext() as io:
-        # XXX Not so nice to have special cases
-        if calculatorname == 'gpaw':
-            calculator['txt'] = io.openfile(txt, mode=open_mode)
-        logfile = io.openfile(logfile, mode=open_mode)
-        trajectory = io.closelater(Trajectory(tmp_atoms_file, mode=open_mode))
+    # Constraint-free relaxation
+    atoms, etot, edft = relax(atoms, calculator, d3, txt, logfile, open_mode,
+                              Calculator, tmp_atoms_file, calculatorname, fixcell)
 
-        # TODO: Perform actual GPAW computations in a separate process.
-        # This should simplify the hacky IO handling here by forcing
-        # proper GC, flushing and closing in that process.
+    # Extract structures within large symmetry precision range.
+    atoms_list = spg_consistent_symprec(atoms)
+    symmetric_results = []
+    for i, symmetric_atoms in enumerate(atoms_list):
+        symmetric_results.append(relax(symmetric_atoms, calculator, d3, i + txt,
+                                       i + logfile, open_mode, Calculator,
+                                       tmp_atoms_file, calculatorname, fixcell))
 
-        calc = Calculator(**calculator)
-
-        atoms = do_relax()
-
-        # If the maximum magnetic moment on all atoms is big then
-        if initially_spinpol:
-            magmoms = atoms.get_magnetic_moments()
-
-            if not abs(magmoms).max() > 0.1:
-                atoms.set_initial_magnetic_moments([0] * len(atoms))
-                atoms.calc = calc
-                atoms = do_relax()
-
-        # This is buggy for systems that are close to the limit
-        # of spinpolarizedness.  In stiffness recipe some calculations
-        # may come out spinpolarized and others not, causing a small
-        # jump in energy and botched derivatives.  It would be better
-        # for the algorithm to strictly respect the input parameters
-        # ("spinpol", "spinpaired", or "guess")
-
-        edft = calc.get_potential_energy(atoms)
-        etot = atoms.get_potential_energy()
-
-        # If stress is provided by the calculator (e.g. PW mode) and we
-        # didn't use stress, then nevertheless we want to calculate it because
-        # the stiffness recipe wants it.  Also, all the existing results
-        # have stress.
-        try:
-            atoms.get_stress()
-        except PropertyNotImplementedError:
-            pass
-
-        if calculatorname == 'gpaw':
-            # GPAW will have calc.close() soon.
-            # Until then, we abuse __del__() which happens to
-            # be the same currently.
-            # If we didn't do this, then the txt file will be closed
-            # before timings are written which is bad.
-            #
-            # (Also, when testing we do not always have __del__.)
-            if hasattr(calc, '__del__'):
-                calc.__del__()
-
+    total_energies = [result[1] for result in symmetric_results]
+    atoms, etot, edft = symmetric_results[np.argmin(total_energies)]
     write('structure.json', atoms)
 
     cellpar = atoms.cell.cellpar()
