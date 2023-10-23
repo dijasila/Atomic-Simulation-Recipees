@@ -448,8 +448,8 @@ def main(atoms: Atoms,
     atoms_list = spg_consistent_symprec(atoms)
     symmetric_results = []
     for i, symmetric_atoms in enumerate(atoms_list):
-        symmetric_results.append(relax(symmetric_atoms, calculator, d3, i + txt,
-                                       i + logfile, open_mode, Calculator,
+        symmetric_results.append(relax(symmetric_atoms, calculator, d3, str(i) + txt,
+                                       str(i) + logfile, open_mode, Calculator,
                                        tmp_atoms_file, calculatorname, fixcell))
 
     total_energies = [result[1] for result in symmetric_results]
