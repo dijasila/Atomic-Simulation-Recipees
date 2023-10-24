@@ -57,30 +57,30 @@ def plot_bs_html(row, filename=bs_html):
     import plotly.graph_objs as go
 
     traces = []
-    d = row.data.get("results-asr.bandstructure.json")
+    d = row.data.get('results-asr.bandstructure.json')
     xcname = gs_xcname_from_row(row)
 
-    path = d["bs_nosoc"]["path"]
+    path = d['bs_nosoc']['path']
     kpts = path.kpts
-    ef = d["bs_nosoc"]["efermi"]
+    ef = d['bs_nosoc']['efermi']
 
-    if row.get("evac") is not None:
-        label = "<i>E</i> - <i>E</i><sub>vac</sub> [eV]"
-        reference = row.get("evac")
+    if row.get('evac') is not None:
+        label = '<i>E</i> - <i>E</i><sub>vac</sub> [eV]'
+        reference = row.get('evac')
     else:
-        label = "<i>E</i> - <i>E</i><sub>F</sub> [eV]"
+        label = '<i>E</i> - <i>E</i><sub>F</sub> [eV]'
         reference = ef
 
-    gaps = row.data.get("results-asr.gs.json", {}).get("gaps_nosoc", {})
-    if gaps.get("vbm"):
-        emin = gaps.get("vbm", ef) - 3
+    gaps = row.data.get('results-asr.gs.json', {}).get('gaps_nosoc', {})
+    if gaps.get('vbm'):
+        emin = gaps.get('vbm', ef) - 3
     else:
         emin = ef - 3
-    if gaps.get("cbm"):
-        emax = gaps.get("cbm", ef) + 3
+    if gaps.get('cbm'):
+        emax = gaps.get('cbm', ef) + 3
     else:
         emax = ef + 3
-    e_skn = d["bs_nosoc"]["energies"]
+    e_skn = d['bs_nosoc']['energies']
     shape = e_skn.shape
     xcoords, label_xcoords, orig_labels = labels_from_kpts(
         kpts, row.cell, special_points=path.special_points
@@ -91,19 +91,19 @@ def plot_bs_html(row, filename=bs_html):
     trace = go.Scattergl(
         x=xcoords.ravel(),
         y=e_kn.T.ravel() - reference,
-        mode="markers",
-        name=f"{xcname} no SOC",
+        mode='markers',
+        name=f'{xcname} no SOC',
         showlegend=True,
-        marker=dict(size=4, color="#999999"),
-        hovertemplate="%{y:.3f} eV"
+        marker=dict(size=4, color='#999999'),
+        hovertemplate='%{y:.3f} eV'
     )
     traces.append(trace)
 
-    e_mk = d["bs_soc"]["energies"]
-    path = d["bs_soc"]["path"]
+    e_mk = d['bs_soc']['energies']
+    path = d['bs_soc']['path']
     kpts = path.kpts
-    ef = d["bs_soc"]["efermi"]
-    sz_mk = d["bs_soc"]["sz_mk"]
+    ef = d['bs_soc']['efermi']
+    sz_mk = d['bs_soc']['sz_mk']
 
     xcoords, label_xcoords, orig_labels = labels_from_kpts(
         kpts, row.cell, special_points=path.special_points
@@ -117,68 +117,68 @@ def plot_bs_html(row, filename=bs_html):
     xcoords = xcoords.ravel()[perm].reshape(shape)
 
     # Unicode for <S_z>
-    sdir = row.get("spin_axis", "z")
-    cbtitle = "&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;".format(sdir)
+    sdir = row.get('spin_axis', 'z')
+    cbtitle = '&#x3008; <i><b>S</b></i><sub>{}</sub> &#x3009;'.format(sdir)
     trace = go.Scattergl(
         x=xcoords.ravel(),
         y=e_mk.ravel() - reference,
-        mode="markers",
+        mode='markers',
         name=xcname,
         showlegend=True,
         marker=dict(
             size=4,
             color=sz_mk.ravel(),
-            colorscale="Viridis",
+            colorscale='Viridis',
             showscale=True,
             colorbar=dict(
-                tickmode="array",
+                tickmode='array',
                 tickvals=[-1, 0, 1],
-                ticktext=["-1", "0", "1"],
+                ticktext=['-1', '0', '1'],
                 title=cbtitle,
-                titleside="right",
+                titleside='right',
             ),
         ),
-        hovertemplate="%{y:.3f} eV"
+        hovertemplate='%{y:.3f} eV'
     )
     traces.append(trace)
 
     linetrace = go.Scatter(
         x=[np.min(xcoords), np.max(xcoords)],
         y=[ef - reference, ef - reference],
-        mode="lines",
-        line=dict(color=("rgb(0, 0, 0)"), width=2, dash="dash"),
-        name="Fermi level",
+        mode='lines',
+        line=dict(color=('rgb(0, 0, 0)'), width=2, dash='dash'),
+        name='Fermi level',
     )
     traces.append(linetrace)
 
     def pretty(kpt):
-        if kpt == "G":
-            kpt = "&#x393;"  # Gamma in unicode
+        if kpt == 'G':
+            kpt = '&#x393;'  # Gamma in unicode
         elif len(kpt) == 2:
-            kpt = kpt[0] + "$_" + kpt[1] + "$"
+            kpt = kpt[0] + '$_' + kpt[1] + '$'
         return kpt
 
     labels = [pretty(name) for name in orig_labels]
     i = 1
     while i < len(labels):
         if label_xcoords[i - 1] == label_xcoords[i]:
-            labels[i - 1] = labels[i - 1][:-1] + "," + labels[i][1:]
-            labels[i] = ""
+            labels[i - 1] = labels[i - 1][:-1] + ',' + labels[i][1:]
+            labels[i] = ''
         i += 1
 
     bandxaxis = go.layout.XAxis(
-        title="k-points",
+        title='k-points',
         range=[0, np.max(xcoords)],
         showgrid=True,
         showline=True,
-        ticks="",
+        ticks='',
         showticklabels=True,
         mirror=True,
         linewidth=2,
         ticktext=labels,
         tickvals=label_xcoords,
-        gridcolor="lightgrey",
-        linecolor="black",
+        gridcolor='lightgrey',
+        linecolor='black',
     )
 
     bandyaxis = go.layout.YAxis(
@@ -187,27 +187,27 @@ def plot_bs_html(row, filename=bs_html):
         showgrid=True,
         showline=True,
         zeroline=False,
-        mirror="ticks",
-        ticks="inside",
+        mirror='ticks',
+        ticks='inside',
         linewidth=2,
         tickwidth=2,
         zerolinewidth=2,
-        gridcolor="lightgrey",
-        linecolor="black",
+        gridcolor='lightgrey',
+        linecolor='black',
     )
 
     bandlayout = go.Layout(
         xaxis=bandxaxis,
         yaxis=bandyaxis,
-        plot_bgcolor="white",
-        hovermode="closest",
+        plot_bgcolor='white',
+        hovermode='closest',
         margin=dict(t=20, r=20),
         font=dict(size=14),
         legend=dict(
-            orientation="h",
-            yanchor="bottom",
+            orientation='h',
+            yanchor='bottom',
             y=1.01,
-            xanchor="left",
+            xanchor='left',
             x=0.0,
             font=dict(size=14),
             itemsizing='constant',
@@ -215,11 +215,11 @@ def plot_bs_html(row, filename=bs_html):
         ),
     )
 
-    fig = {"data": traces, "layout": bandlayout}
+    fig = {'data': traces, 'layout': bandlayout}
 
-    plot_html = plotly.offline.plot(fig, include_plotlyjs=False, output_type="div")
-    # plot_html = ''.join(['<div style="width: 1000px;',
-    #                      'height=1000px;">',
+    plot_html = plotly.offline.plot(fig, include_plotlyjs=False, output_type='div')
+    # plot_html = ''.join(['<div style='width: 1000px;',
+    #                      'height=1000px;'>',
     #                      plot_html,
     #                      '</div>'])
 
@@ -230,30 +230,30 @@ def plot_bs_html(row, filename=bs_html):
     plotdivid = plot_html[inds[0] + 1: inds[1]]
 
     resize_script = (
-        ""
+        ''
         '<script type="text/javascript">'
         'window.addEventListener("resize", function(){{'
         'Plotly.Plots.resize(document.getElementById("{id}"));}});'
-        "</script>"
+        '</script>'
     ).format(id=plotdivid)
 
     # Insert plotly.js
     plotlyjs = '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
 
-    html = "".join(
+    html = ''.join(
         [
-            "<html>",
+            '<html>',
             '<head><meta charset="utf-8" /></head>',
-            "<body>",
+            '<body>',
             plotlyjs,
             plot_html,
             resize_script,
-            "</body>",
-            "</html>",
+            '</body>',
+            '</html>',
         ]
     )
 
-    with open(filename, "w") as fd:
+    with open(filename, 'w') as fd:
         fd.write(html)
 
 

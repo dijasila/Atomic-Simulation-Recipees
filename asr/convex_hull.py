@@ -556,33 +556,33 @@ def plot_html(row, fname, thisrow):
 
     colors = px.colors.qualitative.D3
 
-    data = row.data["results-asr.convex_hull.json"]
+    data = row.data['results-asr.convex_hull.json']
 
     count = row.count_atoms()
     if not (2 <= len(count) <= 3):
         return
 
-    references = data["references"]
+    references = data['references']
 
     df_ref = pandas.DataFrame(references)
 
     # Why are we even using thisrow? Isn't it always the same as row?
-    df_ref["thisrow"] = df_ref.apply(
-        lambda x: True if x["uid"] == thisrow.uid else False, axis=1
+    df_ref['thisrow'] = df_ref.apply(
+        lambda x: True if x['uid'] == thisrow.uid else False, axis=1
     )
 
-    names = [ref["label"] for ref in references]
+    names = [ref['label'] for ref in references]
     latexnames = [
-        format(Formula(name.split(" ")[0]).reduce()[0], "html") for name in names
+        format(Formula(name.split(' ')[0]).reduce()[0], 'html') for name in names
     ]
 
-    df_ref["latexname"] = latexnames
+    df_ref['latexname'] = latexnames
 
     # Highlight this material by making it bold
-    name_column_to_plot = "latexname"
+    name_column_to_plot = 'latexname'
     try:
-        df_ref.loc[df_ref["thisrow"], name_column_to_plot] = (
-            "<b>" + df_ref[df_ref["thisrow"]][name_column_to_plot].values[0] + "</b>"
+        df_ref.loc[df_ref['thisrow'], name_column_to_plot] = (
+            '<b>' + df_ref[df_ref['thisrow']][name_column_to_plot].values[0] + '</b>'
         )
     except IndexError:
         pass
@@ -590,17 +590,17 @@ def plot_html(row, fname, thisrow):
     pdrefs = []
 
     for reference in references:
-        h = reference["natoms"] * reference["hform"]
-        pdrefs.append((reference["formula"], h))
+        h = reference['natoms'] * reference['hform']
+        pdrefs.append((reference['formula'], h))
 
     pd = PhaseDiagram(pdrefs, verbose=False)
 
     if len(count) == 2:
         xcoord, energy, _, hull, simplices, xlabel, ylabel = pd.plot2d2()
 
-        df_ref["xcoord"] = xcoord
-        df_ref["energy"] = energy
-        df_ref["hull"] = hull
+        df_ref['xcoord'] = xcoord
+        df_ref['energy'] = energy
+        df_ref['hull'] = hull
 
         figs = []
 
@@ -614,31 +614,31 @@ def plot_html(row, fname, thisrow):
         ymin = energy.min() - 2.5 * delta
         A, B = pd.symbols
 
-        xlabel_text = f"{A}<sub>1-x</sub>{B}<sub>x</sub>"
+        xlabel_text = f'{A}<sub>1-x</sub>{B}<sub>x</sub>'
 
         hover_data = {
-            "xcoord": True,
-            "energy": ":.2f",
-            "legend": False,
-            "latexname": True,
-            "uid": True,
-            "name": True,
+            'xcoord': True,
+            'energy': ':.2f',
+            'legend': False,
+            'latexname': True,
+            'uid': True,
+            'name': True,
         }
         fig_temp = px.scatter(
             df_ref,
-            x="xcoord",
-            y="energy",
-            color="legend",
-            symbol="legend",
+            x='xcoord',
+            y='energy',
+            color='legend',
+            symbol='legend',
             hover_data=hover_data,
-            custom_data=["link"],
+            custom_data=['link'],
             labels={
-                "xcoord": xlabel_text + ", x",
-                "energy": "\u0394H [eV/atom]",
-                "latexname": "Formula",
+                'xcoord': xlabel_text + ', x',
+                'energy': '\u0394H [eV/atom]',
+                'latexname': 'Formula',
             },
             color_discrete_sequence=colors,
-            symbol_sequence=["circle", "circle-open"],
+            symbol_sequence=['circle', 'circle-open'],
         )
 
         # Set edgecolor to same color as facecolor
@@ -659,55 +659,55 @@ def plot_html(row, fname, thisrow):
                 x=row.xcoord,
                 y=row.energy,
                 text=row.latexname,
-                xanchor="left",
+                xanchor='left',
                 showarrow=False,
                 xshift=10,
             )
 
         fig.update_traces(
-            textposition="middle right", marker={"size": 8}, marker_line_width=2
+            textposition='middle right', marker={'size': 8}, marker_line_width=2
         )
         fig.update_layout(
             xaxis_title=xlabel_text,
-            yaxis_title="\u0394H [eV/atom]",
-            yaxis=dict(zerolinecolor="lightgrey"),
-            xaxis=dict(zerolinecolor="lightgrey"),
+            yaxis_title='\u0394H [eV/atom]',
+            yaxis=dict(zerolinecolor='lightgrey'),
+            xaxis=dict(zerolinecolor='lightgrey'),
             legend=dict(
-                orientation="h",
+                orientation='h',
                 entrywidth=100,
-                yanchor="bottom",
+                yanchor='bottom',
                 y=1.1,
-                xanchor="left",
+                xanchor='left',
                 x=0.01,
                 font=dict(size=14),
             ),
             margin=dict(t=20, r=20),
-            plot_bgcolor="white",
+            plot_bgcolor='white',
         )
 
         fig.update_xaxes(
             mirror=True,
-            ticks="outside",
+            ticks='outside',
             showline=True,
-            linecolor="black",
-            gridcolor="lightgrey",
+            linecolor='black',
+            gridcolor='lightgrey',
         )
         fig.update_yaxes(
             mirror=True,
-            ticks="outside",
+            ticks='outside',
             showline=True,
-            linecolor="black",
-            gridcolor="lightgrey",
+            linecolor='black',
+            gridcolor='lightgrey',
         )
 
     else:
         x, y, e = pd.points[:, 1:].T
-        df_ref["x"] = x
-        df_ref["y"] = y
-        df_ref["e"] = e
+        df_ref['x'] = x
+        df_ref['y'] = y
+        df_ref['e'] = e
 
         hull = np.array(pd.hull)
-        df_ref["hull"] = hull
+        df_ref['hull'] = hull
 
         figs = []
         for i, j, k in pd.simplices:
@@ -722,36 +722,36 @@ def plot_html(row, fname, thisrow):
                     ),
                 ]
             )
-            fig_temp.update_traces(hoverinfo="skip")
+            fig_temp.update_traces(hoverinfo='skip')
             figs.append(fig_temp)
 
         # Plot materials
         hover_data = {
-            "x": False,
-            "y": False,
-            "e": ":.2f",
-            "legend": False,
-            "latexname": True,
-            "uid": True,
-            "name": True,
+            'x': False,
+            'y': False,
+            'e': ':.2f',
+            'legend': False,
+            'latexname': True,
+            'uid': True,
+            'name': True,
         }
         fig_temp = px.scatter_3d(
             df_ref,
-            x="x",
-            y="y",
-            z="e",
+            x='x',
+            y='y',
+            z='e',
             hover_data=hover_data,
-            color="legend",
-            custom_data=["link"],
+            color='legend',
+            custom_data=['link'],
             color_discrete_sequence=colors,
             labels={
-                "x": pd.symbols[1],
-                "y": pd.symbols[2],
-                "e": "\u0394H [eV/atom]",
-                "latexname": "Formula",
+                'x': pd.symbols[1],
+                'y': pd.symbols[2],
+                'e': '\u0394H [eV/atom]',
+                'latexname': 'Formula',
             },
         )
-        fig_temp.update_traces(marker={"size": 6})
+        fig_temp.update_traces(marker={'size': 6})
         figs.append(fig_temp)
 
         delta = e.ptp() / 30
@@ -769,7 +769,7 @@ def plot_html(row, fname, thisrow):
                     y=row.y,
                     z=row.e,
                     text=row.latexname,
-                    xanchor="left",
+                    xanchor='left',
                     xshift=10,
                     opacity=0.7,
                 )
@@ -779,18 +779,18 @@ def plot_html(row, fname, thisrow):
             scene=dict(
                 xaxis_title=pd.symbols[1],
                 yaxis_title=pd.symbols[2],
-                zaxis_title="\u0394H [eV/atom]",
+                zaxis_title='\u0394H [eV/atom]',
                 zaxis=dict(range=[ymin, 0.1]),
                 annotations=annotations,
-                aspectratio={"x": 1, "y": 1, "z": 1},
+                aspectratio={'x': 1, 'y': 1, 'z': 1},
             ),
             margin=dict(l=0, r=0, b=0, t=0),
             legend=dict(
-                orientation="h",
+                orientation='h',
                 entrywidth=100,
-                yanchor="bottom",
+                yanchor='bottom',
                 y=0.9,
-                xanchor="left",
+                xanchor='left',
                 x=0.01,
                 font=dict(size=14),
             ),
@@ -799,19 +799,19 @@ def plot_html(row, fname, thisrow):
     # Make plots clickable to go to material page
     # Get HTML representation of plotly.js and this figure
     plot_div = plot(
-        fig, output_type="div", include_mathjax="cdn", include_plotlyjs="cdn"
+        fig, output_type='div', include_mathjax='cdn', include_plotlyjs='cdn'
     )
 
     # Get id of html div element that looks like
-    # <div id="301d22ab-bfba-4621-8f5d-dc4fd855bb33" ... >
+    # <div id='301d22ab-bfba-4621-8f5d-dc4fd855bb33' ... >
     res = re.search('<div id="([^"]*)"', plot_div)
     div_id = res.groups()[0]
 
     # Build JavaScript callback for handling clicks
     # and opening the URL in the trace's customdata
-    js_callback = """
+    js_callback = '''
     <script>
-    var plot_element = document.getElementById("{div_id}");
+    var plot_element = document.getElementById('{div_id}');
     plot_element.on('plotly_click', function(data){{
         console.log(data);
         var point = data.points[0];
@@ -821,24 +821,24 @@ def plot_html(row, fname, thisrow):
         }}
     }})
     </script>
-    """.format(
+    '''.format(
         div_id=div_id
     )
 
     # Build HTML string
-    html_str = """
+    html_str = '''
     <html>
     <body>
     {plot_div}
     {js_callback}
     </body>
     </html>
-    """.format(
+    '''.format(
         plot_div=plot_div, js_callback=js_callback
     )
 
     # Write out HTML file
-    with open(fname, "w") as f:
+    with open(fname, 'w') as f:
         f.write(html_str)
 
 
