@@ -186,11 +186,21 @@ class myBFGS(BFGS):
                                f'{e:<10.6f}{fc} {fmax:<10.4f} {smax:<10.4f}\n')
             self.logfile.flush()
 
+    def initialize(self, H0 = None):
+        # Overwrite initialize function to allow for loading Hessian from ML model
+        if H0 is None:
+            self.H0 = np.eye(3 * len(self.atoms)) * self.alpha
+        else:
+            self.H0 = H0
+
+        self.H = None
+        self.pos0 = None
+        self.forces0 = None
 
 def relax(atoms, tmp_atoms_file,
           logfile, trajectory, emin=-np.inf, smask=None, dftd3=True,
           fixcell=False, allow_symmetry_breaking=False, dft=None,
-          fmax=0.01, enforce_symmetry=False):
+          fmax=0.01, enforce_symmetry=False, hessian_file=''):
 
     if dftd3:
         from ase.calculators.dftd3 import DFTD3
@@ -234,6 +244,14 @@ def relax(atoms, tmp_atoms_file,
     with myBFGS(cellfilter,
                 logfile=logfile,
                 trajectory=trajectory) as opt:
+        
+        # Initialize Hessian
+        if hessian_file != '':
+            if Path(hessian_file).is_file():
+                with open(hessian_file, 'rb') as f:
+                    H0 = np.load(f,allow_pickle=True)
+                print(f'Loaded Hessian from {hessian_file}, H0={H0}')
+                opt.initialize(H0=H0)
 
         # fmax=0 here because we have implemented our own convergence criteria
         for _ in opt.irun(fmax=0):
@@ -332,6 +350,8 @@ class Result(ASRResult):
 @option('--fmax', help='Maximum force allowed.', type=float)
 @option('--enforce-symmetry/--dont-enforce-symmetry',
         help='Symmetrize forces and stresses.', is_flag=True)
+@option('--hessian-file', help='File to load hessian from.',
+        default='', type=str)
 def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'pw', 'ecut': 800},
@@ -350,7 +370,8 @@ def main(atoms: Atoms,
          fixcell: bool = False,
          allow_symmetry_breaking: bool = False,
          fmax: float = 0.01,
-         enforce_symmetry: bool = True) -> Result:
+         enforce_symmetry: bool = True,
+         hessian_file: str = '') -> Result:
     """Relax atomic positions and unit cell.
 
     The relaxed structure is saved to `structure.json` which can be processed
@@ -416,7 +437,7 @@ def main(atoms: Atoms,
                      logfile=logfile,
                      trajectory=trajectory,
                      allow_symmetry_breaking=allow_symmetry_breaking,
-                     dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry)
+                     dft=calc, fmax=fmax, enforce_symmetry=enforce_symmetry, hessian_file=hessian_file)
 
     # Previously the relax recipe would open the text file twice and
     # overwrite itself, except the files wouldn't be flushed at the
