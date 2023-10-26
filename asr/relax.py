@@ -92,8 +92,11 @@ def is_relax_done(atoms, fmax=0.01, smax=0.002,
 def spg_consistent_symprec(atoms):
     symmetries = []
     atoms_list = []
-    for symprec in np.logspace(1, -5, 13):
+    for symprec in np.logspace(0, -5, 13):
         symmetric_atoms = SpgAtoms.from_atoms(atoms, symprec)
+        if symmetric_atoms is None:
+            continue
+
         if symmetric_atoms.symmetry not in symmetries:
             symmetries.append(symmetric_atoms.symmetry)
             atoms_list.append(symmetric_atoms)
@@ -104,21 +107,24 @@ class SpgAtoms(Atoms):
 
     @classmethod
     def from_atoms(cls, atoms, symprec):
-        from ase.spacegroup import refine_symmetry
+        from ase.spacegroup.symmetrize import refine_symmetry
         # Due to technicalities we cannot mess with the __init__ constructor
         # -> therefore we make our own
         a = cls(atoms)
-        refine_symmetry(a, symprec=symprec)
+        try:
+            refine_symmetry(a, symprec=symprec)
+        except TypeError:
+            return None
         dataset = spglib.get_symmetry_dataset(atoms_to_spglib_cell(a),
                                               symprec=symprec)
         a.dataset = dataset
-        a.set_symmetries(dataset['translation'], dataset['rotations'])
+        a.set_symmetries(dataset['translations'], dataset['rotations'])
         return a
 
     @property
     def symmetry(self):
-        return (self.dataset['number'], self.dataset['wyckoff'],
-                self.dataset['equivalent_atoms'])
+        return set((self.dataset['number'], tuple(self.dataset['wyckoffs']),
+                    tuple(self.dataset['equivalent_atoms'])))
 
     def set_symmetries(self, t_sc, op_scc):
         self.op_svv = [np.linalg.inv(self.cell).dot(op_cc.T).dot(self.cell) for
@@ -128,7 +134,7 @@ class SpgAtoms(Atoms):
         spos_ac = self.get_scaled_positions()
         a_sa = []
 
-        for op_cc, t_c in zip(op_scc, self.t_sc):
+        for op_cc, t_c in zip(op_scc, t_sc):
             symspos_ac = np.dot(spos_ac, op_cc.T) + t_c
 
             a_a = []
@@ -223,7 +229,7 @@ def get_smask(pbc, fixcell):
     return smask
 
 
-def relax(atoms, calculator, dftd3, txt, logfile, open_mode,
+def relax(atoms, calculator, dftd3, txt, logfile, open_mode, fmax,
           Calculator, tmp_atoms_file, calculatorname, fixcell):
     with IOContext() as io:
         # XXX Not so nice to have special cases
@@ -258,11 +264,11 @@ def relax(atoms, calculator, dftd3, txt, logfile, open_mode,
                     trajectory=trajectory) as opt:
 
             # fmax=0 here because we have implemented our own convergence criteria
-            opt.irun(fmax=0)
-            if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
-                opt.log()
-                opt.call_observers()
-                break
+            for _ in opt.irun(fmax=0):
+                if is_relax_done(atoms, fmax=fmax, smax=0.002, smask=smask):
+                    opt.log()
+                    opt.call_observers()
+                    break
 
         edft = calc.get_potential_energy(atoms)
         etot = atoms.get_potential_energy()
@@ -342,12 +348,7 @@ class Result(ASRResult):
 @option('--fixcell/--dont-fixcell',
         help="Don't relax stresses.",
         is_flag=True)
-@option('--allow-symmetry-breaking/--dont-allow-symmetry-breaking',
-        help='Allow symmetries to be broken during relaxation.',
-        is_flag=True)
 @option('--fmax', help='Maximum force allowed.', type=float)
-@option('--enforce-symmetry/--dont-enforce-symmetry',
-        help='Symmetrize forces and stresses.', is_flag=True)
 def main(atoms: Atoms,
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'pw', 'ecut': 800},
@@ -441,16 +442,20 @@ def main(atoms: Atoms,
     logfile = Path(tmp_atoms_file).with_suffix('.log')
 
     # Constraint-free relaxation
-    atoms, etot, edft = relax(atoms, calculator, d3, txt, logfile, open_mode,
+    atoms, etot, edft = relax(atoms, calculator, d3, txt, logfile, open_mode, fmax,
                               Calculator, tmp_atoms_file, calculatorname, fixcell)
 
     # Extract structures within large symmetry precision range.
     atoms_list = spg_consistent_symprec(atoms)
     symmetric_results = []
     for i, symmetric_atoms in enumerate(atoms_list):
-        symmetric_results.append(relax(symmetric_atoms, calculator, d3, str(i) + txt,
-                                       str(i) + logfile, open_mode, Calculator,
-                                       tmp_atoms_file, calculatorname, fixcell))
+        itxt  = str(i) + txt
+        itmp_atoms_file = itxt.replace('txt', 'traj')
+        ilogfile = Path(tmp_atoms_file).with_suffix('.log')
+        symmetric_structure = relax(symmetric_atoms, calculator, d3, itxt,
+                                    ilogfile, open_mode, fmax, Calculator,
+                                    itmp_atoms_file, calculatorname, fixcell)
+        symmetric_results.append(symmetric_structure)
 
     total_energies = [result[1] for result in symmetric_results]
     atoms, etot, edft = symmetric_results[np.argmin(total_energies)]
