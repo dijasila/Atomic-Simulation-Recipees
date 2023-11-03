@@ -139,12 +139,13 @@ def main(qpts: int = None, qdens: float = None,
     from glob import glob
     atoms = read('structure.json')
     jsons = glob('dat*.json')
-    try:
-        qpts = len(read_json('results-asr.spinspiral.json')['path'].kpts)
-        qdens = None
-    except FileNotFoundError:
-        # Using input or default q-points
-        pass
+    
+    if qdens is None and qpts is None:
+        try:
+            qpts = len(read_json('results-asr.spinspiral.json')['path'].kpts)
+            qdens = None
+        except FileNotFoundError:
+            assert False, 'No q-path could be determined'
 
     path = get_spiral_bandpath(atoms=atoms, qdens=qdens, qpts=qpts,
                                q_path=q_path, eps=eps)
