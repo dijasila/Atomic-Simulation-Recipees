@@ -4,57 +4,93 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 
 
-def get_magmoms(atoms):
-    from ase.calculators.calculator import PropertyNotImplementedError
-    try:
-        moments = atoms.get_magnetic_moments()
-    except (PropertyNotImplementedError, RuntimeError):
-        if atoms.has('initial_magmoms'):
-            moments = atoms.get_initial_magnetic_moments()
-        else:
-            # Recipe default magnetic moments
-            moments = magnetic_atoms(atoms)
+def get_collinear_magmoms(atoms, request='priority', calculator=None):
+    if request == 'priority' or request == 'p':
+        for get_moments, arg in zip([get_calculator_moments,
+                                     get_magnetic_moments,
+                                     get_initial_magnetic_moments,
+                                     get_guess_moments],
+                                    [calculator, atoms, atoms, atoms]):
+            try:
+                moments = get_moments(arg)
+                break
+            except MagmomError as err:
+                print(err)
+
+    elif request == 'calculator' or request == 'calc':
+        moments = get_calculator_moments(calculator)
+    elif request == 'calculated' or request == 'c':
+        moments = get_magnetic_moments(atoms)
+    elif request == 'initial' or request == 'i':
+        moments = get_initial_magnetic_moments(atoms)
+    elif request == 'guess' or request == 'g':
+        moments = get_guess_moments(atoms)
+
     return moments
 
 
-def extract_magmoms(atoms, calculator):
-    try:
-        magmoms = calculator["magmoms"]
-    except KeyError:
-        magmomx = get_magmoms(atoms)
-        magmoms = np.zeros((len(atoms), 3))
-        magmoms[:, 0] = magmomx
-    return magmoms
+def get_noncollinear_magmoms(atoms, request=None):
+    return col_to_ncolx(get_collinear_magmoms(atoms, request))
 
 
-def rotate_magmoms(atoms, magmoms, q_c, model='q.a'):
-    from ase.dft.kpoints import kpoint_convert
-
-    q_v = kpoint_convert(atoms.get_cell(), skpts_kc=[q_c])[0]
-    if model == 'q.a':
-        pos_av = atoms.get_positions()
-        angles = np.dot(pos_av, q_v)
-        to_rotate = slice(None)
-    if model == 'tan':
-        # Automatic rotation of magnetic atoms require magnetic atoms
-        if sum(magnetic_atoms(atoms)) == 0 or len(atoms) == 1:
-            return np.array(magmoms)
-        R_iv, _ = nn(atoms, ref=0)
-        xi = calc_tanEq(q_v, R_iv)  # Arctan Equation
-        angles = [xi, 0]
-        to_rotate = true_magnetic_atoms(atoms)
-
-    moments_av = magmoms[to_rotate]
-    for i, (mom_v, angle) in enumerate(zip(moments_av, angles)):
-        Rz = R.from_euler('z', angle).as_matrix()
-        moments_av[i] = Rz @ mom_v
-    magmoms[to_rotate] = moments_av
-    return np.array(magmoms)
+class MagmomError(Exception):
+    pass
 
 
-def true_magnetic_atoms(atoms):
+def get_calculator_moments(calculator=None):
+    if not isinstance(calculator, dict):
+        raise MagmomError('Calculator dictionary not provided')
+
+    ncol_moments = calculator.get("magmoms", None)
+    if ncol_moments is None:
+        raise MagmomError('Magnetic moments not found in Calculator')
+
+    moments = ncol_to_col(ncol_moments)
+    return moments
+
+
+def get_magnetic_moments(atoms):
+    from ase.calculators.singlepoint import SinglePointCalculator
+    if type(atoms.calc) is SinglePointCalculator:
+        moments = atoms.calc.get_property('magmoms', allow_calculation=False)
+        return moments
+
+    newGPAW = getattr(atoms.calc, 'calculation', None)
+    oldGPAW = getattr(atoms.calc, 'setups', None)
+    if newGPAW is not None:
+        _, moments = atoms.calc.calculation.magmoms()
+    elif oldGPAW is not None:
+        _, moments = atoms.calc.density.estimate_magnetic_moments()
+    else:
+        raise MagmomError('No calculated magnetic moment found')
+    return ncol_to_col(moments)
+
+
+def get_initial_magnetic_moments(atoms):
+    if not atoms.has('initial_magmoms'):
+        raise MagmomError('No initial magnetic moments were found')
+    return atoms.get_initial_magnetic_moments()
+
+
+def get_guess_moments(atoms):
+    return np.array(magnetic_atoms(atoms), dtype=float)
+
+
+def col_to_ncolx(moments):
+    magmoms = np.zeros((len(moments), 3))
+    magmoms[:, 0] = moments
+    return np.array(magmoms, dtype=float)
+
+
+def ncol_to_col(nmoments, eps=1e-16):
+    nmoments = np.array(nmoments)
+    axisarg = np.logical_not(np.all(abs(nmoments).T < eps, axis=-1))
+    assert sum(axisarg) == 1, f'Magnetic moments should be collinear, {axisarg}'
+    return nmoments.T[axisarg][0]
+
+
+def true_magnetic_atoms(atoms, moments):
     arg = magnetic_atoms(atoms)
-    moments = get_magmoms(atoms)
 
     # Ignore ligand atoms
     magmoms = abs(moments[arg])
@@ -71,6 +107,56 @@ def true_magnetic_atoms(atoms):
     is_true_mag = pmom > 0.1
     arg[arg == 1] = is_true_mag
     return arg
+
+
+def get_afms(moments, arg, return_raw=False):
+    """
+    Takes an atoms object, or optionally magnetic moments as a list of floats
+    and creates a list of non-equivalent antiferromagnetic structures.
+    Note can only take even number of moment such that the antiferromagnetic
+    condition is sum(moments) = 0
+    Returns [[0, 1, -1, 0, 0, ...]]
+    """
+
+    import numpy as np
+
+    # Construct list with #up and downs
+    start = np.ones(sum(arg))
+    start[:len(start) // 2] = -1
+    # If number of magnetic atoms is odd, cannot generate afms
+    if sum(start) != 0:
+        return []
+
+    # Create all collinear afm structures
+    from itertools import permutations
+    afms = np.array(list(set(permutations(start))))
+
+    # Remove inversion symmetric structures
+    for i in range(len(afms) // 2):
+        mask = np.all(-afms[i] == afms, axis=1)
+        afms = afms[np.invert(mask), :]
+
+    if return_raw is False:
+        # Apply the afm structure to the magmom list
+        afm_comps = np.ones((len(afms), len(moments)))
+        for n in range(len(afms)):
+            afm_comps[n, :] = moments
+            afm_comps[n, arg] = moments[arg] * afms[n]
+        return afm_comps
+    else:
+        # Apply the afm structure to the magmom list
+        afm_comps = np.zeros((len(afms), len(moments)))
+        for n in range(len(afms)):
+            afm_comps[n, arg] = afms[n] * moments[arg]
+        return afm_comps
+
+
+def get_magmom_bands(arg, fm):
+    afms = get_afms(fm, arg)
+    magmoms = np.array([col_to_ncolx(fm)])
+    for afm in afms:
+        magmoms = np.append(magmoms, [col_to_ncolx(afm)], axis=0)
+    return magmoms
 
 
 def calc_tanEq(q_v, R_iv):
@@ -105,54 +191,29 @@ def nn(atoms, ref: int = 0):
     return R_a, npos_av
 
 
-def get_afms(atoms, moments=None):
-    """
-    Takes an atoms object, or optionally magnetic moments as a list of floats
-    and creates a list of non-equivalent antiferromagnetic structures.
-    Note can only take even number of moment such that the antiferromagnetic
-    condition is sum(moments) = 0
-    Returns [[0, 1, -1, 0, 0, ...]]
-    """
+def rotate_magmoms(atoms, magmoms, q_c, model='q.a'):
+    from ase.dft.kpoints import kpoint_convert
 
-    import numpy as np
+    q_v = kpoint_convert(atoms.get_cell(), skpts_kc=[q_c])[0]
+    if model == 'q.a':
+        pos_av = atoms.get_positions()
+        angles = np.dot(pos_av, q_v)
+        to_rotate = slice(None)
+    if model == 'tan':
+        # Automatic rotation of magnetic atoms require magnetic atoms
+        if sum(magnetic_atoms(atoms)) == 0 or len(atoms) == 1:
+            return np.array(magmoms)
+        R_iv, _ = nn(atoms, ref=0)
+        xi = calc_tanEq(q_v, R_iv)  # Arctan Equation
+        angles = [xi, 0]
+        to_rotate = true_magnetic_atoms(atoms, magmoms)
 
-    if moments is None:
-        moments = get_magmoms(atoms)
-    arg = true_magnetic_atoms(atoms)
-
-    # Construct list with #up and downs
-    start = np.ones(sum(arg))
-    start[:len(start) // 2] = -1
-    # If number of magnetic atoms is odd, cannot generate afms
-    if sum(start) != 0:
-        return []
-
-    # Create all collinear afm structures
-    from itertools import permutations
-    afms = np.array(list(set(permutations(start))))
-
-    # Remove inversion symmetric structures
-    for i in range(len(afms) // 2):
-        mask = np.all(-afms[i] == afms, axis=1)
-        afms = afms[np.invert(mask), :]
-
-    # Apply the afm structure to the magmom list
-    afm_comps = np.ones((len(afms), len(moments)))
-    for n in range(len(afms)):
-        afm_comps[n, :] = moments
-        afm_comps[n, arg] = moments[arg] * afms[n]
-
-    return afm_comps
-
-
-def get_noncollinear_magmoms(atoms):
-    fm = get_magmoms(atoms)
-    afms = get_afms(atoms)
-    magmoms = np.zeros((len(afms) + 1, len(atoms), 3))
-    magmoms[0, :, 0] = fm
-    for n in range(1, len(afms) + 1):
-        magmoms[n, :, 0] = afms[n - 1]
-    return magmoms
+    moments_av = magmoms[to_rotate]
+    for i, (mom_v, angle) in enumerate(zip(moments_av, angles)):
+        Rz = R.from_euler('z', angle).as_matrix()
+        moments_av[i] = Rz @ mom_v
+    magmoms[to_rotate] = moments_av
+    return np.array(magmoms)
 
 
 def get_spiral_bandpath(atoms, qdens=None, qpts=None,
