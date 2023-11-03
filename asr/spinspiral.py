@@ -1,6 +1,7 @@
 from asr.core import command, option, ASRResult, prepare_result, DictStr
-from asr.utils.spinspiral import extract_magmoms, rotate_magmoms, \
-    get_noncollinear_magmoms, get_spiral_bandpath
+from asr.utils.spinspiral import rotate_magmoms, get_magmom_bands, col_to_ncolx, \
+    get_collinear_magmoms, get_noncollinear_magmoms, get_spiral_bandpath, \
+    true_magnetic_atoms
 from asr.collect_spiral import SpinSpiralCalculation
 from ase.io import read
 from ase.parallel import world
@@ -19,7 +20,6 @@ def spinspiral(calculator: dict = {
         'occupations': {'name': 'fermi-dirac',
                         'width': 0.05},
         'convergence': {'bands': 'CBM+3.0'},
-        'nbands': '200%',
         'txt': 'gsq.txt',
         'charge': 0},
         atoms=None, rotation_model='q.a',
@@ -39,7 +39,10 @@ def spinspiral(calculator: dict = {
         restart = False
 
     q_c = calculator['mode']['qspiral']  # spiral vector must be provided
-    magmoms = np.array(extract_magmoms(atoms, calculator), dtype=float)
+    magmoms = calculator.get("magmoms", None)
+    if magmoms is None:
+        magmoms = get_noncollinear_magmoms(atoms)
+
     if rotation_model is not None:
         magmoms = rotate_magmoms(atoms, magmoms, q_c, model=rotation_model)
 
@@ -92,42 +95,8 @@ def main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
          rotation_model: Union[str, None] = 'q.a', clean_up: bool = False,
          eps: float = None) -> Result:
 
-    atoms = read('structure.json')
-
-    q_path = get_spiral_bandpath(atoms=atoms, qdens=qdens, qpts=qpts,
-                                 q_path=q_path, eps=eps)
-
-    try:
-        magmoms_b = [calculator["magmoms"]]
-    except KeyError:
-        magmoms_b = get_noncollinear_magmoms(atoms)
-
-    energies = []
-    for bidx, magmoms in enumerate(magmoms_b):
-        for qidx, qn_c in enumerate(q_path.kpts):
-            calculator['mode']['qspiral'] = qn_c
-            calculator['txt'] = f'gsq{qidx}b{bidx}.txt'
-            calculator['magmoms'] = magmoms
-
-            if cannot_converge(qidx, bidx):
-                continue
-
-            try:
-                result = spinspiral(calculator=calculator, atoms=atoms,
-                                    rotation_model=rotation_model)
-                energies.append(result['energy'])
-                sscalc = SpinSpiralCalculation([bidx, qidx],
-                                               result['energy'],
-                                               result['totmom_v'].tolist(),
-                                               result['magmom_av'].tolist(),
-                                               result['gap'])
-            except Exception as e:
-                print(f'Caught exception {e}')
-                energies.append(0.0)
-                sscalc = SpinSpiralCalculation([bidx, qidx], 0.0, [0, 0, 0],
-                                               [[0, 0, 0]] * len(atoms), 0)
-            if world.rank == 0:
-                sscalc.save(f'datq{qidx}b{bidx}.json')
+    q_path, energies = _main(calculator, q_path, qpts, qdens,
+                             rotation_model, clean_up, eps, submit=False)
 
     energies = np.asarray(energies)
     emin_idx = np.argmin(energies)
@@ -141,6 +110,108 @@ def main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
                     os.remove(gpw)
 
     return Result.fromdata(path=q_path, energies=energies)
+
+
+def _main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
+                                  kpts={'density': 6.0, 'gamma': True}),
+          q_path: Union[str, None] = None,
+          qpts: int = None, qdens: float = None,
+          rotation_model: Union[str, None] = 'q.a', clean_up: bool = False,
+          eps: float = None,
+          request: str = 'priority',
+          submit: bool = False,
+          cores: int = 24,
+          tmax: str = '3h'):
+
+    atoms = read('structure.json')
+
+    q_path = get_spiral_bandpath(atoms=atoms, qdens=qdens, qpts=qpts,
+                                 q_path=q_path, eps=eps)
+
+    # Magnetic moments might be supplied in many different ways.
+    # It might exist as calculator dictionary input in non-collinear
+    # calculations.
+    # Otherwise, in ASE atoms object there might exist pre-calculated
+    # moments "magnetic moments" or "initial magnetic moments".
+    # If none of these are provided, we guess m=1 on atoms with
+    # d-orbital valence states.
+    # Priority is: calculator dict > ASE calculated > ASE initialized > guess
+    # Request keys: calculator, calculated, initial, guess
+    col_magmoms = get_collinear_magmoms(atoms=atoms, request=request,
+                                        calculator=calculator)
+
+    # If we find an even number of magnetic moments in the unit cell,
+    # we construct the possible collinear configurations
+    arg = true_magnetic_atoms(atoms, col_magmoms)
+    if sum(arg) > 0 and sum(arg) % 2 == 0:
+        magmoms_bav = get_magmom_bands(arg, col_magmoms)
+    else:
+        magmoms_bav = col_to_ncolx(col_magmoms)
+
+    energies = []
+    for bidx, magmoms_av in enumerate(magmoms_bav):
+        for qidx, qn_c in enumerate(q_path.kpts):
+            calculator['mode']['qspiral'] = qn_c
+            calculator['txt'] = f'gsq{qidx}b{bidx}.txt'
+            calculator['magmoms'] = magmoms_av
+
+            if cannot_converge(qidx, bidx):
+                continue
+
+            if submit:
+                sscalc = submit_calculations(atoms, calculator, rotation_model,
+                                             bidx, qidx, energies)
+            else:
+                sscalc = execute_calculations(atoms, calculator, rotation_model,
+                                              bidx, qidx, energies)
+
+            if world.rank == 0:
+                sscalc.save(f'datq{qidx}b{bidx}.json')
+
+    energies = np.asarray(energies)
+
+    return q_path, energies
+
+
+def execute_calculations(atoms, calculator, rotation_model, bidx, qidx, energies):
+    try:
+        result = spinspiral(calculator=calculator,
+                            atoms=atoms,
+                            rotation_model=rotation_model)
+        energies.append(result['energy'])
+        sscalc = SpinSpiralCalculation([bidx, qidx],
+                                       result['energy'],
+                                       result['totmom_v'].tolist(),
+                                       result['magmom_av'].tolist(),
+                                       result['gap'])
+    except Exception as e:
+        print(f'Caught exception {e}')
+        energies.append(0.0)
+        sscalc = SpinSpiralCalculation([bidx, qidx], 0.0, [0, 0, 0],
+                                       [[0, 0, 0]] * len(atoms), 0)
+    return sscalc
+
+
+def submit_calculations(atoms, calculator, rotation_model, bidx, qidx, energies,
+                        cores=24, tmax='8h'):
+    from myqueue.workflow import run
+    r = run(function=spinspiral, name=f'gsq{qidx}b{bidx}',
+            kwargs={'calculator': calculator,
+                    'atoms': atoms,
+                    'rotation_model': rotation_model},
+            cores=cores, tmax=tmax)
+    if r.done:
+        energies.append(r.result['energy'])
+        sscalc = SpinSpiralCalculation([bidx, qidx],
+                                       r.result['energy'],
+                                       r.result['totmom_v'].tolist(),
+                                       r.result['magmom_av'].tolist(),
+                                       r.result['gap'])
+    else:
+        sscalc = SpinSpiralCalculation([bidx, qidx], 0.0, [0, 0, 0],
+                                       [[0, 0, 0]] * len(atoms), 0)
+        energies.append(0.0)
+    return sscalc
 
 
 def cannot_converge(qidx, bidx):
