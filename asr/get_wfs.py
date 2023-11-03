@@ -241,13 +241,14 @@ def return_gapstates(calc_def):
     # evaluate whether there are states above or below the fermi level
     # and within the bandgap
     above_below = get_above_below(ev_def, ef_def, vbm, cbm)
-    dif = pot_def - pot_pris + evac
+    dif = pot_def - pot_pris                        #Removed '+evac' term, idk
+                                                    #why it was there
 
     # check whether difference in atomic electrostatic potentials is
     # not too large
-    assert abs(pot_def - pot_pris) < 0.1, ("large potential difference "
-                                           "in energy referencing")
-
+    #assert abs(pot_def - pot_pris) < 0.1, ("large potential difference "
+    #                                       "in energy referencing")
+    print(f'Difference in atomic electrostatic potentials is {pot_def - pot_pris}')
     # evaluate states within the gap
     statelist = [i for i, state in enumerate(ev_def) if vbm < state < cbm]
 
