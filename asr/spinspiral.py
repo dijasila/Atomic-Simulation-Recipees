@@ -155,13 +155,12 @@ def _main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
             calculator['txt'] = f'gsq{qidx}b{bidx}.txt'
             calculator['magmoms'] = magmoms_av
 
-            if cannot_converge(qidx, bidx):
-                continue
-
             if submit:
                 sscalc = submit_calculations(atoms, calculator, rotation_model,
                                              bidx, qidx, energies)
             else:
+                if cannot_converge(qidx, bidx):
+                    continue
                 sscalc = execute_calculations(atoms, calculator, rotation_model,
                                               bidx, qidx, energies)
 
