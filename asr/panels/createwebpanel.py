@@ -3,6 +3,7 @@ import functools
 import numpy as np
 from textwrap import wrap
 
+import asr.extra_fluff
 from asr.core import ASRResult
 from asr.utils.hacks import gs_xcname_from_row
 from asr.database.browser import (
@@ -14,14 +15,12 @@ from asr.database.browser import (
     entry_parameter_description,
     make_panel_description)
 # from asr.database.browser import href
-from asr.some_row_manipulation_garbage import (
-    get_transition_table, get_dimtypes,
-    get_table_row, _get_parameter_description, get_summary_table,
-)
-from asr.some_html_format_garbage import (
-    equation,
-    describe_crystaltype_entry, describe_pointgroup_entry, get_spg_href,
-)
+from asr.extra_fluff import _get_parameter_description, \
+    describe_crystaltype_entry, \
+    describe_pointgroup_entry, equation, get_dimtypes, get_spg_href, \
+    get_summary_table, \
+    get_table_row, \
+    get_transition_table
 
 
 # structureinfo
@@ -139,8 +138,8 @@ def StructureInfoWebpanel(result, ehullresult, row, key_descriptions):
     phonon_stability = row.get('dynamic_stability_phonons')
     stiffness_stability = row.get('dynamic_stability_stiffness')
 
-    ehull_table_rows = ehullresult.ehull_table_rows(row,
-                                                         key_descriptions)['rows']
+    ehull_table_rows = asr.extra_fluff.ehull_table_rows(row,
+                                                        key_descriptions)['rows']
 
     if phonon_stability is not None and stiffness_stability is not None:
         # XXX This will easily go wrong if 'high'/'low' strings are changed.
@@ -565,11 +564,11 @@ def ChargeNeutralityWebpanel(result, row, key_descriptions):
         condition = scresult.condition
         tables = []
         for element in scresult.defect_concentrations:
-            conc_table = result.get_conc_table(result, element, unitstring)
+            conc_table = asr.extra_fluff.get_conc_table(result, element, unitstring)
             tables.append(conc_table)
-        scf_overview, scf_summary = result.get_overview_tables(scresult,
-                                                               result,
-                                                               unitstring)
+        scf_overview, scf_summary = asr.extra_fluff.get_overview_tables(scresult,
+                                                                        result,
+                                                                        unitstring)
         plotname = f'neutrality-{condition}.png'
         panel = WebPanel(
             describe_entry(f'Equilibrium energetics: all defects ({condition})',
@@ -1042,7 +1041,7 @@ def SJAnalyzeWebpanel(result, row, key_descriptions):
     defname = row.defect_name
     defstr = f"{defname.split('_')[0]}<sub>{defname.split('_')[1]}</sub>"
     formation_table_sum = get_summary_table(result)
-    formation_table = result.get_formation_table(result, defstr)
+    formation_table = asr.extra_fluff.get_formation_table(result, defstr)
     # defectinfo = row.data.get('asr.defectinfo.json')
     transition_table = get_transition_table(result, defstr)
 
@@ -1135,7 +1134,7 @@ def DefectSymmetryWebpanel(result, row, key_descriptions):
     )
 
     description = describe_entry('One-electron states', panel_description)
-    basictable = result.get_summary_table(result, row)
+    basictable = asr.extra_fluff.get_summary_table(result, row)
 
     vbm = result.pristine['vbm']
     cbm = result.pristine['cbm']
@@ -1146,7 +1145,7 @@ def DefectSymmetryWebpanel(result, row, key_descriptions):
     else:
         style = 'symmetry'
 
-    state_tables, transition_table = result.get_symmetry_tables(
+    state_tables, transition_table = asr.extra_fluff.get_symmetry_tables(
         result.symmetries, vbm, cbm, row, style=style)
     panel = WebPanel(description,
                      columns=[[state_tables[0],
@@ -1198,7 +1197,7 @@ def DefectInfoWebpanel(result, row, key_descriptions):
     show_conc = 'results-asr.charge_neutrality.json' in row.data
     if show_conc and defect_name != 'pristine':
         conc_res = row.data['results-asr.charge_neutrality.json']
-        conc_row = result.get_concentration_row(conc_res, defect_name, q)
+        conc_row = asr.extra_fluff.get_concentration_row(conc_res, defect_name, q)
 
     uid = result.host_uid
     uidstring = describe_entry(
@@ -1458,7 +1457,7 @@ def GsWebpanel(result, row, key_descriptions):
 
     def make_gap_row(name):
         value = result[name]
-        description = result._explain_bandgap(row, name)
+        description = asr.extra_fluff._explain_bandgap(row, name)
         return [description, f'{value:0.2f} eV']
 
     gap_row = make_gap_row('gap')
@@ -1498,10 +1497,10 @@ def GsWebpanel(result, row, key_descriptions):
         vbm_displayvalue = result.vbm - eref
         cbm_displayvalue = result.cbm - eref
         info = [
-            result.vbm_or_cbm_row(vbm_title, 'valence band maximum (VBM)',
-                                  reference_explanation, vbm_displayvalue),
-            result.vbm_or_cbm_row(cbm_title, 'conduction band minimum (CBM)',
-                                  reference_explanation, cbm_displayvalue)
+            asr.extra_fluff.vbm_or_cbm_row(vbm_title, 'valence band maximum (VBM)',
+                                           reference_explanation, vbm_displayvalue),
+            asr.extra_fluff.vbm_or_cbm_row(cbm_title, 'conduction band minimum (CBM)',
+                                           reference_explanation, cbm_displayvalue)
         ]
 
         t['rows'].extend(info)

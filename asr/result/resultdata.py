@@ -14,6 +14,11 @@ from ase.dft.kpoints import labels_from_kpts
 
 from asr.core import ASRResult, prepare_result
 from asr.utils.hacks import gs_xcname_from_row
+from asr.result.randomresults import (
+    HyperfineResult, GyromagneticResult, SelfConsistentResult, PdosResult,
+    GapsResult, VacuumLevelResults, SymmetryResult, PristineResult,
+    PristineResults, TransitionResults, StandardStateResult
+)
 from asr.panels.createwebpanel import (
     GsWebpanel,
     BaderWebpanel, BornChargesWebpanel, ChargeNeutralityWebpanel,
@@ -27,9 +32,22 @@ from asr.panels.createwebpanel import (
     PhononWebpanel, PhonopyWebpanel,
     PiezoEleTenWebpanel,
 )
-from asr.extra_result_plotting import (
-    add_fermi, plot_with_colors, legend_on_top,
-)
+from asr.extra_fluff import _explain_bandgap, add_fermi, convert_key_to_tuple,\
+    draw_band_edge, \
+    draw_band_edges, \
+    draw_ef, \
+    draw_levels_occupations_labels, ehull_table_rows, f, filrefs, \
+    get_bs_sampling, \
+    get_conc_table, get_concentration_row, get_formation_table, \
+    get_overview_tables, get_pie_markers, \
+    get_pie_slice, \
+    get_plot_data, \
+    get_spin_data, get_symmetry_tables, get_yl_ordering, \
+    legend_on_top, \
+    plot_band, plot_fit, plot_lowest_lying, \
+    plot_pdos, plot_with_colors, \
+    set_labels_and_legend, set_limits, vbm_or_cbm_row, get_hull_energies, \
+    ObjectHandler
 
 
 @dataclass
@@ -122,7 +140,7 @@ class BornChargesResult(ASRResult):
 @prepare_result
 class ChargeNeutralityResult(ASRResult):
     """Container for asr.charge_neutrality results."""
-    from asr.randomresults import SelfConsistentResult
+
     scresults: typing.List[SelfConsistentResult]
     temperature: float
     gap: float
@@ -139,22 +157,16 @@ class ChargeNeutralityResult(ASRResult):
 
     @staticmethod
     def get_overview_tables(scresult, result, unitstring):
-        from asr.some_row_manipulation_garbage import get_overview_tables
         return get_overview_tables(scresult, result, unitstring)
 
     @staticmethod
     def get_conc_table(result, element, unitstring):
-        from asr.some_row_manipulation_garbage import get_conc_table
         return get_conc_table(result, element, unitstring)
 
     @staticmethod
     def plot_formation_scf(row, fname):
         """Plot formation energy diagram and SC Fermi level wrt. VBM."""
         import matplotlib.pyplot as plt
-        from asr.extra_result_plotting import (
-            plot_lowest_lying, draw_band_edges, draw_ef, set_limits,
-            set_labels_and_legend
-        )
 
         data = row.data.get('results-asr.charge_neutrality.json')
         gap = data['gap']
@@ -509,9 +521,6 @@ class ProjBSResult(ASRResult):
         import numpy as np
         from ase.spectrum.band_structure import BandStructure, \
             BandStructurePlot
-        from asr.extra_result_plotting import (
-            get_yl_ordering, get_bs_sampling, get_pie_slice, get_pie_markers
-        )
 
         # Extract projections data
         data = row.data.get('results-asr.projected_bandstructure.json')
@@ -663,7 +672,6 @@ class DOSResult(ASRResult):
         return [ax]
 Result = DOSResult  # backwards compatibility with old result files
 # pdos
-from asr.randomresults import PdosResult
 @prepare_result
 class PDResult(ASRResult):
 
@@ -684,12 +692,8 @@ class PDResult(ASRResult):
 
     @staticmethod
     def plot_pdos_nosoc(*args, **kwargs):
-        from asr.extra_result_plotting import plot_pdos
         return plot_pdos(*args, soc=False, **kwargs)
 # Emasses
-from asr.extra_result_plotting import plot_fit, plot_band, get_plot_data
-from asr.some_row_manipulation_garbage import convert_key_to_tuple
-MAXMASS = 10  # More that 90% of masses are less than this
 class EmassesResult(ASRResult):
     pass
 @prepare_result
@@ -973,7 +977,7 @@ class ValidateResult(ASRResult):
 
     @staticmethod
     def create_columns_fnames(row):
-        from asr.database.browser import fig as asrfig
+        from asr.database.browser import fig
 
         results = row.data.get('results-asr.emasses.json')
 
@@ -1044,8 +1048,8 @@ class ValidateResult(ASRResult):
             cb_fname = cb_fnames[j]
             vb_fname = vb_fnames[j]
 
-            columns[0].append(asrfig(cb_fname))
-            columns[1].append(asrfig(vb_fname))
+            columns[0].append(fig(cb_fname))
+            columns[1].append(fig(vb_fname))
 
         return columns, cb_fnames + vb_fnames
 # result processing should somehow live on the results to access data and
@@ -1088,15 +1092,8 @@ def model(kpts_kv):
                      k_kx * k_ky * k_kz]).T
 
     return A_dp
-def evalmodel(kpts_kv, c_p, thirdorder=True):
-    import numpy as np
-    kpts_kv = np.asarray(kpts_kv)
-    if kpts_kv.ndim == 1:
-        kpts_kv = kpts_kv[np.newaxis]
-    A_kp = model(kpts_kv)
-    if not thirdorder:
-        A_kp = A_kp[:, :10]
-    return np.dot(A_kp, c_p)
+
+
 def check_soc(spin_band_dict):
     for k in spin_band_dict.keys():
         if 'effmass' in k and 'nosoc' in k:
@@ -1293,7 +1290,6 @@ gyromagnetic_ratios = {
     'Pb': (207, 8.8167),
     'Bi': (209, 6.91012),
     'La': (139, 6.049147)}
-from asr.randomresults import HyperfineResult, GyromagneticResult
 @prepare_result
 class HFResult(ASRResult):
     """Container for asr.hyperfine results."""
@@ -1432,9 +1428,7 @@ class OrbMagResult(ASRResult):
         "orbmag_max": "Maximum norm of local orbital magnetic moments [μ_B]"
     }
 # sj_analyze
-from asr.randomresults import (
-    PristineResults, TransitionResults, StandardStateResult
-)
+
 @prepare_result
 class SJAnalyzeResult(ASRResult):
     """Container for Slater Janak results."""
@@ -1458,7 +1452,6 @@ class SJAnalyzeResult(ASRResult):
 
     @staticmethod
     def get_formation_table(result, defstr):
-        from asr.some_row_manipulation_garbage import get_formation_table
         return get_formation_table(result, defstr)
 
     @staticmethod
@@ -1492,7 +1485,6 @@ class SJAnalyzeResult(ASRResult):
         ax1.axvline(gap, color='black', linestyle='solid')
         ax1.axvline(0, color='black', linestyle='solid')
 
-        from asr.extra_result_plotting import f
         for element in eform:
             ax1.plot([0, gap], [f(0, element[1], element[0]),
                                 f(gap, element[1], element[0])],
@@ -1662,7 +1654,6 @@ class ZfsResult(ASRResult):
 
 
 ## Convex Hull
-from extra_result_plotting import (get_hull_energies, ObjectHandler)
 # chc
 class Reference:
     def __init__(self, formula, hform):
@@ -1903,7 +1894,6 @@ class CHCResult(ASRResult):
     @staticmethod
     def chcut_plot(row, fname):
         import matplotlib.pyplot as plt
-        from asr.extra_result_plotting import filrefs
         from ase import Atoms
 
         data = row.data.get('results-asr.chc.json')
@@ -2181,7 +2171,6 @@ class ConvexHullResult(ASRResult):
         plt.close()
     @staticmethod
     def ehull_table_rows(row, key_descriptions):
-        from asr.some_row_manipulation_garbage import ehull_table_rows
         ehull = ConvexHullResult.ehull_long_description
         eform = ConvexHullResult.eform_description
         return ehull_table_rows(row, key_descriptions, ehull, eform)
@@ -2221,13 +2210,6 @@ class StructureInfoResult(ASRResult):
 
 
 ## Defects
-from asr.extra_result_plotting import (
-    draw_band_edge, draw_levels_occupations_labels,
-)
-from asr.some_row_manipulation_garbage import (
-    get_spin_data,
-)
-from asr.randomresults import SymmetryResult, PristineResult
 # defect symmetry
 @prepare_result
 class DefectSymmetryResult(ASRResult):
@@ -2292,9 +2274,7 @@ class DefectSymmetryResult(ASRResult):
 
     @staticmethod
     def get_symmetry_tables(state_results, vbm, cbm, row, style):
-        from asr.some_row_manipulation_garbage import get_symmetry_tables
         return get_symmetry_tables(state_results, vbm, cbm, row, style)
-
 # defect info
 @prepare_result
 class DefectInfoResult(ASRResult):
@@ -2328,9 +2308,7 @@ class DefectInfoResult(ASRResult):
     formats = {"ase_webpanel": DefectInfoWebpanel}
     @staticmethod
     def get_concentration_row(conc_res, defect_name, q):
-        from asr.some_row_manipulation_garbage import get_concentration_row
         return get_concentration_row(conc_res, defect_name, q)
-
 # DefectLinks
 @prepare_result
 class DefectLinksResult(ASRResult):
@@ -2404,7 +2382,6 @@ class RelaxResult(ASRResult):
 
 
 ## gs
-from asr.randomresults import GapsResult, VacuumLevelResults
 @prepare_result
 class GsResult(ASRResult):
     """Container for ground state results.
@@ -2476,12 +2453,10 @@ class GsResult(ASRResult):
 
     @staticmethod
     def _explain_bandgap(row, gap_name):
-        from asr.some_row_manipulation_garbage import _explain_bandgap
         return _explain_bandgap(row, gap_name)
 
     @staticmethod
     def vbm_or_cbm_row(title, quantity_name, reference_explanation, value):
-        from asr.some_row_manipulation_garbage import vbm_or_cbm_row
         return vbm_or_cbm_row(title, quantity_name, reference_explanation,
                               value)
 
