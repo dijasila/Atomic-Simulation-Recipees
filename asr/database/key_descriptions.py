@@ -1,5 +1,5 @@
 from asr.core import command, argument, get_recipes, ASRResult
-from asr.dimensionality import get_dimtypes
+from asr.extra_fluff import get_dimtypes
 from asr.c2db.labels import label_explanation
 from ase.db.core import KeyDescription as ASEKeyDescription
 

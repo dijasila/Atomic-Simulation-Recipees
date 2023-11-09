@@ -4,7 +4,7 @@ crystal's easy axis.
 """
 import numpy as np
 from asr.core import command, read_json
-from asr.paneldata import OrbMagResult
+from asr.result.resultdata import OrbMagResult
 
 
 @command('asr.orbmag',

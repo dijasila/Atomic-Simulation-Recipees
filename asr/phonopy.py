@@ -9,7 +9,7 @@ from ase.parallel import world
 from asr.utils.symmetry import c2db_symmetry_eps
 from asr.core import (command, option, DictStr, ASRResult,
                       read_json, write_json)
-from asr.paneldata import PhonopyResult
+from asr.result.resultdata import PhonopyResult
 
 
 def lattice_vectors(N_c):

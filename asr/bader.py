@@ -9,7 +9,7 @@ from ase.io import write
 from ase.units import Bohr
 
 from asr.core import command
-from asr.paneldata import BaderResult
+from asr.result.resultdata import BaderResult
 
 @command('asr.bader',
          dependencies=['asr.gs'],

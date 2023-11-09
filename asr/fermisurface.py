@@ -1,6 +1,6 @@
 """Fermi surfaces."""
 from asr.core import command, option
-from asr.paneldata import FermiSurfaceResult
+from asr.result.resultdata import FermiSurfaceResult
 
 
 def bz_vertices(cell):

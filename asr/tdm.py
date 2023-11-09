@@ -3,7 +3,7 @@ from asr.core import command, option
 from asr.defect_symmetry import (return_defect_coordinates,
                                  check_and_return_input,
                                  DefectInfo, WFCubeFile)
-from asr.paneldata import TdmResult
+from asr.result.resultdata import TdmResult
 
 
 @command(module='asr.tdm',

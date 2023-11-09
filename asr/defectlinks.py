@@ -3,7 +3,7 @@ from ase.formula import Formula
 from asr.core import (command, chdir, read_json)
 from asr.database.material_fingerprint import main as material_fingerprint
 from asr.defect_symmetry import DefectInfo
-from asr.paneldata import DefectLinksResult
+from asr.result.resultdata import DefectLinksResult
 
 
 @command(module='asr.defectlinks',

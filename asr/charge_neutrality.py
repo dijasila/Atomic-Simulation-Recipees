@@ -2,8 +2,8 @@
 from asr.core import command, option, ASRResult, DictStr
 from ase.dft.bandgap import bandgap
 from ase.io import read
-from asr.paneldata import (ChargeNeutralityResult, SelfConsistentResult,
-                           ConcentrationResult)
+from asr.result.resultdata import (ChargeNeutralityResult, SelfConsistentResult,
+                                   ConcentrationResult)
 from asr.defect_symmetry import DefectInfo
 import numpy as np
 

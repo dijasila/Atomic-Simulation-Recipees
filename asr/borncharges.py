@@ -1,7 +1,7 @@
 """Effective Born charges."""
 import numpy as np
 from asr.core import command, option
-from asr.paneldata import BornChargesResult
+from asr.result.resultdata import BornChargesResult
 
 @command('asr.borncharges',
          dependencies=['asr.gs@calculate'],

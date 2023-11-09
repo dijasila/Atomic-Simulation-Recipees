@@ -5,7 +5,7 @@ from asr.core import command, read_json, option
 from asr.defectlinks import get_charge_from_folder
 from asr.defect_symmetry import DefectInfo
 from asr.setup.defects import return_distances_cell
-from asr.paneldata import DefectInfoResult
+from asr.result.resultdata import DefectInfoResult
 
 
 @command(module='asr.defectinfo',

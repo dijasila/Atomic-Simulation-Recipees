@@ -1,5 +1,5 @@
 from asr.core import command
-from asr.paneldata import ZfsResult
+from asr.result.resultdata import ZfsResult
 
 
 @command(module='asr.zfs',

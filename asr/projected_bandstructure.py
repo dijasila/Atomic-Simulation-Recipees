@@ -2,7 +2,7 @@
 import numpy as np
 
 from asr.core import command
-from asr.paneldata import ProjBSResult
+from asr.result.resultdata import ProjBSResult
 
 
 # ---------- Main functionality ---------- #

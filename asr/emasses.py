@@ -1,7 +1,7 @@
 """Effective masses."""
 from asr.core import command, option, DictStr
-from asr.paneldata import (EmassesResult, ValidateResult, model, evalmodel,
-                           MAXMASS)
+from asr.result.resultdata import (EmassesResult, ValidateResult, model)
+from asr.extra_fluff import MAXMASS, evalmodel
 
 
 class NoGapError(Exception):

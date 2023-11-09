@@ -1,6 +1,7 @@
 """Module for determining magnetic state."""
 from asr.core import command
-from asr.paneldata import MagStateResult, atomic_mom_threshold
+from asr.result.resultdata import MagStateResult
+from asr.panels.createwebpanel import atomic_mom_threshold
 
 
 total_mom_threshold = 0.1

@@ -1,7 +1,7 @@
 """Topological analysis of electronic structure."""
 import numpy as np
 from asr.core import command, option
-from asr.paneldata import CalculateResult, BerryResult
+from asr.result.resultdata import CalculateResult, BerryResult
 
 
 @command(module='asr.berry',

@@ -1,7 +1,7 @@
 import numpy as np
 from asr.core import command, option
 from asr.shg import CentroSymmetric, get_chi_symmetry, get_kpts
-from asr.paneldata import ShiftResult
+from asr.result.resultdata import ShiftResult
 
 
 @command('asr.shift',

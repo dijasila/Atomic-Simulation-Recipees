@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 
 from asr.core import command, option
-from asr.paneldata import DOSResult
+from asr.result.resultdata import DOSResult
 
 @command('asr.dos',
          requires=['gs.gpw'],

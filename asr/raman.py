@@ -1,6 +1,6 @@
 """Raman spectrum."""
 from asr.core import command
-from asr.paneldata import RamanResult
+from asr.result.resultdata import RamanResult
 
 
 @command('asr.raman', returns=RamanResult)

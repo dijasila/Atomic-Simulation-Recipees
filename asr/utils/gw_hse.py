@@ -1,3 +1,4 @@
+import asr.extra_fluff
 from asr.database.browser import fig, table, describe_entry
 from asr.utils.hacks import gs_xcname_from_row
 
@@ -61,7 +62,7 @@ def gw_hse_webpanel(result, row, key_descriptions, info, sort):
     panel = {'title': describe_entry(title, info.panel_description),
              'columns': [[fig(info.bs_filename)],
                          [tab]],
-             'plot_descriptions': [{'function': info.plot_bs,
+             'plot_descriptions': [{'function': asr.extra_fluff.plot_bs,
                                     'filenames': [info.bs_filename]}],
              'sort': sort}
 

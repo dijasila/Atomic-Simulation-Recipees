@@ -1,9 +1,8 @@
 """Electronic ground state properties."""
-import typing
 import numpy as np
 
 from asr.core import command, option, DictStr, ASRResult
-from asr.paneldata import GsResult, VacuumLevelResults, GapsResult
+from asr.result.resultdata import GsResult, VacuumLevelResults, GapsResult
 
 
 @command(module='asr.gs',

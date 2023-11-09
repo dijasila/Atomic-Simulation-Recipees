@@ -3,7 +3,7 @@ from pathlib import Path
 from ase import Atoms
 from ase.db.row import AtomsRow
 import numpy as np
-from asr.paneldata import get_dimtypes
+from asr.extra_fluff import get_dimtypes
 
 
 def plot_dimensionality_histogram(row: AtomsRow, path: Path) -> None:

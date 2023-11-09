@@ -4,7 +4,7 @@ from collections import Counter
 from typing import List, Dict
 
 from asr.core import command, argument
-from asr.paneldata import ConvexHullResult
+from asr.result.resultdata import ConvexHullResult
 
 from ase.io import read
 from ase.db import connect

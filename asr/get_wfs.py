@@ -2,7 +2,7 @@ import typing
 import click
 from pathlib import Path
 from asr.core import command, option
-from asr.paneldata import WaveFunctionResult, WfsResult
+from asr.result.resultdata import WaveFunctionResult, WfsResult
 
 
 @command(module='asr.get_wfs',

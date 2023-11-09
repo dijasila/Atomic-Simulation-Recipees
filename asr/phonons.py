@@ -12,7 +12,7 @@ from ase.parallel import paropen
 
 from asr.utils.symmetry import c2db_symmetry_eps
 from asr.core import command, option, ASRResult
-from asr.paneldata import PhononResult
+from asr.result.resultdata import PhononResult
 
 
 @command('asr.phonons',

@@ -5,7 +5,7 @@ import numpy as np
 from ase.io import read
 
 from asr.core import command, option
-from asr.paneldata import OpticalResult
+from asr.result.resultdata import OpticalResult
 from asr.utils.kpts import get_kpts_size
 
 

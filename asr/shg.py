@@ -1,7 +1,6 @@
-import typing
 import numpy as np
 from asr.core import command, option
-from asr.paneldata import ShgResult, CentroSymmetric
+from asr.result.resultdata import ShgResult, CentroSymmetric
 
 
 def get_chi_symmetry(atoms, sym_th=None):

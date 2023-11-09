@@ -55,7 +55,7 @@ from ase.utils import IOContext
 from ase.calculators.calculator import PropertyNotImplementedError
 
 from asr.core import AtomsFile, DictStr, command, option
-from asr.paneldata import RelaxResult
+from asr.result.resultdata import RelaxResult
 
 
 class BrokenSymmetryError(Exception):

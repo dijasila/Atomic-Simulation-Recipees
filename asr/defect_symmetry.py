@@ -5,7 +5,7 @@ from ase.io import read
 from ase.geometry import wrap_positions
 
 from asr.core import command, option, read_json
-from asr.paneldata import DefectSymmetryResult, SymmetryResult, IrrepResult, PristineResult
+from asr.result.resultdata import DefectSymmetryResult, SymmetryResult, IrrepResult, PristineResult
 
 # TODO: make zrange an input
 # TODO: make shift an input

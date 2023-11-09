@@ -2,7 +2,7 @@
 import numpy as np
 
 from asr.core import command
-from asr.paneldata import StructureInfoResult
+from asr.result.resultdata import StructureInfoResult
 
 
 def get_reduced_formula(formula, stoichiometry=False):

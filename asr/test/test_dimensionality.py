@@ -1,5 +1,5 @@
 from asr.dimensionality import main as dimensionality
-from asr.dimensionality import get_dimtypes
+from asr.extra_fluff import get_dimtypes
 
 
 def test_dimensionality(asr_tmpdir, test_material):

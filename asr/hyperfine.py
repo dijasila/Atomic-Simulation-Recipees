@@ -5,8 +5,8 @@ from pathlib import Path
 import ase.units as units
 
 from asr.core import command, read_json, option
-from asr.paneldata import (HyperfineResult, HFResult, GyromagneticResult,
-                           gyromagnetic_ratios)
+from asr.result.resultdata import (HyperfineResult, HFResult, GyromagneticResult,
+                                   gyromagnetic_ratios)
 
 
 # From http://triton.iqfr.csic.es/guide/eNMR/chem/NMRnuclei.html

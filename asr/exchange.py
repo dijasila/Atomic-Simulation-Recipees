@@ -1,6 +1,6 @@
 import numpy as np
 from asr.core import command, option, ASRResult
-from asr.paneldata import ExchangeResult
+from asr.result.resultdata import ExchangeResult
 
 
 @command(module='asr.exchange',

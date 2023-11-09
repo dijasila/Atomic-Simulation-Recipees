@@ -1,6 +1,6 @@
 """Stiffness tensor."""
 from asr.core import command, option
-from asr.paneldata import StiffnessResult
+from asr.result.resultdata import StiffnessResult
 
 
 @command(module='asr.stiffness',

@@ -6,7 +6,7 @@ tensor. The central recipe of this module is
 
 """
 from asr.core import command, option, DictStr
-from asr.paneldata import PiezoEleTenResult
+from asr.result.resultdata import PiezoEleTenResult
 
 
 @command(module="asr.piezoelectrictensor",

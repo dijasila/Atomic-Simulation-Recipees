@@ -1,6 +1,6 @@
 """Plasma frequency."""
 from asr.core import command, read_json
-from asr.paneldata import PlasmaResult
+from asr.result.resultdata import PlasmaResult
 
 
 # XXX Why is this even a separate file from polarizability? it doesn't do

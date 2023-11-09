@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 from ase.io import Trajectory
 from asr.core import command, option
-from asr.paneldata import (
+from asr.result.resultdata import (
     SJAnalyzeResult, PristineResults, StandardStateResult,
     TransitionResults, TransitionValues, f)
 

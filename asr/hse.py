@@ -1,6 +1,6 @@
 """HSE06 band structure."""
 from asr.core import command, option, read_json, ASRResult
-from asr.paneldata import HSEResult
+from asr.result.resultdata import HSEResult
 from asr.utils.kpts import get_kpts_size
 
 

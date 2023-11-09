@@ -4,7 +4,7 @@ import numpy as np
 
 from asr.core import command, option, ASRResult, singleprec_dict
 from asr.utils.symmetry import c2db_symmetry_eps
-from asr.paneldata import BandStructureResult
+from asr.result.resultdata import BandStructureResult
 
 
 @command('asr.bandstructure',

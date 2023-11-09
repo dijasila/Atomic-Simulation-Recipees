@@ -1,7 +1,7 @@
 """DFT GW."""
 from asr.core import command, option, read_json, ASRResult
 from click import Choice
-from asr.paneldata import GwResult
+from asr.result.resultdata import GwResult
 from asr.utils.kpts import get_kpts_size
 
 

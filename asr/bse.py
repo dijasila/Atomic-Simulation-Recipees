@@ -1,7 +1,7 @@
 """Bethe Salpeter absorption spectrum."""
 from click import Choice
 from asr.core import command, option, file_barrier, ASRResult
-from asr.paneldata import BSEResult
+from asr.result.resultdata import BSEResult
 from asr.utils.kpts import get_kpts_size
 
 

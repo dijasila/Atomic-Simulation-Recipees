@@ -4,7 +4,7 @@ from collections import defaultdict
 from ase import Atoms
 from asr.utils import magnetic_atoms
 from asr.core import command, option, read_json, ASRResult
-from asr.paneldata import PDResult, PdosResult
+from asr.result.resultdata import PDResult, PdosResult
 
 
 # Recipe tests:

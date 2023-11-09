@@ -2,7 +2,7 @@ import numpy as np
 from typing import List
 from ase import Atoms
 from asr.core import command, option, argument, AtomsFile
-from asr.paneldata import CHCResult, Intermediate, Reference, LeanIntermediate
+from asr.result.resultdata import CHCResult, Intermediate, Reference, LeanIntermediate
 
 
 class CHCError(ValueError):

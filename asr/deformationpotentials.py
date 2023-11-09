@@ -6,7 +6,7 @@ from ase.io.jsonio import read_json
 
 from asr.core import command, option
 from asr.utils.gpw2eigs import calc2eigs
-from asr.paneldata import DefPotsResult, get_table_row
+from asr.result.resultdata import DefPotsResult, get_table_row
 
 
 def get_special_kpts(atoms):

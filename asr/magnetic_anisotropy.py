@@ -1,7 +1,7 @@
 """Magnetic anisotropy."""
 from math import pi
 from asr.core import command, read_json
-from asr.paneldata import MagAniResult
+from asr.result.resultdata import MagAniResult
 
 
 def get_spin_axis():

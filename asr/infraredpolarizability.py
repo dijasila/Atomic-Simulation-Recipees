@@ -1,7 +1,7 @@
 """Infrared polarizability."""
 import numpy as np
 from asr.core import command, option, read_json
-from asr.paneldata import InfraredResult
+from asr.result.resultdata import InfraredResult
 
 
 @command(
