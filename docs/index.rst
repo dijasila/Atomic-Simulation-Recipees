@@ -3,23 +3,6 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-
-   src/install
-
-
-..
-
-   src/tutorials/tutorials
-   src/howtoguides/howtoguides
-   src/explanations/explanations
-   src/generated/recipes
-   src/generated/api
-   src/developing
-   src/contact
-
 
 Atomic Simulation Recipes
 =========================
