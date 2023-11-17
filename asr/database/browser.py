@@ -181,7 +181,7 @@ def get_recipe_href(asr_name, name=None):
     # ATM href only works to recipe main
     asr_name = asr_name.split('@')[0]
     py = f'{asr_name}.py'
-    url = 'https://gitlab.com/asr-dev/asr/-/blob/old-master/asr'
+    url = 'https://gitlab.com/asr-dev/asr/-/blob/master/asr'
     link_name = f'<a href="{url}"/{py}> {py} </a>'
     return link_name
 
