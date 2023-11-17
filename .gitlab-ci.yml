@@ -45,7 +45,7 @@ main:
     expire_in: 1 week
 
 
-pages:
+.pages:
   stage: deploy
   dependencies:
     - main
