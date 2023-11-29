@@ -157,7 +157,8 @@ def _main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
 
             if submit:
                 sscalc = submit_calculations(atoms, calculator, rotation_model,
-                                             bidx, qidx, energies)
+                                             bidx, qidx, energies, cores=cores,
+                                             tmax=tmax)
             else:
                 if cannot_converge(qidx, bidx):
                     continue
