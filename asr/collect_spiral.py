@@ -185,8 +185,6 @@ def _main(path, sscalculations):
 
 
 def plot_bandstructure(row, fname):
-    import matplotlib
-    matplotlib.use('Agg')
     from matplotlib import pyplot as plt
     path, energies_bq, lm_bqa = extract_data(row)
 
