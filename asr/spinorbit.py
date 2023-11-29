@@ -2,6 +2,46 @@ from asr.core import command, option, ASRResult, prepare_result
 import numpy as np
 
 
+class Anisotropy:
+
+    @staticmethod
+    def squared_spherical(X, Axx, Ayy, Azz, Axy, Axz, Ayz):
+        theta, phi = X
+        return (-Axx * (np.sin(theta)**2 * np.cos(phi)**2) +
+                -Ayy * (np.sin(theta)**2 * np.sin(phi)**2) +
+                -Azz * (np.cos(theta)**2) +
+                -2 * Axy * (np.sin(theta)**2 * np.cos(phi) * np.sin(phi)) +
+                -2 * Axz * (np.cos(theta) * np.sin(theta) * np.cos(phi)) +
+                -2 * Ayz * (np.cos(theta) * np.sin(theta) * np.sin(phi)))
+
+    @staticmethod
+    def jac_squared_spherical(X, *params):
+        theta, phi = X
+        dfdAxx = -(np.sin(theta)**2 * np.cos(phi)**2)
+        dfdAyy = -(np.sin(theta)**2 * np.sin(phi)**2)
+        dfdAzz = -(np.cos(theta)**2)
+        dfdAxy = -2 * (np.sin(theta)**2 * np.cos(phi) * np.sin(phi))
+        dfdAxz = -2 * (np.cos(theta) * np.sin(theta) * np.cos(phi))
+        dfdAyz = -2 * (np.cos(theta) * np.sin(theta) * np.sin(phi))
+        return np.array([dfdAxx, dfdAyy, dfdAzz, dfdAxy, dfdAxz, dfdAyz]).T
+
+    def calculate(self, soc_data):
+        from scipy.optimize import curve_fit
+        theta_tp = soc_data['theta_tp'] * np.pi / 180
+        phi_tp = soc_data['phi_tp'] * np.pi / 180
+        soc_tp = 1e3 * (soc_data['soc_tp'] - soc_data['soc_tp'][0])
+
+        A, pcov = curve_fit(self.squared_spherical,
+                            (theta_tp, phi_tp),
+                            soc_tp,
+                            jac=self.jac_squared_spherical)
+        perr = np.sqrt(np.diag(pcov))
+        A_vv = np.array([[A[0], A[3], A[4]],
+                         [A[3], A[1], A[5]],
+                         [A[4], A[5], A[2]]])
+        return A_vv, perr
+
+
 def sphere_points(distance=None):
     '''Calculates equidistant points on the upper half sphere
 
@@ -147,10 +187,12 @@ class Result(ASRResult):
     theta_min: float
     phi_min: float
     projected_soc: bool
+    A_vv: np.ndarray
     key_descriptions = {'soc_bw': 'Bandwidth of SOC energies [meV]',
                         'theta_min': 'Angles from z->x [deg]',
                         'phi_min': 'Angles from x->y [deg]',
-                        'projected_soc': 'Projected SOC for spin spirals'}
+                        'projected_soc': 'Projected SOC for spin spirals',
+                        'A_vv': 'Anisotropy tensor [meV]'}
     formats = {'ase_webpanel': webpanel}
 
 
@@ -162,6 +204,8 @@ def main() -> Result:
     from asr.core import read_json
 
     results = read_json('results-asr.spinorbit@calculate.json')
+    A_vv, _ = Anisotropy().calculate(results)
+    print(A_vv)
     soc_tp = results['soc_tp']
     theta_tp = results['theta_tp']
     phi_tp = results['phi_tp']
@@ -173,7 +217,7 @@ def main() -> Result:
     soc_bw = 1e3 * (np.max(soc_tp) - np.min(soc_tp))
 
     return Result.fromdata(soc_bw=soc_bw, theta_min=theta_min, phi_min=phi_min,
-                           projected_soc=projected_soc)
+                           projected_soc=projected_soc, A_vv=A_vv)
 
 
 def plot_stereographic_energies(row, fname, display_sampling=False):
@@ -187,8 +231,6 @@ def plot_stereographic_energies(row, fname, display_sampling=False):
 def _plot_stereographic_energies(projected_points, soc,
                                  fname, display_sampling=False):
     from matplotlib.colors import Normalize
-    import matplotlib
-    matplotlib.use('Agg')
     from matplotlib import pyplot as plt
     from scipy.interpolate import griddata
 
