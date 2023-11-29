@@ -124,7 +124,7 @@ class PreResult(ASRResult):
 def calculate(gpw: str = 'gs.gpw', distance: float = 10.0,
               projected: bool = None, width: float = 0.001) -> ASRResult:
     '''Calculates the spin-orbit coupling at equidistant points on a unit sphere. '''
-    from gpaw import GPAW
+    from gpaw.new.ase_interface import GPAW
     calc = GPAW(gpw)
     return _calculate(calc, distance, projected, width)
 
@@ -137,9 +137,9 @@ def _calculate(calc, distance: float,
 
     occcalc = create_occ_calc({'name': 'fermi-dirac', 'width': width})
 
-    is_collinear = 'qspiral' not in calc.parameters['mode'].keys()
+    is_collinear = 'qspiral' not in calc.parameters.mode.keys()
     if not is_collinear:
-        qn = calc.parameters['mode']['qspiral']
+        qn = calc.parameters.mode['qspiral']
         assert qn is not None, "qspiral must be a List or similar iterable"
         assert len(qn) == 3, f"The length of qspiral must be 3, we found {len(qn)}"
         if np.linalg.norm(qn) < 1e-14:
