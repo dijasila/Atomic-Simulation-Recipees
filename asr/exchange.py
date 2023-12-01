@@ -16,7 +16,6 @@ def calculate(gs: str = 'gs.gpw') -> ASRResult:
 
     # MixerSum is more stable towards finding the desired magnetic state
     calc = GPAW(gs,
-                fixdensity=False,
                 txt=None,
                 mixer=MixerSum(),
                 convergence={'density': 1.0e-6})

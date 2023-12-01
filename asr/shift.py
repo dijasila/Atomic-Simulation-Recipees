@@ -145,11 +145,11 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 25.0,
                     gs,
                     txt='gs_shift.txt',
                     symmetry={'point_group': False, 'time_reversal': True},
-                    fixdensity=True,
                     nbands=(bandfactor + 1) * nval,
                     convergence={'bands': bandfactor * nval},
                     occupations={'name': 'fermi-dirac', 'width': 1e-4},
                     kpts=kpts)
+                calc = calc.fixed_density()
                 calc.get_potential_energy()
                 calc.write('gs_shift.gpw', mode='all')
                 fnames.append('gs_shift.gpw')

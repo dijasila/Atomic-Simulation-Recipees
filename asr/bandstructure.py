@@ -38,12 +38,12 @@ def calculate(kptpath: Union[str, None] = None, npoints: int = 400,
         'basis': 'dzp',
         'nbands': -emptybands,
         'txt': 'bs.txt',
-        'fixdensity': True,
         'kpts': path,
         'convergence': {
             'bands': -convbands},
         'symmetry': 'off'}
     calc = GPAW('gs.gpw', **parms)
+    calc = calc.fixed_density()
     calc.get_potential_energy()
     calc.write('bs.gpw')
 
