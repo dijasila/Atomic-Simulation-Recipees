@@ -16,7 +16,6 @@ from asr.database.browser import fig, make_panel_description, describe_entry, \
     href
 from scipy.constants import eV, m_e, hbar
 from asr.magnetic_anisotropy import get_spin_axis
-from emasses import EmassCalculator, FittedPolynomial
 
 Mecholsky2016 = href('Mecholsky et al. (2016)',
                      'https://www.nature.com/articles/srep22098')
@@ -432,6 +431,7 @@ def main(gspath, atomspath='structure.json', calculator=None,
 
 def get_data(calculator, band_idx, extremum_type, data_full=None,
              subdict=None, savefile_name=None):
+    from emasses import EmassCalculator, FittedPolynomial
     t0 = time.time()
     EMC = EmassCalculator(calculator, band_idx=band_idx)
     unit_cell = data_full['unit_cell']
