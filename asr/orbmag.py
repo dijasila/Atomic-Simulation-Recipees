@@ -48,11 +48,12 @@ def main() -> Result:
 
     theta = read_json('results-asr.magnetic_anisotropy.json')['theta']
     phi = read_json('results-asr.magnetic_anisotropy.json')['phi']
-    soc_eigs = soc_eigenstates(calc, theta=theta, phi=phi)
 
-    easy_axis = np.array([np.sin(np.deg2rad(theta)) * np.cos(np.deg2rad(phi)),
-                          np.sin(np.deg2rad(theta)) * np.sin(np.deg2rad(phi)),
-                          np.cos(np.deg2rad(theta))])
+    soc_eigs = soc_eigenstates(calc, theta=np.rad2deg(theta), phi=np.rad2deg(phi))
+
+    easy_axis = np.array([np.sin(theta) * np.cos(phi),
+                          np.sin(theta) * np.sin(phi),
+                          np.cos(theta)])
 
     orbmag_a = soc_eigs.get_orbital_magnetic_moments() @ easy_axis
     orbmag_sum = np.sum(orbmag_a)
