@@ -37,7 +37,7 @@ def create_key_descriptions():
 
 
 class Summary:
-    def __init__(self, row, key_descriptions, create_layout, prefix=''):
+    def __init__(self, row, key_descriptions, prefix=''):
         self.row = row
 
         atoms = Atoms(cell=row.cell, pbc=row.pbc)
@@ -56,8 +56,11 @@ class Summary:
 
         self.formula = Formula(row.formula).convert('metal').format('html')
 
-        kd = key_descriptions
-        self.layout = create_layout(row, kd, prefix)
+        from asr.database.browser import layout
+        layout, subpanel = layout(row, key_descriptions, prefix)
+        self.layout = layout
+        self.subpanel = subpanel
+        self.reduce_subpanels()
 
         self.dipole = row.get('dipole')
         if self.dipole is not None:
@@ -71,6 +74,22 @@ class Summary:
         if self.constraints:
             self.constraints = ', '.join(c.__class__.__name__
                                          for c in self.constraints)
+
+    def reduce_subpanels(self):
+        """
+        After the ASR layout has returned a list of panels that are categorized
+        as subpanels, we remove subpanels with only one panel to be rendered
+        as a normal panel by the Jinja2 template under dct.subpanel passed by
+        app.py.
+        """
+        import numpy as np
+        panel_titles, idxs, counts = np.unique(self.subpanel,
+                                               return_counts=True,
+                                               return_index=True)
+
+        for panel_title, idx, count in zip(panel_titles, idxs, counts):
+            if isinstance(panel_title, str) and count == 1:
+                self.subpanel[idx] = False
 
 
 class WebApp:
@@ -218,12 +237,12 @@ class ASRProject(DatabaseProject):
         self.uid_key = uid_key
 
     def row_to_dict(self, row):
-        from asr.database.browser import layout
-        # XXX same as in CMR
-        return row_to_dict(
-            row=row, project=self,
-            layout_function=layout,
-            tmpdir=self.tempdir)
+        project_name = self.name
+        uid = row.get(self.uid_key)
+        s = Summary(row,
+                    key_descriptions=self.key_descriptions,
+                    prefix=str(self.tempdir / f'{project_name}/{uid}-'))
+        return s
 
     # XXX copypasty
     def get_table_template(self):
@@ -234,16 +253,6 @@ class ASRProject(DatabaseProject):
 
     def get_row_template(self):
         return self._asr_templates / 'row.html'
-
-
-def row_to_dict(row, project, layout_function, tmpdir):
-    project_name = project.name
-    uid = row.get(project.uid_key)
-    s = Summary(row,
-                create_layout=layout_function,
-                key_descriptions=project.key_descriptions,
-                prefix=str(tmpdir / f'{project_name}/{uid}-'))
-    return s
 
 
 @command()

@@ -225,7 +225,7 @@ def plot_bs(row,
 def webpanel(result, row, key_descriptions):
     from asr.utils.gw_hse import gw_hse_webpanel
     return gw_hse_webpanel(result, row, key_descriptions, HSEInfo(row),
-                           sort=15)
+                           sort=12.5)
 
 
 @prepare_result
