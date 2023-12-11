@@ -52,10 +52,7 @@ bs_png = 'bs.png'
 bs_html = 'bs.html'
 
 
-def plot_bs_html(row,
-                 filename=bs_html,
-                 figsize=(6.4, 6.4),
-                 s=2):
+def plot_bs_html(row, filename=bs_html):
     import plotly
     import plotly.graph_objs as go
 
@@ -85,7 +82,9 @@ def plot_bs_html(row,
         emax = ef + 3
     e_skn = d['bs_nosoc']['energies']
     shape = e_skn.shape
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+    xcoords, label_xcoords, orig_labels = labels_from_kpts(
+        kpts, row.cell, special_points=path.special_points
+    )
     xcoords = np.vstack([xcoords] * shape[0] * shape[2])
     # colors_s = plt.get_cmap('viridis')([0, 1])  # color for sz = 0
     e_kn = np.hstack([e_skn[x] for x in range(shape[0])])
@@ -95,7 +94,9 @@ def plot_bs_html(row,
         mode='markers',
         name=f'{xcname} no SOC',
         showlegend=True,
-        marker=dict(size=4, color='#999999'))
+        marker=dict(size=4, color='#999999'),
+        hovertemplate='%{y:.3f} eV'
+    )
     traces.append(trace)
 
     e_mk = d['bs_soc']['energies']
@@ -104,7 +105,9 @@ def plot_bs_html(row,
     ef = d['bs_soc']['efermi']
     sz_mk = d['bs_soc']['sz_mk']
 
-    xcoords, label_xcoords, orig_labels = labels_from_kpts(kpts, row.cell)
+    xcoords, label_xcoords, orig_labels = labels_from_kpts(
+        kpts, row.cell, special_points=path.special_points
+    )
 
     shape = e_mk.shape
     perm = (-sz_mk).argsort(axis=None)
@@ -132,7 +135,11 @@ def plot_bs_html(row,
                 tickvals=[-1, 0, 1],
                 ticktext=['-1', '0', '1'],
                 title=cbtitle,
-                titleside='right')))
+                titleside='right',
+            ),
+        ),
+        hovertemplate='%{y:.3f} eV'
+    )
     traces.append(trace)
 
     linetrace = go.Scatter(
@@ -140,7 +147,8 @@ def plot_bs_html(row,
         y=[ef - reference, ef - reference],
         mode='lines',
         line=dict(color=('rgb(0, 0, 0)'), width=2, dash='dash'),
-        name='Fermi level')
+        name='Fermi level',
+    )
     traces.append(linetrace)
 
     def pretty(kpt):
@@ -159,16 +167,18 @@ def plot_bs_html(row,
         i += 1
 
     bandxaxis = go.layout.XAxis(
-        title="k-points",
+        title='k-points',
         range=[0, np.max(xcoords)],
         showgrid=True,
         showline=True,
-        ticks="",
+        ticks='',
         showticklabels=True,
         mirror=True,
         linewidth=2,
         ticktext=labels,
         tickvals=label_xcoords,
+        gridcolor='lightgrey',
+        linecolor='black',
     )
 
     bandyaxis = go.layout.YAxis(
@@ -177,30 +187,39 @@ def plot_bs_html(row,
         showgrid=True,
         showline=True,
         zeroline=False,
-        mirror="ticks",
-        ticks="inside",
+        mirror='ticks',
+        ticks='inside',
         linewidth=2,
         tickwidth=2,
         zerolinewidth=2,
+        gridcolor='lightgrey',
+        linecolor='black',
     )
 
     bandlayout = go.Layout(
         xaxis=bandxaxis,
         yaxis=bandyaxis,
-        legend=dict(x=0, y=1),
+        plot_bgcolor='white',
         hovermode='closest',
-        margin=dict(t=40, r=100),
-        font=dict(size=18))
+        margin=dict(t=20, r=20),
+        font=dict(size=14),
+        legend=dict(
+            orientation='h',
+            yanchor='bottom',
+            y=1.01,
+            xanchor='left',
+            x=0.0,
+            font=dict(size=14),
+            itemsizing='constant',
+            itemwidth=35
+        ),
+    )
 
     fig = {'data': traces, 'layout': bandlayout}
-    # fig['layout']['margin'] = {'t': 40, 'r': 100}
-    # fig['layout']['hovermode'] = 'closest'
-    # fig['layout']['legend'] =
 
-    plot_html = plotly.offline.plot(
-        fig, include_plotlyjs=False, output_type='div')
-    # plot_html = ''.join(['<div style="width: 1000px;',
-    #                      'height=1000px;">',
+    plot_html = plotly.offline.plot(fig, include_plotlyjs=False, output_type='div')
+    # plot_html = ''.join(['<div style='width: 1000px;',
+    #                      'height=1000px;'>',
     #                      plot_html,
     #                      '</div>'])
 
@@ -208,22 +227,31 @@ def plot_bs_html(row,
     for i, c in enumerate(plot_html):
         if c == '"':
             inds.append(i)
-    plotdivid = plot_html[inds[0] + 1:inds[1]]
+    plotdivid = plot_html[inds[0] + 1: inds[1]]
 
     resize_script = (
         ''
         '<script type="text/javascript">'
         'window.addEventListener("resize", function(){{'
         'Plotly.Plots.resize(document.getElementById("{id}"));}});'
-        '</script>').format(id=plotdivid)
+        '</script>'
+    ).format(id=plotdivid)
 
     # Insert plotly.js
     plotlyjs = '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>'
 
-    html = ''.join([
-        '<html>', '<head><meta charset="utf-8" /></head>', '<body>', plotlyjs,
-        plot_html, resize_script, '</body>', '</html>'
-    ])
+    html = ''.join(
+        [
+            '<html>',
+            '<head><meta charset="utf-8" /></head>',
+            '<body>',
+            plotlyjs,
+            plot_html,
+            resize_script,
+            '</body>',
+            '</html>',
+        ]
+    )
 
     with open(filename, 'w') as fd:
         fd.write(html)
@@ -417,13 +445,11 @@ def webpanel(result, row, key_descriptions):
                                      panel_description),
              'columns': [
                  [
-                     fig(bs_png, link=bs_html),
+                     fig(bs_html, link=bs_html),
                  ],
                  [fig('bz-with-gaps.png')]],
-             'plot_descriptions': [{'function': plot_bs_png,
-                                    'filenames': [bs_png]},
-                                   {'function': plot_bs_html,
-                                    'filenames': [bs_html]}],
+             'plot_descriptions': [{'function': plot_bs_html,
+                                    'filenames': [bs_html]},],
              'sort': 12}
 
     return [panel]
