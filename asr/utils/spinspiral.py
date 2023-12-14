@@ -4,7 +4,7 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 
 
-def get_collinear_magmoms(atoms, request='priority', calculator=None):
+def get_collinear_magmoms(atoms, request='priority', calculator=None, verbose=False):
     if request == 'priority' or request == 'p':
         for get_moments, arg in zip([get_calculator_moments,
                                      get_magnetic_moments,
@@ -15,7 +15,8 @@ def get_collinear_magmoms(atoms, request='priority', calculator=None):
                 moments = get_moments(arg)
                 break
             except MagmomError as err:
-                print(err)
+                if verbose:
+                    print(err)
 
     elif request == 'calculator' or request == 'calc':
         moments = get_calculator_moments(calculator)
@@ -29,8 +30,15 @@ def get_collinear_magmoms(atoms, request='priority', calculator=None):
     return moments
 
 
-def get_noncollinear_magmoms(atoms, request=None):
-    return col_to_ncolx(get_collinear_magmoms(atoms, request))
+def get_noncollinear_magmoms(atoms, calculator=None, request='priority', verbose=False):
+    try:
+        moments = get_calculator_moments(calculator)
+        return moments
+    except MagmomError as err:
+        if verbose:
+            print(err)
+    return col_to_ncolx(get_collinear_magmoms(atoms=atoms, calculator=calculator,
+                                              request=request, verbose=verbose))
 
 
 class MagmomError(Exception):
@@ -90,6 +98,8 @@ def ncol_to_col(nmoments, eps=1e-16):
 
 
 def true_magnetic_atoms(atoms, moments):
+    if len(moments.shape) > 1:
+        moments = ncol_to_col(moments)
     arg = magnetic_atoms(atoms)
 
     # Ignore ligand atoms
@@ -151,11 +161,18 @@ def get_afms(moments, arg, return_raw=False):
         return afm_comps
 
 
-def get_magmom_bands(arg, fm):
+def get_magmom_bands(arg, fm, collinear=False):
     afms = get_afms(fm, arg)
-    magmoms = np.array([col_to_ncolx(fm)])
-    for afm in afms:
-        magmoms = np.append(magmoms, [col_to_ncolx(afm)], axis=0)
+    if not collinear:
+        magmoms = np.array([col_to_ncolx(fm)])
+        for afm in afms:
+            afm = col_to_ncolx(afm)
+            magmoms = np.append(magmoms, [afm], axis=0)
+    else:
+        magmoms = [fm]
+        for afm in afms:
+            magmoms = np.append(magmoms, [afm], axis=0)
+        
     return magmoms
 
 
@@ -193,12 +210,11 @@ def nn(atoms, ref: int = 0):
 
 def rotate_magmoms(atoms, magmoms, q_c, model='q.a'):
     from ase.dft.kpoints import kpoint_convert
-
     q_v = kpoint_convert(atoms.get_cell(), skpts_kc=[q_c])[0]
     if model == 'q.a':
         pos_av = atoms.get_positions()
         angles = np.dot(pos_av, q_v)
-        to_rotate = slice(None)
+        # to_rotate = slice(None)
     if model == 'tan':
         # Automatic rotation of magnetic atoms require magnetic atoms
         if sum(magnetic_atoms(atoms)) == 0 or len(atoms) == 1:
@@ -206,7 +222,7 @@ def rotate_magmoms(atoms, magmoms, q_c, model='q.a'):
         R_iv, _ = nn(atoms, ref=0)
         xi = calc_tanEq(q_v, R_iv)  # Arctan Equation
         angles = [xi, 0]
-        to_rotate = true_magnetic_atoms(atoms, magmoms)
+    to_rotate = true_magnetic_atoms(atoms, magmoms)
 
     moments_av = magmoms[to_rotate]
     for i, (mom_v, angle) in enumerate(zip(moments_av, angles)):
