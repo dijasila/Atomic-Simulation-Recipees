@@ -83,7 +83,6 @@ def test_hchain_integration(asr_tmpdir, get_webcontent):
     atoms.write('structure.json')
     magmoms = array([[1, 0, 0]])
     calculator = get_calculator_default(magmoms=magmoms)
-
     main(calculator=calculator, qpts=3)
     collect()
 
@@ -102,14 +101,57 @@ def test_hchain_integration(asr_tmpdir, get_webcontent):
         assert result['bandwidth'] == pytest.approx(81.2068999814044, abs=1e-6)
 
 
-@pytest.mark.ci
-def test_initial_magmoms(test_material):
-    """Test of magnetic moment initialization with differen models."""
-    from asr.utils.spinspiral import extract_magmoms, rotate_magmoms
-    magmoms = [[1, 0, 0]] * len(test_material)
-    qspiral = [0.5, 0, 0]
-    calculator = get_calculator_default(qspiral=qspiral, magmoms=magmoms)
+def test_empty_calculator_new():
+    from gpaw.new.ase_interface import GPAW
+    from numpy import all as npall
+    from ase import Atoms
+    from asr.utils.spinspiral import MagmomError, get_collinear_magmoms
+    a = Atoms('H', cell=[3, 3, 3], positions=[[1, 1, 1]])
 
-    init_magmoms = extract_magmoms(test_material, calculator)
-    rotate_magmoms(test_material, init_magmoms, qspiral, 'q.a')
-    rotate_magmoms(test_material, init_magmoms, qspiral, 'tan')
+    magmoms = [[0, 0, -1.0]]
+    calculator = get_calculator_default(magmoms=magmoms)
+    calc = GPAW(**calculator)
+    a.calc = calc
+    try:
+        get_collinear_magmoms(a, 'calculated')
+    except MagmomError:
+        pass
+    try:
+        get_collinear_magmoms(a, 'initial')
+    except MagmomError:
+        pass
+    m0 = get_collinear_magmoms(a, 'guess')
+    m1 = get_collinear_magmoms(a, 'priority')
+    assert m0 == m1
+
+    m2 = get_collinear_magmoms(a, 'calculator', calculator)
+    m3 = get_collinear_magmoms(a, 'priority', calculator)
+    assert m2 == m3
+    assert m3 == [-1.0]
+
+
+def test_gpw():
+    from gpaw.new.ase_interface import GPAW
+    from ase import Atoms
+    from asr.utils.spinspiral import MagmomError, get_collinear_magmoms
+    init = [1]
+    atoms = Atoms('H', cell=[3, 3, 3], positions=[[1, 1, 1]])
+    atoms.set_initial_magnetic_moments(init)
+    calculator = get_calculator_default()
+    calc = GPAW(**calculator)
+    atoms.calc = calc
+    atoms.get_potential_energy()
+
+    try:
+        get_collinear_magmoms(atoms, 'calculator')
+    except MagmomError:
+        pass
+    
+    out_init = get_collinear_magmoms(atoms, 'initial')
+    assert init == out_init
+    get_collinear_magmoms(atoms, 'guess')
+
+    m0 = get_collinear_magmoms(atoms, 'calculated')
+    m1 = get_collinear_magmoms(atoms, 'priority')
+    assert all(m0 == m1)
+    assert m0[0] - 0.18291291 < 1e-6
