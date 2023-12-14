@@ -41,7 +41,7 @@ def spinspiral(calculator: dict = {
     q_c = calculator['mode']['qspiral']  # spiral vector must be provided
     magmoms = calculator.get("magmoms", None)
     if magmoms is None:
-        magmoms = get_noncollinear_magmoms(atoms)
+        magmoms = get_noncollinear_magmoms(atoms, calculator)
 
     if rotation_model is not None:
         magmoms = rotate_magmoms(atoms, magmoms, q_c, model=rotation_model)
@@ -146,7 +146,7 @@ def _main(calculator: dict = dict(mode={'name': 'pw', 'ecut': 800},
     if sum(arg) > 0 and sum(arg) % 2 == 0:
         magmoms_bav = get_magmom_bands(arg, col_magmoms)
     else:
-        magmoms_bav = col_to_ncolx(col_magmoms)
+        magmoms_bav = [col_to_ncolx(col_magmoms)]
 
     energies = []
     for bidx, magmoms_av in enumerate(magmoms_bav):
