@@ -101,7 +101,7 @@ Materials were obtained by a symmetry-based systematic approach by Wang et al.
 
 Ref: {link}
 """.format(link=doi('10.1088/2053-1583/accc43'))
-    
+
     descriptions = {
         'exfoliated02-21': exfoliated02_21_description,
         'janus10-19': janus10_19_description,
