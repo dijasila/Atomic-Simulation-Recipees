@@ -77,7 +77,7 @@ def setup_strains(strain_percent=1, kptdensity=6.0, copyparams=True, clamp_atoms
                         },
                         'fixcell': True,
                         'allow_symmetry_breaking': True,
-                        'fmax': 0.008,
+                        'fmax': 0.0001,
                     }
                 }
                 setup_params(params=params)
