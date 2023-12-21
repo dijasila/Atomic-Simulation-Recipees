@@ -139,7 +139,7 @@ def get_smask(pbc, fixcell):
     return smask
 
 
-def relax(atoms, calculator, dftd3, txt, open_mode, fmax,
+def relax(atoms, calculator, dftd3, open_mode, fmax,
           Calculator, tmp_atoms_file, calculatorname, fixcell):
 
     with IOContext() as io:
