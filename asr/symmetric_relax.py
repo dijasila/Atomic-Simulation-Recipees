@@ -7,7 +7,34 @@ from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
 import spglib
 from ase.utils import atoms_to_spglib_cell
 from ase.spacegroup.symmetrize import SpgError
-from asr.relax import relax
+from asr.relax import relax, update_gpaw_paramters
+
+
+# def get_symmetrized_atoms(atoms: Atoms, symprec: float) -> Atoms:
+#     """
+#     Create atoms object with atomic positions set to the exact positions
+#     of space group. The space group is found at the given symmetry precision.
+
+#     :param atoms: Atoms object.
+#     :param symprec: Symmetry precision 
+#     :return: Primitive cell of Atoms.
+#     """
+#     spgcell = (atoms.cell, atoms.get_scaled_positions(), atoms.numbers)
+#     cell, spos, numbers = spglib.refine_cell(cell=spgcell,
+#                                              symprec=symprec)
+
+#     # Rotate spglib standard cell into the cell of the atoms input
+#     dataset = spglib.get_symmetry_dataset(spgcell, symprec=symprec)
+#     trans_std_cell = dataset['transformation_matrix'].T @ cell
+#     rot_trans_std_cell = trans_std_cell @ dataset['std_rotation_matrix']
+
+#     # Rotate scaled positions to match the cell
+#     rot_spos = spos @ dataset['std_rotation_matrix']
+#     prim_atoms = Atoms(scaled_positions=rot_spos, numbers=numbers,
+#                        cell=rot_trans_std_cell, pbc=atoms.pbc)
+#     prim_atoms.set_initial_magnetic_moments(atoms.get_initial_magnetic_moments())
+#     prim_atoms.set_initial_charges(atoms.get_initial_charges())
+#     return prim_atoms
 
 
 def spg_consistent_symprec(atoms, verbose=False):
@@ -32,7 +59,7 @@ class SpgAtoms(Atoms):
     @classmethod
     def from_atoms(cls, atoms, symprec):
         from ase.spacegroup.symmetrize import refine_symmetry
-        refined_atoms = refine_symmetry(atoms, symprec=symprec, verbose=True)
+        refined_atoms = refine_symmetry(atoms, symprec=symprec, verbose=False)
         symmetric_atoms = cls(refined_atoms)
 
         # Extract symmetries of symmetrized atoms
@@ -126,7 +153,6 @@ def main(atoms: Atoms,
                              'txt': 'relax.txt',
                              'occupations': {'name': 'fermi-dirac',
                                              'width': 0.05},
-                             # 'poissonsolver': {'dipolelayer': 'xy'},
                              'charge': 0},
          d3: bool = False,
          fixcell: bool = False,
@@ -156,6 +182,10 @@ def main(atoms: Atoms,
     traj_file = calculator.get('txt', '-').replace('.txt', '.traj')
     txt = calculator.pop('txt', '-')
     Calculator = get_calculator_class(calculatorname)
+
+    # Some calculator specific parameters
+    if calculatorname == 'gpaw':
+        calculator = update_gpaw_paramters(atoms, calculator)
 
     # Extract structures within large symmetry precision range.
     atoms_list = spg_consistent_symprec(atoms)

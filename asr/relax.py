@@ -206,6 +206,21 @@ def set_initial_magnetic_moments(atoms):
     atoms.set_initial_magnetic_moments(np.ones(len(atoms), float))
 
 
+def update_gpaw_paramters(atoms, calculator):
+    if 'kpts' in calculator:
+        from ase.calculators.calculator import kpts2kpts
+        if 'density' in calculator['kpts']:
+            kpts = kpts2kpts(calculator['kpts'], atoms=atoms)
+            calculator['kpts'] = kpts
+    nd = sum(atoms.pbc)
+    if nd == 2:
+        assert not atoms.get_pbc()[2], \
+            ('The third unit cell axis should be aperiodic for '
+             'a 2D material!')
+        calculator['poissonsolver'] = {'dipolelayer': 'xy'}
+    return calculator
+
+
 @prepare_result
 class Result(ASRResult):
     """Result class for :py:func:`asr.relax.main`."""
@@ -308,17 +323,7 @@ def main(atoms: Atoms,
 
     # Some calculator specific parameters
     if calculatorname == 'gpaw':
-        if 'kpts' in calculator:
-            from ase.calculators.calculator import kpts2kpts
-            if 'density' in calculator['kpts']:
-                kpts = kpts2kpts(calculator['kpts'], atoms=atoms)
-                calculator['kpts'] = kpts
-        nd = sum(atoms.pbc)
-        if nd == 2:
-            assert not atoms.get_pbc()[2], \
-                ('The third unit cell axis should be aperiodic for '
-                 'a 2D material!')
-            calculator['poissonsolver'] = {'dipolelayer': 'xy'}
+        calculator = update_gpaw_paramters(atoms, calculator)
 
     # Previously the relax recipe would open the text file twice and
     # overwrite itself, except the files wouldn't be flushed at the
