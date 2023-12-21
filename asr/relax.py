@@ -45,7 +45,6 @@ Relax using the LDA exchange-correlation functional
 import time
 import typing
 from math import sqrt
-from pathlib import Path
 
 import numpy as np
 from ase import Atoms

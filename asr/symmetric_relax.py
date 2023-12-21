@@ -1,47 +1,3 @@
-"""Relax atomic structures.
-
-By defaults read from "unrelaxed.json" from disk and relaxes
-structures and saves the final relaxed structure in "structure.json".
-
-The relax recipe has a couple of note-worthy features:
-
-  - It automatically handles structures of any dimensionality
-  - It tries to enforce symmetries
-  - It continously checks after each step that no symmetries are broken,
-    and raises an error if this happens.
-
-
-The recipe also supports relaxing structure with vdW forces using DFTD3.
-To install DFTD3 do
-
-.. code-block:: console
-
-   $ mkdir ~/DFTD3 && cd ~/DFTD3
-   $ wget chemie.uni-bonn.de/pctc/mulliken-center/software/dft-d3/dftd3.tgz
-   $ tar -zxf dftd3.tgz
-   $ make
-   $ echo 'export ASE_DFTD3_COMMAND=$HOME/DFTD3/dftd3' >> ~/.bashrc
-   $ source ~/.bashrc
-
-Examples
---------
-Relax without using DFTD3
-
-.. code-block:: console
-
-   $ ase build -x diamond Si unrelaxed.json
-   $ asr run "relax --nod3"
-
-Relax using the LDA exchange-correlation functional
-
-.. code-block:: console
-
-   $ ase build -x diamond Si unrelaxed.json
-   $ asr run "relax --calculator {'xc':'LDA',...}"
-
-
-
-"""
 import numpy as np
 from ase import Atoms
 from ase.io import Trajectory, write
@@ -213,27 +169,27 @@ def main(atoms: Atoms,
             open_mode = 'a'
         else:
             open_mode = 'w'
-        symmetric_structure = relax(symmetric_atoms, calculator, d3, open_mode, txt, fmax,
-                                    Calculator, itraj_file, calculatorname, fixcell)
+        symmetric_structure = relax(symmetric_atoms, calculator, d3,
+                                    open_mode, itxt, fmax, Calculator,
+                                    itraj_file, calculatorname, fixcell)
         symmetric_results.append(symmetric_structure)
-    
-    print(symmetric_results)
-    # Determine structures with lowest energy
+
+    # Sort structure(s) with by energy / electron
     total_energies = [result[3] for result in symmetric_results]
-    sorted_energies, sorted_results = zip(*sorted(zip(total_energies, symmetric_results)))
+    sorted_energies, sorted_results = zip(*sorted(zip(total_energies,
+                                                      symmetric_results)))
 
-    # sorted_results = symmetric_results.sort(key=lambda: x:x[)
-
-    # Select energy degenerate structures
+    # Select lowest energy structures, degenerate under convergence criteria
     sorted_energies = np.round(sorted_energies, 4)
     minimum_results = []
     for energy, result in zip(sorted_energies, sorted_results):
         if energy == sorted_energies[0]:
             minimum_results.append(result)
-    
-    # If multiple structures has same minimum energy, choose the one with most symmetries
+
+    # Choose the one with most symmetries
     number_of_symmetries = np.array([result[0].nsym for result in minimum_results])
-    _, high_symmetry_results = zip(*sorted(zip(number_of_symmetries, minimum_results)))
+    _, high_symmetry_results = zip(*sorted(zip(number_of_symmetries,
+                                               minimum_results)))
     atoms, _, _, etot_per_electron = high_symmetry_results[-1]
     print(etot_per_electron)
     write('symmetric_structure.json', atoms)
