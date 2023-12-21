@@ -170,7 +170,7 @@ def main(atoms: Atoms,
                              'txt': 'relax.txt',
                              'occupations': {'name': 'fermi-dirac',
                                              'width': 0.05},
-                             'poissonsolver': {'dipolelayer': 'xy'},
+                             # 'poissonsolver': {'dipolelayer': 'xy'},
                              'charge': 0},
          d3: bool = False,
          fixcell: bool = False,
@@ -197,35 +197,45 @@ def main(atoms: Atoms,
     import os.path
 
     calculatorname = calculator.pop('name')
-    Calculator = get_calculator_class(calculatorname)
     traj_file = calculator.get('txt', '-').replace('.txt', '.traj')
+    txt = calculator.pop('txt', '-')
+    Calculator = get_calculator_class(calculatorname)
 
     # Extract structures within large symmetry precision range.
     atoms_list = spg_consistent_symprec(atoms)
     symmetric_results = []
     for i, symmetric_atoms in enumerate(atoms_list):
         itraj_file = str(i) + traj_file
-        calculator['txt'] = str(i) + calculator['txt']
+        itxt = str(i) + txt
         if os.path.isfile(itraj_file):
             restart_atoms = Trajectory(itraj_file)[-1]
             symmetric_atoms = SpgAtoms(restart_atoms, symmetric_atoms.symprec)
             open_mode = 'a'
         else:
             open_mode = 'w'
-        symmetric_structure = relax(symmetric_atoms, calculator, d3, open_mode, fmax,
+        symmetric_structure = relax(symmetric_atoms, calculator, d3, open_mode, txt, fmax,
                                     Calculator, itraj_file, calculatorname, fixcell)
         symmetric_results.append(symmetric_structure)
     
+    print(symmetric_results)
     # Determine structures with lowest energy
     total_energies = [result[3] for result in symmetric_results]
-    _, sorted_results = zip(*sorted(zip(total_energies, symmetric_results)))
-    argmins = np.where(total_energies == total_energies.min())
+    sorted_energies, sorted_results = zip(*sorted(zip(total_energies, symmetric_results)))
 
-    # If multiple structures has same minimum energy, choose the one with most symmetries
-    number_of_symmetries = [result[0].nsym for result in symmetric_results[argmins]]
-    _, sorted_results = zip(*sorted(zip(number_of_symmetries, symmetric_results)))
+    # sorted_results = symmetric_results.sort(key=lambda: x:x[)
+
+    # Select energy degenerate structures
+    sorted_energies = np.round(sorted_energies, 4)
+    minimum_results = []
+    for energy, result in zip(sorted_energies, sorted_results):
+        if energy == sorted_energies[0]:
+            minimum_results.append(result)
     
-    atoms, _, _, etot_per_electron = sorted_results[-1]
+    # If multiple structures has same minimum energy, choose the one with most symmetries
+    number_of_symmetries = np.array([result[0].nsym for result in minimum_results])
+    _, high_symmetry_results = zip(*sorted(zip(number_of_symmetries, minimum_results)))
+    atoms, _, _, etot_per_electron = high_symmetry_results[-1]
+    print(etot_per_electron)
     write('symmetric_structure.json', atoms)
     return Result.fromdata(
         atoms=atoms.copy(),
