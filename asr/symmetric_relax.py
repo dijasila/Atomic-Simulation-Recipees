@@ -1,3 +1,15 @@
+"""
+Finds the relaxed atomic structure with enforced symmetry.
+
+The Algorithm proceeds as follows:
+  - Finds all unique space groups of structure for any symmetry precision.
+  - Runs relaxation of each with symmetry constrained forces and stresses
+  - Determines the lowest energy structure
+    (-) If multiple structures have the same energy when rounded to
+        convergence criteria on the energy, chooses the one with most symmetries
+"""
+
+from typing import List
 import numpy as np
 from ase import Atoms
 from ase.io import Trajectory, write
@@ -16,7 +28,7 @@ from asr.relax import relax, update_gpaw_paramters
 #     of space group. The space group is found at the given symmetry precision.
 
 #     :param atoms: Atoms object.
-#     :param symprec: Symmetry precision 
+#     :param symprec: Symmetry precision
 #     :return: Primitive cell of Atoms.
 #     """
 #     spgcell = (atoms.cell, atoms.get_scaled_positions(), atoms.numbers)
@@ -126,12 +138,17 @@ class SpgAtoms(Atoms):
 class Result(ASRResult):
     """Result class for :py:func:`asr.relax.main`."""
 
+    atoms_list: List[Atoms]
+    etot_per_electron_list: List[float]
+    nsym_list: List[int]
     key_descriptions = \
-        {}
+        {'atoms_list': 'List of symmetrically relaxed atomic structure',
+         'etot_per_electron_list': 'Total energies of respective structures',
+         'nsym_list': 'Number of symmetries of respective structures'}
 
 
-@command('asr.relax',
-         creates=['structure.json'],
+@command('asr.symmetric_relax',
+         creates=['symmetric_structure.json'],
          returns=Result)
 @option('-a', '--atoms', help='Atoms to be relaxed.',
         type=AtomsFile(), default='structure.json')
@@ -191,14 +208,19 @@ def main(atoms: Atoms,
     atoms_list = spg_consistent_symprec(atoms)
     symmetric_results = []
     for i, symmetric_atoms in enumerate(atoms_list):
+        # Create file names for each structure with different space group
         itraj_file = str(i) + traj_file
         itxt = str(i) + txt
+
+        # Determine restart conditions
         if os.path.isfile(itraj_file):
             restart_atoms = Trajectory(itraj_file)[-1]
             symmetric_atoms = SpgAtoms(restart_atoms, symmetric_atoms.symprec)
             open_mode = 'a'
         else:
             open_mode = 'w'
+
+        # Relax structure, saves atoms object and energies tuple in results list
         symmetric_structure = relax(symmetric_atoms, calculator, d3,
                                     open_mode, itxt, fmax, Calculator,
                                     itraj_file, calculatorname, fixcell)
@@ -210,7 +232,13 @@ def main(atoms: Atoms,
                                                       symmetric_results)))
 
     # Select lowest energy structures, degenerate under convergence criteria
-    sorted_energies = np.round(sorted_energies, 4)
+    convergence = calculator.get('convergence').get('energy')
+    if convergence is None:
+        rounding = int(-np.log10(5e-4))  # Current GPAW default
+    else:
+        rounding = int(-np.log10(convergence))
+
+    sorted_energies = np.round(sorted_energies, rounding)
     minimum_results = []
     for energy, result in zip(sorted_energies, sorted_results):
         if energy == sorted_energies[0]:
@@ -221,10 +249,12 @@ def main(atoms: Atoms,
     _, high_symmetry_results = zip(*sorted(zip(number_of_symmetries,
                                                minimum_results)))
     atoms, _, _, etot_per_electron = high_symmetry_results[-1]
-    print(etot_per_electron)
     write('symmetric_structure.json', atoms)
+
     return Result.fromdata(
-        atoms=atoms.copy(),
+        atoms_list=[result[0].copy() for result in sorted_results],
+        etot_per_electron_list=[result[3].copy() for result in sorted_results],
+        nsym_list=[result[0].nsym for result in sorted_results]
     )
 
 
