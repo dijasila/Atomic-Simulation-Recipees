@@ -319,6 +319,7 @@ def main(atoms: Atoms,
         set_initial_magnetic_moments(atoms)
 
     calculatorname = calculator.pop('name')
+    txt = calculator.pop('txt', '-')
     Calculator = get_calculator_class(calculatorname)
 
     # Some calculator specific parameters
@@ -344,7 +345,7 @@ def main(atoms: Atoms,
         open_mode = 'a'
 
     # Constraint-free relaxation
-    atoms, etot, edft, _ = relax(atoms, calculator, d3, open_mode, fmax,
+    atoms, etot, edft, _ = relax(atoms, calculator, d3, open_mode, txt, fmax,
                                  Calculator, tmp_atoms_file, calculatorname,
                                  fixcell)
 
