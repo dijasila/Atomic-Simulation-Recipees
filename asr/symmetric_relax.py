@@ -12,7 +12,7 @@ The Algorithm proceeds as follows:
 from typing import List
 import numpy as np
 from ase import Atoms
-from ase.io import Trajectory, write
+from ase.io import write
 
 from asr.core import (ASRResult, AtomsFile, DictStr, command, option,
                       prepare_result)
@@ -22,37 +22,10 @@ from ase.spacegroup.symmetrize import SpgError
 from asr.relax import relax, update_gpaw_paramters
 
 
-# def get_symmetrized_atoms(atoms: Atoms, symprec: float) -> Atoms:
-#     """
-#     Create atoms object with atomic positions set to the exact positions
-#     of space group. The space group is found at the given symmetry precision.
-
-#     :param atoms: Atoms object.
-#     :param symprec: Symmetry precision
-#     :return: Primitive cell of Atoms.
-#     """
-#     spgcell = (atoms.cell, atoms.get_scaled_positions(), atoms.numbers)
-#     cell, spos, numbers = spglib.refine_cell(cell=spgcell,
-#                                              symprec=symprec)
-
-#     # Rotate spglib standard cell into the cell of the atoms input
-#     dataset = spglib.get_symmetry_dataset(spgcell, symprec=symprec)
-#     trans_std_cell = dataset['transformation_matrix'].T @ cell
-#     rot_trans_std_cell = trans_std_cell @ dataset['std_rotation_matrix']
-
-#     # Rotate scaled positions to match the cell
-#     rot_spos = spos @ dataset['std_rotation_matrix']
-#     prim_atoms = Atoms(scaled_positions=rot_spos, numbers=numbers,
-#                        cell=rot_trans_std_cell, pbc=atoms.pbc)
-#     prim_atoms.set_initial_magnetic_moments(atoms.get_initial_magnetic_moments())
-#     prim_atoms.set_initial_charges(atoms.get_initial_charges())
-#     return prim_atoms
-
-
 def spg_consistent_symprec(atoms, verbose=False):
     symmetries = []
     atoms_list = []
-    for symprec in np.logspace(0, -7, 21):
+    for symprec in np.logspace(0, -5, 21):
         try:
             symmetric_atoms = SpgAtoms.from_atoms(atoms, symprec)
         except SpgError:
@@ -73,13 +46,20 @@ class SpgAtoms(Atoms):
         from ase.spacegroup.symmetrize import refine_symmetry
         refined_atoms = refine_symmetry(atoms, symprec=symprec, verbose=False)
         symmetric_atoms = cls(refined_atoms)
+        symmetric_atoms.init_symprec = symprec
+
+        # In order for the symmetric atoms to have the target space group of the
+        # refined structure, it must not have a new_symprec larger than the
+        # refinement init_symprec.
+        # We also cannot choose arbitrarily low symprec due to numerical noise.
+        new_symprec = 1e-5
 
         # Extract symmetries of symmetrized atoms
-        symmetric_atoms.symprec = 1e-5
         dataset = spglib.get_symmetry_dataset(atoms_to_spglib_cell(symmetric_atoms),
-                                              symprec=symmetric_atoms.symprec)
+                                              symprec=new_symprec)
         symmetric_atoms.dataset = dataset
-        symmetric_atoms.set_symmetries(dataset['translations'], dataset['rotations'])
+        symmetric_atoms.set_symmetries(dataset['translations'], dataset['rotations'],
+                                       new_symprec)
         return symmetric_atoms
 
     @property
@@ -87,11 +67,10 @@ class SpgAtoms(Atoms):
         return (self.dataset['number'], tuple(self.dataset['wyckoffs']),
                 tuple(self.dataset['equivalent_atoms']))
 
-    def set_symmetries(self, t_sc, op_scc):
+    def set_symmetries(self, t_sc, op_scc, new_symprec):
         self.op_svv = [np.linalg.inv(self.cell).dot(op_cc.T).dot(self.cell) for
                        op_cc in op_scc]
         self.nsym = len(op_scc)
-        tolerance = self.symprec
         spos_ac = self.get_scaled_positions()
         a_sa = []
 
@@ -102,7 +81,7 @@ class SpgAtoms(Atoms):
             for s_c in symspos_ac:
                 diff_ac = spos_ac - s_c
                 diff_ac -= np.round(diff_ac)
-                mask_c = np.all(np.abs(diff_ac) < tolerance, axis=1)
+                mask_c = np.all(np.abs(diff_ac) < new_symprec, axis=1)
                 assert np.sum(mask_c) == 1, f'Bad symmetry, {mask_c}'
                 ind = np.argwhere(mask_c)[0][0]
                 assert ind not in a_a, f'Bad symmetry {ind}, {diff_ac}'
@@ -159,7 +138,7 @@ class Result(ASRResult):
         help="Don't relax stresses.",
         is_flag=True)
 @option('--fmax', help='Maximum force allowed.', type=float)
-def main(atoms: Atoms,
+def main(atoms: Atoms = 'structure.json',
          calculator: dict = {'name': 'gpaw',
                              'mode': {'name': 'pw', 'ecut': 800},
                              'xc': 'PBE',
@@ -193,7 +172,6 @@ def main(atoms: Atoms,
         Maximum force tolerance.
     """
     from ase.calculators.calculator import get_calculator_class
-    import os.path
 
     calculatorname = calculator.pop('name')
     traj_file = calculator.get('txt', '-').replace('.txt', '.traj')
@@ -212,15 +190,19 @@ def main(atoms: Atoms,
         itraj_file = str(i) + traj_file
         itxt = str(i) + txt
 
-        # Determine restart conditions
-        if os.path.isfile(itraj_file):
-            restart_atoms = Trajectory(itraj_file)[-1]
-            symmetric_atoms = SpgAtoms(restart_atoms, symmetric_atoms.symprec)
-            open_mode = 'a'
-        else:
-            open_mode = 'w'
+        # # Determine restart conditions, not parallel safe
+        # if os.path.isfile(itraj_file):
+        #     print('trajectory file exists:', itraj_file)
+        #     restart_atoms = read(itraj_file)
+        #     symmetric_atoms = SpgAtoms.from_atoms(restart_atoms,
+        #                                           symmetric_atoms.init_symprec)
+        #     open_mode = 'a'
+        # else:
+        #     print('trajectory file doesnt exist')
+        #     open_mode = 'w'
 
         # Relax structure, saves atoms object and energies tuple in results list
+        open_mode = 'w'
         symmetric_structure = relax(symmetric_atoms, calculator, d3,
                                     open_mode, itxt, fmax, Calculator,
                                     itraj_file, calculatorname, fixcell)
