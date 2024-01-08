@@ -87,7 +87,7 @@ def main(material: str,
          conc: float=1e-6,
          counter: str='SHE',
          npoints: int=300,
-         show: bool=False,
+         show: bool=True,
          savefig: str='pourbaix.png'):
 
     refs, name = get_references(
@@ -110,4 +110,4 @@ def main(material: str,
 
 if __name__ == '__main__':
     import sys
-    main(sys.argv[1])
+    main(sys.argv[1], float(sys.argv[2]))
