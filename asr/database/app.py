@@ -4,10 +4,6 @@ import multiprocessing
 import tempfile
 from pathlib import Path
 
-from flask import render_template, send_file, Response, jsonify, redirect
-from flask.json.provider import JSONProvider
-import flask.json
-from jinja2 import UndefinedError
 from ase.db import connect
 from ase import Atoms
 from ase.calculators.calculator import kptdensity2monkhorstpack
@@ -110,6 +106,7 @@ class WebApp:
 
 
 def setup_app(route_slash=True, tmpdir=None):
+    from flask import render_template, send_file
     # used to cache png-files:
     tmpdir = tmpdir or Path(tempfile.mkdtemp(prefix="asr-app-"))
 
@@ -149,13 +146,16 @@ def setup_app(route_slash=True, tmpdir=None):
     return webapp
 
 
-class _ASEJsonProvider(JSONProvider):
-    def dumps(self, obj):
-        return ase_encode(obj)
-
-
 def setup_data_endpoints(webapp):
     """Set endpoints for downloading data."""
+
+    from flask import render_template, Response, jsonify, redirect
+    from flask.json.provider import JSONProvider
+    import flask.json
+
+    class _ASEJsonProvider(JSONProvider):
+        def dumps(self, obj):
+            return ase_encode(obj)
 
     projects = webapp.projects
     app = webapp.app
@@ -187,6 +187,8 @@ def setup_data_endpoints(webapp):
     @app.route('/<project_name>/row/<uid>/data/<filename>')
     def get_row_data_file(project_name: str, uid: str, filename: str):
         """Show details for one database row."""
+        from jinja2 import UndefinedError
+
         project = projects[project_name]
         row = project.uid_to_row(uid)
         try:
