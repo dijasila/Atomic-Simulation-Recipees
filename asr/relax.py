@@ -166,7 +166,7 @@ class myBFGS(BFGS):
         fmax = sqrt((forces**2).sum(axis=1).max())
         smax = abs(stress).max()
         e = self.atoms.get_potential_energy(
-            force_consistent=self.force_consistent)
+            force_consistent=False)
         T = time.localtime()
         if self.logfile is not None:
             name = self.__class__.__name__
@@ -177,10 +177,10 @@ class myBFGS(BFGS):
                                                                     'Energy')
                                    + '{:<10} {:<10}\n'.format('fmax',
                                                               'smax'))
-                if self.force_consistent:
+                if False:
                     self.logfile.write(
                         '*Force-consistent energies used in optimization.\n')
-            fc = '*' if self.force_consistent else ''
+            fc = '*' if False else ''
             self.logfile.write(f'{name}: {self.nsteps:<4} '
                                f'{T[3]:02d}:{T[4]:02d}:{T[5]:02d} '
                                f'{e:<10.6f}{fc} {fmax:<10.4f} {smax:<10.4f}\n')
