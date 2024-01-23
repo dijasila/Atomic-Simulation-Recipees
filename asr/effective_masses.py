@@ -2,12 +2,9 @@ from ase.io import read as ase_read
 import numpy as np
 import time
 from ase.parallel import parprint, paropen, world
-from gpaw import GPAW, FermiDirac
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.colors import Normalize as pltnorm
-from gpaw.spinorbit import soc_eigenstates
-from gpaw import Davidson
 import os
 import json
 from pathlib import Path
@@ -226,6 +223,9 @@ class GPAW_calculator:
         self.n_electrons = params['n_electrons']
 
     def __call__(self, _kpt, band_idx):
+        from gpaw import FermiDirac
+        from gpaw.spinorbit import soc_eigenstates
+        from gpaw import Davidson
         n_bands = max(self.n_bands_gs, self.n_electrons) + 2
         atoms = self.atoms
         calc = self.gs_calculator
@@ -324,6 +324,9 @@ def main(gspath, atomspath='structure.json', calculator=None,
          savefile_name='effective_masses.data.json',
          filename_precomputed_data='effective_masses.data.json',
          *calculator_args, **calculator_kwargs) -> Result:
+    from gpaw import GPAW
+    from gpaw.spinorbit import soc_eigenstates
+
     t0 = time.time()
 
     atoms = ase_read(atomspath)
@@ -431,6 +434,7 @@ def main(gspath, atomspath='structure.json', calculator=None,
 
 def get_data(calculator, band_idx, extremum_type, data_full=None,
              subdict=None, savefile_name=None):
+    from gpaw.spinorbit import soc_eigenstates
     from emasses import EmassCalculator, FittedPolynomial
     t0 = time.time()
     EMC = EmassCalculator(calculator, band_idx=band_idx)
@@ -692,7 +696,7 @@ def get_figure(row, *filenames):
         plt.tight_layout()
 
 
-        plt.savefig(filename, dpi=300)
+        plt.savefig(filename)
 
 
 if __name__ == '__main__':
