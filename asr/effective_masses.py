@@ -688,6 +688,7 @@ def get_figure(row, *filenames):
         plt.tight_layout()
 
         if len(ax.get_xticks()) >= 7:
+            ax.set_xticks(ax.get_xticks())  # workaround to suppress warning
             ax.set_xticklabels(np.round(ax.get_xticks(), 4), rotation=15)
         ax.legend()
 
