@@ -695,7 +695,7 @@ def get_figure(row, *filenames):
             ax.set_xticklabels(np.round(ax.get_xticks(), 4), rotation=15)
         ax.legend()
 
-        plt.savefig(filename, dpi=300)
+        plt.savefig(filename)
 
 
 if __name__ == '__main__':
