@@ -676,6 +676,10 @@ def get_figure(row, *filenames):
                 * min_emass_direction[1], color='tab:orange', ls='dashed',
                 label='Min eff. mass direction')
 
+        if len(ax.get_xticks()) >= 7:
+            ax.set_xticks(ax.get_xticks())  # workaround to suppress warning
+            ax.set_xticklabels(np.round(ax.get_xticks(), 4), rotation=15)
+        ax.legend()
         ax.set_xlim(X.min(), X.max())
         ax.set_ylim(Y.min(), Y.max())
         if band_name == 'cbm':
@@ -687,10 +691,6 @@ def get_figure(row, *filenames):
 
         plt.tight_layout()
 
-        if len(ax.get_xticks()) >= 7:
-            ax.set_xticks(ax.get_xticks())  # workaround to suppress warning
-            ax.set_xticklabels(np.round(ax.get_xticks(), 4), rotation=15)
-        ax.legend()
 
         plt.savefig(filename, dpi=300)
 
