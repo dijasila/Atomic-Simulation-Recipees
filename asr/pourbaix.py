@@ -1,5 +1,4 @@
 from typing import Union
-from ase.formula import Formula
 from ase.pourbaix import Species, Pourbaix, PREDEF_ENERGIES
 from ase.phasediagram import solvated
 from ase.db import connect
@@ -79,7 +78,7 @@ def get_references(
 
 
 def main(material: str,
-         computed_energy: float=None,
+         computed_energy: Union[float, None]=None,
          database: str='oqmd123.db',
          energy_key: str='energy',
          pHrange: Union[list, tuple]=[0, 14],
