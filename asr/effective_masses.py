@@ -696,6 +696,7 @@ def get_figure(row, *filenames):
         plt.tight_layout()
 
         plt.savefig(filename)
+        plt.close()
 
 
 if __name__ == '__main__':

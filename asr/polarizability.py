@@ -330,6 +330,7 @@ def ylims(ws, data, wstart=0.0):
 
 
 def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
+    import matplotlib.pyplot as plt
     ax.set_title(f'Polarization: {direction}')
     ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
@@ -339,6 +340,7 @@ def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
     fig = ax.get_figure()
     fig.tight_layout()
     fig.savefig(filename)
+    plt.close()
 
 
 if __name__ == '__main__':
