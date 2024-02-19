@@ -339,6 +339,7 @@ def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
     fig = ax.get_figure()
     fig.tight_layout()
     fig.savefig(filename)
+    fig.close()
 
 
 if __name__ == '__main__':
