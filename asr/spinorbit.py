@@ -91,25 +91,26 @@ class PreResult(ASRResult):
                         'phi_tp': 'Orientation of magnetic order from x->y [deg]',
                         'projected_soc': 'Projected SOC for non-collinear spin spirals'}
 
-    def get_projected_points(self):
 
-        def stereo_project_point(inpoint, axis=0, r=1, max_norm=1):
-            point = np.divide(inpoint * r, inpoint[axis] + r)
-            point[axis] = 0
-            return point
+def get_projected_points(result):
 
-        theta, phi = self['theta_tp'], self['phi_tp']
-        theta = theta * np.pi / 180
-        phi = phi * np.pi / 180
-        x = np.sin(theta) * np.cos(phi)
-        y = np.sin(theta) * np.sin(phi)
-        z = np.cos(theta)
-        points = np.array([x, y, z]).T
-        projected_points = []
-        for p in points:
-            projected_points.append(stereo_project_point(p, axis=2))
+    def stereo_project_point(inpoint, axis=0, r=1, max_norm=1):
+        point = np.divide(inpoint * r, inpoint[axis] + r)
+        point[axis] = 0
+        return point
 
-        return projected_points
+    theta, phi = result['theta_tp'], result['phi_tp']
+    theta = theta * np.pi / 180
+    phi = phi * np.pi / 180
+    x = np.sin(theta) * np.cos(phi)
+    y = np.sin(theta) * np.sin(phi)
+    z = np.cos(theta)
+    points = np.array([x, y, z]).T
+    projected_points = []
+    for p in points:
+        projected_points.append(stereo_project_point(p, axis=2))
+
+    return projected_points
 
 
 @command(module='asr.spinorbit',
@@ -223,7 +224,7 @@ def main() -> Result:
 def plot_stereographic_energies(row, fname, display_sampling=False):
     results = row.data.get('results-asr.spinorbit@calculate.json')
     soc = (results['soc_tp'] - min(results['soc_tp'])) * 10**3
-    projected_points = results.get_projected_points()
+    projected_points = get_projected_points(results)
     _plot_stereographic_energies(projected_points, soc,
                                  fname, display_sampling)
 
