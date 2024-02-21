@@ -1,5 +1,4 @@
 import pytest
-from numpy import array, ndarray
 
 
 @pytest.mark.ci
@@ -20,7 +19,7 @@ def test_collinear_spinorbit(asr_tmpdir_w_params, test_material, get_webcontent)
     result = main()
 
     assert result.projected_soc is False
-    
+
     if world.size == 1:
         content = get_webcontent()
         assert "<td>Spinorbitbandwidth(meV)</td>" in content, content

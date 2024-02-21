@@ -139,7 +139,7 @@ def main(qpts: int = None, qdens: float = None,
     from glob import glob
     atoms = read('structure.json')
     jsons = glob('dat*.json')
-    
+
     if qdens is None and qpts is None:
         try:
             qpts = len(read_json('results-asr.spinspiral.json')['path'].kpts)

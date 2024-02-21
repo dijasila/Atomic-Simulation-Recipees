@@ -103,7 +103,6 @@ def test_hchain_integration(asr_tmpdir, get_webcontent):
 
 def test_empty_calculator_new():
     from gpaw.new.ase_interface import GPAW
-    from numpy import all as npall
     from ase import Atoms
     from asr.utils.spinspiral import MagmomError, get_collinear_magmoms
     a = Atoms('H', cell=[3, 3, 3], positions=[[1, 1, 1]])
@@ -146,7 +145,7 @@ def test_gpw():
         get_collinear_magmoms(atoms, 'calculator')
     except MagmomError:
         pass
-    
+
     out_init = get_collinear_magmoms(atoms, 'initial')
     assert init == out_init
     get_collinear_magmoms(atoms, 'guess')

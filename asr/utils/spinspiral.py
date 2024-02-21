@@ -172,7 +172,7 @@ def get_magmom_bands(arg, fm, collinear=False):
         magmoms = [fm]
         for afm in afms:
             magmoms = np.append(magmoms, [afm], axis=0)
-        
+
     return magmoms
 
 
