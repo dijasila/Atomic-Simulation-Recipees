@@ -220,6 +220,7 @@ def plot_bs(row,
     ax.plot([], [], **style, label=bs_label)
     legend_on_top(ax, ncol=2)
     plt.savefig(filename, bbox_inches='tight')
+    plt.close()
 
 
 def webpanel(result, row, key_descriptions):

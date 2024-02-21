@@ -118,7 +118,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
 
     dfkwargs = {
         'eta': 0.05,
-        'domega0': 0.005,
+        'frequencies': {'type': 'nonlinear', 'domega0': 0.005},
         'ecut': ecut,
         'intraband': False,
     }
@@ -161,10 +161,9 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
             calc.get_potential_energy()
             calc.write('es.gpw', mode='all')
 
-        df = DielectricFunction('es.gpw', **dfkwargs)
-
         try:
-            df.chi0calc.check_high_symmetry_ibz_kpts()
+            df = DielectricFunction('es.gpw', **dfkwargs)
+            df.chi0calc.chi0_body_calc.check_high_symmetry_ibz_kpts()
         except ValueError:
             print('Ground state k-point grid does not include all vertices of'
                   ' the IBZ. Disabling symmetry and integrates the full'
@@ -331,6 +330,7 @@ def ylims(ws, data, wstart=0.0):
 
 
 def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
+    import matplotlib.pyplot as plt
     ax.set_title(f'Polarization: {direction}')
     ax.set_xlabel('Energy [eV]')
     ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
@@ -340,6 +340,7 @@ def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
     fig = ax.get_figure()
     fig.tight_layout()
     fig.savefig(filename)
+    plt.close()
 
 
 if __name__ == '__main__':

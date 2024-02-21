@@ -102,6 +102,7 @@ def mkplot(a_w, axisname, fname, maxomega, omega_w, ylabel):
     ax.legend()
     plt.tight_layout()
     plt.savefig(fname)
+    plt.close()
     return fname
 
 
