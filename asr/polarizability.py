@@ -96,7 +96,7 @@ def main(gs: str = 'gs.gpw', kptdensity: float = 20.0, ecut: float = 50.0,
 
     dfkwargs = {
         'eta': 0.05,
-        'domega0': 0.005,
+        'frequencies': {'type': 'nonlinear', 'domega0': 0.005},
         'ecut': ecut,
         'intraband': False,
     }
@@ -221,6 +221,7 @@ def polarizability(row, fx, fy, fz):
         return y1, y2
 
     def plot_polarizability(ax, frequencies, alpha_w, filename, direction):
+        import matplotlib.pyplot as plt
         ax.set_title(f'Polarization: {direction}')
         ax.set_xlabel('Energy [eV]')
         ax.set_ylabel(r'Polarizability [$\mathrm{\AA}$]')
@@ -230,6 +231,7 @@ def polarizability(row, fx, fy, fz):
         fig = ax.get_figure()
         fig.tight_layout()
         fig.savefig(filename)
+        plt.close()
 
     data = row.data.get('results-asr.polarizability.json')
 

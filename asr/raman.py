@@ -135,8 +135,9 @@ def raman(row, filename):
     gamma = params['broadening']
 
     # If the wavelength was not found, return
-    waveind = int(np.where(wavelength_w == params['wavelength'])[0])
-    if not waveind:
+    try:
+        waveind = int(np.where(wavelength_w == params['wavelength'])[0][0])
+    except IndexError:
         return
 
     # Check the data to be consistent
