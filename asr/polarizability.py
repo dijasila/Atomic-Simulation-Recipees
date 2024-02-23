@@ -8,6 +8,7 @@ from ase.io import read
 
 from asr.core import command, option, ASRResult, prepare_result
 from asr.database.browser import (
+    table,
     create_table,
     fig,
     describe_entry,
@@ -34,9 +35,9 @@ def webpanel(result, row, key_descriptions):
     alphaz_el = describe_entry('alphaz_el',
                                description=explanation + " z-direction")
 
-    opt = create_table(row=row, header=['Property', 'Value'],
-                       keys=[alphax_el, alphay_el, alphaz_el],
-                       key_descriptions=key_descriptions, digits=2)
+    opt = table(row, 'Property', [
+        alphax_el, alphay_el, alphaz_el
+        ], key_descriptions)
 
     panel = {'title': describe_entry('Optical polarizability',
                                      panel_description),
@@ -47,7 +48,6 @@ def webpanel(result, row, key_descriptions):
                    'filenames': ['rpa-pol-x.png',
                                  'rpa-pol-y.png',
                                  'rpa-pol-z.png']}],
-             'subpanel': 'Polarizabilities',
              'sort': 20}
 
     return [panel]

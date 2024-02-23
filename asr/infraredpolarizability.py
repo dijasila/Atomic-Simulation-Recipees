@@ -51,8 +51,7 @@ def webpanel(result, row, key_descriptions):
                 "filenames": ["infrax.png", "infray.png", "infraz.png"],
             }
         ],
-        "subpanel": 'Polarizabilities',
-        "sort": 20,
+        "sort": 21,
     }
 
     return [panel]
