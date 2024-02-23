@@ -1,283 +1,224 @@
 {% extends 'asr/database/templates/layout.html' %}
 
 {% set n1, n2, n3 = dct.size %}
-{% macro cell() %}
-<table class="table table-striped">
-  <thead>
-    <tr>
-      <th>Axis</th>
-      <th>x (Å)</th>
-      <th>y (Å)</th>
-      <th>z (Å)</th>
-      <th>Periodic</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    {% for axis in dct.cell %}
-    <tr>
-      <td>{{ loop.index }}</td>
-      {% for a in axis %}
-      <td>{{ a }}</td>
-      {% endfor %}
-      <td>{{ row.pbc[loop.index0] }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-<table class="table table-striped">
-  <tbody>
-    <tr>
-      <td>Lengths (Å):</td>
-      {% for L in dct.lengths %}
-      <td>{{ L }}</td>
-      {% endfor %}
-    </tr>
-    <tr>
-      <td>Angles (&#176;):</td>
-      {% for a in dct.angles %}
-      <td>{{ a }}</td>
-      {% endfor %}
-    </tr>
-  </tbody>
-</table>
-{% endmacro %}
-
-
-{% macro table(data) %}
-<table class="table table-striped">
-  {% if data.columnwidth %}
-  <colgroup>
-    {% for value in data.rows[0] %}
-    <col class="col-md-{{ data.columnwidth }}">
-    </col>
-    {% endfor %}
-  </colgroup>
-  {% endif %}
-  <thead>
-    <tr>
-      {% for title in data.header %}
-      <th>{{ title|safe }}</th>
-      {% endfor %}
-    </tr>
-  </thead>
-  <tbody>
-    {% for row in data.rows %}
-    <tr>
-      {% for value in row %}
-      <td>{{ help(value) }} {{ value|safe }}</td>
-      {% endfor %}
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endmacro %}
 
 {% macro help_button(description, title="Help") %}
-<button type="button" class="btn btn-link btn-xs disable-collapse" data-html="true" data-toggle="popover"
-  title="{{ title }}" data-content="{{ description }}">
-  <svg data-html="true" width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-patch-question" fill="orange"
-    xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM8.05 9.6c.336 0 .504-.24.554-.627.04-.534.198-.815.847-1.26.673-.475 1.049-1.09 1.049-1.986 0-1.325-.92-2.227-2.262-2.227-1.02 0-1.792.492-2.1 1.29A1.71 1.71 0 0 0 6 5.48c0 .393.203.64.545.64.272 0 .455-.147.564-.51.158-.592.525-.915 1.074-.915.61 0 1.03.446 1.03 1.084 0 .563-.208.885-.822 1.325-.619.433-.926.914-.926 1.64v.111c0 .428.208.745.585.745z" />
-    <path fill-rule="evenodd"
-      d="M10.273 2.513l-.921-.944.715-.698.622.637.89-.011a2.89 2.89 0 0 1 2.924 2.924l-.01.89.636.622a2.89 2.89 0 0 1 0 4.134l-.637.622.011.89a2.89 2.89 0 0 1-2.924 2.924l-.89-.01-.622.636a2.89 2.89 0 0 1-4.134 0l-.622-.637-.89.011a2.89 2.89 0 0 1-2.924-2.924l.01-.89-.636-.622a2.89 2.89 0 0 1 0-4.134l.637-.622-.011-.89a2.89 2.89 0 0 1 2.924-2.924l.89.01.622-.636a2.89 2.89 0 0 1 4.134 0l-.715.698a1.89 1.89 0 0 0-2.704 0l-.92.944-1.32-.016a1.89 1.89 0 0 0-1.911 1.912l.016 1.318-.944.921a1.89 1.89 0 0 0 0 2.704l.944.92-.016 1.32a1.89 1.89 0 0 0 1.912 1.911l1.318-.016.921.944a1.89 1.89 0 0 0 2.704 0l.92-.944 1.32.016a1.89 1.89 0 0 0 1.911-1.912l-.016-1.318.944-.921a1.89 1.89 0 0 0 0-2.704l-.944-.92.016-1.32a1.89 1.89 0 0 0-1.912-1.911l-1.318.016z" />
-  </svg>
+<button type="button" class="btn btn-link btn-xs disable-collapse" data-html="true" data-toggle="popover" title="{{ title }}" data-content="{{ description }}">
+<svg data-html="true" width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-patch-question" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM8.05 9.6c.336 0 .504-.24.554-.627.04-.534.198-.815.847-1.26.673-.475 1.049-1.09 1.049-1.986 0-1.325-.92-2.227-2.262-2.227-1.02 0-1.792.492-2.1 1.29A1.71 1.71 0 0 0 6 5.48c0 .393.203.64.545.64.272 0 .455-.147.564-.51.158-.592.525-.915 1.074-.915.61 0 1.03.446 1.03 1.084 0 .563-.208.885-.822 1.325-.619.433-.926.914-.926 1.64v.111c0 .428.208.745.585.745z"/>
+  <path fill-rule="evenodd" d="M10.273 2.513l-.921-.944.715-.698.622.637.89-.011a2.89 2.89 0 0 1 2.924 2.924l-.01.89.636.622a2.89 2.89 0 0 1 0 4.134l-.637.622.011.89a2.89 2.89 0 0 1-2.924 2.924l-.89-.01-.622.636a2.89 2.89 0 0 1-4.134 0l-.622-.637-.89.011a2.89 2.89 0 0 1-2.924-2.924l.01-.89-.636-.622a2.89 2.89 0 0 1 0-4.134l.637-.622-.011-.89a2.89 2.89 0 0 1 2.924-2.924l.89.01.622-.636a2.89 2.89 0 0 1 4.134 0l-.715.698a1.89 1.89 0 0 0-2.704 0l-.92.944-1.32-.016a1.89 1.89 0 0 0-1.911 1.912l.016 1.318-.944.921a1.89 1.89 0 0 0 0 2.704l.944.92-.016 1.32a1.89 1.89 0 0 0 1.912 1.911l1.318-.016.921.944a1.89 1.89 0 0 0 2.704 0l.92-.944 1.32.016a1.89 1.89 0 0 0 1.911-1.912l-.016-1.318.944-.921a1.89 1.89 0 0 0 0-2.704l-.944-.92.016-1.32a1.89 1.89 0 0 0-1.912-1.911l-1.318.016z"/>
+</svg>
 </button>
 {% endmacro %}
 
 {% macro help(data) %}
 {# Extract help from data if present #}
+
 {% if data.__explanation__ %}
 {{ help_button(data.__explanation__|replace("\n","<br />"), title=data.__explanation_title__) }}
 {% endif %}
-{% endmacro %}
 
+{% endmacro %}
 
 {% macro atoms() %}
 {% if row.numbers|length %}
 <div class="row">
-  <center>
-    <div id="appdiv"></div>
-  </center>
-  <div class="row">
-    <div class="col-md-1"></div>
-    <div class="col-md-4" id="structure-options">
-      <!-- BUTTON Unitcell repeatCell JS function-->
-      <div class="btn-group pull-right">
-        <button type="button" class="btn btn-link btn-sm" data-toggle="dropdown">
-          Unit cell <span class="caret"></span>
-        </button>
-        <!-- DROPDOWN Options -->
-        <ul class="dropdown-menu">
-          <li><a onclick="repeatCell(1, 1, 1);">1x1x1</a></li>
-          <li><a onclick="repeatCell({{ n1 }}, {{ n2 }}, {{ n3 }});">
+    <center>
+        <div id="appdiv"></div>
+    </center>
+    <div class="row">
+      <div class="col-md-1"></div>
+      <div class="col-md-4">
+        <div class="btn-group pull-right">
+            <button type="button" class="btn btn-link btn-sm"
+            data-toggle="dropdown">
+                Unit cell <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a onclick="repeatCell(1, 1, 1);">1x1x1</a></li>
+                <li><a onclick="repeatCell({{ n1 }}, {{ n2 }}, {{ n3 }});">
                 {{ n1 }}x{{ n2 }}x{{ n3 }}</a></li>
-        </ul>
+            </ul>
+        </div>
+        <div class="btn-group pull-right">
+            <button type="button" class="btn btn-link dropdown-toggle btn-sm"
+            data-toggle="dropdown">
+                Download <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a href="/atoms/{{ project.name }}/{{ row.id }}/xyz">xyz</a></li>
+                <li><a href="/atoms/{{ project.name }}/{{ row.id }}/json">json</a></li>
+            </ul>
+        </div>
       </div>
-      <!--BUTTON Download dropdown for xyz/json-->
-      <div class="btn-group pull-right">
-        <button type="button" class="btn btn-link dropdown-toggle btn-sm" data-toggle="dropdown">
-          Download <span class="caret"></span>
-        </button>
-        <!-- DROPDOWN Options: app.route atoms function -->
-        <ul class="dropdown-menu">
-          <li><a href="/atoms/{{ project.name }}/{{ row.id }}/cif">cif</a></li>
-          <li><a href="/atoms/{{ project.name }}/{{ row.id }}/xyz">xyz</a></li>
-          <li><a href="/atoms/{{ project.name }}/{{ row.id }}/json">json</a></li>
-        </ul>
-      </div>
+      <div class="col-md-1"></div>
     </div>
-    <div class="col-md-1"></div>
-  </div>
 </div>
 {% endif %}
 {% endmacro %}
 
+{% macro cell() %}
+<table class="table table-striped">
+<thead>
+<tr>
+<th>Axis</th>
+<th>x (Å)</th>
+<th>y (Å)</th>
+<th>z (Å)</th>
+<th>Periodic</th>
+</tr>
+</thead>
+<tbody>
+            {% for axis in dct.cell %}
+<tr>
+<td>{{ loop.index }}</td>
+                {% for a in axis %} <td>{{ a }}</td>{% endfor %}
+<td>{{ row.pbc[loop.index0] }}</td>
+</tr>
+            {% endfor %}
+</tbody>
+</table>
+<table class="table table-striped">
+<tbody>
+<tr><td>Lengths (Å):</td>{% for L in dct.lengths %} <td>{{ L }}</td>{% endfor %}</tr>
+<tr><td>Angles (&#176;):</td>{% for a in dct.angles %} <td>{{ a }}</td>{% endfor %}</tr>
+</tbody>
+</table>
+{% endmacro %}
+
+{% macro table(data) %}
+<table class="table table-striped">
+  {% if data.columnwidth %}
+  <colgroup>
+  {% for value in data.rows[0] %}
+    <col class="col-md-{{ data.columnwidth }}"></col>
+  {% endfor %}
+  </colgroup>
+  {% endif %}
+  <thead>
+    <tr>
+    {% for title in data.header %}
+        <th>{{ title|safe }}</th>
+    {% endfor %}
+    </tr>
+</thead>
+<tbody>
+{% for row in data.rows %}
+    <tr>
+      {% for value in row %}
+        <td>{{ help(value) }} {{ value|safe }}</td>
+    {% endfor %}
+    </tr>
+{% endfor %}
+</tbody>
+</table>
+{% endmacro %}
 
 {% block title %}
 {{ dct.formula|safe|striptags }} - Summary
 {% endblock %}
 
-
 {% block head %}
+
 <script>
-  jmol_isReady = function (applet) {
-    Jmol._getElement(applet, "appletdiv").style.border = "1px solid lightgray";
+jmol_isReady = function(applet)
+{
+    Jmol._getElement(applet, "appletdiv").style.border="1px solid lightgray";
     Jmol.script(jmolApplet0, "set displaycellparameters false;")
     Jmol.script(jmolApplet0,
     "load /atoms/{{ project.name }}/{{ row.id }}/cif { {{ n1 }} {{ n2 }} {{ n3 }} };");
-  }
+    }
 </script>
+
 <script src="{{ url_for('static', filename='row.js') }}"></script>
 {% endblock %}
 
-
-<!-- Create each panel and it's content -->
 {% block content %}
+
 <div class="container">
-    <!--  Database Row header  -->
-    <h1>
-        {{ dct.formula|safe }}
-      <a href="/{{ project.name }}/row/{{ uid }}/all_data">
-        <button type="button" class="btn btn-outline-primary">
-          Download raw data
-          <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-download" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-            <path fill-rule="evenodd" d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"></path>
-            <path fill-rule="evenodd" d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"></path>
-          </svg>
-      </button></a>
-      <a href="/{{ project.name }}/row/{{ uid }}/data"><button type="button" class="btn btn-outline-primary">
-          Browse raw data
-          <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-folder" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9.828 4a3 3 0 0 1-2.12-.879l-.83-.828A1 1 0 0 0 6.173 2H2.5a1 1 0 0 0-1 .981L1.546 4h-1L.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3v1z"/>
-            <path fill-rule="evenodd" d="M13.81 4H2.19a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4zM2.19 3A2 2 0 0 0 .198 5.181l.637 7A2 2 0 0 0 2.826 14h10.348a2 2 0 0 0 1.991-1.819l.637-7A2 2 0 0 0 13.81 3H2.19z"/>
-          </svg>
-        </button></a>
-    </h1>
 
-    <!--  Content for each panel  -->
-    <div class="panel-group">
-        {% set close_subpanel = False %}
-        {% for panel_title, panel_info in dct.layout %}
-            {% if dct.subpanel[loop.index0] and not dct.subpanel[loop.index0 - 1] %}
-              <!-- START SUBPANEL GROUP-->
-              <div class="panel-group" id="nestedAccordion">
-                <div class="panel panel-default">
-                  <!-- Subpanel Heading -->
-                  <div class="panel-heading">
-                    <h4 class="panel-title">
-                        <a class="btn-lg" data-toggle="collapse"
-                           data-parent="#nestedAccordion"
-                           href="#collapseNested{{ loop.index0 }}">
-                            {{ dct.subpanel[loop.index0] }}
-                        </a>
-                      </h4>
-                  </div>
-                  <!-- START Subpanel COLLAPSE -->
-                  <div id="collapseNested{{ loop.index0 }}"
-                       class="panel-collapse collapse">
-                    <div class="panel-body">
-                      <div class="col-md-12">
-                        <div class="row">
-            {% elif dct.subpanel[loop.index0] and not dct.subpanel[loop.index0 + 1] %}
-              {% set close_subpanel = True %}
+<h1>
+    {{ dct.formula|safe }}
+  <a href="/{{ project.name }}/row/{{ uid }}/all_data">
+    <button type="button" class="btn btn-outline-primary">
+      Download raw data
+      <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-download" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path fill-rule="evenodd" d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"></path>
+        <path fill-rule="evenodd" d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"></path>
+      </svg>
+  </button></a>
+  <a href="/{{ project.name }}/row/{{ uid }}/data"><button type="button" class="btn btn-outline-primary">
+      Browse raw data
+      <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-folder" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9.828 4a3 3 0 0 1-2.12-.879l-.83-.828A1 1 0 0 0 6.173 2H2.5a1 1 0 0 0-1 .981L1.546 4h-1L.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3v1z"/>
+        <path fill-rule="evenodd" d="M13.81 4H2.19a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4zM2.19 3A2 2 0 0 0 .198 5.181l.637 7A2 2 0 0 0 2.826 14h10.348a2 2 0 0 0 1.991-1.819l.637-7A2 2 0 0 0 13.81 3H2.19z"/>
+      </svg>
+    </button></a>
+</h1>
+
+<div class="panel-group">
+
+{% for title, things in dct.layout %}
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+      <h4 class="panel-title">
+	{{ help(title) }}
+	<a class="btn-lg" data-toggle="collapse" href="#collapse{{ loop.index0 }}">{{ title|safe }}</a>
+      </h4>
+  </div>
+
+  <div id="collapse{{ loop.index0 }}"
+       class="panel-collapse collapse {% if loop.index0 == 0 %}in{% endif %}">
+    <div class="panel-body">
+      {% for column in things %}
+
+      <div class="col-md-6">
+        <div class="col-md-12">
+        {% for data in column %}
+        <div class="row">
+          {% if data.type == 'atoms' %}
+            {{ atoms() }}
+          {% elif data.type == 'cell' %}
+            {{ cell() }}
+          {% elif data.type == 'table' %}
+            {{ table(data) }}
+          {% else %}
+            {% if data.link %}
+              {% if data.link == 'empty' %}
+                <br>
+              {% else %}
+                <center>
+                  <a target="_blank"
+                     rel="noopener noreferrer"
+                     href="/{{ project.name }}/file/{{ uid }}/{{ data.link }}">
+                    Interactive mode
+                  </a>
+                </center>
+              {% endif %}
+		{% endif %}
+		{{ help(data) }}
+		<figure class="figure">
+            <a href="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}">
+              <img
+                src="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}"
+                width="100%">
+            </a>
+            {% if data.caption %}
+            <figcaption>{{ data.caption }}</figcaption>
             {% endif %}
+	    </figure>
 
-            <!-- MAIN Panel body data -->
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                  <h4 class="panel-title">
-                    {{ help(panel_title) }}
-                    <a class="btn-lg"
-                       data-toggle="collapse"
-                       href="#collapse{{ loop.index0 }}">
-                            {{ panel_title|safe }}
-                    </a>
-                  </h4>
-                </div>
-                <div id="collapse{{ loop.index0 }}"
-                     class="panel-collapse collapse {% if loop.index0 == 0 %}in{% endif %}">
-                <div class="panel-body">
-                  <!--  place all the data in columns  -->
-                  {% for column in panel_info %}
-                  <div class="col-md-6">
-                    <div class="col-md-12">
-                    {% for data in column %}
-                    <div class="row">
-                      {% if data.type == 'atoms' %}
-                        {{ atoms() }}
-                      {% elif data.type == 'cell' %}
-                        {{ cell() }}
-                      {% elif data.type == 'table' %}
-                        {{ table(data) }}
-                      {% else %}
-                        {% if data.link %}
-                          {% if data.link == 'empty' %}
-                            <br>
-                          {% else %}
-                            <center>
-                              <a target="_blank"
-                                 rel="noopener noreferrer"
-                                 href="/{{ project.name }}/file/{{ uid }}/{{ data.link }}">
-                                Interactive mode
-                              </a>
-                            </center>
-                          {% endif %}
-                    {% endif %}
-                    {{ help(data) }}
-                    <figure class="figure">
-                        <a href="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}">
-                          <img
-                            src="/{{ project.name }}/file/{{ uid }}/{{ data.filename }}"
-                            width="100%">
-                        </a>
-                        {% if data.caption %}
-                        <figcaption>{{ data.caption }}</figcaption>
-                        {% endif %}
-                    </figure>
-
-                      {% endif %}
-                    </div> <!--END ROW-->
-                    {% endfor %}
-                    </div>
-                  </div> <!--END col-md-6-->
-                  {% endfor %}
-                </div> <!--END PANEL BODY-->
-                </div> <!--END COLLAPSE-->
-            </div> <!--END PANEL-->
-
-            {% if close_subpanel == True %}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <!--END SUBPANEL GROUP-->
-            {% set close_subpanel = False %}
-            {% endif %}
+          {% endif %}
+        </div> <!--END ROW-->
         {% endfor %}
-    </div> <!--END PANEL GROUP-->
+        </div>
+      </div> <!--END col-md-6-->
+      {% endfor %}
+    </div> <!--END PANEL BODY-->
+  </div> <!--END COLLAPSE-->
+</div> <!--END PANEL-->
+{% endfor %}
+</div> <!--END PANEL GROUP-->
 </div>
 {% endblock content %}
