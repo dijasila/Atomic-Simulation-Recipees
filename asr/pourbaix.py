@@ -77,17 +77,16 @@ def get_references(
     return refs, species.name
 
 
-def main(material: str,
-         computed_energy: Union[float, None]=None,
-         database: str='oqmd123.db',
-         energy_key: str='energy',
-         pHrange: Union[list, tuple]=[0, 14],
-         Urange: Union[list, tuple]=[-3, 3],
-         conc: float=1e-6,
-         counter: str='SHE',
-         npoints: int=300,
-         show: bool=False,
-         savefig: str='pourbaix.png'):
+def autopourbaix(material: str,
+                 database: str,
+                 computed_energy: Union[float, None]=None,
+                 counter: str='SHE',
+                 conc: float=1e-6,
+                 predef_energies: Union[dict, None]=None,
+                 energy_key: str='energy'):
+
+    if predef_energies is not None:
+        PREDEF_ENERGIES.update(predef_energies)
 
     refs, name = get_references(
         material,
@@ -99,12 +98,41 @@ def main(material: str,
     )
 
     pbx = Pourbaix(name, refs, conc=conc, counter=counter)
+    return pbx
+
+
+def main(material: str,
+         computed_energy: Union[float, None]=None,
+         database: str='oqmd123.db',
+         energy_key: str='energy',
+         predef_energies: Union[dict, None]= {
+            'O': -4.57,   # http://dx.doi.org/10.1103/PhysRevB.85.235438
+            'H': -3.73,   # 
+         },
+         pHrange: Union[list, tuple]=[0, 14],
+         Urange: Union[list, tuple]=[-3, 3],
+         conc: float=1e-6,
+         counter: str='SHE',
+         npoints: int=300,
+         show: bool=False,
+         savefig: str='pourbaix.png'):
+
+    pbx = autopourbaix(
+        material, database,
+        computed_energy,
+        counter, conc,
+        predef_energies,
+        energy_key
+    )
+
     pbx.plot(
         Urange, pHrange,
         npoints=npoints, 
         show=show,
         savefig=savefig
     )
+
+    #TODO: don't plot, store results instead
 
 
 if __name__ == '__main__':
@@ -114,4 +142,9 @@ if __name__ == '__main__':
     else:
         energy=None
 
-    main(sys.argv[1], computed_energy=energy)
+    predef = {
+        'O': -4.57,     # http://dx.doi.org/10.1103/PhysRevB.85.235438
+        'H': -3.73,     # http://dx.doi.org/10.1103/PhysRevB.85.235438
+    }
+
+    main(sys.argv[1], computed_energy=energy, predef_energies=predef)
