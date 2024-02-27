@@ -573,9 +573,9 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     translation = return_defect_coordinates(pristine, defectinfo)
     rel_struc, ref_struc, art_struc, N = recreate_symmetric_cell(
         structure, unrelaxed, primitive, pristine, translation, delta=0)
-    for delta in [0.1, -0.06, 0.5, -0.1, 0.06]:
-        # for cutoff in [0.1, 0.6, 1.1]:
-        for cutoff in np.arange(0.1, 1.2, 0.5):
+    for delta in np.arange(-0.1, 0.1, 0.01):      #[0.1, 0.03, -0.03, -0.06, 0.05, -0.05, -0.1, 0.06]:
+        for cutoff in [0.1, 0.6, 1.2]:
+        #for cutoff in np.arange(0.1, 0.8, 0.04):
             rel_tmp = rel_struc.copy()
             ref_tmp = ref_struc.copy()
             art_tmp = art_struc.copy()
@@ -597,7 +597,7 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     raise ValueError('number of atoms wrong! Mapping not correct!')
 
 
-def get_spg_symmetry(structure, symprec=0.1):
+def get_spg_symmetry(structure, symprec=0.05):
     """Return the symmetry of a given structure evaluated with spglib."""
     ## fix usage of deprecated spglib api (taken from old-master)  _ks
     spgcell = (structure.cell,
@@ -614,8 +614,8 @@ def conserved_atoms(ref_struc, primitive, N, Nvac):
         print('INFO: number of atoms correct after mapping.')
         return True
     else:
-        number = N * N * len(primitive) - Nvac
-        print(len(ref_struc), number, Nvac, N)
+        #number = N * N * len(primitive) - Nvac        # Remove this after debugging
+        #print(len(ref_struc), number, Nvac, N)
         return False
 
 

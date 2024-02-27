@@ -232,17 +232,18 @@ def return_gapstates(calc_def):
     else:
         evac = res_pris['evac']
 
-    vbm = res_pris['vbm'] - pot_pris
-    cbm = res_pris['cbm'] - pot_pris
+    vbm = res_pris['vbm']
+    cbm = res_pris['cbm']
 
-    ev_def = calc_def.get_eigenvalues() - pot_def
-    ef_def = calc_def.get_fermi_level() - pot_def
+    dif = pot_def - pot_pris + evac     # dif is eventually called eref 
+                                        # in results of get_wfs
+
+    ev_def = calc_def.get_eigenvalues() - pot_def + pot_pris
+    ef_def = calc_def.get_fermi_level() - pot_def + pot_pris 
 
     # evaluate whether there are states above or below the fermi level
     # and within the bandgap
     above_below = get_above_below(ev_def, ef_def, vbm, cbm)
-    dif = pot_def - pot_pris                        #Removed '+evac' term, idk
-                                                    #why it was there
 
     # check whether difference in atomic electrostatic potentials is
     # not too large
