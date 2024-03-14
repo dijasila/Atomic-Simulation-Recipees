@@ -66,18 +66,15 @@ def are_spins_degenerate(gs_calculator):
 
 
 def webpanel(result, row, key_descriptions):
-    data = get_webpanel_data(result, row)
+    data = get_webpanel_data(row)
     panel_list = make_webpanel(data)
     return panel_list
 
 
-def get_webpanel_data(result, row) -> dict:
-    data = row.data.get('results-asr.effective_masses.json')
-    atoms = row.toatoms()
+def get_webpanel_data(data, atoms) -> dict:
     webpanel_data = {}
     band_names = ['vbm', 'cbm']
     if data:
-        webpanel_data['atoms'] = atoms
         unit_cell = data['unit_cell']
         webpanel_data['unit_cell'] = unit_cell
         for band_name in band_names:
@@ -174,7 +171,6 @@ def get_webpanel_data(result, row) -> dict:
             webpanel_band_data['extremum_depth'] = extremum_depth
 
             webpanel_data[band_name] = webpanel_band_data
-
     return webpanel_data
 
 
@@ -293,13 +289,13 @@ def make_webpanel(data):
                              'rows': webpanel_table_data}])
 
     # Make the panel
-    figure_filenames = [band_name + '_contour.png' for band_name in band_names]
+    fignames = ['emass_' + band_name + '.png' for band_name in band_names]
     panel = {'title': describe_entry('Effective masses (PBE)',
                                      panel_description),
              'columns': column_list,
              'plot_descriptions':
                  [{'function': get_figure,
-                   'filenames': figure_filenames}],
+                   'filenames': fignames}],
              'sort': 14}
     return [panel]
 
@@ -923,39 +919,22 @@ def get_sym_op(kin, kout, atoms):
 
 
 def get_figure(row, *filenames):
-    data = row.data.get('results-asr.effective_masses.json')
+    data = get_webpanel_data(None, row)
+    make_figure(data)
+
+
+def make_figure(data, folder: Path):
     band_names = ['vbm', 'cbm']  # hard coded band-names. change in future
-    for i, filename in enumerate(filenames):
-        band_name = band_names[i]  # remove _contour.png from name
-        band_data = data[band_name + '_data']
+    for i, band_name in enumerate(band_names):
+        band_data = data[band_name]
         for key in band_data:
             band_data[key] = np.asarray(band_data[key])
 
-        X = band_data['contour_kx']
-        Y = band_data['contour_ky']
-
-        f0 = band_data['fit_f0']
-        Z = band_data['contour_energies'] - f0
-
-        phi = band_data['iems_phi']
-        iems_coefficients_k = band_data['iems_coefficients_ks'][:, 0]
-
-        band_warped = is_band_warped(band_data['iems_warping'])
-        if band_warped:
-            max_emass_angle = phi[np.argmin(np.abs(iems_coefficients_k))]
-            max_emass_direction = np.array(
-                [np.cos(max_emass_angle), np.sin(max_emass_angle)])
-            min_emass_angle\
-                = phi[np.argmax(np.abs(iems_coefficients_k))]
-            min_emass_direction = np.array(
-                [np.cos(min_emass_angle), np.sin(min_emass_angle)])
-        else:
-            eigvals = band_data['fit_eigvals']
-            eigvecs = band_data['fit_eigvecs']
-            max_emass_idx = np.argmin(abs(eigvals))
-            min_emass_idx = (1 - max_emass_idx) % 2
-            max_emass_direction = eigvecs[:, max_emass_idx]
-            min_emass_direction = eigvecs[:, min_emass_idx]
+        X = band_data['X']
+        Y = band_data['Y']
+        Z = band_data['Z']
+        min_emass_direction = band_data['min_emass_direction']
+        max_emass_direction = band_data['max_emass_direction']
 
         line_radius = np.sqrt(X**2 + Y**2).max() / 2
         line = np.linspace(0, line_radius, 101)
@@ -1004,8 +983,8 @@ def get_figure(row, *filenames):
         if len(ax.get_xticks()) >= 7:
             ax.set_xticklabels(np.round(ax.get_xticks(), 4), rotation=15)
         ax.legend()
-
-        plt.savefig(filename)
+        filename = 'emass_' + band_name + '.png'
+        plt.savefig(folder / filename)
 
 
 if __name__ == '__main__':
