@@ -12,7 +12,7 @@ def webpanel(result, row, key_descriptions):
     plasmatable = table(row, 'Property', [
         'plasmafrequency_x', 'plasmafrequency_y'], key_descriptions)
 
-    panel = {'title': 'Optical polarizability (RPA)',
+    panel = {'title': 'Optical polarizability',
              'columns': [[], [plasmatable]]}
     return [panel]
 
@@ -27,9 +27,9 @@ class Result(ASRResult):
     key_descriptions = {
         "plasmafreq_vv": "Plasma frequency tensor [Hartree]",
         "plasmafrequency_x": "KVP: 2D plasma frequency (x)"
-        "[`eV/Å^0.5`]",
+        "[`eV Å^0.5`]",
         "plasmafrequency_y": "KVP: 2D plasma frequency (y)"
-        "[`eV/Å^0.5`]",
+        "[`eV Å^0.5`]",
     }
     formats = {"ase_webpanel": webpanel}
 

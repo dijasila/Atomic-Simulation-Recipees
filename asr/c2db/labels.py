@@ -95,6 +95,13 @@ The structure was added manually based on previous
 experimental/theoretical results in the literature
 """
 
+    # Apply to whole tree_Wang23
+    wang23_description = """\
+Materials were obtained by a symmetry-based systematic approach by Wang et al.
+
+Ref: {link}
+""".format(link=doi('10.1088/2053-1583/accc43'))
+
     descriptions = {
         'exfoliated02-21': exfoliated02_21_description,
         'janus10-19': janus10_19_description,
@@ -105,6 +112,7 @@ experimental/theoretical results in the literature
         'Manti22_pushed': pushed02_22_description,
         'adhoc_material': ad_hoc_description,
         'Americo23_ic': americo23_ic_description,
+        'Wang23': wang23_description,
     }
 
     if label in descriptions:

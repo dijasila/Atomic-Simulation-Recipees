@@ -11,7 +11,7 @@ def test_collinear_spinorbit(asr_tmpdir_w_params, test_material, get_webcontent)
     test_material.write('structure.json')
     calculator = {"name": "gpaw",
                   "mode": {"name": "pw", "ecut": 300},
-                  "kpts": {"density": 6, "gamma": True},
+                  "kpts": {"density": 3, "gamma": True},
                   "txt": "gs.txt"}
 
     gs_calculate(calculator)
