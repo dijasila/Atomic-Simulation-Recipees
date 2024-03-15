@@ -9,7 +9,8 @@ def soc_eigenstates(
         theta=0.0,
         phi=0.0,
         eigenvalues=None,
-        occcalc=None):
+        occcalc=None,
+        projected=None):
 
     nk = len(calc.get_ibz_k_points())
     nspins = 2
@@ -32,14 +33,15 @@ def soc_eigenstates(
     s_kvm[:, 2, ::2] = -1
     e_km = e_ksn.reshape((nk, -1))
     e_km.sort(-1)  # Make sure eigenvalues are in ascending order
-    return SOC(e_km, s_kvm, calc.get_fermi_level())
+    return SOC(e_km, s_kvm, calc.get_fermi_level(), theta)
 
 
 class SOC:
-    def __init__(self, e_km, s_kvm, fermi_level):
+    def __init__(self, e_km, s_kvm, fermi_level, theta):
         self.eig_km = e_km
         self.s_kmv = s_kvm.transpose((0, 2, 1))
         self.fermi_level = fermi_level
+        self.theta = theta
 
     def eigenvalues(self):
         return self.eig_km
@@ -48,4 +50,4 @@ class SOC:
         return self.s_kmv
 
     def calculate_band_energy(self):
-        return 0.0
+        return self.theta
