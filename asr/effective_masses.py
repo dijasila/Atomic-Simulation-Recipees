@@ -399,7 +399,7 @@ def map_to_1BZ(_kpts, atoms):
     return k1BZ_ka.reshape(kpts_shape)
 
 
-def map_to_IBZ(kpts, atoms, tolerance=1e-3):
+def map_to_IBZ(kpts, atoms, tolerance=1e-3, debug=False):
     from gpaw.symmetry import Symmetry
 
     def angle_between_points(p1, p2, p3):
@@ -433,15 +433,16 @@ def map_to_IBZ(kpts, atoms, tolerance=1e-3):
             inside_polygon[i] = np.isclose(abs(angle_sum), 2 * np.pi)
         return inside_polygon
 
-    def _map_single_k_to_ibz(kpt, sym_op_scc, ibz_polygon):
+    def _map_single_k_to_ibz(kpt, sym_op_scc, ibz_polygon, debug):
         #  map out k-points with lattice symmetry operations
         unique_kpts = get_equivalent_kpts(kpt, sym_op_scc)
         kpt_is_in_ibz = is_point_inside_polygon(unique_kpts, ibz_polygon)
-        if kpt_is_in_ibz.sum() > 1:
+        if debug and kpt_is_in_ibz.sum() > 1:
             print('multiple k in ibz found!')
         kpts_in_ibz = unique_kpts[kpt_is_in_ibz]
         if len(kpts_in_ibz) == 0:
-            print('no ibz kpt found for ', kpt)
+            if debug:
+                print('no ibz kpt found for ', kpt)
             kpt_in_ibz = kpt
             # sym_op = np.identity(2)
         else:
@@ -481,7 +482,7 @@ def map_to_IBZ(kpts, atoms, tolerance=1e-3):
     ibz_polygon = np.asarray(list(special_points.values()))[:, :2]
     kpts_ibz = []
     for kpt in kpts_kbasis:
-        kpt_ibz = _map_single_k_to_ibz(kpt, sym_op_scc, ibz_polygon)
+        kpt_ibz = _map_single_k_to_ibz(kpt, sym_op_scc, ibz_polygon, debug)
         kpts_ibz.append(kpt_ibz)
 
     kpts_ibz = np.asarray(kpts_ibz) @ reciprocal_cell
