@@ -121,7 +121,7 @@ def get_projected_points(result):
 @option('--projected', type=bool,
         help='For non-collinear spin spirals, projected SOC should be applied (True)')
 @option('--width', type=float,
-        help='The fermi smearing of the SOC calculation (eV)')
+        help='The fermi smearing of the SOC calculation [eV]')
 def calculate(gpw: str = 'gs.gpw', distance: float = 10.0,
               projected: bool = None, width: float = 0.001) -> ASRResult:
     '''Calculates the spin-orbit coupling at equidistant points on a unit sphere. '''
@@ -166,8 +166,8 @@ def _calculate(calc, distance: float,
 
 def webpanel(result, row, key_descriptions):
     from asr.database.browser import fig
-    rows = [['Spinorbit bandwidth (meV)', str(np.round(result.get('soc_bw'), 1))],
-            ['Spinorbit Minimum (&theta;, &phi;)', '('
+    rows = [['Spin-orbit band width [meV]', str(np.round(result.get('soc_bw'), 1))],
+            ['Spin-orbit Minimum (&theta;, &phi;)', '('
              + str(np.round(result.get('theta_min'), 1))
              + ', ' + str(np.round(result.get('phi_min'), 1)) + ')']]
     spiraltable = {'type': 'table',
@@ -189,7 +189,7 @@ class Result(ASRResult):
     phi_min: float
     projected_soc: bool
     A_vv: np.ndarray
-    key_descriptions = {'soc_bw': 'Bandwidth of SOC energies [meV]',
+    key_descriptions = {'soc_bw': 'Band width of SOC energies [meV]',
                         'theta_min': 'Angles from z->x [deg]',
                         'phi_min': 'Angles from x->y [deg]',
                         'projected_soc': 'Projected SOC for spin spirals',

@@ -100,14 +100,14 @@ def webpanel(result, row, key_descriptions):
     dp_table_vb = matrixtable(
         dp_list_vb,
         digits=2,
-        title='D<sub>VB</sub> (eV)',
+        title='D<sub>VB</sub> [eV]',
         columnlabels=columnlabels,
         rowlabels=dp_labels_vb
     )
     dp_table_cb = matrixtable(
         dp_list_cb,
         digits=2,
-        title='D<sub>CB</sub> (eV)',
+        title='D<sub>CB</sub> [eV]',
         columnlabels=columnlabels,
         rowlabels=dp_labels_cb
     )

@@ -12,7 +12,7 @@ class SpinSpiralCalculation:
     energy: float            # total energy of this calculation
     m_v: List[float]         # total magnetic moments in Cartesian directions
     m_av: List[List[float]]  # magmoms resolved by atom and direction
-    gap: float               # Bandgap of this calculation
+    gap: float               # Band gap of this calculation
 
     def save(self, filename):
         with open(filename, 'w') as fd:
@@ -90,8 +90,8 @@ def webpanel(result, row, key_descriptions):
     gap = result.gaps[bmin][qmin]
 
     rows = [['Q<sub>min</sub>', str(np.round(result.get('Qmin'), 3))],
-            ['Bandgap(Q<sub>min</sub>) (eV)', round(gap, 2)],
-            ['Spiral bandwidth (meV)', str(np.round(result.get('bandwidth'), 1))]]
+            ['Band gap(Q<sub>min</sub>) [eV]', round(gap, 2)],
+            ['Spiral band width [meV]', str(np.round(result.get('bandwidth'), 1))]]
     spiraltable = {'type': 'table',
                    'header': ['Property', 'Value'],
                    'rows': rows}
@@ -116,10 +116,10 @@ class Result(ASRResult):
     Qmin: List[float]
     key_descriptions = {'path': 'List of Spin spiral vectors',
                         'energies': 'Total energy of spin spiral calculations [eV]',
-                        'gaps': 'Bandgaps of spin spiral calculations [eV]',
+                        'gaps': 'Band gaps of spin spiral calculations [eV]',
                         'local_magmoms': 'Estimated local moments [mu_B]',
                         'total_magmoms': 'Estimated total moment [mu_B]',
-                        'bandwidth': 'Spin spiral bandwidth [meV]',
+                        'bandwidth': 'Spin-spiral band width [meV]',
                         'minimum': 'Band and q index of energy minimum',
                         'Qmin': 'Magnetic order vector Q [inverse unit cell]'}
     formats = {'ase_webpanel': webpanel}

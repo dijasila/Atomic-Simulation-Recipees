@@ -138,11 +138,11 @@ def all_the_keydescs():
         kvp('N_nn', 'Number of nearest neighbors'),
     ]
     yield 'collect_spiral', [
-        kvp('bandwidth', 'Spin spiral bandwidth', unit='meV'),
+        kvp('bandwidth', 'Spin-spiral band width', unit='meV'),
         kd('Qmin', 'Magnetic order vector Q', unit='inverse unit cell'),
     ]
     yield 'spinorbit', [
-        kvp('soc_bw', 'Bandwidth of SOC energies', unit='meV'),
+        kvp('soc_bw', 'Band width of SOC energies', unit='meV'),
         kvp('theta_min', 'Angles from z->x', unit='deg'),
         kvp('phi_min', 'Angles from x->y', unit='deg'),
         kvp('projected_soc', 'Projected SOC for spin spirals')
