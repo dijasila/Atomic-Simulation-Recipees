@@ -91,7 +91,7 @@ def test_hchain_integration(asr_tmpdir, get_webcontent):
         print(content)
         assert '<td>Q<sub>min</sub></td>' in content, content
         assert '<td>Bandgap(Q<sub>min</sub>)[eV]</td>' in content, content
-        assert '<td>Spiralband-width[meV]</td>' in content, content
+        assert '<td>Spiralbandwidth[meV]</td>' in content, content
 
         result = read_json('results-asr.collect_spiral.json')
         # Non-magnetic hchain is metallic.

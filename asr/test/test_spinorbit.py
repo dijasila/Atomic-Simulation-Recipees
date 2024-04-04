@@ -22,7 +22,7 @@ def test_collinear_spinorbit(asr_tmpdir_w_params, test_material, get_webcontent)
 
     if world.size == 1:
         content = get_webcontent()
-        assert "<td>Spin-orbitband width[meV]</td>" in content, content
+        assert "<td>Spin-orbitbandwidth[meV]</td>" in content, content
         assert "<td>Spin-orbitMinimum(&theta;,&phi;)</td>" in content, content
 
 
