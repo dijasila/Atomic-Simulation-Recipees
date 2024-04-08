@@ -192,10 +192,27 @@ def filter_uids(all_rows, duplicate_ids, ops_and_keys, uid_key):
 
     filtered_uids = set()
     for candidaterow in rows:
-        better_candidates = {
-            row for row in rows
-            if all(compare(row[key], candidaterow[key], op)
-                   for op, key in ops_and_keys)}
+    #    better_candidates = {
+    #        row for row in rows
+    #        if all(compare(row[key], candidaterow[key], op)
+    #               for op, key in ops_and_keys)}
+    
+        better_candidates = set()
+        for row in rows:
+            comparisons = []
+            for op, key in ops_and_keys:
+                if not hasattr(row, key):
+                    print(row.uid, key, row.folder)
+                    comparisons.append(False)
+                    continue
+                if key=='hform' and row.uid != candidaterow.uid and len(candidaterow.toatoms())>len(row.toatoms()):
+                    comparisons.append(compare(row[key], candidaterow[key]+0.01, op))
+                else:
+                    comparisons.append(compare(row[key], candidaterow[key], op))
+    
+            if all(comparisons):
+                better_candidates.add(row)
+
         if not better_candidates:
             filtered_uids.add(candidaterow.get(f'{uid_key}'))
 
