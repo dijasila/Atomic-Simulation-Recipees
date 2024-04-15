@@ -233,7 +233,7 @@ def plot_bandstructure(row, fname):
 
     bs = BandStructure(path=path, energies=en_exact[None])
     ax = plt.figure().add_subplot(111)
-    bs.plot(ax=plt.gca(), ls='', marker='o', colors=['C1'],
+    bs.plot(ax=ax, ls='', marker='o', colors=['C1'],
             emin=np.min(energies * 1.1), emax=np.max([np.max(energies * 1.15),
                                                       0.0001]),
             ylabel='Phonon frequencies [meV]')
