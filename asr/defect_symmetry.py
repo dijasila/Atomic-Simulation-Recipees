@@ -83,7 +83,7 @@ def get_matrixtable_array(state_results, vbm, cbm, ef,
 def get_symmetry_tables(state_results, vbm, cbm, row, style):
     state_tables = []
     gsdata = row.data.get('results-asr.gs.json')
-    eref = row.data.get('results-asr.get_wfs.json')['eref']
+    eref = row.data.get('results-asr.get_wfs.json')['eref'] # = pot_def - pot_pris + pris_evac
     ef = gsdata['efermi'] - eref
 
     E_hls = []
@@ -597,13 +597,14 @@ def get_mapped_structure(structure, unrelaxed, primitive, pristine, defectinfo):
     raise ValueError('number of atoms wrong! Mapping not correct!')
 
 
-def get_spg_symmetry(structure, symprec=0.05):
+def get_spg_symmetry(structure, symprec=0.1):
     """Return the symmetry of a given structure evaluated with spglib."""
     ## fix usage of deprecated spglib api (taken from old-master)  _ks
     spgcell = (structure.cell,
                structure.get_scaled_positions(),
                structure.numbers)
-    spg_sym = spg.get_spacegroup(spgcell, symprec=symprec, symbol_type=1)
+    spg_sym = spg.get_spacegroup(spgcell, symprec=symprec, angle_tolerance = 10.0,
+                                symbol_type=1)
 
     return spg_sym.split('^')[0]
 

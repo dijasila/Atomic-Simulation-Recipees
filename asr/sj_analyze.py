@@ -5,7 +5,8 @@ from ase.io import Trajectory
 from gpaw import restart
 import numpy as np
 import typing
-
+from asr.get_wfs import (get_reference_index,
+                        extract_atomic_potentials)
 
 panel_description = make_panel_description(
     """
@@ -171,7 +172,7 @@ class Result(ASRResult):
     hof: float
 
     key_descriptions = dict(
-        transitions='Charge transition levels with [transition energy, '
+        transitions='Charge transition levels with transition energy, '
                     'relax correction, reference energy] eV',
         pristine='Container for pristine band gap results.',
         eform='List of formation energy tuples (eform wrt. standard states [eV], '
@@ -210,6 +211,16 @@ def main(index: int = None) -> Result:
     defectinfo = DefectInfo(defectpath=p)
     struc_pris, struc_def, calc_pris, calc_def = get_strucs_and_calcs(p)
 
+    def_index = defectinfo.specs[0]
+    is_vacancy = defectinfo.is_vacancy(defectinfo.names[0])
+    if index is None:
+        ref_index = get_reference_index(def_index, struc_pris)
+    else:
+        ref_index = index
+    pot_def, pot_pris = extract_atomic_potentials(calc_def, calc_pris,
+                                                  ref_index, is_vacancy)
+    pot_ref = pot_def - pot_pris
+
     # get heat of formation
     c2db = connect('/home/niflheim/fafb/db/c2db_july20.db')
     primitive = read('../../unrelaxed.json')
@@ -232,7 +243,7 @@ def main(index: int = None) -> Result:
     etot_def = results_def['etot']
     etot_pris = results_pris['etot']
     oqmd = connect('/home/niflheim/fafb/db/oqmd12.db')
-    eform, standard_states = calculate_neutral_formation_energy(etot_def, etot_pris, oqmd, defectinfo)
+    eform, standard_states = calculate_neutral_formation_energy(etot_def, etot_pris, pot_ref, oqmd, defectinfo)
 
     # get formation energies for all charge states based on neutral
     # formation energy, as well as charge transition levels, and pristine results
@@ -255,24 +266,28 @@ def calculate_formation_energies(eform, transitions, vbm):
         q = int(name.split('/')[-1])
         if q < 0:
             enlist.append(element['transition_values']['transition']
-                          - element['transition_values']['erelax']
+                          + element['transition_values']['erelax']  # Changed sign /ks
                           - element['transition_values']['evac'])
         elif q > 0:
             enlist.append(element['transition_values']['transition']
-                          + element['transition_values']['erelax']
+                          - element['transition_values']['erelax']  # Changed sign /ks
                           - element['transition_values']['evac'])
 
     eform_list = [(eform, 0)]
     for i, element in enumerate(transitions):
         name = element['transition_name']
         q = int(name.split('/')[-1])
+
+        #### Try this next, with the original signs to see what changes ####
+        # element['transition_values']['erelax'] = -1 * element['transition_values']['erelax']
+        
         if q < 0:
             enlist.append(element['transition_values']['transition']
-                          - element['transition_values']['erelax']
+                          + element['transition_values']['erelax']    # Changed sign /ks
                           - element['transition_values']['evac'])
         elif q > 0:
             enlist.append(element['transition_values']['transition']
-                          + element['transition_values']['erelax']
+                          - element['transition_values']['erelax']    # Changed sign /ks
                           - element['transition_values']['evac'])
         if name.split('/')[0].startswith('0') and name.split('/')[1].startswith('-'):
             y1 = eform
@@ -301,7 +316,6 @@ def calculate_formation_energies(eform, transitions, vbm):
 
     return eform_list
 
-
 def get_heat_of_formation(db, atoms):
     """Extract heat of formation from C2DB."""
     from asr.database.material_fingerprint import get_uid_of_atoms, get_hash_of_atoms
@@ -326,7 +340,7 @@ def calculate_transitions(index, N_homo_q, defectinfo):
                 transition, 0, index, N_homo_q, defectinfo)
             transition_list.append(transition_results)
 
-    for q in [-3, -2, -1, 1, 2, 3]:
+    for q in [-2, -1, 1, 2]:
         if q > 0 and Path('./../charge_{}/sj_+0.5/gs.gpw'.format(q)).is_file():
             transition = [q, q + 1]
             transition_results = get_transition_level(
@@ -369,17 +383,19 @@ def get_pristine_band_edges(index, defectinfo) -> PristineResults:
     pris = list(p.glob('./../../defects.pristine_sc*'))[0]
     if Path(pris / 'results-asr.gs.json').is_file():
         results_pris = read_json(pris / 'results-asr.gs.json')
-        vbm = results_pris['vbm'] - pot_pris
-        cbm = results_pris['cbm'] - pot_pris
-        print('there is a gs results file for pristine', vbm, cbm, results_pris['vbm'], results_pris['cbm'], pot_pris, pot_def) #### check whether it goes into pris folder and returns correct vbm cbm ###
+        vbm = results_pris['vbm']
+        cbm = results_pris['cbm']
+        evac = results_pris['evac']
+        print('there is a gs results file for pristine', vbm, cbm, pot_def - pot_pris) #### check whether it goes into pris folder and returns correct vbm cbm ###
     else:
         vbm = None
         cbm = None
-
+        print('there is no gs results file for pristine, vbm and cbm are None')
+    
     return PristineResults.fromdata(
         vbm=vbm,
         cbm=cbm,
-        evac=0)
+        evac=evac)
 
 def obtain_chemical_potential(symbol, db):
     """Extract the standard state of a given element."""
@@ -396,13 +412,13 @@ def obtain_chemical_potential(symbol, db):
         eref=eref)
 
 
-def calculate_neutral_formation_energy(etot_def, etot_pris, db, defectinfo):
+def calculate_neutral_formation_energy(etot_def, etot_pris, pot_ref, db, defectinfo):
     """Calculate the neutral formation energy with chemical potential shift applied.
 
     Only the neutral one is needed as for the higher charge states we will use the sj
     transitions for the formation energy plot.
     """
-    eform = etot_def - etot_pris
+    eform = etot_def - etot_pris - pot_ref
     # next, extract standard state energies for particular defect
     for defect in defectinfo.names:
         def_add, def_remove = defectinfo.get_defect_type_and_kind_from_defectname(
@@ -506,7 +522,7 @@ def get_transition_level(transition,
             int(transition[1]))).is_file():
         print('INFO: calculate relaxation contribution to transition level.')
         traj = Trajectory('../charge_{}/relax.traj'.format(str(int(transition[1]))))
-        e_cor = traj[0].get_potential_energy() - traj[-1].get_potential_energy()
+        e_cor = traj[-1].get_potential_energy() - traj[0].get_potential_energy() # Changed sign, now = E(q';R_q')-E(q';R_q) /ks
     else:
         print('INFO: no relaxation for the charged state present. Do not calculate '
               'relaxation contribution to transition level.')
@@ -514,7 +530,7 @@ def get_transition_level(transition,
 
     transition_name = f'{transition[0]}/{transition[1]}'
 
-    transition_values = return_transition_values(e_trans, e_cor, pot_def)
+    transition_values = return_transition_values(e_trans, e_cor, pot_def-pot_pris)
 
     return TransitionResults.fromdata(
         transition_name=transition_name,
@@ -612,11 +628,11 @@ def plot_formation_energies(row, fname):
         q = int(name.split('/')[-1])
         if q < 0:
             energy = (element['transition_values']['transition']
-                      - element['transition_values']['erelax']
+                      + element['transition_values']['erelax']      # Changed sign /ks
                       - element['transition_values']['evac'] - vbm)
         elif q > 0:
             energy = (element['transition_values']['transition']
-                      + element['transition_values']['erelax']
+                      - element['transition_values']['erelax']      # Changed sign /ks
                       - element['transition_values']['evac'] - vbm)
         energies.append(energy)
         if energy > 0 and energy < (gap):
@@ -686,13 +702,13 @@ def plot_charge_transitions(row, fname):
         q_new = int(name.split('/')[0])
         if q > 0:
             y = (trans['transition_values']['transition']
-                 + trans['transition_values']['erelax']
+                 - trans['transition_values']['erelax']     # Changed sign /ks
                  - trans['transition_values']['evac'])
             color1 = colors[str(q)]
             color2 = colors[str(q_new)]
         elif q < 0:
             y = (trans['transition_values']['transition']
-                 - trans['transition_values']['erelax']
+                 + trans['transition_values']['erelax']     # Changed sign /ks
                  - trans['transition_values']['evac'])
             color1 = colors[str(q)]
             color2 = colors[str(q_new)]

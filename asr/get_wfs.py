@@ -79,7 +79,7 @@ def main(state: int = 0,
     ef = calc.get_fermi_level()
     if get_gapstates:
         print('INFO: evaluate gapstates.')
-        states, above_below, eref = return_gapstates(calc)
+        states, above_below, eref = return_gapstates(calc)  # eref = pot_def - pot_pris - pris_evac
     # get energy reference and convert given input state to correct format
     elif not get_gapstates:
         # for 2D systems, use the vacuum level as energy reference point
@@ -232,14 +232,14 @@ def return_gapstates(calc_def):
     else:
         evac = res_pris['evac']
 
-    vbm = res_pris['vbm']
-    cbm = res_pris['cbm']
+    vbm = res_pris['vbm'] - evac
+    cbm = res_pris['cbm'] - evac
 
-    dif = pot_def - pot_pris + evac     # dif is eventually called eref 
+    dif = pot_def - pot_pris + evac    # dif is eventually called eref 
                                         # in results of get_wfs
 
-    ev_def = calc_def.get_eigenvalues() - pot_def + pot_pris
-    ef_def = calc_def.get_fermi_level() - pot_def + pot_pris 
+    ev_def = calc_def.get_eigenvalues() - dif 
+    ef_def = calc_def.get_fermi_level() - dif
 
     # evaluate whether there are states above or below the fermi level
     # and within the bandgap
