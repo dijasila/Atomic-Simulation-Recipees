@@ -111,7 +111,7 @@ def get_approx_strain(norm1, norm2):
 
 
 def area(v1, v2):
-    return abs(v1[0] * v2[1] - v1[1] * v2[0])
+    return (v1[0] * v2[1] - v1[1] * v2[0])
 
 
 def get_const(atoms_a, atoms_b):
@@ -205,7 +205,7 @@ def filter_dataframe(df, natoms, internal, asym):
         sym_filter = ''
     else:
         sym_filter = ' & norm_ratio >= 0.99 & norm_ratio <= 1.01'
-    natoms_filter = f'natoms <= {natoms}'
+    natoms_filter = f'natoms <= {natoms} & natoms > 0'
     internal_filter = f'internal_angle >= {internal[0]} & internal_angle <= {internal[1]}'
     df.query(natoms_filter + ' & ' + internal_filter + sym_filter, inplace=True)
     df.reset_index(drop=True, inplace=True)
@@ -242,14 +242,14 @@ def main(uid_a: str = None,
          tol_theta: float = 0.05,
          max_strain: float = 1.0,
          max_natoms: int = 300,
-         twist_angle_interval: list = [-360, 360],
-         min_internal_angle: float = 30.0,
-         max_internal_angle: float = 150.0,
+         twist_angle_interval: list = [0, 360],
+         min_internal_angle: float = 5.0,
+         max_internal_angle: float = 175.0,
          keep_asymmetrical: bool = False,
          overwrite: bool = False,
          directory: Union[str, None] = None,
          #database: str = "/home/niflheim/steame/hetero-bilayer-project/databases/c2db.db"):
-         database: str = "/home/niflheim2/cmr/C2DB-ASR/collected-databases/c2db.db"):
+         database: str = "/home/niflheim2/cmr/databases/c2db/c2db-first-class-20240102.db"):
 
     layer_a, layer_b, stif_a, stif_b = get_atoms_and_stiffness(uid_a, uid_b, database)
     name_a = layer_a.get_chemical_formula()

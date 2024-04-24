@@ -30,7 +30,7 @@ def is_almost_hexagonal(atoms):
     """ Returns True if the angle between the a and b cell vectors is close to 60
         (1 degree tolerance) and their norm is equal (1% tolerance)
     """
-    from asr.findmoire import angle_between
+    from asr.moire.findmoire import angle_between
     cell_0 = atoms.cell[0]
     cell_1 = atoms.cell[1]
     angle = angle_between(cell_0, cell_1)
@@ -124,7 +124,7 @@ def calculate_gs(atoms, kpts, calculator, scs):
     calc = GPAW(**calculator)
     atoms.calc = calc
     atoms.get_potential_energy()
-    atoms.calc.write(filename, mode='')
+    atoms.calc.write(filename)
     return calc
 
 
@@ -157,7 +157,7 @@ def calculate_bs(gpw, kptpath, npoints, eps, scs):
         filename = 'bs_pbe.gpw'
     calc.set(**parms)
     calc.get_potential_energy()
-    calc.write(filename, mode='')
+    calc.write(filename, mode='all')
     return calc
 
 
@@ -173,7 +173,8 @@ def calculate_bs(gpw, kptpath, npoints, eps, scs):
 @option('--no-scs', is_flag=True, help='Perform a plain DFT-PBE calculation in the LCAO basis without SCS shifts.')
 @option('--eps', help='Tolerance over symmetry determination')
 @option('--name', help='Custom prefix for output file names')
-@option('--calculator', help="Dictionary containing calculator parameters")
+@option('--calculator', help="Dictionary containing calculator parameters",
+        type=DictStr())
 @option('--gpw', help="Path to existing .gpw file")
 def main(structure: str = 'structure.json',
          shifts: str = 'shifts.json',
@@ -187,16 +188,15 @@ def main(structure: str = 'structure.json',
          name: str = None,
          eps: float = 2e-4,
          gpw: str = 'gs_scs.gpw',
-         calculator: dict = {
-             'mode': {'name': 'lcao'},
-             'xc': 'PBE',
-             'basis': 'dzp',
-             'occupations': {'name': 'fermi-dirac',
-                             'width': 0.05},
-             'nbands': 'nao',
-             'txt': 'gs_scs.txt',
-             'maxiter': 333,
-             'charge': 0}) -> ASRResult:
+         calculator: dict = {'mode': {'name': 'lcao'},
+                             'xc': 'PBE',
+                             'basis': 'dzp',
+                             'occupations': {'name': 'fermi-dirac',
+                                             'width': 0.05},
+                             'nbands': 'nao',
+                             'txt': 'gs_scs.txt',
+                             'maxiter': 333,
+                             'charge': 0}) -> ASRResult:
 
     atoms = read(structure)
     if no_scs:

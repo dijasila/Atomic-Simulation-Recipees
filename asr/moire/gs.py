@@ -30,7 +30,7 @@ def calculate(calculator: dict = {
     """
     from ase.io import read
     from ase.calculators.calculator import PropertyNotImplementedError
-    from asr.relax import set_initial_magnetic_moments
+    from asr.moire.relax import set_initial_magnetic_moments
     atoms = read('structure.json')
 
     if not atoms.has('initial_magmoms'):

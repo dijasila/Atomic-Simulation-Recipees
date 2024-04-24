@@ -116,17 +116,18 @@ def plot(results="plot-zscan.json", title=None):
 @option('--nsteps', type=int, help='Number of energy evaluations')
 @option('--npoints', type=int, help='Number of points for interpolation')
 def main(structure: str = "initial.json",
-         start: float = 3.0,
-         stop: float = 4.0,
-         nsteps: int = 10,
-         npoints: int = 700):
+         start: float = 2,
+         stop: float = 4.5,
+         nsteps: int = 25,
+         npoints: int = 1200):
 
     dft = GPAW(mode='lcao',
+               basis='dzp',
                xc='PBE',
                kpts={'density': 6.0, 'gamma': True},
                occupations={'name': 'fermi-dirac',
-                            'width': 0.05},
-               basis='dzp')
+                            'width': 0.05}
+               )
     vdw = DFTD3(dft=dft)
 
     atoms = Bilayer(read(structure))

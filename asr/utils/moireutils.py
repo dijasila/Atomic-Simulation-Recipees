@@ -53,7 +53,7 @@ class Bilayer(Atoms):
     def __init__(self, atoms):
         super().__init__(atoms)
         self.top_layer, self.bottom_layer = get_layers(atoms)
-        self._atoms = atoms
+        #self._atoms = self
 
     def copy(self):
         '''Returns a copy of itself.
@@ -61,7 +61,8 @@ class Bilayer(Atoms):
         This is necessary because for some reason the copy() method
         inherited from the Atoms class fails (unexpected keyword argument 'cell')
         '''
-        return self._atoms.copy()
+        return Bilayer(Atoms(self).copy())
+        #return self._atoms.copy()
 
     def get_total_thickness(self):
         zvals = self.positions[:, 2]

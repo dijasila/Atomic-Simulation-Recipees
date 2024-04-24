@@ -5,7 +5,7 @@ from pathlib import Path
 from ase.db import connect
 from ase import Atoms
 from ase.io.jsonio import read_json
-from ase.build import make_supercell
+from ase.build import make_supercell, niggli_reduce
 from asr.core import command, option, ASRResult, prepare_result
 from asr.utils.moireutils import Bilayer
 from asr.moire.findmoire import angle_between, get_atoms_and_stiffness
@@ -85,6 +85,8 @@ def build_supercell(atoms, coeffs):
           coeffs = [[1, 3], [3, 2]]
           new_cell = [a + 3b, 3a + 2b, c]
     '''
+    print(coeffs)
+
     T = [[coeffs[0][0], coeffs[0][1], 0],
          [coeffs[1][0], coeffs[1][1], 0],
          [0, 0, 1]]
@@ -176,9 +178,10 @@ def main(solution,
          root: str='.',
          make_subdirectory: bool=False,
          stacking=None,
-         database: str='/home/niflheim2/cmr/C2DB-ASR/collected-databases/c2db.db'):
+         database: str='/home/niflheim2/cmr/C2DB-ASR/collected-databases/c2db-first-class-20240102.db'):
 
-    cellfile = f'{root}/cells.json'
+    root = Path(root)
+    cellfile = root / 'cells.json'
     uid_a, uid_b, coeffs_a, coeffs_b, twist = get_parameters(solution, cellfile)
     atoms_a, atoms_b, stif_a, stif_b = get_atoms_and_stiffness(uid_a, uid_b, database)
     atoms_a.cell[2, 2] = 1.0
@@ -205,11 +208,15 @@ def main(solution,
     assert new_cell[2, 2] == bilayer.cell[2, 2]
 
     if make_subdirectory:
-        direc = f'{root}/{len(bilayer)}_{twist:.1f}_{maxstrain:.2f}'
+        direc = root / f'{len(bilayer)}_{twist:.1f}_{maxstrain:.2f}'
     else:
-        direc = f'{root}'
-    Path(direc).mkdir(exist_ok=True, parents=True)
-    bilayer.write(f'{direc}/{filename}')
+        direc = root
+    direc.mkdir(exist_ok=True, parents=True)
+
+    bilayer.write(direc / 'before_niggli.json')
+    niggli_reduce(bilayer)
+
+    bilayer.write(direc / filename)
 
     results = {
         'uid_a': uid_a,
@@ -228,7 +235,7 @@ def main(solution,
         'maxstrain': maxstrain
     }
 
-    with open(f'{direc}/bilayer-info.json', 'w') as f:
+    with open(direc / 'bilayer-info.json', 'w') as f:
         json.dump(results, f, indent=2)
 
 

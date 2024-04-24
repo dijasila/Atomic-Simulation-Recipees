@@ -144,6 +144,7 @@ class SpgAtoms(Atoms):
 class myBFGS(BFGS):
 
     def log(self, smask=[0, 0, 0, 0, 0, 0], forces=None, stress=None):
+        self.force_consistent = False
         if forces is None:
             forces = self.atoms.get_forces()
         fmax = sqrt((forces**2).sum(axis=1).max())
@@ -330,17 +331,17 @@ def main(atoms: Atoms,
                              'kpts': {'density': 6.0, 'gamma': True},
                              'basis': 'dzp',
                              'symmetry': {'symmorphic': False},
-                             'convergence': {'forces': 1e-4},
+                             'convergence': {'forces': 1e-3, 'maximum iterations': 666},
                              'txt': 'relax.txt',
                              'occupations': {'name': 'fermi-dirac',
-                                             'width': 0.05},
+                                             'width': 0.1},
                              'charge': 0},
          tmp_atoms: typing.Optional[Atoms] = None,
          tmp_atoms_file: str = 'relax.traj',
          d3: bool = False,
          fixcell: bool = False,
          allow_symmetry_breaking: bool = False,
-         fmax: float = 0.01,
+         fmax: float = 0.10,
          enforce_symmetry: bool = True) -> Result:
     """Relax atomic positions and unit cell.
 
