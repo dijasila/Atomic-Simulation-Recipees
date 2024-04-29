@@ -179,7 +179,7 @@ def build_bilayer(bilayer, d):
          if atom.tag==1:
              bl.positions[iatom, 2] += (d-d0) 
 
-    return BuildBilayer.adjust_bilayer_vacuum(vacuum=15, bilayer=bl)
+    return BuildBilayer.adjust_vacuum(vacuum=15, layer=bl)
 
 
 def get_energy(bilayer, h, calc0, memo):
