@@ -413,7 +413,7 @@ def webpanel(result, row, key_descriptions):
 
     xcname = gs_xcname_from_row(row)
 
-    panel = {'title': describe_entry(f'Electronic band structure ({xcname})',
+    panel = {'title': describe_entry(f'Band structure ({xcname})',
                                      panel_description),
              'columns': [
                  [
