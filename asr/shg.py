@@ -125,7 +125,7 @@ def webpanel(result, row, key_descriptions):
     # Transpose the list
     cols = np.array(cols).T.tolist()
 
-    panel = {'title': 'SHG spectrum (RPA)',
+    panel = {'title': 'Second harmonic generation',
              'columns': cols,
              'plot_descriptions':
                  [{'function': plot_shg,
