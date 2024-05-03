@@ -55,8 +55,6 @@ def gw_hse_webpanel(result, row, key_descriptions, info, sort):
                     [],
                     kd=key_descriptions)
 
-    xcname = gs_xcname_from_row(row)
-
     title = f'Band structure ({info.method_name})'
     panel = {'title': describe_entry(title, info.panel_description),
              'columns': [[fig(info.bs_filename)],
