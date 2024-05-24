@@ -386,11 +386,9 @@ def get_pristine_band_edges(index, defectinfo) -> PristineResults:
         vbm = results_pris['vbm']
         cbm = results_pris['cbm']
         evac = results_pris['evac']
-        print('there is a gs results file for pristine', vbm, cbm, pot_def - pot_pris) #### check whether it goes into pris folder and returns correct vbm cbm ###
     else:
         vbm = None
         cbm = None
-        print('there is no gs results file for pristine, vbm and cbm are None')
     
     return PristineResults.fromdata(
         vbm=vbm,
